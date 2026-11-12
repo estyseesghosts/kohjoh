@@ -261,3 +261,10 @@ kj_tile_ref kj_atlas_tile(uint32_t source_id, const uint8_t *tile, uint32_t offs
     ref.valid = 1;
     return ref;
 }
+
+void kj_atlas_touch(const uint16_t *slots, uint32_t count)
+{
+    for (uint32_t i = 0; i < count; ++i) {
+        s_slots[slots[i]].last_frame = s_frame;
+    }
+}

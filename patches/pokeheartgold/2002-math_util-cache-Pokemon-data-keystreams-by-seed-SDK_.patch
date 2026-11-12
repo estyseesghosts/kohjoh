@@ -1,0 +1,74 @@
+From 09f60285d1e8be13765d78636a21b9898ee9914f Mon Sep 17 00:00:00 2001
+From: terezi <jules@foxtails.me>
+Date: Thu, 12 Nov 2026 13:54:41 -0500
+Subject: [PATCH] math_util: cache Pokemon data keystreams by seed
+ (SDK_PORT_3DS)
+
+GetMonData decrypts and re-encrypts a Pokemon's party and box data on
+every call; with the follower Pokemon this ran hundreds of times a frame
+and was ~12% of the field's ARM11 instructions (Azahar PC samples). The
+keystream depends only on the seed, so the last eight seeds' streams are
+kept and the XOR uses them. Output is identical. kohjoh patch 2002.
+---
+ src/math_util.c | 43 +++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 43 insertions(+)
+
+diff --git a/src/math_util.c b/src/math_util.c
+index f8e3cbc..1e5e516 100644
+--- a/src/math_util.c
++++ b/src/math_util.c
+@@ -148,8 +148,51 @@ u32 Math_CalcArraySum(const void *data, u32 size) {
+ 
+ static u16 MonEncryptionLCRNG(u32 *seed_p);
+ 
++
++#ifdef SDK_PORT_3DS
++// The keystream depends only on the seed (a Pokemon's personality value or
++// checksum), and GetMonData decrypts and re-encrypts the same Pokemon many
++// times a frame. Keep the last few seeds' keystreams: the XOR is then the
++// same bytes without re-running the LCRNG per halfword. Results are
++// identical to the loop below (port performance patch, kohjoh 2002).
++#define MON_KEYSTREAM_WORDS 64
++#define MON_KEYSTREAM_SLOTS 32
++static struct {
++    u32 seed;
++    u8 valid;
++    u16 stream[MON_KEYSTREAM_WORDS];
++} sMonKeystreams[MON_KEYSTREAM_SLOTS];
++
++static const u16 *MonKeystream(u32 seed) {
++    // direct-mapped by seed: a full party is 12 seeds (party + box each)
++    int i = (int)((seed * 2654435761u) >> 27) & (MON_KEYSTREAM_SLOTS - 1);
++    if (sMonKeystreams[i].valid && sMonKeystreams[i].seed == seed) {
++        return sMonKeystreams[i].stream;
++    }
++    sMonKeystreams[i].seed = seed;
++    sMonKeystreams[i].valid = 1;
++    {
++        u32 s = seed;
++        int k;
++        for (k = 0; k < MON_KEYSTREAM_WORDS; k++) {
++            sMonKeystreams[i].stream[k] = MonEncryptionLCRNG(&s);
++        }
++    }
++    return sMonKeystreams[i].stream;
++}
++#endif
++
+ void _MonEncryptSegment(u16 *data, u32 size, u32 seed) {
+     int i;
++#ifdef SDK_PORT_3DS
++    if (size / 2 <= MON_KEYSTREAM_WORDS) {
++        const u16 *stream = MonKeystream(seed);
++        for (i = 0; i < size / 2; i++) {
++            data[i] ^= stream[i];
++        }
++        return;
++    }
++#endif
+     for (i = 0; i < size / 2; i++) {
+         data[i] ^= MonEncryptionLCRNG(&seed);
+     }
+-- 
+2.56.0.windows.4
+

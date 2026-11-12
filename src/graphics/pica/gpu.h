@@ -33,6 +33,8 @@ void kj_gpu_quads_reset_to(uint32_t used);
 uint32_t kj_gpu_quads_dropped(void);
 /* Draw `count` quads starting at `first` from the arena. */
 void kj_gpu_draw_quads(uint32_t first, uint32_t count);
+/* Draw `count` quads from a retained buffer (linear memory) instead. */
+void kj_gpu_draw_quads_from(const kj_v2d *base, uint32_t count);
 
 /* Uniform locations. */
 int kj_gpu_uloc_2d_xform(void);

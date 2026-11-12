@@ -43,7 +43,8 @@ void kj_input_sample(void)
     {
         bool touch;
         uint16_t keys, tx = 0, ty = 0;
-        if (kj_script_input(s_vblank++, &keys, &touch, &tx, &ty)) {
+        if (kj_script_input(s_vblank++, &keys, &touch, &tx, &ty) && (keys != 0 || touch)) {
+            /* a scripted press wins; otherwise live input stays usable */
             s_input.keys = keys;
             s_input.touch = touch;
             s_input.touch_x = tx;

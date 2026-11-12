@@ -1,0 +1,32 @@
+# Input check (Goldenrod save): touch BAG on the bottom menu, B back out,
+# then hold DOWN to walk. Holds capture the effect of each input.
+every: 10
+0 -
+5000 START
+5010 START
+5020 START
+5030 START
+5040 START
+5050 START
+5100 START
+5110 START
+5120 START
+5130 START
+5140 START
+5150 START
+8000 A
+8020 A
+8040 A
+freeze 5050 3
+10200 TOUCH:40,130
+freeze 5250 3
+10700 B
+10710 B
+11100 DOWN
+11110 DOWN
+11120 DOWN
+11130 DOWN
+11140 DOWN
+11150 DOWN
+freeze 5650 3
+end: 11800
