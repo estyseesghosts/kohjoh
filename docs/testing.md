@@ -49,6 +49,32 @@ of a dump straight from GBATEK (no shared code with the GPU path) to
 `out_A.png`, `out_B.png`, `out_screens.png`. It does not render 3D (BG0 3D is
 left transparent). Dumps are written to `sdmc:/3ds/kohjoh/dumps/`.
 
+`python tools/capture/g3_reference.py dump.kjd out.png` projects the dump's
+decoded 3D scene with plain float math (one flat colour per batch, DS-style
+depth, triangles with a vertex at w <= 0 counted and skipped). Present here but
+missing on the 3DS: the GPU stage (`src/graphics/g3d`). Missing here too: the
+decoder or the game's command stream (`src/runtime/kj_g3.c`, SDK/NNS
+patches). `--define KJ_G3_ZERO_TRACE` logs the first commands that leave a
+zero position/projection matrix (`[g3zero]`).
+
+## DS oracle
+
+melonDS (`workdir/melonDS.exe`, source in `workdir/melonDS`) runs the retail
+ROM. `tools/melonds/shots.ps1` saves timed screenshots to
+`build/melonds/<tag>/`; the HG title shows Ho-Oh from about 85 s. Check
+`melonDS/src/GPU3D.cpp` before changing 3D semantics.
+
+## Script extras
+
+- `9600-11400 DOWN B`: hold keys over a V-blank range.
+- `debug: 0x1|0x2|0x4|0x8|0x10`: 3D draw without cull / depth test / alpha
+  test / blending / texture (`KJ_DEBUG_*` in `src/app/script.h`).
+- `[frame]` lines report real refresh intervals (0/1/2/3/4+) and hitches with
+  per-stage times and counters. Azahar's "App FPS" is not a stutter measure
+  (unchanged screens are not presented).
+- A crash writes `logs/crash.txt` (pc, lr, registers) before the system
+  error handler; resolve addresses with addr2line on the `.elf`.
+
 ## Profiling
 
 - **Counters**: every 600 publishes the log gets `[perf]` (stage p50/p95/p99/max),
