@@ -1,0 +1,172 @@
+From 8ea0ccba78eda63c6f6895e834769abbc0fc8631 Mon Sep 17 00:00:00 2001
+From: terezi <jules@foxtails.me>
+Date: Thu, 12 Nov 2026 18:06:39 -0500
+Subject: [PATCH] gx: send G3X_Init/Reset and the matrix-stack resets to the
+ port (SDK_PORT_3DS)
+
+G3X_Init, G3X_Reset, G3X_InitMtxStack, G3X_ResetMtxStack and G3X_InitTable
+wrote the G3 command registers directly (END_VTXS, POLYGON_ATTR,
+TEXIMAGE_PARAM, TEXPLTT_BASE, MTX_MODE, MTX_IDENTITY, MTX_POP, SHININESS).
+On the port those registers are ordinary memory, so the stack pops and
+identity loads never reached the geometry engine: the matrix stacks and
+modes were not reset between 3D scenes. 0604 converted the matrix loads
+but not these.
+
+Under SDK_PORT_3DS each write goes through NitroPort_GxDirectWrite with the
+register's opcode. This file is built without nitro/gx/g3.h, so the eight
+opcodes it needs are defined locally ((port address - 0x04000400) / 4,
+GBATEK "DS 3D Geometry Commands"; the same values as g3.h). The DS text is
+in #else, unchanged.
+---
+ src/gx/g3x.c | 65 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 65 insertions(+)
+
+diff --git a/src/gx/g3x.c b/src/gx/g3x.c
+index f2ee6ae..17ab6d2 100644
+--- a/src/gx/g3x.c
++++ b/src/gx/g3x.c
+@@ -29,6 +29,18 @@ extern u32 GXi_DmaId;
+  * keeps that error itself, so clear it there instead of setting a register bit that
+  * stack-level readers would misread (3ds_port/nitro/src/port_gx3d.c). */
+ extern void NitroPort_Gx3dClearStackError(void);
++/* The G3 command ports are ordinary memory on the port: their writes go to the
++ * port's geometry engine by opcode, (port address - 0x04000400) / 4 (GBATEK
++ * "DS 3D Geometry Commands"). This file is built without nitro/gx/g3.h. */
++extern void NitroPort_GxDirectWrite(int opcode, unsigned int parameter);
++#define G3OP_MTX_MODE 0x10
++#define G3OP_MTX_POP 0x12
++#define G3OP_MTX_IDENTITY 0x15
++#define G3OP_POLYGON_ATTR 0x29
++#define G3OP_TEXIMAGE_PARAM 0x2a
++#define G3OP_TEXPLTT_BASE 0x2b
++#define G3OP_SHININESS 0x34
++#define G3OP_END 0x41
+ #endif
+ 
+ 
+@@ -40,7 +52,11 @@ extern void NitroPort_Gx3dSyncResults(void);
+ 
+ void G3X_Init() {
+     G3X_ClearFifo();
++#ifdef SDK_PORT_3DS
++    NitroPort_GxDirectWrite(G3OP_END, (u32)(0x0));
++#else
+     reg_G3_END_VTXS = 0x0;
++#endif
+     while (reg_G3X_GXSTAT & REG_G3X_GXSTAT_B_MASK) {} // wait for geometry engine to not be busy
+     reg_G3X_DISP3DCNT = 0x0;
+     reg_G3X_GXSTAT = 0x0;
+@@ -64,9 +80,15 @@ void G3X_Init() {
+     reg_G3X_FOG_OFFSET = 0x0;
+     reg_G2_BG0CNT &= ~REG_G2_BG0CNT_PRIORITY_MASK;
+     G3X_InitTable();
++#ifdef SDK_PORT_3DS
++    NitroPort_GxDirectWrite(G3OP_POLYGON_ATTR, (u32)(0x1F0080));
++    NitroPort_GxDirectWrite(G3OP_TEXIMAGE_PARAM, (u32)(0x0));
++    NitroPort_GxDirectWrite(G3OP_TEXPLTT_BASE, (u32)(0x0));
++#else
+     reg_G3_POLYGON_ATTR = 0x1F0080;
+     reg_G3_TEXIMAGE_PARAM = 0x0;
+     reg_G3_TEXPLTT_BASE = 0x0;
++#endif
+ }
+ 
+ void G3X_Reset() {
+@@ -79,9 +101,15 @@ void G3X_Reset() {
+     reg_G3X_DISP3DCNT |= REG_G3X_DISP3DCNT_GO_MASK;
+     reg_G3X_DISP3DCNT |= REG_G3X_DISP3DCNT_RO_MASK;
+     G3X_ResetMtxStack();
++#ifdef SDK_PORT_3DS
++    NitroPort_GxDirectWrite(G3OP_POLYGON_ATTR, (u32)(0x1F0080));
++    NitroPort_GxDirectWrite(G3OP_TEXIMAGE_PARAM, (u32)(0x0));
++    NitroPort_GxDirectWrite(G3OP_TEXPLTT_BASE, (u32)(0x0));
++#else
+     reg_G3_POLYGON_ATTR = 0x1F0080;
+     reg_G3_TEXIMAGE_PARAM = 0x0;
+     reg_G3_TEXPLTT_BASE = 0x0;
++#endif
+ }
+ 
+ void G3X_ClearFifo() {
+@@ -98,16 +126,33 @@ void G3X_InitMtxStack() {
+ #endif
+     while (G3X_GetMtxStackLevelPV(&PV_level)) {}
+     while (G3X_GetMtxStackLevelPJ(&PJ_level)) {}
++#ifdef SDK_PORT_3DS
++    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(0x3));
++    NitroPort_GxDirectWrite(G3OP_MTX_IDENTITY, (u32)(0x0));
++    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(0x0));
++#else
+     reg_G3_MTX_MODE = 0x3;
+     reg_G3_MTX_IDENTITY = 0x0;
+     reg_G3_MTX_MODE = 0x0;
++#endif
+     if (PJ_level) {
++#ifdef SDK_PORT_3DS
++        NitroPort_GxDirectWrite(G3OP_MTX_POP, (u32)(PJ_level));
++#else
+         reg_G3_MTX_POP = PJ_level;
++#endif
+     }
++#ifdef SDK_PORT_3DS
++    NitroPort_GxDirectWrite(G3OP_MTX_IDENTITY, (u32)(0x0));
++    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(0x2));
++    NitroPort_GxDirectWrite(G3OP_MTX_POP, (u32)(PV_level));
++    NitroPort_GxDirectWrite(G3OP_MTX_IDENTITY, (u32)(0x0));
++#else
+     reg_G3_MTX_IDENTITY = 0x0;
+     reg_G3_MTX_MODE = 0x2;
+     reg_G3_MTX_POP = PV_level;
+     reg_G3_MTX_IDENTITY = 0x0;
++#endif
+ }
+ 
+ void G3X_ResetMtxStack() {
+@@ -119,16 +164,32 @@ void G3X_ResetMtxStack() {
+ #endif
+     while (G3X_GetMtxStackLevelPV(&PV_level)) {}
+     while (G3X_GetMtxStackLevelPJ(&PJ_level)) {}
++#ifdef SDK_PORT_3DS
++    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(0x3));
++    NitroPort_GxDirectWrite(G3OP_MTX_IDENTITY, (u32)(0x0));
++    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(0x0));
++#else
+     reg_G3_MTX_MODE = 0x3;
+     reg_G3_MTX_IDENTITY = 0x0;
+     reg_G3_MTX_MODE = 0x0;
++#endif
+     if (PJ_level) {
++#ifdef SDK_PORT_3DS
++        NitroPort_GxDirectWrite(G3OP_MTX_POP, (u32)(PJ_level));
++#else
+         reg_G3_MTX_POP = PJ_level;
++#endif
+     }
+ 
++#ifdef SDK_PORT_3DS
++    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(0x2));
++    NitroPort_GxDirectWrite(G3OP_MTX_POP, (u32)(PV_level));
++    NitroPort_GxDirectWrite(G3OP_MTX_IDENTITY, (u32)(0x0));
++#else
+     reg_G3_MTX_MODE = 0x2;
+     reg_G3_MTX_POP = PV_level;
+     reg_G3_MTX_IDENTITY = 0x0;
++#endif
+ }
+ 
+ void G3X_SetFog(u32 enable, u32 alphamode, u32 depth, s32 offset) {
+@@ -191,7 +252,11 @@ void G3X_InitTable() {
+         MIi_CpuClear32(0x0, (void *)&reg_G3X_FOG_TABLE_0, 0x60);
+     }
+     for (int i = 0; i < 0x20; i++) {
++#ifdef SDK_PORT_3DS
++        NitroPort_GxDirectWrite(G3OP_SHININESS, (u32)(0x0));
++#else
+         reg_G3_SHININESS = 0x0;
++#endif
+     }
+ }
+ 
+-- 
+2.56.0.windows.4
+
