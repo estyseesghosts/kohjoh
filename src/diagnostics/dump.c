@@ -7,6 +7,10 @@
  * 9 x { u32 lcdc_offset, u32 size, u8 enabled, u8 mst, u8 ofs, u8 0 },
  * u32 lines_active, then blobs each prefixed by u32 length:
  * io, pltt, oam, bg_a, bg_b, obj_a, obj_b, lcdc, lines[2][192][0x70].
+ * Then the decoded 3D scene, if one was swapped: u32 present (0/1); when 1,
+ * u32 swap_params, u32 viewport, u32 disp3dcnt and the blobs verts
+ * (kj_g3_vertex), indices (u16), matrices (kj_g3_matrix), batches
+ * (kj_g3_batch). tools/capture/g3_reference.py projects them.
  */
 
 #include "diagnostics/dump.h"
@@ -60,6 +64,16 @@ bool kj_dump_frame(const char *path, const kj_frame_input *in)
          blob(f, m->obj_vram_a, 0x40000) && blob(f, m->obj_vram_b, 0x20000) &&
          blob(f, m->lcdc_vram, 0xA4000) &&
          blob(f, in->lines.active ? (const void *)in->lines.regs : NULL, 2 * 192 * KJ_LINE_REG_BYTES);
+    const kj_g3_frame *g = in->g3;
+    const uint32_t present = g != NULL ? 1u : 0u;
+    ok = ok && put(f, &present, 4);
+    if (ok && g != NULL) {
+        ok = put(f, &g->swap_params, 4) && put(f, &g->viewport, 4) && put(f, &g->disp3dcnt, 4) &&
+             blob(f, g->verts, g->vert_count * (uint32_t)sizeof(kj_g3_vertex)) &&
+             blob(f, g->indices, g->index_count * 2u) &&
+             blob(f, g->matrices, g->matrix_count * (uint32_t)sizeof(kj_g3_matrix)) &&
+             blob(f, g->batches, g->batch_count * (uint32_t)sizeof(kj_g3_batch));
+    }
     if (fclose(f) != 0) {
         ok = false;
     }

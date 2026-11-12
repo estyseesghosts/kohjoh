@@ -159,6 +159,10 @@ static void mult_matrix(const mtx *m, bool scale_only_pos)
     }
 }
 
+#ifdef KJ_G3_ZERO_TRACE
+static void execute_body(unsigned op, const uint32_t *p);
+#endif
+
 static void stack_op(unsigned op, uint32_t param)
 {
     if (s_mtx_mode == 0) {
@@ -852,10 +856,16 @@ static void box_test(const uint32_t *p)
         all_out &= out;
     }
     uint32_t stat = get32(0x600) & ~0x3u;
+    frame_buf *fb = build();
+    ++fb->frame.box_tests;
     if (all_out == 0) {
         stat |= 0x2u;
     } else {
         ++s_stats.box_culled;
+        ++fb->frame.box_culled;
+        if (all_out == 0x20u) {
+            ++fb->frame.box_culled_far;
+        }
     }
     put32(0x600, stat);
 }
@@ -993,6 +1003,29 @@ static void execute(unsigned op, const uint32_t *p)
 #endif
 {
     ++s_stats.commands;
+#ifdef KJ_G3_ZERO_TRACE
+    {
+        /* Diagnostics: report the first commands that leave a zero matrix. */
+        static unsigned reported;
+        static const mtx zero;
+        const bool pos_was = memcmp(&s_pos, &zero, sizeof(zero)) == 0;
+        const bool proj_was = memcmp(&s_proj, &zero, sizeof(zero)) == 0;
+        execute_body(op, p);
+        const bool pos_is = memcmp(&s_pos, &zero, sizeof(zero)) == 0;
+        const bool proj_is = memcmp(&s_proj, &zero, sizeof(zero)) == 0;
+        if (((pos_is && !pos_was) || (proj_is && !proj_was)) && reported < 64) {
+            ++reported;
+            NitroPort_Log("[g3zero] op %02x p0 %08lx mode %d sp %d -> pos %d proj %d (swap %lu)", op,
+                          (unsigned long)p[0], s_mtx_mode, s_posvec_sp, pos_is, proj_is,
+                          (unsigned long)s_stats.swaps);
+        }
+        return;
+    }
+}
+
+static void execute_body(unsigned op, const uint32_t *p)
+{
+#endif
     switch (op) {
     case 0x10:
         s_mtx_mode = (int)(p[0] & 3);

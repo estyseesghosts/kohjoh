@@ -153,12 +153,13 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
         s_skipped_presents = 0;
         kj_log("[gpu] 600 frames: atlas lookups %lu conversions %lu evictions %lu full %lu; "
                "3D batches %lu draws %lu tris %lu tex uploads %lu tex bytes compared %lu "
-               "tex full %lu unsupported %lu",
+               "tex full %lu unsupported %lu; box tests %lu culled %lu (far only %lu)",
                (unsigned long)a.lookups, (unsigned long)a.conversions, (unsigned long)a.evictions,
                (unsigned long)a.full, (unsigned long)d.batches, (unsigned long)d.draws,
                (unsigned long)d.triangles, (unsigned long)d.tex_uploads,
                (unsigned long)d.tex_bytes_compared, (unsigned long)d.tex_cache_full,
-               (unsigned long)d.unsupported);
+               (unsigned long)d.unsupported, (unsigned long)d.box_tests,
+               (unsigned long)d.box_culled, (unsigned long)d.box_culled_far);
     }
 
     /* Test directives: deterministic per-frame capture. */

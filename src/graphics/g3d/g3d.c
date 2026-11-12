@@ -18,6 +18,7 @@
 
 #include "graphics/g3d/g3d.h"
 
+#include "app/script.h"
 #include "diagnostics/log.h"
 #include "diagnostics/perf.h"
 #include "graphics/g3d/textures.h"
@@ -159,6 +160,7 @@ static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t d
 {
     const kj_g3_frame *f = s_frame;
     const bool wbuffer = kj_g3d_wbuffer();
+    const uint32_t dbg = kj_script_debug();
     uint32_t last_vp = 0xFFFFFFFFu;
     float fix[4][4];
 
@@ -183,7 +185,7 @@ static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t d
 
         /* texture */
         C3D_Tex *tex = NULL;
-        if (((b->tex_param >> 26) & 7u) != 0 && (disp3dcnt & 1u)) {
+        if (((b->tex_param >> 26) & 7u) != 0 && (disp3dcnt & 1u) && !(dbg & KJ_DEBUG_NO_TEXTURE)) {
             tex = kj_tex_get(b->tex_param, b->tex_pltt);
         }
         if (tex != NULL) {
@@ -197,7 +199,10 @@ static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t d
 
         /* culling: bit 6 render back, bit 7 render front; 0 draws both */
         const unsigned faces = (b->poly_attr >> 6) & 3u;
-        C3D_CullFace(faces == 2u ? GPU_CULL_BACK_CCW : faces == 1u ? GPU_CULL_FRONT_CCW : GPU_CULL_NONE);
+        C3D_CullFace((dbg & KJ_DEBUG_NO_CULL) ? GPU_CULL_NONE
+                     : faces == 2u                ? GPU_CULL_BACK_CCW
+                     : faces == 1u                ? GPU_CULL_FRONT_CCW
+                                                  : GPU_CULL_NONE);
 
         /* depth */
         const bool depth_equal = (b->poly_attr >> 14) & 1u;
@@ -208,10 +213,13 @@ static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t d
         } else {
             func = depth_equal ? GPU_GEQUAL : GPU_GREATER;
         }
+        if (dbg & KJ_DEBUG_NO_DEPTH) {
+            func = GPU_ALWAYS;
+        }
         C3D_DepthTest(true, func,
                       depth_write ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
 
-        if (translucent && (disp3dcnt & 8u)) {
+        if (translucent && (disp3dcnt & 8u) && !(dbg & KJ_DEBUG_NO_BLEND)) {
             C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
                            GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
         } else {
@@ -235,6 +243,9 @@ void kj_g3d_draw(const kj_target *target, bool wide, uint8_t stencil_flags)
     uint64_t t0 = kj_perf_now();
     s_stats.batches += f->batch_count;
     s_stats.unsupported += f->unsupported + f->dropped_batches + f->dropped_verts;
+    s_stats.box_tests += f->box_tests;
+    s_stats.box_culled += f->box_culled;
+    s_stats.box_culled_far += f->box_culled_far;
     if (f->disp3dcnt & (1u << 7)) {
         ++s_stats.unsupported; /* fog */
     }
@@ -251,7 +262,8 @@ void kj_g3d_draw(const kj_target *target, bool wide, uint8_t stencil_flags)
 
     C3D_DepthMap(!kj_g3d_wbuffer(), -1.0f, 0.0f);
     const unsigned alpha_ref = (f->disp3dcnt & 4u) ? f->alpha_test_ref : 0u;
-    C3D_AlphaTest(true, GPU_GREATER, (int)(alpha_ref * 255u / 31u));
+    C3D_AlphaTest(!(kj_script_debug() & KJ_DEBUG_NO_ALPHA_TEST), GPU_GREATER,
+                  (int)(alpha_ref * 255u / 31u));
     C3D_StencilTest(true, GPU_ALWAYS, stencil_flags, 0, 0x03);
     C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_REPLACE);
 

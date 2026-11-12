@@ -1102,6 +1102,7 @@ static void prepare_span(const ctx *c, bool retain, prepared *pr)
             ++s_rebuilt_layers;
         }
         s_stats.bg_quads += pr->bg[bg].count;
+        kj_perf_count(KJ_COUNT_QUADS, pr->bg[bg].count);
     }
     if (layers_on & 0x10u) {
         if (retain) {
@@ -1123,6 +1124,7 @@ static void prepare_span(const ctx *c, bool retain, prepared *pr)
         }
         for (int i = 0; i < 8; ++i) {
             s_stats.obj_quads += pr->obj[i].count;
+            kj_perf_count(KJ_COUNT_QUADS, pr->obj[i].count);
         }
     }
     pr->all_reused = retain && s_rebuilt_layers == rebuilt_before;
@@ -1266,6 +1268,7 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
     if (prepared_ok) {
         draw_span(&c, &pr, has_3d, &drew_3d);
         ++s_stats.spans;
+        kj_perf_count(KJ_COUNT_SPANS, 1);
     } else {
         for (int y0 = 0; y0 < 192;) {
             const int y1 = span_end(&in->lines, engine, y0);
@@ -1276,6 +1279,7 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
             prepare_span(&c, false, &pr);
             draw_span(&c, &pr, has_3d, &drew_3d);
             ++s_stats.spans;
+        kj_perf_count(KJ_COUNT_SPANS, 1);
             y0 = y1;
         }
     }

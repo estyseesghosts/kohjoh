@@ -15,6 +15,7 @@
 #include "graphics/resources/atlas.h"
 
 #include "diagnostics/log.h"
+#include "diagnostics/perf.h"
 
 #include <3ds.h>
 #include <string.h>
@@ -197,6 +198,7 @@ static void convert(uint16_t slot, const uint8_t *tile, bool bpp8, const kj_pale
     }
     info->transparent = any == 0;
     ++s_stats.conversions;
+    kj_perf_count(KJ_COUNT_TILE_CONV, 1);
 }
 
 kj_tile_ref kj_atlas_tile(uint32_t source_id, const uint8_t *tile, uint32_t offset, bool bpp8,

@@ -14,6 +14,7 @@
 #include "graphics/g3d/textures.h"
 
 #include "diagnostics/log.h"
+#include "diagnostics/perf.h"
 
 #include <3ds.h>
 #include <stdlib.h>
@@ -347,6 +348,7 @@ static bool still_valid(tex_entry *e, const desc *d)
         return true; /* bank unmapped this frame: keep what we have */
     }
     s_stats.compared_bytes += total;
+    kj_perf_count(KJ_COUNT_TEX_BYTES, total);
     if (memcmp(tmp, e->shadow, total) != 0) {
         return false;
     }
@@ -397,6 +399,7 @@ C3D_Tex *kj_tex_get(uint32_t tex_param, uint32_t pltt_base)
         }
         decode(&d, e->shadow, e->shadow + d.data_len, &e->tex);
         ++s_stats.uploads;
+        kj_perf_count(KJ_COUNT_TEX_UPLOAD, 1);
         return &e->tex;
     }
 
@@ -448,6 +451,7 @@ C3D_Tex *kj_tex_get(uint32_t tex_param, uint32_t pltt_base)
     s_cache_bytes += bytes;
     s_last_hit = v;
     ++s_stats.uploads;
+        kj_perf_count(KJ_COUNT_TEX_UPLOAD, 1);
     return &e->tex;
 }
 
