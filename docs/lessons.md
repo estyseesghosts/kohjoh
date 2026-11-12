@@ -44,6 +44,17 @@ What helped, what cost time, and the rules that follow.
   mangled by the shell wrapper; complex edits belong in script files.
 - **Contaminated tests.** Live input reached scripted runs. Tests must own
   their input.
+- **Guessing at render state.** Four Ho-Oh render-state experiments (cull,
+  depth, alpha test, blend) changed nothing. Dumping the decoded scene and
+  projecting it on the CPU (`g3_reference.py`) showed in one step that the
+  geometry, not the GPU path, was wrong: 41 all-zero clip matrices per frame.
+  Split the pipeline at a dump before toggling GPU state.
+- **"Ported" is not "complete".** Patch 0302 converted the GXFIFO stores in
+  NNS but not the direct command-register stores beside them, and nothing
+  failed loudly: the writes simply vanished. When a hardware access class is
+  ported, scan the whole tree for that class (see game patch 2004).
+- **A shared `build/upstream` checkout carries branch state.** It held
+  `wip/savestore`'s SDK patch 2003 while building `master`.
 
 ## Rules
 

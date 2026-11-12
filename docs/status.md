@@ -12,6 +12,7 @@ As of 2026-11-12. Evidence levels: **built** (compiles and links), **run**
 | Boot, intro, title, menus | verified | intro frames 150-1650 held and captured |
 | GPU 2D: tiles, OBJ, priorities, blending, windows, per-line spans | verified on tested frames | intro frame 1650 matches the reference renderer |
 | GPU 3D: GPU transform, textures, lighting, widescreen field | verified visually | New Bark (intro), Goldenrod field |
+| Title 3D (Ho-Oh, W-buffer, skinned envelopes) | verified | title frames 2300/2500 match melonDS; NitroSystem 0305 / NitroSDK 0606 / game 2004 |
 | Input: buttons and touch | verified | touch BAG opens the Bag; B closes it |
 | Pacing lock (no music drift after late frames) | run | `[pace]` counters; user-reported drift fixed in code, not re-confirmed |
 | Tile-row gaps fix (texcoord inset) | built | awaiting user confirmation |
@@ -44,7 +45,7 @@ is unlikely at these numbers; see [next work](#next).
 ## Next
 
 1. Find the save-detection regression on `wip/savestore`; finish SaveStore.
-2. Title screen: Ho-Oh/Lugia 3D missing on the lower screen.
+2. Battle crashes (user-reported): reproduce with `route34-battle.txt`; `logs/crash.txt`.
 3. Route test: Goldenrod → Route 34 grass → wild battle (`tests/inputs/route34-south.txt`).
 4. Cut geometry cost: display-list cache hit rate (texgen-1 lists), then O3DS
    test kit with ARM11 performance counters.
