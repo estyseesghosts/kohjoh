@@ -7,6 +7,7 @@
 
 #include "app/input.h"
 
+#include "app/script.h"
 #include "runtime/kj_bridge.h"
 
 #include <3ds.h>
@@ -28,6 +29,7 @@ enum {
 };
 
 static kj_input s_input;
+static uint32_t s_vblank;
 
 void kj_input_init(void)
 {
@@ -38,6 +40,17 @@ void kj_input_init(void)
 void kj_input_sample(void)
 {
     hidScanInput();
+    {
+        bool touch;
+        uint16_t keys, tx = 0, ty = 0;
+        if (kj_script_input(s_vblank++, &keys, &touch, &tx, &ty)) {
+            s_input.keys = keys;
+            s_input.touch = touch;
+            s_input.touch_x = tx;
+            s_input.touch_y = ty;
+            return;
+        }
+    }
     const u32 held = hidKeysHeld();
     uint16_t keys = 0;
 

@@ -54,7 +54,7 @@ static void build_morton(void)
      * bottom row first within the tile). */
     for (unsigned y = 0; y < 8; ++y) {
         for (unsigned x = 0; x < 8; ++x) {
-            const unsigned fy = 7u - y;
+            const unsigned fy = y; /* verified in Azahar against the oracle (frame 1650) */
             const unsigned m = (x & 1u) | ((fy & 1u) << 1) | ((x & 2u) << 1) | ((fy & 2u) << 2) |
                                ((x & 4u) << 2) | ((fy & 4u) << 3);
             s_morton[y * 8 + x] = (uint8_t)m;

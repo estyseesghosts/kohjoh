@@ -1,0 +1,12 @@
+# Intro movie, no input: dump and hold selected game frames (kohjoh frame index).
+dump 150
+freeze 150 3
+dump 450
+freeze 450 3
+dump 900
+freeze 900 3
+dump 1350
+freeze 1350 3
+dump 1650
+freeze 1650 3
+end: 4200
