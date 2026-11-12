@@ -8,7 +8,8 @@ page explains them for the next breakage.
 | Symptom | Cause | Fix |
 | --- | --- | --- |
 | `Cannot create temporary file in C:\Windows\` | MSYS2 drops `TMP`/`TEMP` from child processes; native GCC falls back to `C:\Windows`. | `common.mk` exports them; `hgss_nitro.py` sets them in Python. |
-| `-DFOO` set via `FOO=1 python ...` has no effect | MSYS2 Python does not see inline environment variables. | `hgss_game.py --define FOO`. |
+| `-DFOO` set via `FOO=1 python ...` has no effect | MSYS2 Python started directly from Git Bash does not see inline environment variables (inside `bash.exe -lc` it does). | `hgss_game.py --define FOO`. |
+| Bootstrap: `git-remote-https.exe: error while loading shared libraries` | devkitPro MSYS2's `git` has a broken HTTPS helper. | `export PATH="/c/Program Files/Git/cmd:$PATH"` inside the `-lc` shell ([build](building-windows.md#build)). |
 | `mkdir: cannot create directory '/home'`; headers "not found" | MSYS2 Python resolves the working directory as `/home/<user>/...`, which bash, make and native tools cannot use; MSYS also does not convert glued arguments such as `-idirafter/c/...`. | Invoke with absolute `/c/...` paths and `--root`; pass `-idirafter` and its path as separate arguments. |
 | `ld: cannot find /c/Users/.../x.o` | Native `ld` reads paths inside `@response` files literally; MSYS converts only command-line arguments. | Response files use `C:/...` (`_tool_path`). |
 | `ar: Argument list too long` | Very deep output paths (e.g. under `%TEMP%`). | Build under the repository's `build/`. |

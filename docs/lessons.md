@@ -54,7 +54,9 @@ What helped, what cost time, and the rules that follow.
   failed loudly: the writes simply vanished. When a hardware access class is
   ported, scan the whole tree for that class (see game patch 2004).
 - **A shared `build/upstream` checkout carries branch state.** It held
-  `wip/savestore`'s SDK patch 2003 while building `master`.
+  `wip/savestore`'s SDK patch 2003 while building `master`; `check_patches.py`
+  only detects missing patches, not extra ones. Re-created with
+  `bootstrap.py --clean` on 2026-11-12; after switching branches, do the same.
 
 ## Rules
 
