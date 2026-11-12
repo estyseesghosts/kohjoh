@@ -96,6 +96,7 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
      * the schedule recovers; counted, never silent. */
     if (kj_pacing_behind() >= 2u && !kj_script_active()) {
         ++s_skipped_presents;
+        kj_perf_present_skipped(in->game_frame);
         return;
     }
     kj_perf_publish_begin();
@@ -119,7 +120,7 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
     kj_perf_add(KJ_PERF_SUBMIT, kj_perf_now() - t);
 
     ++s_frames;
-    kj_perf_publish_end();
+    kj_perf_publish_end(in->game_frame);
     if (s_frames % 600u == 0u) {
         kj_g2d_stats g;
         kj_g3d_stats d;

@@ -1,0 +1,6 @@
+# Title screen (no input): the lower screen should show Ho-Oh (HG) flying in 3D.
+dump 2300
+freeze 2300 3
+dump 2500
+freeze 2500 3
+end: 5400

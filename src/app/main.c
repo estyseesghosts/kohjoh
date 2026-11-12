@@ -14,6 +14,7 @@
 #include "app/input.h"
 #include "app/script.h"
 #include "audio/audio.h"
+#include "diagnostics/crash.h"
 #include "diagnostics/log.h"
 #include "diagnostics/perf.h"
 #include "graphics/renderer.h"
@@ -85,6 +86,12 @@ static void fatal_screen(const char *title, const char *detail)
     exit(1);
 }
 
+/* Every game thread installs the crash handler (compat platform hook). */
+void NitroPort_PlatformThreadStarted(void)
+{
+    kj_crash_install();
+}
+
 bool kj_ctr_vblank(void)
 {
     kj_perf_vblank_begin();
@@ -144,6 +151,11 @@ int main(int argc, char **argv)
 
     const kj_paths *paths = kj_paths_init();
     kj_log_init(paths->log_file);
+    {
+        char crash[128];
+        snprintf(crash, sizeof(crash), "%s/logs/crash.txt", paths->root);
+        kj_crash_init(crash);
+    }
     bool is_new = false;
     APT_CheckNew3DS(&is_new);
     kj_log("[app] kohjoh %s (%s), %s, %s", KJ_BUILD_ID, kj_ds_edition_name(),

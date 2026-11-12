@@ -10,6 +10,7 @@
  *   every: N              each press lasts N V-blanks (default 10)
  *   <vblank> KEYS...      press KEYS (A B X Y L R START SELECT UP DOWN LEFT RIGHT,
  *                         or TOUCH:x,y in DS coordinates) at that V-blank; "-" = none
+ *   <from>-<to> KEYS...   hold KEYS from V-blank <from> up to (not including) <to>
  *   freeze <frame> <sec>  after publishing game frame <frame>, hold it on
  *                         screen for <sec> seconds without running the game
  *   dump <frame>          write the DS state the renderer read for game frame

@@ -1257,7 +1257,10 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
         return;
     }
 
-    C3D_RenderTargetClear(target->rt, C3D_CLEAR_ALL, ds_to_rgba(pal[0]), (u32)bd_flags << 24);
+    /* Depth clear: far is 0 in Z mode, 1 in W mode (g3d.c). */
+    const u32 far_depth = has_3d && kj_g3d_wbuffer() ? 0xFFFFFFu : 0u;
+    C3D_RenderTargetClear(target->rt, C3D_CLEAR_ALL, ds_to_rgba(pal[0]),
+                          ((u32)bd_flags << 24) | far_depth);
 
     bool drew_3d = false;
     if (prepared_ok) {

@@ -23,5 +23,7 @@ typedef struct kj_g3d_stats {
 } kj_g3d_stats;
 
 void kj_g3d_take_stats(kj_g3d_stats *out);
+/* The current scene uses W-buffering: its screen clears depth to 1. */
+bool kj_g3d_wbuffer(void);
 
 #endif
