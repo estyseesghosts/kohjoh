@@ -1,0 +1,286 @@
+From d3eb7bf397412a26659a260969e8d7ee248eec32 Mon Sep 17 00:00:00 2001
+From: terezi <jules@foxtails.me>
+Date: Thu, 12 Nov 2026 18:06:46 -0500
+Subject: [PATCH] gx: send the game's direct G3 command-register writes to the
+ port (SDK_PORT_3DS)
+
+Several game files store straight to the G3 command registers, which on the
+port are ordinary memory, so the geometry engine never saw the command:
+
+- graphics_object_manager.c, dress_up.c: MTX_SCALE (and dress_up's
+  IDENTITY/PUSH/POP).
+- safari_decoration.c, aprijuice_screen.c: projection/position IDENTITY,
+  SWAP_BUFFERS and VIEWPORT.
+- pokeathlon_lamp_jump.c, plaza_game_swalot_plop.c,
+  wifi_plaza_visitor_profiles.c: SWAP_BUFFERS / VIEWPORT.
+- pokemon_summary_scene.c: 1905 turned its 0x04000540 literal into
+  reg_G3_SWAP_BUFFERS, which fixed the fault but still did not reach the
+  engine; it now uses NitroPort_GxDirectWrite as well.
+
+Under SDK_PORT_3DS each write goes through NitroPort_GxDirectWrite with the
+register's opcode; the DS text is in #else, unchanged. A scan of src/,
+lib/NitroSDK/src and lib/NitroSystem/src finds no other live direct G3
+command-register write (lib/NitroSDK/include/GX_g3imm.h is only reached
+from include-pokediamond).
+---
+ .../apricorn_box/aprijuice_screen.c           | 16 +++++++++++++++
+ src/application/dress_up/dress_up.c           | 20 +++++++++++++++++++
+ src/application/plaza_game_swalot_plop.c      |  4 ++++
+ src/application/safari_decoration.c           | 20 +++++++++++++++++++
+ src/graphics_object_manager.c                 |  6 ++++++
+ src/pokeathlon/pokeathlon_lamp_jump.c         |  8 ++++++++
+ src/pokemon_summary_scene.c                   |  2 +-
+ src/wifi_plaza/wifi_plaza_visitor_profiles.c  |  4 ++++
+ 8 files changed, 79 insertions(+), 1 deletion(-)
+
+diff --git a/src/application/apricorn_box/aprijuice_screen.c b/src/application/apricorn_box/aprijuice_screen.c
+index e101f0e..204d824 100644
+--- a/src/application/apricorn_box/aprijuice_screen.c
++++ b/src/application/apricorn_box/aprijuice_screen.c
+@@ -1414,15 +1414,26 @@ static void AprijuiceScene_Draw(AprijuiceScene *scene) {
+     Thunk_G3X_Reset();
+     NNS_G2dSetupSoftwareSpriteCamera();
+     Camera_PushLookAtToNNSGlb();
++#ifdef SDK_PORT_3DS
++    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MTXMODE_PROJECTION));
++    NitroPort_GxDirectWrite(G3OP_MTX_IDENTITY, (u32)(0));
++    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MTXMODE_POSITION_VECTOR));
++    NitroPort_GxDirectWrite(G3OP_MTX_IDENTITY, (u32)(0));
++#else
+     reg_G3_MTX_MODE = GX_MTXMODE_PROJECTION;
+     reg_G3_MTX_IDENTITY = 0;
+     reg_G3_MTX_MODE = GX_MTXMODE_POSITION_VECTOR;
+     reg_G3_MTX_IDENTITY = 0;
++#endif
+     NNS_G3dGlbFlushP();
+     NNS_G2dSetupSoftwareSpriteCamera();
+     PokepicManager_DrawAll(scene->pokepicManager);
+     ParticleSystem_CalcAll();
++#ifdef SDK_PORT_3DS
++    NitroPort_GxDirectWrite(G3OP_SWAP_BUFFERS, (u32)(1));
++#else
+     reg_G3_SWAP_BUFFERS = 1;
++#endif
+ }
+ 
+ static void AprijuiceScene_Delete(AprijuiceScene *scene) {
+@@ -1470,8 +1481,13 @@ static void AprijuiceScene_Init3D(void) {
+     reg_G3X_DISP3DCNT = reg_G3X_DISP3DCNT & 0xCFDF;
+     G3X_SetFog(FALSE, (GXFogBlend)0, (GXFogSlope)0, 0);
+     G3X_SetClearColor(0, 0, 0x7FFF, 63, FALSE);
++#ifdef SDK_PORT_3DS
++    NitroPort_GxDirectWrite(G3OP_SWAP_BUFFERS, (u32)(2));
++    NitroPort_GxDirectWrite(G3OP_VIEWPORT, (u32)(0xBFFF0000));
++#else
+     reg_G3_SWAP_BUFFERS = 2;
+     reg_G3_VIEWPORT = 0xBFFF0000;
++#endif
+ }
+ 
+ static void AprijuiceScene_ReserveVram(GF3DVramMan *vramMan) {
+diff --git a/src/application/dress_up/dress_up.c b/src/application/dress_up/dress_up.c
+index efb8674..d473016 100644
+--- a/src/application/dress_up/dress_up.c
++++ b/src/application/dress_up/dress_up.c
+@@ -978,29 +978,49 @@ void DressUpGfx_HandlePokepicLoad(DressUpGfx *gfx) {
+ }
+ 
+ static inline void DressUpGfx_G3Scale(fx32 x, fx32 y, fx32 z) {
++#ifdef SDK_PORT_3DS
++    NitroPort_GxDirectWrite(G3OP_MTX_SCALE, (u32)(x));
++    NitroPort_GxDirectWrite(G3OP_MTX_SCALE, (u32)(y));
++    NitroPort_GxDirectWrite(G3OP_MTX_SCALE, (u32)(z));
++#else
+     reg_G3_MTX_SCALE = x;
+     reg_G3_MTX_SCALE = y;
+     reg_G3_MTX_SCALE = z;
++#endif
+ }
+ 
+ // draws the stage rotated by angle and scaled around (x, y)
+ void AccessoryPortrait_DrawTransformed(DressUpGfx *gfx, int x, int y, u16 angle, const DressUpScale *scale) {
++#ifdef SDK_PORT_3DS
++    NitroPort_GxDirectWrite(G3OP_MTX_IDENTITY, (u32)(0));
++    NitroPort_GxDirectWrite(G3OP_MTX_PUSH, (u32)(0));
++#else
+     reg_G3_MTX_IDENTITY = 0;
+     reg_G3_MTX_PUSH = 0;
++#endif
+     NNS_G2dSetupSoftwareSpriteCamera();
+     G3_Translate(x << FX32_SHIFT, y << FX32_SHIFT, 0);
+     G3_RotZ(FX_SinIdx(angle), FX_CosIdx(angle));
+     DressUpGfx_G3Scale(scale->x, scale->y, scale->z);
+     G3_Translate(-x << FX32_SHIFT, -y << FX32_SHIFT, 0);
++#ifdef SDK_PORT_3DS
++    NitroPort_GxDirectWrite(G3OP_MTX_PUSH, (u32)(0));
++#else
+     reg_G3_MTX_PUSH = 0;
++#endif
+     if (gfx->graphicsManagerActive) {
+         DressUpGfx_DrawGraphicsManager(gfx);
+     }
+     if (gfx->pokepicActive) {
+         PokepicManager_DrawAll(gfx->pokepicManager);
+     }
++#ifdef SDK_PORT_3DS
++    NitroPort_GxDirectWrite(G3OP_MTX_POP, (u32)(1));
++    NitroPort_GxDirectWrite(G3OP_MTX_POP, (u32)(1));
++#else
+     reg_G3_MTX_POP = 1;
+     reg_G3_MTX_POP = 1;
++#endif
+ }
+ 
+ void AccessoryPortrait_InitAppGfx(DressUpGfx *gfx, enum HeapID heapID) {
+diff --git a/src/application/plaza_game_swalot_plop.c b/src/application/plaza_game_swalot_plop.c
+index f13385d..9d30c27 100644
+--- a/src/application/plaza_game_swalot_plop.c
++++ b/src/application/plaza_game_swalot_plop.c
+@@ -2485,7 +2485,11 @@ static void SwalotPlopGfx_Setup3D(void) {
+     *reg = (*reg & ~0x3000) | 32;
+     G3X_SetFog(FALSE, GX_FOGBLEND_COLOR_ALPHA, GX_FOGSLOPE_0x8000, 0);
+     G3X_SetClearColor(GX_RGB(26, 26, 26), 0, GF_GX_CLEARCOLORDEPTH_MAX, 63, FALSE);
++#ifdef SDK_PORT_3DS
++    NitroPort_GxDirectWrite(G3OP_VIEWPORT, (u32)(0xBFFF0000));
++#else
+     reg_G3_VIEWPORT = 0xBFFF0000;
++#endif
+ }
+ 
+ static void SwalotPlopGfx_Init3D(SwalotPlopGfx *gfx, int playerCount, int localIndex, enum HeapID heapId) {
+diff --git a/src/application/safari_decoration.c b/src/application/safari_decoration.c
+index 4d6a430..2eae223 100644
+--- a/src/application/safari_decoration.c
++++ b/src/application/safari_decoration.c
+@@ -560,8 +560,13 @@ static void SafariDecorationModelView_Init(SafariDecorationModelView *view, int
+     reg_G3X_DISP3DCNT = (reg_G3X_DISP3DCNT & ~0x3000) | 32;
+     G3X_SetFog(FALSE, GX_FOGBLEND_COLOR_ALPHA, GX_FOGSLOPE_0x8000, 0);
+     G3X_SetClearColor(RGB_BLACK, 0, 0x7FFF, 63, FALSE);
++#ifdef SDK_PORT_3DS
++    NitroPort_GxDirectWrite(G3OP_SWAP_BUFFERS, (u32)(2));
++    NitroPort_GxDirectWrite(G3OP_VIEWPORT, (u32)(0xBFFF0000));
++#else
+     reg_G3_SWAP_BUFFERS = 2;
+     reg_G3_VIEWPORT = 0xBFFF0000;
++#endif
+     view->heapId = heapId;
+     view->timeOfDay = timeOfDay;
+     size = NNS_GfdGetLnkTexVramManagerWorkSize(128);
+@@ -583,14 +588,25 @@ static void SafariDecorationModelView_Draw(SafariDecorationModelView *view) {
+     Thunk_G3X_Reset();
+     Camera_PushLookAtToNNSGlb();
+     NNS_G3dGeFlushBuffer();
++#ifdef SDK_PORT_3DS
++    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MTXMODE_PROJECTION));
++    NitroPort_GxDirectWrite(G3OP_MTX_IDENTITY, (u32)(0));
++    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MTXMODE_POSITION_VECTOR));
++    NitroPort_GxDirectWrite(G3OP_MTX_IDENTITY, (u32)(0));
++#else
+     reg_G3_MTX_MODE = GX_MTXMODE_PROJECTION;
+     reg_G3_MTX_IDENTITY = 0;
+     reg_G3_MTX_MODE = GX_MTXMODE_POSITION_VECTOR;
+     reg_G3_MTX_IDENTITY = 0;
++#endif
+     if (view->visible && view->model.loaded) {
+         SafariDecorationModel_Draw(&view->model);
+     }
++#ifdef SDK_PORT_3DS
++    NitroPort_GxDirectWrite(G3OP_SWAP_BUFFERS, (u32)(1));
++#else
+     reg_G3_SWAP_BUFFERS = 1;
++#endif
+ }
+ 
+ static void SafariDecorationModelView_Free(SafariDecorationModelView *view) {
+@@ -621,7 +637,11 @@ static void SafariDecorationModelView_SetVisible(SafariDecorationModelView *view
+         Thunk_G3X_Reset();
+         Camera_PushLookAtToNNSGlb();
+         NNS_G3dGeFlushBuffer();
++#ifdef SDK_PORT_3DS
++        NitroPort_GxDirectWrite(G3OP_SWAP_BUFFERS, (u32)(1));
++#else
+         reg_G3_SWAP_BUFFERS = 1;
++#endif
+     }
+ }
+ 
+diff --git a/src/graphics_object_manager.c b/src/graphics_object_manager.c
+index 5fb8b51..fe7dde7 100644
+--- a/src/graphics_object_manager.c
++++ b/src/graphics_object_manager.c
+@@ -30,9 +30,15 @@ static void GraphicsObject_Draw(GraphicsObject *object);
+ static void GraphicsObject_InitFromTemplate(GraphicsObject *object, GraphicsObjectTemplate *template);
+ 
+ static inline void SetMtxScale(fx32 x, fx32 y, fx32 z) {
++#ifdef SDK_PORT_3DS
++    NitroPort_GxDirectWrite(G3OP_MTX_SCALE, (u32)(x));
++    NitroPort_GxDirectWrite(G3OP_MTX_SCALE, (u32)(y));
++    NitroPort_GxDirectWrite(G3OP_MTX_SCALE, (u32)(z));
++#else
+     reg_G3_MTX_SCALE = x;
+     reg_G3_MTX_SCALE = y;
+     reg_G3_MTX_SCALE = z;
++#endif
+ }
+ 
+ GraphicsManager *GraphicsManager_New(GraphicsManagerTemplate *template) {
+diff --git a/src/pokeathlon/pokeathlon_lamp_jump.c b/src/pokeathlon/pokeathlon_lamp_jump.c
+index a5a1997..8c69c4f 100644
+--- a/src/pokeathlon/pokeathlon_lamp_jump.c
++++ b/src/pokeathlon/pokeathlon_lamp_jump.c
+@@ -946,7 +946,11 @@ static void PokeathlonLampJump_LaunchMon(PokeathlonLampJump *lampJump, s32 mon,
+ static void PokeathlonLampJump_Init3D(PokeathlonLampJump *lampJump) {
+     NNS_G3dInit();
+     G3X_InitMtxStack();
++#ifdef SDK_PORT_3DS
++    NitroPort_GxDirectWrite(G3OP_SWAP_BUFFERS, (u32)(2));
++#else
+     reg_G3_SWAP_BUFFERS = 2;
++#endif
+     reg_G2_BG0CNT = (reg_G2_BG0CNT & ~3) | 2;
+     G3X_SetShading(GX_SHADING_TOON);
+     G3X_AntiAlias(FALSE);
+@@ -954,7 +958,11 @@ static void PokeathlonLampJump_Init3D(PokeathlonLampJump *lampJump) {
+     G3X_AlphaBlend(FALSE);
+     G3X_EdgeMarking(FALSE);
+     G3X_SetClearColor(RGB_BLACK, 0, GF_GX_CLEARCOLORDEPTH_MAX, 63, FALSE);
++#ifdef SDK_PORT_3DS
++    NitroPort_GxDirectWrite(G3OP_VIEWPORT, (u32)(0xBFFF0000));
++#else
+     reg_G3_VIEWPORT = 0xBFFF0000;
++#endif
+     lampJump->camera = Camera_New(lampJump->heapId);
+     PokeathlonLampJump_InitCamera(lampJump);
+ }
+diff --git a/src/pokemon_summary_scene.c b/src/pokemon_summary_scene.c
+index f80a495..ab4025c 100644
+--- a/src/pokemon_summary_scene.c
++++ b/src/pokemon_summary_scene.c
+@@ -46,7 +46,7 @@ void PokemonSummary_DrawPokepic(PokemonSummary *summary) {
+     NNS_G2dSetupSoftwareSpriteCamera();
+     PokepicManager_DrawAll(summary->pokepicManager);
+ #ifdef SDK_PORT_3DS
+-    reg_G3_SWAP_BUFFERS = 1;
++    NitroPort_GxDirectWrite(G3OP_SWAP_BUFFERS, 1u);
+ #else
+     *(vu32 *)0x04000540 = 1;
+ #endif
+diff --git a/src/wifi_plaza/wifi_plaza_visitor_profiles.c b/src/wifi_plaza/wifi_plaza_visitor_profiles.c
+index 618526b..2cb05c3 100644
+--- a/src/wifi_plaza/wifi_plaza_visitor_profiles.c
++++ b/src/wifi_plaza/wifi_plaza_visitor_profiles.c
+@@ -1433,7 +1433,11 @@ static void VisitorProfiles_Setup3D(void) {
+     reg_G3X_DISP3DCNT = (reg_G3X_DISP3DCNT & ~0x3000) | 32;
+     G3X_SetFog(FALSE, GX_FOGBLEND_COLOR_ALPHA, GX_FOGSLOPE_0x8000, 0);
+     G3X_SetClearColor(RGB(26, 26, 26), 0, GF_GX_CLEARCOLORDEPTH_MAX, 63, FALSE);
++#ifdef SDK_PORT_3DS
++    NitroPort_GxDirectWrite(G3OP_VIEWPORT, (u32)(0xBFFF0000));
++#else
+     reg_G3_VIEWPORT = 0xBFFF0000;
++#endif
+ }
+ 
+ static void VisitorProfilesGlobe_Init(VisitorProfilesGlobe *globe, VisitorProfilesGraphics *gfx, enum HeapID heapID) {
+-- 
+2.56.0.windows.4
+

@@ -1,0 +1,185 @@
+From ba45d982422675cc1e06e95859389be37f1e9768 Mon Sep 17 00:00:00 2001
+From: terezi <jules@foxtails.me>
+Date: Thu, 12 Nov 2026 18:06:32 -0500
+Subject: [PATCH] g3d: send the direct G3 command-register writes to the port
+ (SDK_PORT_3DS)
+
+The port's G3 command registers (0x04000440..0x040005C8) are ordinary
+memory: a store to reg_G3_MTX_MODE and its neighbours never reaches the
+geometry engine. 0302 converted the reg_G3X_GXFIFO stores in g3d_sbc.c and
+g3d_gecom.c, but these direct port writes were left raw:
+
+- g3d_sbc.c NNSi_G3dFuncSbc_NODEMIX: the projection store/identity, the
+  MTX_RESTORE of each envelope node, the MTX_MODE switches and the final
+  MTX_STORE of the blended matrix.
+- g3d_sbc.c PRJMAP (texture-matrix readback): PUSH/IDENTITY/POP/MODE.
+- g3d_gecom.c NNS_G3dGetCurrentMtx: PUSH/IDENTITY/POP/MODE.
+
+With NODEMIX's MTX_STORE lost, every weighted-envelope vertex restored a
+matrix-stack slot that was never written (all zero), so it collapsed onto
+clip (0,0,0,0) and its triangles had no area: the title Ho-Oh lost most of
+both wings. Traced with a zero-matrix log in the port's geometry engine:
+MTX_RESTORE of slots 10, 12, 17 and 19 produced a zero position matrix.
+
+Under SDK_PORT_3DS each write goes through NitroPort_GxDirectWrite with the
+register's opcode, as the g3imm.h inlines and 0304 do; the DS text is in
+#else, unchanged.
+---
+ src/g3d_gecom.c | 12 ++++++++++++
+ src/g3d_sbc.c   | 43 +++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 55 insertions(+)
+
+diff --git a/src/g3d_gecom.c b/src/g3d_gecom.c
+index 48ebb0d..0f85268 100644
+--- a/src/g3d_gecom.c
++++ b/src/g3d_gecom.c
+@@ -2,6 +2,7 @@
+ #include <nnsys/g3d/gecom.h>
+ #if defined(SDK_PORT_3DS)
+ extern void NitroPort_GxFifoWord(unsigned int value);
++extern void NitroPort_GxDirectWrite(int opcode, uint32_t parameter);
+ #endif
+ 
+ #include <nnsys/g3d_util_internal.h>
+@@ -78,9 +79,15 @@ void NNS_G3dGetCurrentMtx(MtxFx43 *pPos, MtxFx33 *pDir) {
+     MtxFx44 clip;
+     NNS_G3dGeFlushBuffer();
+     // clip matrix with an identity projection = position matrix
++#if defined(SDK_PORT_3DS)
++    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MTXMODE_PROJECTION));
++    NitroPort_GxDirectWrite(G3OP_MTX_PUSH, (u32)(0));
++    NitroPort_GxDirectWrite(G3OP_MTX_IDENTITY, (u32)(0));
++#else
+     reg_G3_MTX_MODE = GX_MTXMODE_PROJECTION;
+     reg_G3_MTX_PUSH = 0;
+     reg_G3_MTX_IDENTITY = 0;
++#endif
+     if (pPos) {
+         while (G3X_GetClipMtx(&clip)) {
+         }
+@@ -90,6 +97,11 @@ void NNS_G3dGetCurrentMtx(MtxFx43 *pPos, MtxFx33 *pDir) {
+         while (G3X_GetVectorMtx(pDir)) {
+         }
+     }
++#if defined(SDK_PORT_3DS)
++    NitroPort_GxDirectWrite(G3OP_MTX_POP, (u32)(1));
++    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MTXMODE_POSITION_VECTOR));
++#else
+     reg_G3_MTX_POP = 1;
+     reg_G3_MTX_MODE = GX_MTXMODE_POSITION_VECTOR;
++#endif
+ }
+diff --git a/src/g3d_sbc.c b/src/g3d_sbc.c
+index a7dc402..5565a84 100644
+--- a/src/g3d_sbc.c
++++ b/src/g3d_sbc.c
+@@ -5,6 +5,9 @@
+  * writes (3ds_port/nitro/src/port_gx3d.c). Bulk sends through MIi_CpuSend32 are
+  * forwarded by the port MI layer already. Platinum NitroSystem 0003. */
+ extern void NitroPort_GxFifoWord(unsigned int value);
++/* The G3 command registers (MTX_MODE..) are ordinary memory too: their direct
++ * writes go through NitroPort_GxDirectWrite with the register's opcode. */
++extern void NitroPort_GxDirectWrite(int opcode, uint32_t parameter);
+ #endif
+ 
+ 
+@@ -750,10 +753,17 @@ void NNSi_G3dFuncSbc_NODEMIX(G3dRS *pRS, u32 opt) {
+     MIi_CpuClearFast(0, (u32 *)&sum, sizeof(sum));
+     NNS_G3dGeFlushBuffer();
+     // keep the projection matrix in its stack and calculate with an identity projection
++#if defined(SDK_PORT_3DS)
++    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MTXMODE_PROJECTION));
++    NitroPort_GxDirectWrite(G3OP_MTX_STORE, (u32)(1));
++    NitroPort_GxDirectWrite(G3OP_MTX_IDENTITY, (u32)(0));
++    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MTXMODE_POSITION_VECTOR));
++#else
+     reg_G3_MTX_MODE = GX_MTXMODE_PROJECTION;
+     reg_G3_MTX_STORE = 1;
+     reg_G3_MTX_IDENTITY = 0;
+     reg_G3_MTX_MODE = GX_MTXMODE_POSITION_VECTOR;
++#endif
+     for (i = 0; i < numMtx; i++) {
+         u32 nodeID;
+         u32 cached;
+@@ -764,8 +774,13 @@ void NNSi_G3dFuncSbc_NODEMIX(G3dRS *pRS, u32 opt) {
+         offset = nodeID * sizeof(G3dEvpMtxCache);
+         if (!cached) {
+             BitVecSet(pRS->evpCached, nodeID);
++#if defined(SDK_PORT_3DS)
++            NitroPort_GxDirectWrite(G3OP_MTX_RESTORE, (u32)(pEntry[0]));
++            NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MTXMODE_POSITION));
++#else
+             reg_G3_MTX_RESTORE = pEntry[0];
+             reg_G3_MTX_MODE = GX_MTXMODE_POSITION;
++#endif
+             G3_MultMtx43(&pEvpMtx[nodeID].invM);
+         }
+         // the previous direction matrix is added here, while the geometry engine calculates
+@@ -783,8 +798,13 @@ void NNSi_G3dFuncSbc_NODEMIX(G3dRS *pRS, u32 opt) {
+         if (!cached) {
+             while (G3X_GetClipMtx(&pCache->posMtx)) {
+             }
++#if defined(SDK_PORT_3DS)
++            NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MTXMODE_POSITION_VECTOR));
++            G3_MultMtx33(&pEvpMtx[nodeID].invN);
++#else
+             reg_G3_MTX_MODE = GX_MTXMODE_POSITION_VECTOR;
+             G3_MultMtx33(&pEvpMtx[nodeID].invN);
++#endif
+         }
+         {
+             fx32 ratio = pEntry[2] << 4;
+@@ -820,12 +840,21 @@ void NNSi_G3dFuncSbc_NODEMIX(G3dRS *pRS, u32 opt) {
+     sum.dir._22 += (prevRatio * pPrevDir->_22) >> FX32_SHIFT;
+     // the direction matrix goes in as a 4x3 matrix (its translation row does not matter)
+     G3_LoadMtx43((MtxFx43 *)&sum.dir);
++#if defined(SDK_PORT_3DS)
++    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MTXMODE_POSITION));
++    G3_LoadMtx43(&sum.pos);
++    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MTXMODE_PROJECTION));
++    NitroPort_GxDirectWrite(G3OP_MTX_RESTORE, (u32)(1));
++    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MTXMODE_POSITION_VECTOR));
++    NitroPort_GxDirectWrite(G3OP_MTX_STORE, (u32)(pRS->c[1]));
++#else
+     reg_G3_MTX_MODE = GX_MTXMODE_POSITION;
+     G3_LoadMtx43(&sum.pos);
+     reg_G3_MTX_MODE = GX_MTXMODE_PROJECTION;
+     reg_G3_MTX_RESTORE = 1;
+     reg_G3_MTX_MODE = GX_MTXMODE_POSITION_VECTOR;
+     reg_G3_MTX_STORE = pRS->c[1];
++#endif
+     pRS->c += 3 * (pRS->c[2] + 1);
+ }
+ 
+@@ -1077,14 +1106,28 @@ void NNSi_G3dFuncSbc_PRJMAP(G3dRS *pRS, u32 opt) {
+         // read the result through the clip matrix with an identity projection, then load it as the
+         // texture matrix; its translation becomes the texture coordinate
+         NNS_G3dGeFlushBuffer();
++#if defined(SDK_PORT_3DS)
++        NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MTXMODE_PROJECTION));
++        NitroPort_GxDirectWrite(G3OP_MTX_PUSH, (u32)(0));
++        NitroPort_GxDirectWrite(G3OP_MTX_IDENTITY, (u32)(0));
++        do {
++        } while (G3X_GetClipMtx(&clip));
++#else
+         reg_G3_MTX_MODE = GX_MTXMODE_PROJECTION;
+         reg_G3_MTX_PUSH = 0;
+         reg_G3_MTX_IDENTITY = 0;
+         do {
+         } while (G3X_GetClipMtx(&clip));
++#endif
++#if defined(SDK_PORT_3DS)
++        (void)pReg;
++        NitroPort_GxDirectWrite(G3OP_MTX_POP, 1u);
++        NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)GX_MTXMODE_TEXTURE);
++#else
+         pReg = &reg_G3_MTX_POP;
+         pReg[0] = 1;
+         pReg[-2] = GX_MTXMODE_TEXTURE; // reg_G3_MTX_MODE
++#endif
+         NNS_G3dGeBufferOP_N(G3OP_MTX_LOAD_4x4, (const u32 *)&clip, G3OP_MTX_LOAD_4x4_NPARAMS);
+         SendTexCoord(clip._30 >> 4, clip._31 >> 4);
+     }
+-- 
+2.56.0.windows.4
+
