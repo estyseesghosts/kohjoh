@@ -202,6 +202,20 @@ typedef struct kj_input {
 
 const kj_input *kj_ctr_input(void);
 
+/* DS-side profile since the last call (ARM11 ticks / counts). */
+typedef struct kj_ds_profile {
+    uint64_t g3_fifo_ticks;
+    uint32_t g3_fifo_words, g3_direct_words, g3_commands;
+    uint64_t timer_sync_calls, timer_sync_ticks;
+    uint64_t sound_pump_ticks;
+    uint32_t sound_pump_calls;
+    uint64_t hblank_ticks;
+    uint32_t hblank_walks;
+    uint32_t dl_hits, dl_misses, dl_uncacheable, dl_bytes;
+} kj_ds_profile;
+
+void kj_ds_take_profile(kj_ds_profile *out);
+
 /* Game termination / reset requests. */
 void kj_ctr_terminate(void) __attribute__((noreturn));
 

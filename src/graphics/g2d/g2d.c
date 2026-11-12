@@ -31,6 +31,7 @@
 #include <3ds.h>
 #include <citro3d.h>
 #include <math.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define LAYER_OBJ 4
@@ -181,9 +182,8 @@ typedef struct ctx {
 
 static inline void put_quad(kj_v2d *v, int x, int y, int w, int h, uint16_t slot, bool hf, bool vf)
 {
-    int16_t u0, v0;
-    kj_atlas_slot_uv(slot, &u0, &v0);
-    int16_t u1 = (int16_t)(u0 + 8), v1 = (int16_t)(v0 + 8);
+    int16_t u0, v0, u1, v1;
+    kj_atlas_slot_uv(slot, &u0, &v0, &u1, &v1);
     if (hf) {
         const int16_t t = u0;
         u0 = u1;
@@ -200,28 +200,52 @@ static inline void put_quad(kj_v2d *v, int x, int y, int w, int h, uint16_t slot
     v[3] = (kj_v2d){ (int16_t)(x + w), (int16_t)(y + h), u1, v1, 255, 255, 255, 255 };
 }
 
-/* A growable run of quads in the frame arena: reserve a worst case, then
- * give back what was not used (the arena is a bump allocator, and the run
- * is the most recent allocation). */
+/* A run of quads: either in the frame arena (reserve a worst case, give the
+ * tail back) or in a retained layer's own buffer (ext = true). Retained runs
+ * also record each quad's atlas slot and the range of character bytes read,
+ * which is what their reuse check compares next frame. */
 typedef struct run {
     kj_v2d *v;
     uint32_t first;
     uint32_t count;
     uint32_t cap;
+    bool ext;
+    uint16_t *slots;
+    uint32_t char_lo, char_hi;
 } run;
 
 static bool run_begin(run *r, uint32_t cap)
 {
     r->count = 0;
+    r->char_lo = UINT32_MAX;
+    r->char_hi = 0;
+    if (r->ext) {
+        return r->v != NULL;
+    }
     r->cap = cap;
+    r->slots = NULL;
     r->v = kj_gpu_quads_alloc(cap, &r->first);
     return r->v != NULL;
 }
 
 static void run_end(run *r)
 {
-    /* return the unused tail: re-allocate exactly */
-    kj_gpu_quads_reset_to(r->first + r->count);
+    if (!r->ext) {
+        kj_gpu_quads_reset_to(r->first + r->count);
+    }
+}
+
+static inline void run_note(run *r, uint16_t slot, uint32_t off, uint32_t bytes)
+{
+    if (r->slots != NULL) {
+        r->slots[r->count] = slot;
+    }
+    if (off < r->char_lo) {
+        r->char_lo = off;
+    }
+    if (off + bytes > r->char_hi) {
+        r->char_hi = off + bytes;
+    }
 }
 
 /* ------------------------------------------------------------ text BGs */
@@ -275,6 +299,11 @@ static uint32_t text_bg(const ctx *c, int bg, run *out)
             if (!t.valid || t.transparent) {
                 continue;
             }
+            if (out->count >= out->cap) {
+                ++s_stats.dropped_quads;
+                continue;
+            }
+            run_note(out, t.slot, toff, tile_bytes);
             put_quad(out->v + out->count * 4u, sx, sy, 8, 8, t.slot, (entry >> 10) & 1,
                      (entry >> 11) & 1);
             ++out->count;
@@ -377,9 +406,8 @@ static uint32_t affine_bg(const ctx *c, int bg, bool ext16, run *out)
             }
             /* corners in texture space -> screen */
             kj_v2d *v = out->v + out->count * 4u;
-            int16_t u0, v0;
-            kj_atlas_slot_uv(t.slot, &u0, &v0);
-            int16_t u1 = (int16_t)(u0 + 8), v1 = (int16_t)(v0 + 8);
+            int16_t u0, v0, u1, v1;
+            kj_atlas_slot_uv(t.slot, &u0, &v0, &u1, &v1);
             if (hf) { const int16_t s = u0; u0 = u1; u1 = s; }
             if (vf) { const int16_t s = v0; v0 = v1; v1 = s; }
             const float px[4] = { tx * 8.0f, tx * 8.0f + 8, tx * 8.0f, tx * 8.0f + 8 };
@@ -416,6 +444,9 @@ static uint32_t objs(const ctx *c, int prio, bool semi, run *out)
 
     if (!run_begin(out, 2048)) {
         return 0;
+    }
+    if (!out->ext) {
+        out->cap = 2048;
     }
     for (int i = 127; i >= 0; --i) {
         const uint16_t a0 = r16(oam, (unsigned)i * 8u);
@@ -502,18 +533,19 @@ static uint32_t objs(const ctx *c, int prio, bool semi, run *out)
                 if (!t.valid || t.transparent) {
                     continue;
                 }
+                run_note(out, t.slot, off, tile_bytes);
                 kj_v2d *v = out->v + out->count * 4u;
                 if (!affine) {
                     const int qx = x + (hf ? (tw - 1 - tx) : tx) * 8;
                     const int qy = y + (vf ? (th - 1 - ty) : ty) * 8;
                     put_quad(v, qx, qy, 8, 8, t.slot, hf, vf);
                 } else {
-                    int16_t u0, v0;
-                    kj_atlas_slot_uv(t.slot, &u0, &v0);
+                    int16_t u0, v0, u1, v1;
+                    kj_atlas_slot_uv(t.slot, &u0, &v0, &u1, &v1);
                     const float px[4] = { tx * 8.0f, tx * 8.0f + 8, tx * 8.0f, tx * 8.0f + 8 };
                     const float py[4] = { ty * 8.0f, ty * 8.0f, ty * 8.0f + 8, ty * 8.0f + 8 };
-                    const int16_t uu[4] = { u0, (int16_t)(u0 + 8), u0, (int16_t)(u0 + 8) };
-                    const int16_t vv[4] = { v0, v0, (int16_t)(v0 + 8), (int16_t)(v0 + 8) };
+                    const int16_t uu[4] = { u0, u1, u0, u1 };
+                    const int16_t vv[4] = { v0, v0, v1, v1 };
                     for (int k = 0; k < 4; ++k) {
                         const float dx = px[k] - w / 2.0f, dy = py[k] - h / 2.0f;
                         v[k].x = (int16_t)lroundf(cxs + ia * dx + ib * dy);
@@ -539,8 +571,9 @@ static void set_xform(const kj_target *t)
     const float half_w = t->width / 2.0f;
     C3D_FVUnifSet(GPU_VERTEX_SHADER, kj_gpu_uloc_2d_xform(), -t->scale / 120.0f, 1.0f,
                   -t->scale / half_w, 1.0f - t->offset_x / half_w);
-    C3D_FVUnifSet(GPU_VERTEX_SHADER, kj_gpu_uloc_2d_uvscale(), 1.0f / KJ_ATLAS_SIZE,
-                  -1.0f / KJ_ATLAS_SIZE, 0.0f, 1.0f);
+    C3D_FVUnifSet(GPU_VERTEX_SHADER, kj_gpu_uloc_2d_uvscale(),
+                  1.0f / (KJ_ATLAS_SIZE * KJ_ATLAS_UV_UNIT), -1.0f / (KJ_ATLAS_SIZE * KJ_ATLAS_UV_UNIT),
+                  0.0f, 1.0f);
 }
 
 typedef struct fx {
@@ -591,8 +624,24 @@ static void blend_alpha(float eva, float evb)
 }
 
 /* Draw quads of one layer in every window region where it is enabled. */
-static void draw_layer(const fx *f, int layer, uint32_t first, uint32_t count, bool force_semi)
+typedef struct drawable {
+    const kj_v2d *base; /* NULL: frame arena at `first` */
+    uint32_t first;
+    uint32_t count;
+} drawable;
+
+static void draw_quads(const drawable *d)
 {
+    if (d->base != NULL) {
+        kj_gpu_draw_quads_from(d->base, d->count);
+    } else {
+        kj_gpu_draw_quads(d->first, d->count);
+    }
+}
+
+static void draw_layer(const fx *f, int layer, const drawable *d, bool force_semi)
+{
+    const uint32_t count = d->count;
     if (count == 0) {
         return;
     }
@@ -614,7 +663,7 @@ static void draw_layer(const fx *f, int layer, uint32_t first, uint32_t count, b
             const uint8_t flags = (uint8_t)((t2 ? 1 : 0) | (t1 && effects && f->mode >= 2 ? 2 : 0));
             blend_off();
             stencil_write_all((uint8_t)(region | flags), rmask);
-            kj_gpu_draw_quads(first, count);
+            draw_quads(d);
             ++s_stats.draws;
             continue;
         }
@@ -622,12 +671,12 @@ static void draw_layer(const fx *f, int layer, uint32_t first, uint32_t count, b
         blend_alpha(f->eva, f->evb);
         C3D_StencilTest(true, GPU_EQUAL, region | 1u, rmask | 1u, 0x03);
         C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, t2 ? GPU_STENCIL_KEEP : GPU_STENCIL_INVERT);
-        kj_gpu_draw_quads(first, count);
+        draw_quads(d);
         /* opaque elsewhere */
         blend_off();
         C3D_StencilTest(true, GPU_EQUAL, region, rmask | 1u, 0x01);
         C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, t2 ? GPU_STENCIL_INVERT : GPU_STENCIL_KEEP);
-        kj_gpu_draw_quads(first, count);
+        draw_quads(d);
         s_stats.draws += 2;
     }
 }
@@ -752,31 +801,266 @@ static int span_end(const kj_line_regs *lines, int engine, int y0)
     return y;
 }
 
-static void draw_span(ctx *c, bool draw_3d, bool *drew_3d)
+/* ------------------------------------------------------ retained layers */
+
+/*
+ * Retained layers (OPT-002/OPT-005). When a frame has no per-line register
+ * changes, each text BG and the OBJ layer keep last frame's quads in their
+ * own GPU buffer. They are reused only if everything they were built from
+ * is byte-identical: the registers they read, the palette, the map (text
+ * BG) or OAM (OBJ), extended palettes, and the exact range of character
+ * bytes the build read. Comparing a few KiB is far cheaper than ~800 atlas
+ * lookups per layer, and it is exact: no write tracking, no hashing.
+ */
+
+#define CACHE_QUADS 2304u
+#define MAP_MAX 8192u
+
+typedef struct layer_cache {
+    bool valid;
+    uint8_t key[16];
+    uint16_t pal[256]; /* the layer's palette (BG or OBJ) as built */
+    uint8_t map[MAP_MAX];
+    uint32_t map_off, map_len;
+    uint8_t *chars;
+    uint32_t char_lo, char_len, char_cap;
+    uint8_t ext[0x2000];
+    const uint8_t *ext_src;
+    kj_v2d *quads;
+    uint16_t slots[CACHE_QUADS];
+    uint32_t count;
+    /* OBJ: per (priority, semi) sub-ranges of quads */
+    uint32_t sub_first[8], sub_count[8];
+    uint8_t oam[0x400];
+} layer_cache;
+
+static layer_cache s_bg_cache[2][4];
+static layer_cache s_obj_cache[2];
+
+typedef struct screen_memo {
+    bool drawn;
+    int engine;
+    uint8_t regs[KJ_LINE_REG_BYTES];
+    uint16_t pal[512];
+} screen_memo;
+
+static screen_memo s_memo[2];
+static uint32_t s_skipped_screens, s_reused_layers, s_rebuilt_layers;
+
+static bool cache_alloc(layer_cache *lc)
 {
-    fx f;
-    read_fx(c, &f);
+    if (lc->quads == NULL) {
+        lc->quads = linearAlloc(CACHE_QUADS * 4u * sizeof(kj_v2d));
+    }
+    return lc->quads != NULL;
+}
+
+static bool chars_same(const layer_cache *lc, const uint8_t *vram)
+{
+    return lc->char_len == 0 || memcmp(lc->chars, vram + lc->char_lo, lc->char_len) == 0;
+}
+
+static void chars_keep(layer_cache *lc, const uint8_t *vram, uint32_t lo, uint32_t hi)
+{
+    if (hi <= lo) {
+        lc->char_len = 0;
+        return;
+    }
+    const uint32_t len = hi - lo;
+    if (len > lc->char_cap) {
+        free(lc->chars);
+        lc->chars = malloc(len);
+        lc->char_cap = lc->chars != NULL ? len : 0;
+    }
+    if (lc->chars == NULL) {
+        lc->valid = false;
+        lc->char_len = 0;
+        return;
+    }
+    memcpy(lc->chars, vram + lo, len);
+    lc->char_lo = lo;
+    lc->char_len = len;
+}
+
+/* Registers a text BG's quads depend on. */
+static void text_key(const ctx *c, int bg, uint8_t key[16])
+{
+    memset(key, 0, 16);
+    memcpy(key, c->regs + 0x08 + 2 * bg, 2);
+    memcpy(key + 2, c->regs + 0x10 + 4 * bg, 4);
+    const uint32_t d = c->dispcnt & 0x7F000000u; /* char/screen offsets, ext palettes */
+    memcpy(key + 6, &d, 4);
+    key[10] = (uint8_t)c->engine;
+}
+
+static void text_map_range(const ctx *c, int bg, uint32_t *off, uint32_t *len)
+{
+    const uint16_t cnt = r16(c->regs, 0x08 + 2 * bg);
+    uint32_t scr = ((cnt >> 8) & 31u) * 0x800u;
+    if (c->engine == 0) {
+        scr += ((c->dispcnt >> 27) & 7u) * 0x10000u;
+    }
+    const unsigned size = cnt >> 14;
+    *off = scr & (c->bg_vram_size - 1u);
+    *len = (size == 0 ? 1u : size == 3 ? 4u : 2u) * 0x800u;
+    if (*off + *len > c->bg_vram_size) {
+        *len = c->bg_vram_size - *off;
+    }
+}
+
+static const uint8_t *text_ext_src(const ctx *c, int bg)
+{
+    const uint16_t cnt = r16(c->regs, 0x08 + 2 * bg);
+    if (!(cnt & 0x80) || !(c->dispcnt & (1u << 30))) {
+        return NULL;
+    }
+    const int slot = bg < 2 ? bg + (((cnt >> 13) & 1) ? 2 : 0) : bg;
+    return ext_bg_slot(c->in, c->engine, slot);
+}
+
+/* A text BG, retained when possible. */
+static bool text_bg_retained(const ctx *c, int bg, drawable *out)
+{
+    layer_cache *lc = &s_bg_cache[c->engine][bg];
+    const uint16_t *pal = pltt_ptr(c->in->mem, c->engine, 0);
+    uint8_t key[16];
+    uint32_t moff, mlen;
+
+    text_key(c, bg, key);
+    text_map_range(c, bg, &moff, &mlen);
+    const uint8_t *ext = text_ext_src(c, bg);
+    if (lc->valid && memcmp(lc->key, key, 16) == 0 && lc->map_off == moff && lc->map_len == mlen &&
+        memcmp(lc->pal, pal, 512) == 0 && memcmp(lc->map, c->bg_vram + moff, mlen) == 0 &&
+        lc->ext_src == ext && (ext == NULL || memcmp(lc->ext, ext, 0x2000) == 0) &&
+        chars_same(lc, c->bg_vram)) {
+        out->base = lc->quads;
+        out->count = lc->count;
+        ++s_reused_layers;
+        return true;
+    }
+    if (!cache_alloc(lc)) {
+        return false;
+    }
+    run r;
+    memset(&r, 0, sizeof(r));
+    r.ext = true;
+    r.v = lc->quads;
+    r.cap = CACHE_QUADS;
+    r.slots = lc->slots;
+    text_bg(c, bg, &r);
+    lc->valid = true;
+    memcpy(lc->key, key, 16);
+    memcpy(lc->pal, pal, 512);
+    lc->map_off = moff;
+    lc->map_len = mlen;
+    memcpy(lc->map, c->bg_vram + moff, mlen);
+    lc->ext_src = ext;
+    if (ext != NULL) {
+        memcpy(lc->ext, ext, 0x2000);
+    }
+    chars_keep(lc, c->bg_vram, r.char_lo, r.char_hi);
+    lc->count = r.count;
+    out->base = lc->quads;
+    out->count = r.count;
+    ++s_rebuilt_layers;
+    return true;
+}
+
+/* The OBJ layer (all priorities), retained when possible. */
+static bool objs_retained(const ctx *c, drawable sub[8])
+{
+    layer_cache *lc = &s_obj_cache[c->engine];
+    const uint8_t *oam = c->in->mem->oam + c->engine * 0x400;
+    const uint16_t *pal = pltt_ptr(c->in->mem, c->engine, 1);
+    const uint8_t *ext = (c->dispcnt & (1u << 31)) ? ext_obj(c->in, c->engine) : NULL;
+    uint8_t key[16];
+
+    memset(key, 0, sizeof(key));
+    const uint32_t d = c->dispcnt & 0x80301010u; /* OBJ on, mapping, boundary, ext */
+    memcpy(key, &d, 4);
+    key[4] = (uint8_t)c->engine;
+    if (lc->valid && memcmp(lc->key, key, 16) == 0 && memcmp(lc->oam, oam, 0x400) == 0 &&
+        memcmp(lc->pal, pal, 512) == 0 && lc->ext_src == ext &&
+        (ext == NULL || memcmp(lc->ext, ext, 0x2000) == 0) && chars_same(lc, c->obj_vram)) {
+        for (int i = 0; i < 8; ++i) {
+            sub[i].base = lc->quads + lc->sub_first[i] * 4u;
+            sub[i].count = lc->sub_count[i];
+        }
+        ++s_reused_layers;
+        return true;
+    }
+    if (!cache_alloc(lc)) {
+        return false;
+    }
+    uint32_t used = 0, lo = UINT32_MAX, hi = 0;
+    for (int i = 0; i < 8; ++i) {
+        run r;
+        memset(&r, 0, sizeof(r));
+        r.ext = true;
+        r.v = lc->quads + used * 4u;
+        r.cap = CACHE_QUADS - used;
+        r.slots = lc->slots + used;
+        objs(c, i >> 1, (i & 1) != 0, &r);
+        lc->sub_first[i] = used;
+        lc->sub_count[i] = r.count;
+        used += r.count;
+        if (r.count) {
+            lo = r.char_lo < lo ? r.char_lo : lo;
+            hi = r.char_hi > hi ? r.char_hi : hi;
+        }
+    }
+    lc->valid = true;
+    memcpy(lc->key, key, 16);
+    memcpy(lc->oam, oam, 0x400);
+    memcpy(lc->pal, pal, 512);
+    lc->ext_src = ext;
+    if (ext != NULL) {
+        memcpy(lc->ext, ext, 0x2000);
+    }
+    chars_keep(lc, c->obj_vram, lo == UINT32_MAX ? 0 : lo, hi);
+    lc->count = used;
+    for (int i = 0; i < 8; ++i) {
+        sub[i].base = lc->quads + lc->sub_first[i] * 4u;
+        sub[i].count = lc->sub_count[i];
+    }
+    ++s_rebuilt_layers;
+    return true;
+}
+
+void kj_g2d_begin_frame(void)
+{
+    /* Retained quads point at atlas slots: keep them alive before any
+     * allocation this frame can evict them. */
+    for (int e = 0; e < 2; ++e) {
+        for (int b = 0; b < 4; ++b) {
+            if (s_bg_cache[e][b].valid) {
+                kj_atlas_touch(s_bg_cache[e][b].slots, s_bg_cache[e][b].count);
+            }
+        }
+        if (s_obj_cache[e].valid) {
+            kj_atlas_touch(s_obj_cache[e].slots, s_obj_cache[e].count);
+        }
+    }
+}
+
+/* --------------------------------------------------------------- spans */
+
+typedef struct prepared {
+    drawable bg[4];
+    bool bg_ok[4];
+    drawable obj[8]; /* priority * 2 + semi */
+    bool obj_ok;
+    bool all_reused;
+} prepared;
+
+static void prepare_span(const ctx *c, bool retain, prepared *pr)
+{
     const int bgmode = (int)(c->dispcnt & 7u);
     const uint32_t layers_on = (c->dispcnt >> 8) & 0x1Fu;
     const bool bg0_3d = c->engine == 0 && (c->dispcnt & 8u);
+    const uint32_t rebuilt_before = s_rebuilt_layers;
 
-    const int sx0 = (int)(c->target->offset_x);
-    kj_gpu_scissor(c->target->width, sx0, (int)(c->y0 * c->target->scale),
-                   sx0 + (int)(256 * c->target->scale), (int)(c->y1 * c->target->scale));
-    C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_COLOR);
-    C3D_AlphaTest(true, GPU_GREATER, 0);
-    C3D_CullFace(GPU_CULL_NONE);
-
-    kj_gpu_use_program(KJ_PROGRAM_2D);
-    set_xform(c->target);
-    if (f.windows) {
-        write_windows(c);
-    }
-
-    /* prepare every layer's quads first, then draw in priority order */
-    run bg_run[4];
-    bool bg_ok[4] = { false, false, false, false };
-    uint64_t t0 = kj_perf_now();
+    memset(pr, 0, sizeof(*pr));
     for (int bg = 0; bg < 4; ++bg) {
         if (!(layers_on & (1u << bg)) || (bg == 0 && bg0_3d)) {
             continue;
@@ -791,55 +1075,88 @@ static void draw_span(ctx *c, bool draw_3d, bool *drew_3d)
         case 5: ext16 = bg >= 2; break;
         default: unsupported = bg >= 2; break;
         }
-        if (ext16) {
-            const uint16_t cnt = r16(c->regs, 0x08 + 2 * bg);
-            if (cnt & 0x80) {
-                unsupported = true; /* bitmap BG (256-colour / direct) */
-            }
+        if (ext16 && (r16(c->regs, 0x08 + 2 * bg) & 0x80)) {
+            unsupported = true; /* bitmap BG (256-colour / direct) */
         }
         if (unsupported) {
             ++s_stats.unsupported_modes;
             continue;
         }
-        if (affine || ext16) {
-            affine_bg(c, bg, ext16, &bg_run[bg]);
+        if (!affine && !ext16 && retain) {
+            pr->bg_ok[bg] = text_bg_retained(c, bg, &pr->bg[bg]);
         } else {
-            text_bg(c, bg, &bg_run[bg]);
-        }
-        if (bg_run[bg].v != NULL) {
-            run_end(&bg_run[bg]);
-            bg_ok[bg] = true;
-            s_stats.bg_quads += bg_run[bg].count;
-        }
-    }
-    run obj_run[4][2];
-    bool obj_ok[4][2] = { { false } };
-    if (layers_on & 0x10u) {
-        for (int p = 0; p < 4; ++p) {
-            for (int s = 0; s < 2; ++s) {
-                objs(c, p, s == 1, &obj_run[p][s]);
-                if (obj_run[p][s].v != NULL) {
-                    run_end(&obj_run[p][s]);
-                    obj_ok[p][s] = true;
-                    s_stats.obj_quads += obj_run[p][s].count;
-                }
+            run r;
+            memset(&r, 0, sizeof(r));
+            if (affine || ext16) {
+                affine_bg(c, bg, ext16, &r);
+            } else {
+                text_bg(c, bg, &r);
             }
+            if (r.v != NULL) {
+                run_end(&r);
+                pr->bg[bg].base = NULL;
+                pr->bg[bg].first = r.first;
+                pr->bg[bg].count = r.count;
+                pr->bg_ok[bg] = true;
+            }
+            ++s_rebuilt_layers;
+        }
+        s_stats.bg_quads += pr->bg[bg].count;
+    }
+    if (layers_on & 0x10u) {
+        if (retain) {
+            pr->obj_ok = objs_retained(c, pr->obj);
+        } else {
+            pr->obj_ok = true;
+            for (int i = 0; i < 8; ++i) {
+                run r;
+                memset(&r, 0, sizeof(r));
+                objs(c, i >> 1, (i & 1) != 0, &r);
+                if (r.v != NULL) {
+                    run_end(&r);
+                }
+                pr->obj[i].base = NULL;
+                pr->obj[i].first = r.first;
+                pr->obj[i].count = r.v != NULL ? r.count : 0;
+            }
+            ++s_rebuilt_layers;
+        }
+        for (int i = 0; i < 8; ++i) {
+            s_stats.obj_quads += pr->obj[i].count;
         }
     }
-    kj_perf_add(KJ_PERF_G2D, kj_perf_now() - t0);
+    pr->all_reused = retain && s_rebuilt_layers == rebuilt_before;
+}
 
+static void restore_2d_state(const ctx *c, int sx0)
+{
+    kj_gpu_scissor(c->target->width, sx0, (int)(c->y0 * c->target->scale),
+                   sx0 + (int)(256 * c->target->scale), (int)(c->y1 * c->target->scale));
     kj_gpu_use_program(KJ_PROGRAM_2D);
     set_xform(c->target);
     kj_gpu_bind_texture(0, kj_atlas_texture());
     kj_gpu_tev_texture_modulate();
+    C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_COLOR);
+    C3D_AlphaTest(true, GPU_GREATER, 0);
+    C3D_CullFace(GPU_CULL_NONE);
+}
 
+static void draw_span(ctx *c, const prepared *pr, bool draw_3d, bool *drew_3d)
+{
+    fx f;
+    read_fx(c, &f);
+    const uint32_t layers_on = (c->dispcnt >> 8) & 0x1Fu;
+    const bool bg0_3d = c->engine == 0 && (c->dispcnt & 8u);
+    const int sx0 = (int)(c->target->offset_x);
+
+    restore_2d_state(c, sx0);
+    if (f.windows) {
+        write_windows(c);
+        restore_2d_state(c, sx0);
+    }
     for (int p = 3; p >= 0; --p) {
         for (int bg = 3; bg >= 0; --bg) {
-            if (!(layers_on & (1u << bg))) {
-                continue;
-            }
-            const uint16_t cnt = r16(c->regs, 0x08 + 2 * bg);
-            if ((cnt & 3) != p) {
+            if (!(layers_on & (1u << bg)) || (r16(c->regs, 0x08 + 2 * bg) & 3) != p) {
                 continue;
             }
             if (bg == 0 && bg0_3d) {
@@ -850,29 +1167,17 @@ static void draw_span(ctx *c, bool draw_3d, bool *drew_3d)
                     kj_g3d_draw(c->target, c->screen == KJ_SCREEN_TOP,
                                 (uint8_t)((t2 ? 1 : 0) | (t1 && f.mode >= 2 ? 2 : 0)));
                     *drew_3d = true;
-                    kj_gpu_scissor(c->target->width, sx0, (int)(c->y0 * c->target->scale),
-                                   sx0 + (int)(256 * c->target->scale),
-                                   (int)(c->y1 * c->target->scale));
-                    kj_gpu_use_program(KJ_PROGRAM_2D);
-                    set_xform(c->target);
-                    kj_gpu_bind_texture(0, kj_atlas_texture());
-                    kj_gpu_tev_texture_modulate();
-                    C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_COLOR);
-                    C3D_AlphaTest(true, GPU_GREATER, 0);
-                    C3D_CullFace(GPU_CULL_NONE);
+                    restore_2d_state(c, sx0);
                 }
                 continue;
             }
-            if (bg_ok[bg]) {
-                draw_layer(&f, bg, bg_run[bg].first, bg_run[bg].count, false);
+            if (pr->bg_ok[bg]) {
+                draw_layer(&f, bg, &pr->bg[bg], false);
             }
         }
-        if (obj_ok[p][0]) {
-            draw_layer(&f, LAYER_OBJ, obj_run[p][0].first, obj_run[p][0].count, false);
-        }
-        if (obj_ok[p][1]) {
-            fx semi = f;
-            draw_layer(&semi, LAYER_OBJ, obj_run[p][1].first, obj_run[p][1].count, true);
+        if (pr->obj_ok) {
+            draw_layer(&f, LAYER_OBJ, &pr->obj[p * 2], false);
+            draw_layer(&f, LAYER_OBJ, &pr->obj[p * 2 + 1], true);
         }
     }
     brightness_pass(&f);
@@ -889,6 +1194,7 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
 {
     const kj_target *target = kj_target_get(screen);
     const kj_ds_memory *mem = in->mem;
+    screen_memo *memo = &s_memo[screen];
     ctx c;
 
     memset(&c, 0, sizeof(c));
@@ -903,46 +1209,83 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
 
     const uint8_t *io = mem->io + engine * 0x1000;
     const uint32_t dispcnt = r32(io, 0);
-    const uint16_t backdrop = (uint16_t)(mem->pltt[engine * 0x400] | (mem->pltt[engine * 0x400 + 1] << 8));
+    const uint16_t *pal = pltt_ptr(mem, engine, 0); /* BG then OBJ: 512 colours */
     const uint16_t bldcnt = r16(io, 0x50);
     const uint8_t bd_flags = (uint8_t)(((bldcnt >> 13) & 1) | ((bldcnt & 0x20) && ((bldcnt >> 6) & 3) >= 2 ? 2 : 0));
+    const int display_mode = (int)((dispcnt >> 16) & 3u);
+    const bool forced_blank = (dispcnt & 0x80u) != 0;
+    const bool has_3d = engine == 0 && (dispcnt & 8u) && in->g3 != NULL;
+    const bool single_span = !in->lines.active;
+
+    /* Build or reuse the layers before touching the GPU: an unchanged
+     * screen is then not drawn, cleared or transferred at all (its last
+     * picture stays on the display). */
+    prepared pr;
+    bool prepared_ok = false;
+    uint64_t t0 = kj_perf_now();
+    if (single_span && display_mode == 1 && !forced_blank) {
+        c.y0 = 0;
+        c.y1 = 192;
+        c.regs = io;
+        c.dispcnt = dispcnt;
+        prepare_span(&c, true, &pr);
+        prepared_ok = true;
+        if (pr.all_reused && !has_3d && memo->drawn && memo->engine == engine &&
+            memcmp(memo->regs, io, KJ_LINE_REG_BYTES) == 0 && memcmp(memo->pal, pal, 1024) == 0) {
+            ++s_skipped_screens;
+            kj_perf_add(KJ_PERF_G2D, kj_perf_now() - t0);
+            return;
+        }
+    }
+    memo->drawn = false;
 
     kj_gpu_invalidate();
     C3D_FrameDrawOn(target->rt);
 
-    const int display_mode = (int)((dispcnt >> 16) & 3u);
-    const bool forced_blank = (dispcnt & 0x80u) != 0;
     if (forced_blank || display_mode == 0) {
         C3D_RenderTargetClear(target->rt, C3D_CLEAR_ALL, 0xFFFFFFFFu, 0);
         kj_gpu_use_program(KJ_PROGRAM_2D);
         set_xform(target);
         master_brightness(&c, r16(io, 0x6C));
+        kj_perf_add(KJ_PERF_G2D, kj_perf_now() - t0);
         return;
     }
     if (display_mode != 1) {
         ++s_stats.unsupported_modes; /* VRAM / main-memory display: tracked blocker */
         C3D_RenderTargetClear(target->rt, C3D_CLEAR_ALL, 0x000000FFu, 0);
+        kj_perf_add(KJ_PERF_G2D, kj_perf_now() - t0);
         return;
     }
 
-    C3D_RenderTargetClear(target->rt, C3D_CLEAR_ALL, ds_to_rgba(backdrop), (u32)bd_flags << 24);
+    C3D_RenderTargetClear(target->rt, C3D_CLEAR_ALL, ds_to_rgba(pal[0]), (u32)bd_flags << 24);
 
     bool drew_3d = false;
-    const bool has_3d = engine == 0 && (dispcnt & 8u) && in->g3 != NULL;
-    for (int y0 = 0; y0 < 192;) {
-        const int y1 = span_end(&in->lines, engine, y0);
-        c.y0 = y0;
-        c.y1 = y1;
-        c.regs = in->lines.active ? in->lines.regs[engine][y0] : io;
-        c.dispcnt = r32(c.regs, 0);
-        draw_span(&c, has_3d, &drew_3d);
+    if (prepared_ok) {
+        draw_span(&c, &pr, has_3d, &drew_3d);
         ++s_stats.spans;
-        y0 = y1;
+    } else {
+        for (int y0 = 0; y0 < 192;) {
+            const int y1 = span_end(&in->lines, engine, y0);
+            c.y0 = y0;
+            c.y1 = y1;
+            c.regs = in->lines.active ? in->lines.regs[engine][y0] : io;
+            c.dispcnt = r32(c.regs, 0);
+            prepare_span(&c, false, &pr);
+            draw_span(&c, &pr, has_3d, &drew_3d);
+            ++s_stats.spans;
+            y0 = y1;
+        }
     }
     kj_gpu_scissor_off();
     kj_gpu_use_program(KJ_PROGRAM_2D);
     set_xform(target);
     master_brightness(&c, r16(io, 0x6C));
+
+    memo->drawn = single_span;
+    memo->engine = engine;
+    memcpy(memo->regs, io, KJ_LINE_REG_BYTES);
+    memcpy(memo->pal, pal, 1024);
+    kj_perf_add(KJ_PERF_G2D, kj_perf_now() - t0);
 }
 
 /* ---------------------------------------------------------------- init */
@@ -961,6 +1304,10 @@ void kj_g2d_exit(void)
 
 void kj_g2d_take_stats(kj_g2d_stats *out)
 {
+    s_stats.skipped_screens = s_skipped_screens;
+    s_stats.reused_layers = s_reused_layers;
+    s_stats.rebuilt_layers = s_rebuilt_layers;
+    s_skipped_screens = s_reused_layers = s_rebuilt_layers = 0;
     *out = s_stats;
     out->dropped_quads += kj_gpu_quads_dropped();
     memset(&s_stats, 0, sizeof(s_stats));

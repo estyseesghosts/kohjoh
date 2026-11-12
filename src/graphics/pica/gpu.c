@@ -32,6 +32,7 @@ static C3D_Tex *s_bound[3];
 static int s_uloc_xform, s_uloc_uvscale, s_uloc_palette, s_uloc_texscale;
 
 static kj_v2d *s_arena;
+static const kj_v2d *s_bound_base;
 static uint16_t *s_quad_indices;
 static uint32_t s_arena_used, s_arena_dropped;
 
@@ -95,6 +96,7 @@ void kj_gpu_exit(void)
 void kj_gpu_invalidate(void)
 {
     s_program = KJ_PROGRAM_NONE;
+    s_bound_base = NULL;
     s_bound[0] = s_bound[1] = s_bound[2] = NULL;
 }
 
@@ -110,6 +112,7 @@ void kj_gpu_use_program(kj_program_id id)
         C3D_BufInfo *bi = C3D_GetBufInfo();
         BufInfo_Init(bi);
         BufInfo_Add(bi, s_arena, sizeof(kj_v2d), 3, 0x210);
+        s_bound_base = s_arena;
     } else if (id == KJ_PROGRAM_3D) {
         C3D_BindProgram(&s_prog_3d);
         C3D_SetAttrInfo(&s_attr_3d);
@@ -157,11 +160,32 @@ uint32_t kj_gpu_quads_dropped(void)
     return d;
 }
 
+static void bind_base(const kj_v2d *base)
+{
+    if (s_bound_base == base) {
+        return;
+    }
+    C3D_BufInfo *bi = C3D_GetBufInfo();
+    BufInfo_Init(bi);
+    BufInfo_Add(bi, base, sizeof(kj_v2d), 3, 0x210);
+    s_bound_base = base;
+}
+
+void kj_gpu_draw_quads_from(const kj_v2d *base, uint32_t count)
+{
+    if (count == 0) {
+        return;
+    }
+    bind_base(base);
+    C3D_DrawElements(GPU_TRIANGLES, (int)(count * 6u), C3D_UNSIGNED_SHORT, s_quad_indices);
+}
+
 void kj_gpu_draw_quads(uint32_t first, uint32_t count)
 {
     if (count == 0) {
         return;
     }
+    bind_base(s_arena);
     C3D_DrawElements(GPU_TRIANGLES, (int)(count * 6u), C3D_UNSIGNED_SHORT,
                      s_quad_indices + first * 6u);
 }

@@ -245,6 +245,9 @@ def port_cflags(target: str, cxx: bool = False) -> list[str]:
     # corrupts the split/layer structs across the drawer call.
     if target == "3ds" and os.environ.get("HGSS_GX3D_BG3SLOT") == "1":
         flags += ["-DHGSS_GX3D_BG3SLOT=1"]
+    # kohjoh diagnostic switches (--define NAME): MSYS2 Python does not see
+    # variables set inline on the command line, so these are arguments.
+    flags += [f"-D{d}" for d in EXTRA_DEFINES]
     if target == "3ds" and os.environ.get("HGSS_A0_DIAG") == "1":
         flags += ["-DHGSS_A0_DIAG=1"]
     flags += game_defines()
@@ -279,6 +282,7 @@ def port_cflags(target: str, cxx: bool = False) -> list[str]:
 # --sanitize: instrument the game and app objects (and the link) for the
 # Phase 4 replay. The vendored archives are built normally; ASan still
 # interposes malloc and checks the game's accesses into them.
+EXTRA_DEFINES: list[str] = []
 SANITIZE = False
 SANITIZE_FLAGS = ["-fsanitize=address,undefined", "-fno-omit-frame-pointer", "-g"]
 
@@ -1628,12 +1632,15 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("-j", "--jobs", type=int, default=os.cpu_count() or 1)
     ap.add_argument("--skip-prepare", action="store_true",
                     help="reuse the generated headers already in --root")
+    ap.add_argument("--define", action="append", default=[],
+                    help="extra preprocessor define for the runtime and game (e.g. KJ_G3_PROFILE)")
     ap.add_argument("--sanitize", action="store_true",
                     help="host32 only: build with -fsanitize=address,undefined")
     args = ap.parse_args(argv)
 
     global SANITIZE, GAME
     GAME = GAMES[args.game]
+    EXTRA_DEFINES.extend(args.define)
     if args.sanitize:
         if args.target != "host32":
             ap.error("--sanitize is host32 only")

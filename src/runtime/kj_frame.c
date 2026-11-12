@@ -33,6 +33,11 @@ extern unsigned char NitroPort_DbObjVram[];
 extern unsigned char NitroPort_LcdcVram[];
 
 void NitroPort_SoundPumpReplies(void);
+extern u64 svcGetSystemTick(void);
+
+static u64 s_pump_ticks, s_hblank_ticks;
+static u32 s_pump_calls, s_hblank_walks;
+static u64 s_sync_calls_base, s_sync_ticks_base;
 
 /* V-blanks without a publish after which the V-blank publishes itself. Two
  * is the main loop's normal cadence; four leaves room for a frame that
@@ -90,7 +95,13 @@ static void publish(void)
 
     /* The per-line registers of this frame: H-blank handlers and DMAs run
      * once per V-blank, after the game's V-blank work armed them. */
-    NitroPort_HBlankLinesOnce();
+    {
+        const u64 t0 = svcGetSystemTick();
+        if (NitroPort_HBlankLinesOnce()) {
+            ++s_hblank_walks;
+        }
+        s_hblank_ticks += svcGetSystemTick() - t0;
+    }
 
     memset(&in, 0, sizeof(in));
     in.mem = kj_ds_get_memory();
@@ -117,7 +128,12 @@ void NitroPort_OnFrame(void)
     const kj_input *input;
 
     ++s_vblanks;
-    NitroPort_SoundPumpReplies();
+    {
+        const u64 t0 = svcGetSystemTick();
+        NitroPort_SoundPumpReplies();
+        s_pump_ticks += svcGetSystemTick() - t0;
+        ++s_pump_calls;
+    }
 
     if (!kj_ctr_vblank()) {
         NitroPort_Log("[kj] close requested at V-blank %lu", (unsigned long)s_vblanks);
@@ -155,4 +171,28 @@ void NitroPort_ResetSystem(u32 parameter)
     NitroPort_Log("[kj] soft reset requested (parameter %lu); closing", (unsigned long)parameter);
     NitroPort_CardFlush();
     kj_ctr_terminate();
+}
+
+void kj_g3_log_op_profile(void);
+
+void kj_ds_take_profile(kj_ds_profile *out)
+{
+    kj_g3_log_op_profile();
+    u64 calls, ticks;
+
+    memset(out, 0, sizeof(*out));
+    kj_g3_take_profile(&out->g3_fifo_ticks, &out->g3_fifo_words, &out->g3_direct_words,
+                       &out->g3_commands);
+    NitroPort_SyncTimersStats(&calls, &ticks);
+    out->timer_sync_calls = calls - s_sync_calls_base;
+    out->timer_sync_ticks = ticks - s_sync_ticks_base;
+    s_sync_calls_base = calls;
+    s_sync_ticks_base = ticks;
+    out->sound_pump_ticks = s_pump_ticks;
+    out->sound_pump_calls = s_pump_calls;
+    out->hblank_ticks = s_hblank_ticks;
+    out->hblank_walks = s_hblank_walks;
+    kj_g3_dl_stats(&out->dl_hits, &out->dl_misses, &out->dl_uncacheable, &out->dl_bytes);
+    s_pump_ticks = s_hblank_ticks = 0;
+    s_pump_calls = s_hblank_walks = 0;
 }

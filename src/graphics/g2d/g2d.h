@@ -18,7 +18,11 @@ typedef struct kj_g2d_stats {
     uint32_t bg_quads, obj_quads, draws, spans;
     uint32_t unsupported_modes; /* modes drawn as nothing; must be zero in the corpus */
     uint32_t dropped_quads;
+    uint32_t skipped_screens, reused_layers, rebuilt_layers;
 } kj_g2d_stats;
+
+/* Start of a frame (after kj_atlas_begin_frame): pins retained layers. */
+void kj_g2d_begin_frame(void);
 
 void kj_g2d_take_stats(kj_g2d_stats *out);
 

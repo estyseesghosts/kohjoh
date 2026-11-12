@@ -15,6 +15,7 @@
 
 #include "graphics/renderer.h"
 
+#include "app/app.h"
 #include "app/script.h"
 #include "diagnostics/dump.h"
 #include "diagnostics/log.h"
@@ -38,6 +39,7 @@
 
 static bool s_ready;
 static uint32_t s_frames;
+static uint32_t s_skipped_presents;
 
 bool kj_renderer_init(void)
 {
@@ -89,6 +91,13 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
     if (!s_ready) {
         return;
     }
+    /* Running two or more refreshes behind: this picture would be shown
+     * late anyway. Skip its GPU work (the game tick already happened) so
+     * the schedule recovers; counted, never silent. */
+    if (kj_pacing_behind() >= 2u && !kj_script_active()) {
+        ++s_skipped_presents;
+        return;
+    }
     kj_perf_publish_begin();
 
     uint64_t t = kj_perf_now();
@@ -96,6 +105,7 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
     kj_perf_add(KJ_PERF_GPU_WAIT, kj_perf_now() - t);
     kj_gpu_quads_reset();
     kj_atlas_begin_frame();
+    kj_g2d_begin_frame();
     kj_g3d_set_frame(in->g3);
     kj_tex_begin_frame(in);
 
@@ -110,6 +120,45 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
 
     ++s_frames;
     kj_perf_publish_end();
+    if (s_frames % 600u == 0u) {
+        kj_g2d_stats g;
+        kj_g3d_stats d;
+        kj_atlas_stats a;
+        kj_g2d_take_stats(&g);
+        kj_g3d_take_stats(&d);
+        kj_atlas_take_stats(&a);
+        kj_log("[gpu] 600 frames: 2D screens skipped %lu, layers reused %lu rebuilt %lu, "
+               "bg quads %lu obj quads %lu draws %lu spans %lu unsupported %lu dropped %lu",
+               (unsigned long)g.skipped_screens, (unsigned long)g.reused_layers,
+               (unsigned long)g.rebuilt_layers, (unsigned long)g.bg_quads, (unsigned long)g.obj_quads,
+               (unsigned long)g.draws, (unsigned long)g.spans, (unsigned long)g.unsupported_modes,
+               (unsigned long)g.dropped_quads);
+        kj_ds_profile dp;
+        kj_ds_take_profile(&dp);
+        const double us = 1000000.0 / SYSCLOCK_ARM11 / 600.0; /* per-frame microseconds */
+        kj_log("[ds] per frame: g3 fifo calls %llu (%lu fifo words, %lu direct words, %lu cmds), "
+               "timer sync %.0f us (%llu calls), sound pump %.0f us, hblank %.0f us (%lu walks)",
+               (unsigned long long)(dp.g3_fifo_ticks / 600u), (unsigned long)(dp.g3_fifo_words / 600u),
+               (unsigned long)(dp.g3_direct_words / 600u), (unsigned long)(dp.g3_commands / 600u),
+               dp.timer_sync_ticks * us, (unsigned long long)(dp.timer_sync_calls / 600u),
+               dp.sound_pump_ticks * us, dp.hblank_ticks * us, (unsigned long)dp.hblank_walks);
+        kj_log("[ds] display lists: %lu replayed, %lu decoded, %lu uncacheable, %lu KiB retained",
+               (unsigned long)dp.dl_hits, (unsigned long)dp.dl_misses,
+               (unsigned long)dp.dl_uncacheable, (unsigned long)(dp.dl_bytes / 1024u));
+        uint32_t late, resyncs;
+        kj_pacing_stats(&late, &resyncs);
+        kj_log("[pace] 600 frames: late V-blanks %lu, resyncs %lu, presents skipped %lu",
+               (unsigned long)late, (unsigned long)resyncs, (unsigned long)s_skipped_presents);
+        s_skipped_presents = 0;
+        kj_log("[gpu] 600 frames: atlas lookups %lu conversions %lu evictions %lu full %lu; "
+               "3D batches %lu draws %lu tris %lu tex uploads %lu tex bytes compared %lu "
+               "tex full %lu unsupported %lu",
+               (unsigned long)a.lookups, (unsigned long)a.conversions, (unsigned long)a.evictions,
+               (unsigned long)a.full, (unsigned long)d.batches, (unsigned long)d.draws,
+               (unsigned long)d.triangles, (unsigned long)d.tex_uploads,
+               (unsigned long)d.tex_bytes_compared, (unsigned long)d.tex_cache_full,
+               (unsigned long)d.unsupported);
+    }
 
     /* Test directives: deterministic per-frame capture. */
     if (kj_script_dump(in->game_frame)) {

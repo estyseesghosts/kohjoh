@@ -21,6 +21,7 @@
 #include "storage/paths.h"
 
 #include <3ds.h>
+#include <citro3d.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -32,6 +33,36 @@ u32 __stacksize__ = 1024 * 1024;
 
 static bool s_closing;
 static u32 s_vblank_count;
+
+/* Pacing lock (the scheduling bridge, FRAME_PIPELINE.md): emulated DS
+ * V-blank N completes at physical V-blank N counted from s_base. A frame
+ * that ran long does not wait: the next DS frame starts at once and catches
+ * up, so the game never loses DS time against the audio, which runs on the
+ * real clock (a lost V-blank is a permanent music/picture desync). A stall
+ * longer than RESYNC_VBLANKS (loads, HOME) resynchronises instead of
+ * fast-forwarding. */
+#define RESYNC_VBLANKS 30u
+static u32 s_base;
+static u32 s_emulated;
+static u32 s_late_vblanks, s_resyncs;
+
+static u32 real_vblanks(void)
+{
+    return C3D_FrameCounter(0) - s_base;
+}
+
+u32 kj_pacing_behind(void)
+{
+    const u32 real = real_vblanks();
+    return real > s_emulated ? real - s_emulated : 0;
+}
+
+void kj_pacing_stats(u32 *late, u32 *resyncs)
+{
+    *late = s_late_vblanks;
+    *resyncs = s_resyncs;
+    s_late_vblanks = s_resyncs = 0;
+}
 
 static void fatal_screen(const char *title, const char *detail)
 {
@@ -70,8 +101,22 @@ bool kj_ctr_vblank(void)
         return false;
     }
     kj_audio_service();
-    /* One emulated DS V-blank per physical top-screen V-blank. */
-    gspWaitForVBlank();
+    /* One emulated DS V-blank per physical top-screen V-blank, locked to
+     * the real V-blank count. */
+    u32 real = real_vblanks();
+    if (real > s_emulated + RESYNC_VBLANKS) {
+        s_base += real - s_emulated - 1u;
+        ++s_resyncs;
+        real = real_vblanks();
+    }
+    if (real <= s_emulated) {
+        while (real_vblanks() <= s_emulated) {
+            gspWaitForVBlank();
+        }
+    } else {
+        ++s_late_vblanks;
+    }
+    ++s_emulated;
     ++s_vblank_count;
     kj_perf_vblank_end();
     return true;
@@ -146,6 +191,22 @@ int main(int argc, char **argv)
     settings.language = 1; /* English */
     settings.birth_month = 1;
     settings.birth_day = 1;
+    {
+        /* Calibration: ticks for a loop of known instruction count (4 per
+         * iteration: add, subs, bne + one store), to read emulator timing. */
+        volatile u32 sink = 0;
+        u32 acc = 0;
+        const u64 t0 = svcGetSystemTick();
+        for (u32 i = 1000000; i != 0; --i) {
+            acc += i;
+            sink = acc;
+        }
+        const u64 t1 = svcGetSystemTick();
+        kj_log("[calib] 1M-iteration loop: %llu ticks (%.2f ticks/iteration)",
+               (unsigned long long)(t1 - t0), (double)(t1 - t0) / 1000000.0);
+        (void)sink;
+    }
+    s_base = C3D_FrameCounter(0);
     kj_log("[app] starting the game");
     kj_game_main(&settings);
     return 0;

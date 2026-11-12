@@ -25,6 +25,8 @@
 #include <nitro.h>
 #include <nitro_port.h>
 #include <nitro_port_gx3d.h>
+#include <stdlib.h>
+#include <stddef.h>
 #include <string.h>
 
 extern unsigned char NitroPort_IoReg[];
@@ -78,6 +80,8 @@ static int32_t sign_bits(uint32_t v, int bits)
     return (int32_t)((v ^ mask) - mask);
 }
 
+static void normals_changed(void);
+
 static void clip_changed(void)
 {
     s_clip_dirty = true;
@@ -129,6 +133,7 @@ static void load_matrix(const mtx *m)
     if (s_mtx_mode == 2) {
         s_pos = *m;
         s_vec = *m;
+        normals_changed();
     } else {
         *selected() = *m;
     }
@@ -143,6 +148,7 @@ static void mult_matrix(const mtx *m, bool scale_only_pos)
         mtx_mul(&s_pos, m, &s_pos);
         if (!scale_only_pos) {
             mtx_mul(&s_vec, m, &s_vec);
+            normals_changed();
         }
     } else {
         mtx *t = selected();
@@ -211,6 +217,7 @@ static void stack_op(unsigned op, uint32_t param)
         s_pos = s_pos_stack[s_posvec_sp & 31];
         s_vec = s_vec_stack[s_posvec_sp & 31];
         clip_changed();
+        normals_changed();
         break;
     }
     case 0x13: { /* STORE */
@@ -230,6 +237,7 @@ static void stack_op(unsigned op, uint32_t param)
         s_pos = s_pos_stack[i];
         s_vec = s_vec_stack[i];
         clip_changed();
+        normals_changed();
         break;
     }
     }
@@ -280,7 +288,38 @@ static void transform_vector(const int32_t in[3], const mtx *m, int32_t out[3])
     }
 }
 
+/* Lighting results by raw normal: map geometry repeats a handful of
+ * normals. Generation-keyed: anything shade() depends on (vector matrix,
+ * lights, material, the polygon's light enables) bumps the generation
+ * (the same sites as Platinum's port_gx3d.c normal cache). */
+#define NORMAL_CACHE 64u
+static uint32_t s_normal_gen = 1;
+static struct {
+    uint32_t gen, value;
+    uint16_t rgb;
+} s_normal_cache[NORMAL_CACHE];
+
+static void normals_changed(void)
+{
+    ++s_normal_gen;
+}
+
+static uint16_t shade_uncached(uint32_t value);
+
 static uint16_t shade(uint32_t value)
+{
+    const unsigned slot = (unsigned)((value * 2654435761u) >> 26) & (NORMAL_CACHE - 1u);
+    if (s_normal_cache[slot].gen == s_normal_gen && s_normal_cache[slot].value == value) {
+        return s_normal_cache[slot].rgb;
+    }
+    const uint16_t rgb = shade_uncached(value);
+    s_normal_cache[slot].gen = s_normal_gen;
+    s_normal_cache[slot].value = value;
+    s_normal_cache[slot].rgb = rgb;
+    return rgb;
+}
+
+static uint16_t shade_uncached(uint32_t value)
 {
     int32_t normal[3], n[3];
     unsigned r = s_emission & 31u, g = (s_emission >> 5) & 31u, b = (s_emission >> 10) & 31u;
@@ -363,7 +402,7 @@ typedef struct frame_buf {
     kj_g3_matrix pool[KJ_G3_MAX_MATRICES];     /* every clip matrix this frame (CPU only) */
     uint32_t pool_count;
     kj_g3_batch batches[KJ_G3_MAX_BATCHES];
-    uint16_t vert_gmtx[KJ_G3_MAX_VERTS]; /* global matrix id per vertex */
+    uint16_t vert_gmtx[KJ_G3_MAX_VERTS]; /* global matrix id per vertex (pool < 65536) */
 } frame_buf;
 
 static frame_buf s_buf[2];
@@ -372,7 +411,15 @@ static bool s_have_display;  /* a swap has happened */
 static bool s_wide;
 static kj_g3_stats s_stats;
 
-/* Current batch bookkeeping. */
+/* Current batch bookkeeping. s_batch_ok caches "the open batch matches the
+ * current material state": cleared by every material-state change and by
+ * opening/closing a batch, so the per-vertex path tests one flag. The slot
+ * cache remembers the palette slot of the current clip matrix in the open
+ * batch. */
+static bool s_batch_ok;
+static uint32_t s_slot_gid = UINT32_MAX;
+static int s_slot_idx;
+static uint32_t s_color_rgba; /* packed r,g,b,a of the current colour + polygon alpha */
 static kj_g3_batch *s_batch;
 static uint32_t s_batch_first_vert;
 static uint32_t s_batch_key_attr, s_batch_key_tex, s_batch_key_pltt, s_batch_key_vp;
@@ -385,6 +432,8 @@ static uint32_t s_cur_gmtx_version;
 static uint32_t s_prim_verts[4];
 static uint32_t s_prim_count;     /* vertices since BEGIN */
 static uint32_t s_strip_parity;
+
+static void update_color_rgba(void);
 
 void kj_g3_init(const kj_g3_storage *storage)
 {
@@ -400,6 +449,7 @@ void kj_g3_init(const kj_g3_storage *storage)
     if (!s_products_made) {
         make_products();
     }
+    update_color_rgba();
 }
 
 void kj_g3_set_wide(bool wide)
@@ -446,9 +496,28 @@ static bool current_gmtx(uint32_t *out)
     return true;
 }
 
+static const uint8_t EXPAND5[32] = {
+    0, 8, 16, 24, 33, 41, 49, 57, 66, 74, 82, 90, 99, 107, 115, 123,
+    132, 140, 148, 156, 165, 173, 181, 189, 198, 206, 214, 222, 231, 239, 247, 255,
+};
+
+static void update_color_rgba(void)
+{
+    const unsigned a = (s_attr >> 16) & 31u;
+    s_color_rgba = (uint32_t)EXPAND5[s_color & 31u] | ((uint32_t)EXPAND5[(s_color >> 5) & 31u] << 8) |
+                   ((uint32_t)EXPAND5[(s_color >> 10) & 31u] << 16) | ((uint32_t)EXPAND5[a] << 24);
+}
+
+static void material_changed(void)
+{
+    s_batch_ok = false;
+}
+
 static void close_batch(void)
 {
     s_batch = NULL;
+    s_batch_ok = false;
+    s_slot_gid = UINT32_MAX;
 }
 
 static bool open_batch(void)
@@ -483,6 +552,8 @@ static bool open_batch(void)
     s_batch_key_tex = s_tex_param;
     s_batch_key_pltt = s_tex_pltt;
     s_batch_key_vp = s_viewport;
+    s_batch_ok = true;
+    s_slot_gid = UINT32_MAX;
     return true;
 }
 
@@ -517,8 +588,25 @@ static int palette_slot(uint32_t gid)
 
 static bool batch_matches_state(void)
 {
-    return s_batch != NULL && s_batch_key_attr == s_attr && s_batch_key_tex == s_tex_param &&
-           s_batch_key_pltt == s_tex_pltt && s_batch_key_vp == s_viewport;
+    if (s_batch_ok) {
+        return true;
+    }
+    s_batch_ok = s_batch != NULL && s_batch_key_attr == s_attr && s_batch_key_tex == s_tex_param &&
+                 s_batch_key_pltt == s_tex_pltt && s_batch_key_vp == s_viewport;
+    return s_batch_ok;
+}
+
+static inline int cached_slot(uint32_t gid)
+{
+    if (gid == s_slot_gid) {
+        return s_slot_idx;
+    }
+    const int slot = palette_slot(gid);
+    if (slot >= 0) {
+        s_slot_gid = gid;
+        s_slot_idx = slot;
+    }
+    return slot;
 }
 
 /* A vertex of the open batch for frame vertex `v`: vertices emitted before
@@ -562,6 +650,15 @@ static void emit_triangle(uint32_t a, uint32_t b, uint32_t c)
         ++fb->frame.dropped_verts;
         return;
     }
+    if (s_batch_ok && a >= s_batch_first_vert && b >= s_batch_first_vert && c >= s_batch_first_vert) {
+        uint16_t *idx = fb->indices + fb->frame.index_count;
+        idx[0] = (uint16_t)a;
+        idx[1] = (uint16_t)b;
+        idx[2] = (uint16_t)c;
+        fb->frame.index_count += 3;
+        s_batch->index_count += 3;
+        return;
+    }
     for (int attempt = 0; attempt < 2; ++attempt) {
         if (!batch_matches_state() && !open_batch()) {
             return;
@@ -600,35 +697,29 @@ static void submit_vertex(void)
     if (!batch_matches_state() && !open_batch()) {
         return;
     }
-    int slot = palette_slot(gid);
+    int slot = cached_slot(gid);
     if (slot < 0) {
         close_batch();
         if (!open_batch()) {
             return;
         }
-        slot = palette_slot(gid);
+        slot = cached_slot(gid);
         if (slot < 0) {
             ++fb->frame.dropped_verts;
             return;
         }
     }
 
+    /* 16 bytes as four words: x|y, z|mtx, rgba, s|t (kj_g3_vertex layout) */
     const uint32_t n = fb->frame.vert_count++;
-    kj_g3_vertex *v = &fb->verts[n];
-    const unsigned r = s_color & 31u, g = (s_color >> 5) & 31u, b = (s_color >> 10) & 31u;
-    const unsigned a = (s_attr >> 16) & 31u;
-    v->x = s_coord[0];
-    v->y = s_coord[1];
-    v->z = s_coord[2];
-    v->mtx = (uint8_t)slot;
-    v->pad = 0;
-    v->r = (uint8_t)((r << 3) | (r >> 2));
-    v->g = (uint8_t)((g << 3) | (g >> 2));
-    v->b = (uint8_t)((b << 3) | (b >> 2));
-    v->a = (uint8_t)((a << 3) | (a >> 2));
-    v->s = (int16_t)s_texcoord[0];
-    v->t = (int16_t)s_texcoord[1];
-    fb->vert_gmtx[n] = gid;
+    uint32_t *w = (uint32_t *)&fb->verts[n];
+    w[0] = (uint16_t)s_coord[0] | ((uint32_t)(uint16_t)s_coord[1] << 16);
+    w[1] = (uint16_t)s_coord[2] | ((uint32_t)slot << 16);
+    w[2] = s_color_rgba;
+    w[3] = (uint16_t)s_texcoord[0] | ((uint32_t)(uint16_t)s_texcoord[1] << 16);
+    fb->vert_gmtx[n] = (uint16_t)gid;
+    s_slot_gid = gid;
+    s_slot_idx = slot;
 
     /* Primitive assembly. */
     const uint32_t k = s_prim_count++;
@@ -866,7 +957,40 @@ static int param_count(unsigned op)
     }
 }
 
+#ifdef KJ_G3_PROFILE
+extern u64 svcGetSystemTick(void);
+static u64 s_op_ticks[256];
+static u32 s_op_calls[256];
+static void execute_inner(unsigned op, const uint32_t *p);
 static void execute(unsigned op, const uint32_t *p)
+{
+    const u64 t0 = svcGetSystemTick();
+    execute_inner(op, p);
+    s_op_ticks[op & 255] += svcGetSystemTick() - t0;
+    ++s_op_calls[op & 255];
+}
+
+void kj_g3_log_op_profile(void)
+{
+    for (int i = 0; i < 256; ++i) {
+        if (s_op_calls[i]) {
+            NitroPort_Log("[g3prof] op %02x calls %lu ticks %llu (%llu/call)", i,
+                          (unsigned long)s_op_calls[i], (unsigned long long)s_op_ticks[i],
+                          (unsigned long long)(s_op_ticks[i] / s_op_calls[i]));
+        }
+    }
+    memset(s_op_ticks, 0, sizeof(s_op_ticks));
+    memset(s_op_calls, 0, sizeof(s_op_calls));
+}
+
+static void execute_inner(unsigned op, const uint32_t *p)
+#else
+void kj_g3_log_op_profile(void)
+{
+}
+
+static void execute(unsigned op, const uint32_t *p)
+#endif
 {
     ++s_stats.commands;
     switch (op) {
@@ -914,6 +1038,7 @@ static void execute(unsigned op, const uint32_t *p)
     }
     case 0x20:
         s_color = (uint16_t)(p[0] & 0x7FFF);
+        update_color_rgba();
         break;
     case 0x21:
         if ((s_tex_param >> 30) == 2) {
@@ -923,6 +1048,7 @@ static void execute(unsigned op, const uint32_t *p)
         }
         if (s_attr & 0xF) {
             s_color = shade(p[0]);
+            update_color_rgba();
         }
         break;
     case 0x22:
@@ -972,22 +1098,31 @@ static void execute(unsigned op, const uint32_t *p)
         s_attr_pending = p[0];
         break;
     case 0x2A:
-        s_tex_param = p[0];
+        if (s_tex_param != p[0]) {
+            s_tex_param = p[0];
+            material_changed();
+        }
         break;
     case 0x2B:
-        s_tex_pltt = p[0] & 0x1FFF;
+        if (s_tex_pltt != (p[0] & 0x1FFF)) {
+            s_tex_pltt = p[0] & 0x1FFF;
+            material_changed();
+        }
         break;
     case 0x30:
         s_diffuse = (uint16_t)(p[0] & 0x7FFF);
         s_ambient = (uint16_t)((p[0] >> 16) & 0x7FFF);
         if (p[0] & 0x8000) {
             s_color = s_diffuse;
+            update_color_rgba();
         }
+        normals_changed();
         break;
     case 0x31:
         s_specular = (uint16_t)(p[0] & 0x7FFF);
         s_emission = (uint16_t)((p[0] >> 16) & 0x7FFF);
         s_use_shininess = (p[0] & 0x8000) != 0;
+        normals_changed();
         break;
     case 0x32: {
         const unsigned i = (p[0] >> 30) & 3;
@@ -999,16 +1134,24 @@ static void execute(unsigned op, const uint32_t *p)
         s_light_half[i][0] = s_light_dir[i][0] / 2;
         s_light_half[i][1] = s_light_dir[i][1] / 2;
         s_light_half[i][2] = (s_light_dir[i][2] - 4096) / 2;
+        normals_changed();
         break;
     }
     case 0x33:
         s_light_color[(p[0] >> 30) & 3] = (uint16_t)(p[0] & 0x7FFF);
+        normals_changed();
         break;
     case 0x34:
         memcpy(s_shininess, p, sizeof(s_shininess));
+        normals_changed();
         break;
     case 0x40:
-        s_attr = s_attr_pending;
+        if (s_attr != s_attr_pending) {
+            s_attr = s_attr_pending;
+            material_changed();
+            normals_changed();
+            update_color_rgba();
+        }
         s_primitive = (int)(p[0] & 3);
         s_in_begin = true;
         s_prim_count = 0;
@@ -1021,7 +1164,10 @@ static void execute(unsigned op, const uint32_t *p)
         swap_buffers(p[0]);
         break;
     case 0x60:
-        s_viewport = p[0];
+        if (s_viewport != p[0]) {
+            s_viewport = p[0];
+            material_changed();
+        }
         break;
     case 0x70:
         box_test(p);
@@ -1037,6 +1183,10 @@ static void execute(unsigned op, const uint32_t *p)
     }
 }
 
+extern u64 svcGetSystemTick(void);
+static u64 s_fifo_ticks;
+static u32 s_fifo_words, s_direct_words;
+
 /* Direct writes: parameters arrive one word per call. */
 static unsigned s_direct_op;
 static uint32_t s_direct_params[32];
@@ -1047,6 +1197,7 @@ void NitroPort_GxDirectWrite(int opcode, uint32_t value)
     const unsigned op = (unsigned)opcode & 0xFF;
     const int need = param_count(op);
 
+    ++s_direct_words;
     if (need == 0) {
         execute(op, &value);
         return;
@@ -1109,9 +1260,790 @@ void NitroPort_GxFifoWord(uint32_t value)
     fifo_next_command();
 }
 
+
+static uint8_t s_param_count[256];
+
+/* Vertex fast path for the bulk decoder: everything the general path
+ * (submit_vertex) checks is already settled -- inside BEGIN, the open batch
+ * matches the material, the current clip matrix has a palette slot in it,
+ * no per-vertex texgen, room for the vertex and a quad's indices. Writes
+ * the vertex and assembles the primitive inline. Returns false to make the
+ * caller take the general path. Kept small: it runs ~14k times a frame in
+ * Goldenrod (ARM11 L1 I-cache: coffeepot icachebench). */
+static inline __attribute__((always_inline)) bool fast_vertex(void)
+{
+    if (!s_in_begin || !s_batch_ok || s_cur_gmtx_version != s_clip_version ||
+        s_slot_gid != s_cur_gmtx || (s_tex_param >> 30) == 3) {
+        return false;
+    }
+    frame_buf *fb = &s_buf[s_build];
+    const uint32_t n = fb->frame.vert_count;
+    uint32_t ic = fb->frame.index_count;
+    if (n >= KJ_G3_MAX_VERTS || ic + 6 > KJ_G3_MAX_INDICES || ((s_attr >> 16) & 31u) == 0) {
+        return false;
+    }
+    uint32_t *w = (uint32_t *)&fb->verts[n];
+    w[0] = (uint16_t)s_coord[0] | ((uint32_t)(uint16_t)s_coord[1] << 16);
+    w[1] = (uint16_t)s_coord[2] | ((uint32_t)s_slot_idx << 16);
+    w[2] = s_color_rgba;
+    w[3] = (uint16_t)s_texcoord[0] | ((uint32_t)(uint16_t)s_texcoord[1] << 16);
+    fb->vert_gmtx[n] = (uint16_t)s_cur_gmtx;
+    fb->frame.vert_count = n + 1;
+
+    const uint32_t k = s_prim_count++;
+    const uint32_t first = s_batch_first_vert;
+    uint16_t *idx = fb->indices + ic;
+    uint32_t a, b, c, d;
+    switch (s_primitive) {
+    case 0:
+        s_prim_verts[k % 3] = n;
+        if (k % 3 != 2) {
+            return true;
+        }
+        a = s_prim_verts[0];
+        b = s_prim_verts[1];
+        if (a < first || b < first) {
+            break;
+        }
+        idx[0] = (uint16_t)a;
+        idx[1] = (uint16_t)b;
+        idx[2] = (uint16_t)n;
+        ic += 3;
+        goto done;
+    case 1:
+        s_prim_verts[k & 3] = n;
+        if ((k & 3) != 3) {
+            return true;
+        }
+        a = s_prim_verts[0];
+        b = s_prim_verts[1];
+        c = s_prim_verts[2];
+        if (a < first || b < first || c < first) {
+            break;
+        }
+        idx[0] = (uint16_t)a;
+        idx[1] = (uint16_t)b;
+        idx[2] = (uint16_t)c;
+        idx[3] = (uint16_t)a;
+        idx[4] = (uint16_t)c;
+        idx[5] = (uint16_t)n;
+        ic += 6;
+        goto done;
+    case 2:
+        if (k < 2) {
+            s_prim_verts[k] = n;
+            return true;
+        }
+        a = s_prim_verts[0];
+        b = s_prim_verts[1];
+        s_prim_verts[0] = b;
+        s_prim_verts[1] = n;
+        if (a < first || b < first) {
+            if (s_strip_parity == 0) {
+                emit_triangle(a, b, n);
+            } else {
+                emit_triangle(b, a, n);
+            }
+            s_strip_parity ^= 1;
+            return true;
+        }
+        if (s_strip_parity == 0) {
+            idx[0] = (uint16_t)a;
+            idx[1] = (uint16_t)b;
+        } else {
+            idx[0] = (uint16_t)b;
+            idx[1] = (uint16_t)a;
+        }
+        idx[2] = (uint16_t)n;
+        s_strip_parity ^= 1;
+        ic += 3;
+        goto done;
+    default:
+        if (k < 2) {
+            s_prim_verts[k] = n;
+            return true;
+        }
+        if ((k & 1) == 0) {
+            s_prim_verts[2] = n;
+            return true;
+        }
+        a = s_prim_verts[0];
+        b = s_prim_verts[1];
+        d = s_prim_verts[2];
+        s_prim_verts[0] = d;
+        s_prim_verts[1] = n;
+        if (a < first || b < first || d < first) {
+            emit_triangle(a, b, n);
+            emit_triangle(a, n, d);
+            return true;
+        }
+        idx[0] = (uint16_t)a;
+        idx[1] = (uint16_t)b;
+        idx[2] = (uint16_t)n;
+        idx[3] = (uint16_t)a;
+        idx[4] = (uint16_t)n;
+        idx[5] = (uint16_t)d;
+        ic += 6;
+        goto done;
+    }
+    /* triangles/quads touching vertices from before the batch: general path */
+    if (s_primitive == 0) {
+        emit_triangle(s_prim_verts[0], s_prim_verts[1], n);
+    } else {
+        emit_triangle(s_prim_verts[0], s_prim_verts[1], s_prim_verts[2]);
+        emit_triangle(s_prim_verts[0], s_prim_verts[2], n);
+    }
+    return true;
+done:
+    s_batch->index_count += ic - fb->frame.index_count;
+    fb->frame.index_count = ic;
+    return true;
+}
+
+/* Decode one command of the bulk path, with vertex/texcoord fast paths. */
+static inline __attribute__((always_inline)) void hot_command(unsigned op, const uint32_t *p)
+{
+    uint32_t v;
+    switch (op) {
+    case 0x22:
+        if ((s_tex_param >> 30) != 0) {
+            break;
+        }
+        v = p[0];
+        s_texcoord[0] = s_texcoord_raw[0] = (int16_t)v;
+        s_texcoord[1] = s_texcoord_raw[1] = (int16_t)(v >> 16);
+        return;
+    case 0x23:
+        s_coord[0] = (int16_t)p[0];
+        s_coord[1] = (int16_t)(p[0] >> 16);
+        s_coord[2] = (int16_t)p[1];
+        if (fast_vertex()) {
+            return;
+        }
+        submit_vertex();
+        return;
+    case 0x25:
+        s_coord[0] = (int16_t)p[0];
+        s_coord[1] = (int16_t)(p[0] >> 16);
+        if (fast_vertex()) {
+            return;
+        }
+        submit_vertex();
+        return;
+    case 0x26:
+        s_coord[0] = (int16_t)p[0];
+        s_coord[2] = (int16_t)(p[0] >> 16);
+        if (fast_vertex()) {
+            return;
+        }
+        submit_vertex();
+        return;
+    case 0x27:
+        s_coord[1] = (int16_t)p[0];
+        s_coord[2] = (int16_t)(p[0] >> 16);
+        if (fast_vertex()) {
+            return;
+        }
+        submit_vertex();
+        return;
+    default:
+        break;
+    }
+    execute(op, p);
+}
+
+static void build_param_table(void)
+{
+    for (unsigned op = 0; op < 256; ++op) {
+        s_param_count[op] = (uint8_t)param_count(op);
+    }
+    s_param_count[0] = 0;
+}
+
+/* Bulk packed-FIFO decode (DMA'd display lists): parameters are passed to
+ * execute() in place, without per-word calls or copies. A command whose
+ * parameters run past the end of the buffer goes through the word-at-a-time
+ * path, which also finishes any command left open by an earlier call. */
+static u32 s_fifo_calls;
+
+
+/* ------------------------------------------------- retained display lists */
+
+/*
+ * Retained display lists (OPT-003), event replay.
+ *
+ * NNS DMAs each model's command lists every frame; static scenery sends the
+ * same words with the same entry state. A list is recorded once as a
+ * sequence of events:
+ *   STATE  a command that is not vertex data (matrix, material, BEGIN/END,
+ *          tests, viewport): re-executed on replay -- cheap, and it keeps
+ *          matrices, batches and game-visible results live;
+ *   BLOCK  the vertices and triangle indices a run of vertex-data commands
+ *          (COLOR, NORMAL, TEXCOORD, VTX_*) produced: appended on replay
+ *          with the current clip matrix's palette slot.
+ * Replay requires an exact word comparison with the recorded list and an
+ * identical entry state (every input vertex data reads). A list whose
+ * vertex data depends on matrices (lit normals, normal/vertex texgen) and
+ * that changes matrices itself is never recorded, nor is anything that
+ * swaps buffers, straddles a call boundary, or shares vertices between
+ * blocks (skinned strips).
+ */
+
+#define DL_SLOTS 1024u
+#define DL_MIN_WORDS 16u
+#define DL_BYTES_MAX (6u * 1024u * 1024u)
+#define DL_MAX_EVENTS 4096u
+
+typedef struct dl_key {
+    uint32_t attr_pending, attr, tex_param, tex_pltt, viewport;
+    uint32_t color, coord01, coord2;
+    int32_t texcoord[2], texcoord_raw[2];
+    uint32_t mtx_mode;
+    int32_t texm[4][4];
+    int32_t vec[3][3];
+    int32_t light_dir[4][3], light_half[4][3];
+    uint32_t light_color[4];
+    uint32_t material[4];
+    uint32_t use_shininess;
+    uint32_t shininess[32];
+} dl_key;
+
+typedef struct dl_exit {
+    uint16_t color;
+    int16_t coord[3];
+    int32_t texcoord[2], texcoord_raw[2];
+    bool in_begin;
+    int primitive;
+    uint32_t prim_count, strip_parity;
+    uint32_t prim_rel[4];
+    bool prim_valid;
+} dl_exit;
+
+/* event: high bit set = BLOCK (index into blocks), else STATE (word offset) */
+#define DL_EV_BLOCK 0x80000000u
+
+typedef struct dl_block {
+    uint32_t first_vert, nverts; /* into the entry's vertex array */
+    uint32_t first_idx, nidx;    /* relative to the block's first vertex */
+} dl_block;
+
+typedef struct dl_entry {
+    const uint32_t *ptr;
+    uint32_t count;
+    bool recorded;
+    bool never;        /* proven unrecordable for this content */
+    bool needs_light;  /* seen lighting its normals: key on lighting state */
+    uint32_t *words;
+    dl_key key;
+    bool lit, texgen;
+    dl_exit exit;
+    uint32_t *events;
+    uint32_t nevents;
+    dl_block *blocks;
+    uint32_t nblocks;
+    kj_g3_vertex *verts;
+    uint32_t nverts;
+    uint16_t *idx;
+    uint32_t nidx;
+    uint32_t bytes;
+    uint32_t last_frame;
+} dl_entry;
+
+/* Recording state (one list at a time; lists do not nest). */
+typedef struct dl_rec {
+    bool active, bad, has_matrix, vecdep;
+    const uint32_t *base;
+    uint32_t events[DL_MAX_EVENTS];
+    uint32_t nevents;
+    dl_block blocks[DL_MAX_EVENTS];
+    uint32_t nblocks;
+    uint32_t block_v0, block_i0, block_b0; /* frame positions at block start */
+    uint32_t v0, i0;                       /* frame positions at list start */
+} dl_rec;
+
+static dl_entry s_dl[DL_SLOTS];
+static dl_rec s_rec;
+static uint32_t s_dl_bytes;
+static uint32_t s_dl_hits, s_dl_misses, s_dl_uncacheable;
+
+/* Close the vertex block in progress (if it produced anything). */
+static void rec_close_block(void)
+{
+    frame_buf *fb = &s_buf[s_build];
+    const uint32_t v1 = fb->frame.vert_count, i1 = fb->frame.index_count;
+
+    if (v1 == s_rec.block_v0 && i1 == s_rec.block_i0) {
+        return;
+    }
+    const uint32_t opened = fb->frame.batch_count - s_rec.block_b0;
+    if (opened > 1u || (opened == 1u && fb->batches[fb->frame.batch_count - 1].first_index != s_rec.block_i0) ||
+        s_rec.nevents >= DL_MAX_EVENTS || s_rec.nblocks >= DL_MAX_EVENTS) {
+        s_rec.bad = true; /* batches changed inside the block, or too many events */
+    }
+    for (uint32_t i = s_rec.block_i0; i < i1 && !s_rec.bad; ++i) {
+        if (fb->indices[i] < s_rec.block_v0) {
+            s_rec.bad = true; /* shares vertices with an earlier block */
+        }
+    }
+    if (!s_rec.bad) {
+        dl_block *b = &s_rec.blocks[s_rec.nblocks];
+        b->first_vert = s_rec.block_v0 - s_rec.v0;
+        b->nverts = v1 - s_rec.block_v0;
+        b->first_idx = s_rec.block_i0 - s_rec.i0;
+        b->nidx = i1 - s_rec.block_i0;
+        s_rec.events[s_rec.nevents++] = DL_EV_BLOCK | s_rec.nblocks++;
+    }
+}
+
+static void rec_open_block(void)
+{
+    frame_buf *fb = &s_buf[s_build];
+    s_rec.block_v0 = fb->frame.vert_count;
+    s_rec.block_i0 = fb->frame.index_count;
+    s_rec.block_b0 = fb->frame.batch_count;
+}
+
+/* Called by decode_words before each command while recording. */
+static void rec_command(unsigned op, const uint32_t *p)
+{
+    if (op >= 0x20 && op <= 0x28) {
+        if (op == 0x21 && (s_attr & 0xFu)) {
+            s_rec.vecdep = true;
+        }
+        if ((s_tex_param >> 30) >= 2u) {
+            s_rec.vecdep = true;
+        }
+        if (s_rec.nblocks == 0 && s_rec.nevents == 0) {
+            /* first vertex-data command opens the first block lazily */
+        }
+        return;
+    }
+    if (op == 0x50) {
+        s_rec.bad = true;
+    }
+    if (op >= 0x10 && op <= 0x1C) {
+        s_rec.has_matrix = true;
+    }
+    /* a state command ends the current block; the block after it starts
+     * once this command has run (its effect on batches belongs to it) */
+    rec_close_block();
+    if (s_rec.nevents >= DL_MAX_EVENTS) {
+        s_rec.bad = true;
+        return;
+    }
+    s_rec.events[s_rec.nevents++] = (uint32_t)(p - s_rec.base) | ((uint32_t)op << 20);
+}
+
+
+static void dl_make_key(dl_key *k, bool lit, bool texgen)
+{
+    memset(k, 0, sizeof(*k));
+    k->attr_pending = s_attr_pending;
+    k->attr = s_attr;
+    k->tex_param = s_tex_param;
+    k->tex_pltt = s_tex_pltt;
+    k->viewport = s_viewport;
+    k->color = s_color;
+    k->coord01 = (uint16_t)s_coord[0] | ((uint32_t)(uint16_t)s_coord[1] << 16);
+    k->coord2 = (uint16_t)s_coord[2];
+    k->texcoord[0] = s_texcoord[0];
+    k->texcoord[1] = s_texcoord[1];
+    k->texcoord_raw[0] = s_texcoord_raw[0];
+    k->texcoord_raw[1] = s_texcoord_raw[1];
+    k->mtx_mode = (uint32_t)s_mtx_mode;
+    (void)texgen;
+    memcpy(k->texm, s_tex.m, sizeof(k->texm)); /* texgen may be enabled inside the list */
+    if (lit) {
+        for (int i = 0; i < 3; ++i) {
+            for (int j = 0; j < 3; ++j) {
+                k->vec[i][j] = s_vec.m[i][j];
+            }
+        }
+        memcpy(k->light_dir, s_light_dir, sizeof(k->light_dir));
+        memcpy(k->light_half, s_light_half, sizeof(k->light_half));
+        for (int i = 0; i < 4; ++i) {
+            k->light_color[i] = s_light_color[i];
+        }
+        k->material[0] = s_diffuse;
+        k->material[1] = s_ambient;
+        k->material[2] = s_specular;
+        k->material[3] = s_emission;
+        k->use_shininess = s_use_shininess;
+        if (s_use_shininess) {
+            memcpy(k->shininess, s_shininess, sizeof(k->shininess));
+        }
+    }
+}
+
+static dl_entry *dl_slot(const uint32_t *ptr, uint32_t count)
+{
+    const uint32_t h = (uint32_t)(((uintptr_t)ptr >> 2) * 2654435761u ^ count * 40503u);
+    uint32_t i = h & (DL_SLOTS - 1u);
+    dl_entry *victim = NULL;
+    for (uint32_t n = 0; n < 8; ++n, i = (i + 1u) & (DL_SLOTS - 1u)) {
+        dl_entry *e = &s_dl[i];
+        if ((e->ptr == ptr && e->count == count) || e->ptr == NULL) {
+            return e;
+        }
+        if (victim == NULL || e->last_frame < victim->last_frame) {
+            victim = e;
+        }
+    }
+    return victim;
+}
+
+static void dl_drop_recording(dl_entry *e)
+{
+    free(e->events);
+    free(e->blocks);
+    free(e->verts);
+    free(e->idx);
+    e->events = NULL;
+    e->blocks = NULL;
+    e->verts = NULL;
+    e->idx = NULL;
+    e->nevents = e->nblocks = e->nverts = e->nidx = 0;
+    s_dl_bytes -= e->bytes - e->count * 4u;
+    e->bytes = e->count * 4u;
+    e->recorded = false;
+}
+
+static void dl_free(dl_entry *e)
+{
+    dl_drop_recording(e);
+    free(e->words);
+    s_dl_bytes -= e->bytes;
+    memset(e, 0, sizeof(*e));
+}
+
+static void dl_capture_exit(dl_exit *x, uint32_t v0)
+{
+    x->color = s_color;
+    memcpy(x->coord, s_coord, sizeof(x->coord));
+    x->texcoord[0] = s_texcoord[0];
+    x->texcoord[1] = s_texcoord[1];
+    x->texcoord_raw[0] = s_texcoord_raw[0];
+    x->texcoord_raw[1] = s_texcoord_raw[1];
+    x->in_begin = s_in_begin;
+    x->primitive = s_primitive;
+    x->prim_count = s_prim_count;
+    x->strip_parity = s_strip_parity;
+    x->prim_valid = true;
+    for (int i = 0; i < 4; ++i) {
+        x->prim_rel[i] = s_prim_verts[i] - v0;
+        if (x->in_begin && s_prim_verts[i] < v0) {
+            x->prim_valid = false;
+        }
+    }
+}
+
+static void decode_words(const uint32_t *words, size_t count);
+
+static bool dl_append_block(const dl_entry *e, const dl_block *b, uint32_t *v_first_out)
+{
+    frame_buf *fb = &s_buf[s_build];
+    uint32_t gid;
+
+    if (!current_gmtx(&gid)) {
+        return false;
+    }
+    if (!batch_matches_state() && !open_batch()) {
+        return false;
+    }
+    int slot = cached_slot(gid);
+    if (slot < 0) {
+        close_batch();
+        if (!open_batch()) {
+            return false;
+        }
+        slot = cached_slot(gid);
+        if (slot < 0) {
+            return false;
+        }
+    }
+    const uint32_t v0 = fb->frame.vert_count;
+    const uint32_t hi = (uint32_t)slot << 16;
+    const uint32_t *src = (const uint32_t *)(e->verts + b->first_vert);
+    uint32_t *dst = (uint32_t *)&fb->verts[v0];
+    for (uint32_t i = 0; i < b->nverts; ++i) {
+        dst[0] = src[0];
+        dst[1] = (src[1] & 0xFFFFu) | hi;
+        dst[2] = src[2];
+        dst[3] = src[3];
+        fb->vert_gmtx[v0 + i] = (uint16_t)gid;
+        src += 4;
+        dst += 4;
+    }
+    const uint16_t *si = e->idx + b->first_idx;
+    uint16_t *ix = fb->indices + fb->frame.index_count;
+    for (uint32_t i = 0; i < b->nidx; ++i) {
+        ix[i] = (uint16_t)(si[i] + v0);
+    }
+    fb->frame.vert_count = v0 + b->nverts;
+    fb->frame.index_count += b->nidx;
+    s_batch->index_count += b->nidx;
+    *v_first_out = v0;
+    return true;
+}
+
+static void dl_replay(dl_entry *e)
+{
+    uint32_t list_v0 = s_buf[s_build].frame.vert_count;
+    uint32_t last_block_v0 = list_v0, last_block_rel = 0;
+
+    for (uint32_t k = 0; k < e->nevents; ++k) {
+        const uint32_t ev = e->events[k];
+        if (ev & DL_EV_BLOCK) {
+            const dl_block *b = &e->blocks[ev & ~DL_EV_BLOCK];
+            uint32_t v0;
+            if (!dl_append_block(e, b, &v0)) {
+                ++s_buf[s_build].frame.dropped_verts;
+                continue;
+            }
+            last_block_v0 = v0;
+            last_block_rel = b->first_vert;
+        } else {
+            const uint32_t off = ev & 0xFFFFFu;
+            execute(ev >> 20, e->words + off);
+        }
+    }
+    s_color = e->exit.color;
+    memcpy(s_coord, e->exit.coord, sizeof(s_coord));
+    s_texcoord[0] = e->exit.texcoord[0];
+    s_texcoord[1] = e->exit.texcoord[1];
+    s_texcoord_raw[0] = e->exit.texcoord_raw[0];
+    s_texcoord_raw[1] = e->exit.texcoord_raw[1];
+    s_in_begin = e->exit.in_begin;
+    s_primitive = e->exit.primitive;
+    s_prim_count = e->exit.prim_count;
+    s_strip_parity = e->exit.strip_parity;
+    /* open primitives continue from the last block's vertices */
+    for (int i = 0; i < 4; ++i) {
+        s_prim_verts[i] = e->exit.prim_rel[i] - last_block_rel + last_block_v0;
+    }
+    update_color_rgba();
+}
+
+static uint32_t dl_vertex_bound(const dl_entry *e)
+{
+    return e->nverts;
+}
+
+static void decode_words(const uint32_t *words, size_t count)
+{
+#ifdef KJ_G3_PROFILE
+    const u64 t0 = svcGetSystemTick();
+#endif
+    size_t i = 0;
+
+    while (i < count && s_fifo_need > 0) {
+        NitroPort_GxFifoWord(words[i++]);
+    }
+    while (i < count) {
+        uint32_t cmds = words[i];
+        size_t need = 0;
+        for (int k = 0; k < 4; ++k) {
+            need += s_param_count[(cmds >> (8 * k)) & 0xFF];
+        }
+        if (i + 1 + need > count) {
+            s_rec.bad = true; /* (no-op unless recording) */
+            while (i < count) {
+                NitroPort_GxFifoWord(words[i++]);
+            }
+            break;
+        }
+        ++i;
+        for (int k = 0; k < 4 && cmds != 0; ++k, cmds >>= 8) {
+            const unsigned op = cmds & 0xFF;
+            if (op == 0) {
+                continue;
+            }
+            if (s_rec.active) {
+                rec_command(op, words + i);
+                hot_command(op, words + i);
+                if (op < 0x20 || op > 0x28) {
+                    rec_open_block(); /* the next block starts after this command */
+                }
+            } else {
+                hot_command(op, words + i);
+            }
+            i += s_param_count[op];
+        }
+    }
+#ifdef KJ_G3_PROFILE
+    s_fifo_ticks += svcGetSystemTick() - t0;
+#endif
+}
+
 void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
 {
-    for (size_t i = 0; i < count; ++i) {
-        NitroPort_GxFifoWord(words[i]);
+    ++s_fifo_calls;
+    s_fifo_words += (u32)count;
+    if (s_param_count[0x16] == 0) {
+        build_param_table();
     }
+#ifndef KJ_DL_CACHE
+    /* Retained display lists are off until replay is verified against live
+     * decode (a white-map regression was seen in Azahar). */
+    decode_words(words, count);
+    return;
+#endif
+    if (count < DL_MIN_WORDS || count > 0xFFFFFu || s_in_begin || s_fifo_need > 0 || s_rec.active) {
+        decode_words(words, count);
+        return;
+    }
+    dl_entry *e = dl_slot(words, (uint32_t)count);
+    if (e == NULL) {
+        decode_words(words, count);
+        return;
+    }
+    if (e->ptr != words || e->count != count) {
+        dl_free(e);
+        e->words = malloc(count * 4u);
+        if (e->words == NULL) {
+            decode_words(words, count);
+            return;
+        }
+        e->ptr = words;
+        e->count = (uint32_t)count;
+        memcpy(e->words, words, count * 4u);
+        e->bytes = (uint32_t)count * 4u;
+        s_dl_bytes += e->bytes;
+    } else if (memcmp(e->words, words, count * 4u) != 0) {
+        memcpy(e->words, words, count * 4u);
+        dl_drop_recording(e);
+        e->never = false;
+        e->needs_light = false;
+    }
+    e->last_frame = s_stats.swaps;
+    if (e->never) {
+        ++s_dl_uncacheable;
+        decode_words(words, count);
+        return;
+    }
+    const bool texgen = (s_tex_param >> 30) != 0;
+    const bool lit = e->needs_light || ((s_attr | s_attr_pending) & 0xFu) != 0;
+    dl_key key;
+    dl_make_key(&key, lit, texgen);
+    if (e->recorded && e->lit == lit && e->texgen == texgen &&
+        memcmp(&key, &e->key, sizeof(key)) == 0) {
+        frame_buf *fb = &s_buf[s_build];
+        if (fb->frame.vert_count + dl_vertex_bound(e) <= KJ_G3_MAX_VERTS &&
+            fb->frame.index_count + e->nidx <= KJ_G3_MAX_INDICES &&
+            fb->frame.batch_count + e->nblocks + 2 <= KJ_G3_MAX_BATCHES) {
+            dl_replay(e);
+            ++s_dl_hits;
+            return;
+        }
+    }
+
+    /* record */
+    ++s_dl_misses;
+    if (e->recorded) {
+        dl_drop_recording(e);
+    }
+    frame_buf *fb = &s_buf[s_build];
+    memset(&s_rec, 0, offsetof(dl_rec, events));
+    s_rec.active = true;
+    s_rec.base = words;
+    s_rec.v0 = fb->frame.vert_count;
+    s_rec.i0 = fb->frame.index_count;
+    rec_open_block();
+    const uint32_t drops0 = fb->frame.dropped_verts + fb->frame.dropped_batches + fb->frame.unsupported;
+    decode_words(words, count);
+    rec_close_block();
+    s_rec.active = false;
+
+    if (fb->frame.dropped_verts + fb->frame.dropped_batches + fb->frame.unsupported != drops0 ||
+        s_fifo_need > 0) {
+        s_rec.bad = true;
+    }
+    if (s_rec.vecdep && s_rec.has_matrix) {
+        s_rec.bad = true;
+    }
+    if (s_rec.vecdep && !lit && !s_rec.bad) {
+        /* keyed without the lighting state it turned out to read: key on it
+         * from now on and record next time */
+        e->needs_light = true;
+        return;
+    }
+    if (s_rec.bad) {
+        e->never = true;
+        return;
+    }
+    if (s_dl_bytes >= DL_BYTES_MAX) {
+        return;
+    }
+    const uint32_t nv = fb->frame.vert_count - s_rec.v0, ni = fb->frame.index_count - s_rec.i0;
+    e->events = malloc(s_rec.nevents * 4u + 4u);
+    e->blocks = malloc(s_rec.nblocks * sizeof(dl_block) + 4u);
+    e->verts = nv ? malloc(nv * sizeof(kj_g3_vertex)) : NULL;
+    e->idx = ni ? malloc(ni * 2u) : NULL;
+    if (e->events == NULL || e->blocks == NULL || (nv && e->verts == NULL) || (ni && e->idx == NULL)) {
+        dl_drop_recording(e);
+        return;
+    }
+    memcpy(e->events, s_rec.events, s_rec.nevents * 4u);
+    memcpy(e->blocks, s_rec.blocks, s_rec.nblocks * sizeof(dl_block));
+    e->nevents = s_rec.nevents;
+    e->nblocks = s_rec.nblocks;
+    if (nv) {
+        memcpy(e->verts, &fb->verts[s_rec.v0], nv * sizeof(kj_g3_vertex));
+    }
+    for (uint32_t b = 0; b < s_rec.nblocks; ++b) {
+        const dl_block *bl = &s_rec.blocks[b];
+        for (uint32_t i = 0; i < bl->nidx; ++i) {
+            const uint32_t abs = fb->indices[s_rec.i0 + bl->first_idx + i];
+            e->idx[bl->first_idx + i] = (uint16_t)(abs - (s_rec.v0 + bl->first_vert));
+        }
+    }
+    e->nverts = nv;
+    e->nidx = ni;
+    const uint32_t extra = s_rec.nevents * 4u + s_rec.nblocks * (uint32_t)sizeof(dl_block) +
+                           nv * (uint32_t)sizeof(kj_g3_vertex) + ni * 2u;
+    e->bytes += extra;
+    s_dl_bytes += extra;
+    e->key = key;
+    e->lit = lit;
+    e->texgen = texgen;
+    dl_capture_exit(&e->exit, s_rec.v0);
+    if (e->exit.in_begin) {
+        /* open primitive at the end: express its vertices relative to the
+         * last block so replay can rebase them */
+        uint32_t last_rel = 0;
+        for (uint32_t b = 0; b < e->nblocks; ++b) {
+            last_rel = e->blocks[b].first_vert;
+        }
+        if (!e->exit.prim_valid) {
+            dl_drop_recording(e);
+            e->never = true;
+            return;
+        }
+        (void)last_rel;
+    }
+    e->recorded = true;
+}
+
+void kj_g3_dl_stats(uint32_t *hits, uint32_t *misses, uint32_t *uncacheable, uint32_t *bytes)
+{
+    *hits = s_dl_hits;
+    *misses = s_dl_misses;
+    *uncacheable = s_dl_uncacheable;
+    *bytes = s_dl_bytes;
+    s_dl_hits = s_dl_misses = s_dl_uncacheable = 0;
+}
+
+
+void kj_g3_take_profile(uint64_t *fifo_ticks, uint32_t *fifo_words, uint32_t *direct_words,
+                        uint32_t *verts)
+{
+    *fifo_ticks = (uint64_t)s_fifo_calls; /* calls; ticks only with KJ_G3_PROFILE */
+    s_fifo_calls = 0;
+    (void)s_fifo_ticks;
+    *fifo_words = s_fifo_words;
+    *direct_words = s_direct_words;
+    *verts = s_stats.commands;
+    s_fifo_ticks = 0;
+    s_fifo_words = s_direct_words = 0;
+    s_stats.commands = 0;
 }

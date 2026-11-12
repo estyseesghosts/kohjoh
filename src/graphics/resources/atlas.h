@@ -58,11 +58,23 @@ void kj_palette_check(kj_palette *p);
 kj_tile_ref kj_atlas_tile(uint32_t source_id, const uint8_t *tile, uint32_t offset, bool bpp8,
                           kj_palette *pal, uint32_t pal_id);
 
-/* Atlas texel coordinates of a slot's top-left corner. */
-static inline void kj_atlas_slot_uv(uint16_t slot, int16_t *u, int16_t *v)
+/* A slot's corners in 1/16-texel units (the 2D vertex texcoord unit), inset
+ * by 1/16 texel on every side. Nearest sampling at 1.25x lands at least 0.2
+ * texel inside a tile, but float24 texcoords near v = 1.0 can round past the
+ * edge into the neighbouring atlas tile -- usually transparent, which showed
+ * as one-pixel horizontal gaps between tile rows. The inset keeps every
+ * sample inside its own tile. */
+#define KJ_ATLAS_UV_UNIT 16
+
+static inline void kj_atlas_slot_uv(uint16_t slot, int16_t *u0, int16_t *v0, int16_t *u1,
+                                    int16_t *v1)
 {
-    *u = (int16_t)((slot % KJ_ATLAS_TILES_PER_ROW) * 8);
-    *v = (int16_t)((slot / KJ_ATLAS_TILES_PER_ROW) * 8);
+    const int u = (slot % KJ_ATLAS_TILES_PER_ROW) * 8 * KJ_ATLAS_UV_UNIT;
+    const int v = (slot / KJ_ATLAS_TILES_PER_ROW) * 8 * KJ_ATLAS_UV_UNIT;
+    *u0 = (int16_t)(u + 1);
+    *v0 = (int16_t)(v + 1);
+    *u1 = (int16_t)(u + 8 * KJ_ATLAS_UV_UNIT - 1);
+    *v1 = (int16_t)(v + 8 * KJ_ATLAS_UV_UNIT - 1);
 }
 
 typedef struct kj_atlas_stats {
@@ -70,5 +82,9 @@ typedef struct kj_atlas_stats {
 } kj_atlas_stats;
 
 void kj_atlas_take_stats(kj_atlas_stats *out);
+
+/* Keep slots alive this frame (retained layers reuse quads that point at
+ * them; call before anything else allocates in the frame). */
+void kj_atlas_touch(const uint16_t *slots, uint32_t count);
 
 #endif
