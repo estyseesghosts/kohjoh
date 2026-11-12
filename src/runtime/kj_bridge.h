@@ -44,6 +44,15 @@ void kj_game_main(const kj_game_settings *settings);
  * Must be called before kj_game_main. */
 void kj_ds_set_save_path(const char *path);
 
+/* Save storage owned by the 3DS side: load the whole 512 KiB chip image
+ * once; commit the whole image after each completed game write. */
+typedef struct kj_save_backend {
+    bool (*load)(void *image, size_t size);
+    bool (*commit)(const void *image, size_t size);
+} kj_save_backend;
+
+void kj_ds_set_save_backend(const kj_save_backend *backend);
+
 /* Edition identity compiled into this program. */
 const char *kj_ds_edition_name(void);     /* "heartgold" / "soulsilver" */
 const char *kj_ds_pack_build_id(void);    /* pack builder ID the program expects */

@@ -58,6 +58,11 @@ void kj_ds_set_save_path(const char *path)
     NitroPort_SetSavePath(path);
 }
 
+void kj_ds_set_save_backend(const kj_save_backend *backend)
+{
+    NitroPort_SetSaveBackend(backend->load, backend->commit);
+}
+
 const char *kj_ds_open_pack(const char *pak_path, const char *manifest_path)
 {
     switch (NitroPort_OpenPak(pak_path, manifest_path, KJ_PAK_BUILD_ID)) {

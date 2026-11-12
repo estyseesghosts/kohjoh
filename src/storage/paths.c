@@ -8,6 +8,7 @@
  */
 
 #include "storage/paths.h"
+#include "storage/savestore.h"
 
 #include "diagnostics/log.h"
 #include "runtime/kj_bridge.h"
@@ -66,4 +67,9 @@ const kj_paths *kj_paths_init(void)
     snprintf(s_paths.save_file, sizeof(s_paths.save_file), "%s/saves/%s.sav", s_paths.root,
              edition);
     return &s_paths;
+}
+
+bool kj_save_backend_init(const kj_paths *paths)
+{
+    return kj_savestore_init(paths);
 }

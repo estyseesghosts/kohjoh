@@ -43,8 +43,10 @@ void kj_input_sample(void)
     {
         bool touch;
         uint16_t keys, tx = 0, ty = 0;
-        if (kj_script_input(s_vblank++, &keys, &touch, &tx, &ty) && (keys != 0 || touch)) {
-            /* a scripted press wins; otherwise live input stays usable */
+        if (kj_script_input(s_vblank++, &keys, &touch, &tx, &ty)) {
+            /* A scripted run owns the input: live presses (e.g. keyboard
+             * focus on the emulator window) would make it non-reproducible.
+             * Without script.txt (normal play) this path is never taken. */
             s_input.keys = keys;
             s_input.touch = touch;
             s_input.touch_x = tx;

@@ -330,6 +330,11 @@ void NitroPort_SetSavePath(const char *path);
  * sleep and closing (a write under way finishes it itself). And how many
  * writes into the file there have been. Any thread. */
 void NitroPort_CardFlush(void);
+/* kohjoh: hand the save chip's storage to the program (replaces the raw
+ * file): load fills the 512 KiB image once; commit receives the whole image
+ * after every completed write and returns whether it is durable. */
+void NitroPort_SetSaveBackend(int (*load)(void *image, size_t size),
+                              int (*commit)(const void *image, size_t size));
 uint32_t NitroPort_CardFileWrites(void);
 
 /* The 3DS main loop supplies DS bottom-screen coordinates once per frame.

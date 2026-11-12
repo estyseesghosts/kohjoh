@@ -93,6 +93,18 @@ void NitroPort_SetSavePath(const char *path)
  * short (the 3DS turned off) leaves the file as it was, the save's other
  * copy whole, as a write cut short on the DS's flash would. */
 static unsigned char sImage[SAVE_BYTES];
+/* kohjoh: program-owned storage (two-generation SaveStore) */
+static int (*sBackendLoad)(void *, size_t);
+static int (*sBackendCommit)(const void *, size_t);
+static BOOL sBackendLoaded;
+
+void NitroPort_SetSaveBackend(int (*load)(void *image, size_t size),
+                              int (*commit)(const void *image, size_t size))
+{
+    sBackendLoad = load;
+    sBackendCommit = commit;
+    sBackendLoaded = FALSE;
+}
 static u32 sPendingLo = SAVE_BYTES, sPendingHi;   /* changed, not in the file yet */
 static u32 sFileWrites;
 
@@ -107,6 +119,15 @@ static void close_save(void)
 static BOOL open_save(void)
 {
     long size;
+    if (sBackendLoad != NULL) {
+        if (!sBackendLoaded) {
+            if (!sBackendLoad(sImage, SAVE_BYTES)) {
+                memset(sImage, 0xff, sizeof(sImage));
+            }
+            sBackendLoaded = TRUE;
+        }
+        return TRUE;
+    }
     if (sSave) return TRUE;
     if (!sSavePath) return FALSE;
     sSave = fopen(sSavePath, "r+b");
@@ -148,6 +169,11 @@ static BOOL read_save(u32 offset, void *dst, u32 length)
  * file holds), and the request fails. */
 static BOOL store(u32 offset, u32 length)
 {
+    if (sBackendCommit != NULL) {
+        (void)offset;
+        (void)length;
+        return sBackendCommit(sImage, SAVE_BYTES) ? TRUE : FALSE;
+    }
     /* The ARM9 must not see a write complete before it's in the file at
      * the stdio level (async CARD APIs included): this is its last page's
      * request, the write's earlier pages with it (flush_pending). */
@@ -195,7 +221,7 @@ static BOOL flush_pending(void)
 
 static void flush_locked(void)
 {
-    if (sPendingLo < sPendingHi && sSave != NULL) {
+    if (sPendingLo < sPendingHi && (sSave != NULL || sBackendCommit != NULL)) {
         (void)flush_pending();
     }
 }

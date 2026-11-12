@@ -1,0 +1,38 @@
+From 9c640436f424bf80461935f52a1a46fd18f16bbe Mon Sep 17 00:00:00 2001
+From: terezi <jules@foxtails.me>
+Date: Thu, 12 Nov 2026 15:25:46 -0500
+Subject: [PATCH] mi: send a GX command buffer in one transfer under
+ SDK_PORT_3DS
+
+The DS geometry FIFO holds 128 words, so MI_SendGXCommand(Async) cuts a
+buffer into 118-word DMA bursts paced by the half-empty interrupt. The
+port's FIFO is unbounded: one transfer delivers the same words in the
+same order with the same callback, removes ~100 interrupt round trips a
+frame, and lets the port recognise identical display lists. kohjoh 2003.
+---
+ src/mi/mi_dma_gxcommand.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/src/mi/mi_dma_gxcommand.c b/src/mi/mi_dma_gxcommand.c
+index eca7b11..852e937 100644
+--- a/src/mi/mi_dma_gxcommand.c
++++ b/src/mi/mi_dma_gxcommand.c
+@@ -2,7 +2,15 @@
+ #include <nitro/code32.h>
+ #include <nitro/section.h>
+ 
++#ifdef SDK_PORT_3DS
++// The port's geometry FIFO has no capacity limit, so a command buffer goes
++// out in one transfer instead of 118-word bursts paced by the half-empty
++// interrupt. Same words, same order, same completion callback; one call per
++// buffer lets the port retain identical display lists (kohjoh).
++#define MIi_GX_LENGTH_ONCE     (0x1FFFF * sizeof(u32))
++#else
+ #define MIi_GX_LENGTH_ONCE     (118 * sizeof(u32))
++#endif
+ #define MI_CNT_SEND32(size)    (0x84400000 | ((size) / 4))
+ #define MI_CNT_SEND32_IF(size) (0xc4400000 | ((size) / 4))
+ #define MI_CNT_GXCOPY_IF(size) (0xfc400000 | ((size) / 4))
+-- 
+2.56.0.windows.4
+
