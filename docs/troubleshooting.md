@@ -1,66 +1,30 @@
-# Troubleshooting and lessons from bring-up
+# Troubleshooting
 
-This page covers failures recorded while bringing up the Windows/MSYS2 build
-and renderer. It is a practical summary, not a list of universal Windows
-rules. The [chatlog](chatlog.md) has the sequence; links below point to the
-current workaround where one exists.
+Each entry: symptom → cause → fix. The tools already contain the fixes; this
+page explains them for the next breakage.
 
-## Build failures
+## Windows build chain
 
-| Symptom | What happened | Fix or next step |
+| Symptom | Cause | Fix |
 | --- | --- | --- |
-| Compiler says it cannot create a temporary file. | In the recorded run, `TMP` pointed to `C:\Windows`, which was not writable by the compiler process. | Point `TMP` and `TEMP` at a writable temporary directory. The MSYS build helpers export usable values to child processes when they are unset ([`common.mk`](../src/compat/common.mk), [`hgss_nitro.py`](../tools/game/hgss_nitro.py)). |
-| Host header generator fails because system headers are missing. | Bootstrap tried to compile a host utility only to generate game headers; the MSYS compiler did not have the needed libc headers. | The project generates those headers with Python instead ([`prepare_game_headers.py`](../tools/game/prepare_game_headers.py), [`bootstrap.py`](../tools/game/bootstrap.py)). |
-| SDK directory link is stale or is actually a copy. | The observed MSYS Python setup copied directories where a symbolic link had been expected. | Bootstrap checks whether the link reaches the real source and safely refreshes a stale copy ([`bootstrap.py`](../tools/game/bootstrap.py), `link_sdks`). |
-| Archive tool reports “argument list too long.” | The scratch/build path was too deep for that tool invocation. | Move the checkout/build to a shorter path and rerun. The log records this workaround, not a universal Windows path limit. |
-| A script looks under `/home/...` and cannot find Windows files. | MSYS Python resolved its working directory differently from the Windows-mounted script path. | Use absolute paths in the form expected by the running tool. The build driver contains conversions between MSYS and Windows paths ([`hgss_game.py`](../tools/game/hgss_game.py)). |
-| Linker says compiled object files do not exist. | Native `ld` read `/c/...` paths from a response file, but MSYS path conversion had only applied to command-line arguments. | Use Windows-style paths such as `C:/...` inside files read by native tools. The driver has separate path handling for these cases ([`hgss_game.py`](../tools/game/hgss_game.py)). |
-| Incremental build recompiles everything. | Generated headers changed timestamps on each run, and a dependency parser initially split a path at the drive-letter colon. | Keep generated outputs stable, parse the dependency separator after the target, and check source/object times plus build flags and upstream revision. See the incremental compile logic in [`hgss_game.py`](../tools/game/hgss_game.py). |
-| Link fails on `NitroPort_EngineAOnTop`. | Removing the old 2D renderer also removed its definition of this small SDK hook. | Implement the hook in the new frame bridge by reading the DS display-control bit in `POWCNT1` ([`kj_frame.c`](../src/runtime/kj_frame.c)). |
-| App code no longer sees a standard integer type. | A deleted renderer header had been pulling in `<stdint.h>` indirectly. | Include required standard headers directly in the code that uses them; do not rely on a removed renderer's incidental includes. |
-| Azahar screenshots show only part of the emulator window. | Windows DPI virtualization made the captured window dimensions differ from the requested dimensions. | The runner now marks itself DPI-aware and resizes the emulator window before capture ([`run.ps1`](../tools/azahar/run.ps1)). |
+| `Cannot create temporary file in C:\Windows\` | MSYS2 drops `TMP`/`TEMP` from child processes; native GCC falls back to `C:\Windows`. | `common.mk` exports them; `hgss_nitro.py` sets them in Python. |
+| `-DFOO` set via `FOO=1 python ...` has no effect | MSYS2 Python does not see inline environment variables. | `hgss_game.py --define FOO`. |
+| `mkdir: cannot create directory '/home'`; headers "not found" | MSYS2 Python resolves the working directory as `/home/<user>/...`, which bash, make and native tools cannot use; MSYS also does not convert glued arguments such as `-idirafter/c/...`. | Invoke with absolute `/c/...` paths and `--root`; pass `-idirafter` and its path as separate arguments. |
+| `ld: cannot find /c/Users/.../x.o` | Native `ld` reads paths inside `@response` files literally; MSYS converts only command-line arguments. | Response files use `C:/...` (`_tool_path`). |
+| `ar: Argument list too long` | Very deep output paths (e.g. under `%TEMP%`). | Build under the repository's `build/`. |
+| Every build recompiles all 1092 files | The dependency parser split `C:/...` at the drive colon. | Split on `": "`; objects are skipped when newer than source and all `-MMD` dependencies, with identical flags. |
+| SDK/compat edits have no effect | MSYS2 Python's `symlink_to` silently **copies** directories, so `build/hgss-sdk` held stale copies. | On `wip/savestore`: junctions via `cmd.exe //c mklink //J` (MSYS rewrites a bare `/c`). See the open regression in [status](status.md). |
+| `gen_fx_consts` fails (missing libc headers / `Read error`) | MSYS gcc lacks libc headers; the tool reads its CSV in text mode. | Bootstrap generates the header in Python (`prepare_game_headers.py`). |
+| Partial Azahar screenshots | DPI virtualisation. | `run.ps1` calls `SetProcessDPIAware` and resizes the window. |
 
-If the failure differs from these cases, inspect the first compiler/linker error
-and the per-file logs under the chosen build output. Do not infer the cause
-from the last summary line alone.
+## Runtime
 
-## Renderer investigation: display-list cache
-
-An experimental cache records DS 3D command blocks and reuses decoded results.
-In one Azahar run with the cache enabled, the map became white while sprites
-remained visible, and the run slowed dramatically. The sprites used the
-uncached path, so the cache was a strong suspect, but the exact texture-state
-bug was not proven. A later verification run stopped progressing before the
-requested frame. Profiling showed the main thread waiting for VBlank amid heavy
-activity; it did not establish a deadlock or a final root cause. See the cache
-code in [`kj_g3.c`](../src/runtime/kj_g3.c) and the chronology in
-[`chatlog.md`](chatlog.md).
-
-The safe recorded result is that turning the cache off restored the intro and
-Goldenrod scene; that state was committed as `40c6984`. The cache remains
-behind `HGSS_GX3D_LISTCACHE=1` and is not a verified optimization. Keep it off
-for ordinary builds while that work is unresolved. See [status](status.md).
-
-## Graphics defects caught during implementation
-
-The worklog records fixes for a 2D shader colour that was not normalized, a
-window pass that left colour writes disabled, missing helper functions, and a
-storage layout that could split palette data needed contiguously. A tile-edge
-inset was later added for visible horizontal gaps. Those details are tied to
-the graphics code and change history, not claims that every visual defect is
-fixed. Relevant sources are [`g2d.c`](../src/graphics/g2d/g2d.c),
-[`atlas.c`](../src/graphics/resources/atlas.c) and
-[`kj_g3.c`](../src/runtime/kj_g3.c).
-
-The first intro capture also showed horizontal bands. Later work added the
-tile-edge inset and committed it with the verified cache-off renderer state;
-the initial screenshot alone did not establish whether the cause was a
-transition effect or span handling. Compare the same held frame before
-attributing similar lines to one subsystem.
-
-When diagnosing a future graphics issue, reproduce the same scene and compare
-one change at a time. Keep a known-good binary, log the active build options,
-and check that the optimization actually ran. Coffeepot's [debugging guide](https://github.com/estyseesghosts/coffeepot/blob/35b59f178e638506dcdfdf649651e20abf9fa8d4/ctr/engineering/debugging.md)
-and [PICA command-pipeline notes](https://github.com/estyseesghosts/coffeepot/blob/35b59f178e638506dcdfdf649651e20abf9fa8d4/ctr/engineering/PICA200/pica200-command-pipeline.md)
-give useful background; the kohjoh-specific findings above are cited to its
-own sources and worklog.
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| Rows reversed inside every 8×8 tile | Wrong Morton row order: PICA tiles are stored top row first. | Fixed in `atlas.c`/`textures.c`; found by comparing with the reference renderer. |
+| One-pixel horizontal gaps between tile rows | Nearest sampling near v = 1.0 in float24 rounded into the neighbouring (often transparent) atlas tile. | Texcoords in 1/16 texel, inset by 1/16 per edge. |
+| Music drifts ahead of the picture | A frame overrunning a V-blank lost that V-blank for good. | Emulated V-blanks locked to the real V-blank counter; late frames catch up. |
+| Field at ~17 FPS in Azahar | Geometry decode and `GetMonData` crypto (PC sampling). | Decoder fast paths; keystream cache (game patch 2002). |
+| White map, 1% speed with `KJ_DL_CACHE` | The display-list recorder's counters sat after its arrays and escaped the `memset`; recordings overran and corrupted the heap (100% of samples in `_malloc_r`). | Fixed on `wip/savestore` (explicit reset, bump arena); `KJ_DL_VERIFY` compares replay with live decode. |
+| Saved game ignored (new-game intro) | Open, `wip/savestore` only: appeared with the SDK shim junction change; not caused by patch 2003. | Investigate what differs between the old copied shim and the live sources. |
+| A test run diverges from its script | Live keyboard input on the Azahar window was OR-ed with the script. | `wip/savestore`: scripted runs ignore live input. |
