@@ -15,6 +15,8 @@
 
 #include "graphics/renderer.h"
 
+#include "app/script.h"
+#include "diagnostics/dump.h"
 #include "diagnostics/log.h"
 #include "diagnostics/perf.h"
 #include "graphics/g2d/g2d.h"
@@ -28,7 +30,9 @@
 
 #include <3ds.h>
 #include <citro3d.h>
+#include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #define CMDBUF_BYTES (512 * 1024)
 
@@ -106,4 +110,20 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
 
     ++s_frames;
     kj_perf_publish_end();
+
+    /* Test directives: deterministic per-frame capture. */
+    if (kj_script_dump(in->game_frame)) {
+        char path[96];
+        mkdir("sdmc:/3ds/kohjoh/dumps", 0777);
+        snprintf(path, sizeof(path), "sdmc:/3ds/kohjoh/dumps/f%05lu.kjd", (unsigned long)in->game_frame);
+        kj_dump_frame(path, in);
+    }
+    const uint32_t hold = kj_script_freeze(in->game_frame);
+    if (hold > 0) {
+        kj_log("[script] holding game frame %lu for %lu s", (unsigned long)in->game_frame,
+               (unsigned long)hold);
+        for (uint32_t v = 0; v < hold * 60u && aptMainLoop(); ++v) {
+            gspWaitForVBlank();
+        }
+    }
 }

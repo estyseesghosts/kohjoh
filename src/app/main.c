@@ -12,6 +12,7 @@
 
 #include "app/app.h"
 #include "app/input.h"
+#include "app/script.h"
 #include "audio/audio.h"
 #include "diagnostics/log.h"
 #include "diagnostics/perf.h"
@@ -63,6 +64,11 @@ bool kj_ctr_vblank(void)
         return false;
     }
     kj_input_sample();
+    if (kj_script_end() != 0 && s_vblank_count >= kj_script_end()) {
+        kj_log("[script] end at V-blank %lu", (unsigned long)s_vblank_count);
+        s_closing = true;
+        return false;
+    }
     kj_audio_service();
     /* One emulated DS V-blank per physical top-screen V-blank. */
     gspWaitForVBlank();
@@ -99,6 +105,11 @@ int main(int argc, char **argv)
            paths->bundled ? "installed title (RomFS pack)" : "homebrew (SD pack)",
            is_new ? "New 3DS hardware held at O3DS clock" : "Old 3DS");
 
+    {
+        char script[128];
+        snprintf(script, sizeof(script), "%s/script.txt", paths->root);
+        kj_script_load(script);
+    }
     gfxInitDefault();
     gfxSet3D(false);
 
