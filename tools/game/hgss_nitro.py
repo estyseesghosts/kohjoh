@@ -165,16 +165,26 @@ def create_link(link, target):
     a hard link / copy (for files).
     """
     link, target = Path(link), Path(target)
-    try:
-        link.symlink_to(target)
-        return
-    except OSError:
-        pass
+    # MSYS2 Python "symlinks" by copying: never let it, use a junction/hard link.
+    if not (sys.platform in ("msys", "cygwin") or os.environ.get("MSYSTEM")):
+        try:
+            link.symlink_to(target)
+            return
+        except OSError:
+            pass
     real = _abspath(link, target)
     if real.is_dir():
-        proc = subprocess.run(
-            ["cmd", "/c", "mklink", "/J", str(link), str(real)],
-            capture_output=True, text=True)
+        def win(path):
+            out = subprocess.run(["cygpath", "-w", str(path)], capture_output=True, text=True)
+            return out.stdout.strip() if out.returncode == 0 and out.stdout.strip() else str(path)
+        # MSYS converts a leading "/x" argument into a path; "//x" passes "/x".
+        if sys.platform in ("msys", "cygwin") or os.environ.get("MSYSTEM"):
+            cmd = ["/c/Windows/System32/cmd.exe", "//c", "mklink", "//J", win(link), win(real)]
+        else:
+            cmd = ["cmd", "/c", "mklink", "/J", str(link), str(real)]
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        if proc.returncode == 0 and not link.exists():
+            raise OSError(f"mklink /J {link}: no junction created: {proc.stdout}{proc.stderr}")
         if proc.returncode != 0:
             raise OSError(f"mklink /J {link} {real}: {proc.stdout}{proc.stderr}")
     else:
@@ -197,7 +207,18 @@ def _link(link, target):
             # A stale Windows junction (is_symlink() is False for junctions).
             os.readlink(link)
         except OSError:
-            # A real file or directory, never produced by _link: keep it.
+            # kohjoh: under MSYS2, symlink_to() silently *copies*, so a real
+            # directory inside build/ is a stale copy made by an earlier run:
+            # replace it (outside build/, keep it as before).
+            try:
+                link.resolve().relative_to(BUILD.resolve())
+            except ValueError:
+                return
+            if link.is_dir():
+                shutil.rmtree(link)
+            else:
+                link.unlink()
+            create_link(link, target)
             return
         link.unlink()
     if not link.exists():

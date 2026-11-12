@@ -1339,13 +1339,15 @@ def compile_one(cc: str, flags: list[str], src: Path, obj: Path,
                 ) -> tuple[bool, int, str]:
     obj.parent.mkdir(parents=True, exist_ok=True)
     # kohjoh: incremental. Skip when the object is newer than its source and
-    # every header it read (-MMD), and was built with the same flags.
+    # every header it read, including system-classified SDK headers, and was
+    # built with the same flags. Junctions can cause GCC to classify the SDK
+    # include directory as system; -MMD silently omits those dependencies.
     dep = obj.with_name(obj.name + ".d")
     sig = obj.with_name(obj.name + ".flags")
-    signature = "\n".join([cc, language, *flags])
+    signature = "\n".join([cc, language, *flags, "-MD"])
     if _up_to_date(obj, src, dep, sig, signature):
         return True, 0, ""
-    proc = run(compile_command(cc, [*flags, "-MMD", "-MF", str(dep)], src, obj, language))
+    proc = run(compile_command(cc, [*flags, "-MD", "-MF", str(dep)], src, obj, language))
     if proc.returncode == 0:
         sig.write_text(signature, encoding="utf-8")
     text = proc.stdout + proc.stderr
