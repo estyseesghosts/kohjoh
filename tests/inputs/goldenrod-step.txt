@@ -1,0 +1,23 @@
+# Goldenrod save (hgss-3ds build/bench/heartgold.sav): title -> CONTINUE ->
+# field at rest, then held frames for capture and state dumps.
+every: 10
+0 -
+5000 START
+5010 START
+5020 START
+5030 START
+5040 START
+5050 START
+5100 START
+5110 START
+5120 START
+5130 START
+5140 START
+5150 START
+8000 A
+8020 A
+8040 A
+dump 5000
+freeze 5000 4
+freeze 5300 4
+end: 11500
