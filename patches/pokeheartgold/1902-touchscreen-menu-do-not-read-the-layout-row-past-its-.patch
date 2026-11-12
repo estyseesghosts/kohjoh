@@ -1,0 +1,33 @@
+From 52e0a8fedf5be82f2d21c4d9ad89157ce1deee8d Mon Sep 17 00:00:00 2001
+From: pokeheartgold-3ds <port@invalid>
+Date: Sun, 1 Nov 2026 07:01:03 +0000
+Subject: [PATCH 4/4] touchscreen-menu: do not read the layout row past its
+ eight entries
+
+---
+ src/field/touchscreen_menu.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/src/field/touchscreen_menu.c b/src/field/touchscreen_menu.c
+index 73e86fa..7b420fb 100644
+--- a/src/field/touchscreen_menu.c
++++ b/src/field/touchscreen_menu.c
+@@ -818,7 +818,15 @@ static u32 TouchscreenMenu_GetBallItem(u32 layout) {
+ }
+ 
+ static void TouchscreenMenu_LoadIconResources(FieldSystem *fieldSystem, GF_2DGfxResMan **resMans, SpriteResource **resObjs, int index, int resId, u32 gender, Bag *bag, int layout) {
++#ifdef SDK_PORT_3DS
++    /* Slots 8-10 are the item/button/ball resources; their branches set the
++     * ids. Only slots inside the eight-byte row may read the layout. */
++    u8 icon = index < (int)sizeof(gTouchscreenMenuLayouts[0])
++                  ? gTouchscreenMenuLayouts[layout][index]
++                  : TOUCHSCREEN_MENU_ICON_NONE;
++#else
+     u8 icon = gTouchscreenMenuLayouts[layout][index];
++#endif
+     NarcId narcId = NARC_a_0_1_4;
+     int charFileId = 18;
+     int plttFileId = 14;
+-- 
+2.43.0
+
