@@ -19,7 +19,11 @@ enum kj_perf_stage {
 void kj_perf_vblank_begin(void);
 void kj_perf_vblank_end(void);
 void kj_perf_publish_begin(void);
-void kj_perf_publish_end(void);
+/* game_frame: the published game frame (for locating hitches); call after
+ * the frame is submitted. */
+void kj_perf_publish_end(uint32_t game_frame);
+/* A publish the renderer skipped (counted as a hitch). */
+void kj_perf_present_skipped(uint32_t game_frame);
 uint64_t kj_perf_now(void);
 void kj_perf_add(enum kj_perf_stage stage, uint64_t ticks);
 

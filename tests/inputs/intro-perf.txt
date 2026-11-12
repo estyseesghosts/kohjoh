@@ -1,0 +1,3 @@
+# Intro movie and title screen with no input and no freezes: frame pacing
+# only ([frame] lines). The title is up by ~V-blank 4200.
+end: 6000

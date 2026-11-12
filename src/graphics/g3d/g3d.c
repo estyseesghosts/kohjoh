@@ -57,8 +57,28 @@ void kj_g3d_take_stats(kj_g3d_stats *out)
     memset(&s_stats, 0, sizeof(s_stats));
 }
 
+/*
+ * Depth buffering (SWAP_BUFFERS bit 1). Z mode: depth = -z'/w' (PICA
+ * Z-buffer, C3D_DepthMap(true, -1, 0)), near = 1, test GREATER against a
+ * clear of 0. W mode: the DS stores clip w (fx 20.12, saturating at 24 bits,
+ * so 1/4096 per step up to w = 4096). The PICA W-buffer multiplies the
+ * mapped depth by clip w (coffeepot hardware/gpu-internal-registers.md,
+ * 0x04C/0x06D): with z' = -w/4096 and scale -1, offset 0 the stored depth
+ * is w/4096 whether or not the depth-map transform is enabled. Near is then
+ * small: test LESS against a clear of 1. z' no longer carries DS z, so near
+ * and far z clipping are not applied in W mode (w > 0 clipping still is).
+ * The HGSS title screen needs W mode: its camera has near = 0, which puts
+ * every vertex at z/w = 1 in Z mode.
+ */
+#define W_DEPTH_SCALE (1.0f / 4096.0f)
+
+bool kj_g3d_wbuffer(void)
+{
+    return s_frame != NULL && (s_frame->swap_params & 2u) != 0;
+}
+
 /* F: DS clip -> PICA clip for viewport `vp` on `target`. */
-static void make_fixup(const kj_target *t, uint32_t vp, float f[4][4])
+static void make_fixup(const kj_target *t, uint32_t vp, bool wbuffer, float f[4][4])
 {
     const float x1 = (float)(vp & 0xFF), y1 = (float)((vp >> 8) & 0xFF);
     const float vw = (float)(((vp >> 16) & 0xFF)) - x1 + 1.0f;
@@ -72,8 +92,12 @@ static void make_fixup(const kj_target *t, uint32_t vp, float f[4][4])
     f[0][3] = 1.0f - a * (192.0f - y1 - vh / 2.0f);
     f[1][0] = -b * vw / 2.0f;
     f[1][3] = 1.0f - t->offset_x / half_w - b * (x1 + vw / 2.0f);
-    f[2][2] = 0.5f;
-    f[2][3] = -0.5f;
+    if (wbuffer) {
+        f[2][3] = -W_DEPTH_SCALE;
+    } else {
+        f[2][2] = 0.5f;
+        f[2][3] = -0.5f;
+    }
     f[3][3] = 1.0f;
 }
 
@@ -134,6 +158,7 @@ static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t d
                       uint8_t stencil_flags)
 {
     const kj_g3_frame *f = s_frame;
+    const bool wbuffer = kj_g3d_wbuffer();
     uint32_t last_vp = 0xFFFFFFFFu;
     float fix[4][4];
 
@@ -151,7 +176,7 @@ static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t d
             }
         }
         if (b->viewport != last_vp) {
-            make_fixup(target, b->viewport, fix);
+            make_fixup(target, b->viewport, wbuffer, fix);
             last_vp = b->viewport;
         }
         upload_palette(b, fix);
@@ -177,7 +202,13 @@ static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t d
         /* depth */
         const bool depth_equal = (b->poly_attr >> 14) & 1u;
         const bool depth_write = !translucent || ((b->poly_attr >> 11) & 1u);
-        C3D_DepthTest(true, depth_equal ? GPU_GEQUAL : GPU_GREATER,
+        GPU_TESTFUNC func;
+        if (wbuffer) {
+            func = depth_equal ? GPU_LEQUAL : GPU_LESS;
+        } else {
+            func = depth_equal ? GPU_GEQUAL : GPU_GREATER;
+        }
+        C3D_DepthTest(true, func,
                       depth_write ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
 
         if (translucent && (disp3dcnt & 8u)) {
@@ -218,7 +249,7 @@ void kj_g3d_draw(const kj_target *target, bool wide, uint8_t stencil_flags)
     BufInfo_Init(bi);
     BufInfo_Add(bi, f->verts, sizeof(kj_g3_vertex), 4, 0x2130);
 
-    C3D_DepthMap(true, -1.0f, 0.0f);
+    C3D_DepthMap(!kj_g3d_wbuffer(), -1.0f, 0.0f);
     const unsigned alpha_ref = (f->disp3dcnt & 4u) ? f->alpha_test_ref : 0u;
     C3D_AlphaTest(true, GPU_GREATER, (int)(alpha_ref * 255u / 31u));
     C3D_StencilTest(true, GPU_ALWAYS, stencil_flags, 0, 0x03);
