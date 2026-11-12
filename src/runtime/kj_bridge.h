@@ -163,6 +163,8 @@ typedef struct kj_g3_frame {
     uint32_t dropped_verts;
     uint32_t dropped_batches;
     uint32_t unsupported;
+    /* BOX_TEST results this frame (culled_far: outside the far plane only) */
+    uint32_t box_tests, box_culled, box_culled_far;
 } kj_g3_frame;
 
 /* ----------------------------------------------------------- frame flow */

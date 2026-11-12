@@ -44,6 +44,8 @@ static uint32_t s_frame_time[WINDOW];
 static uint32_t s_hitch_frame[MAX_HITCH_LOG], s_hitch_len[MAX_HITCH_LOG];
 static uint32_t s_hitch_logic[MAX_HITCH_LOG], s_hitch_g2d[MAX_HITCH_LOG], s_hitch_g3d[MAX_HITCH_LOG];
 static uint32_t s_hitches, s_skipped;
+uint32_t kj_perf_counts[KJ_COUNT_COUNT];
+static uint32_t s_hitch_counts[MAX_HITCH_LOG][KJ_COUNT_COUNT];
 
 uint64_t kj_perf_now(void)
 {
@@ -135,6 +137,14 @@ static void report(void)
                               (unsigned long)(s_hitch_g3d[i] / TICKS_PER_US / 1000u));
             }
             kj_log("%s", line);
+            for (uint32_t i = 0; i < shown; ++i) {
+                const uint32_t *k = s_hitch_counts[i];
+                kj_log("[frame]   %lu: tile conv %lu, spans %lu, quads %lu, tex uploads %lu, "
+                       "tex bytes compared %lu", (unsigned long)s_hitch_frame[i],
+                       (unsigned long)k[KJ_COUNT_TILE_CONV], (unsigned long)k[KJ_COUNT_SPANS],
+                       (unsigned long)k[KJ_COUNT_QUADS], (unsigned long)k[KJ_COUNT_TEX_UPLOAD],
+                       (unsigned long)k[KJ_COUNT_TEX_BYTES]);
+            }
         }
         s_hitches = 0;
         s_skipped = 0;
@@ -149,6 +159,7 @@ static void note_hitch(uint32_t game_frame, uint32_t refreshes)
         s_hitch_logic[s_hitches] = s_frame_stage[KJ_PERF_LOGIC];
         s_hitch_g2d[s_hitches] = s_frame_stage[KJ_PERF_G2D];
         s_hitch_g3d[s_hitches] = s_frame_stage[KJ_PERF_G3D];
+        memcpy(s_hitch_counts[s_hitches], kj_perf_counts, sizeof(kj_perf_counts));
     }
     ++s_hitches;
 }
@@ -172,6 +183,7 @@ void kj_perf_publish_end(uint32_t game_frame)
         note_hitch(game_frame, real_interval);
     }
     kj_perf_add(KJ_PERF_PUBLISH, now - s_publish_start);
+    memset(kj_perf_counts, 0, sizeof(kj_perf_counts));
     for (int s = 0; s < KJ_PERF_STAGE_COUNT; ++s) {
         s_samples[s][s_n] = s_frame_stage[s];
         s_frame_stage[s] = 0;

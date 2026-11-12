@@ -16,6 +16,7 @@
  *   dump <frame>          write the DS state the renderer read for game frame
  *                         <frame> to sdmc:/3ds/kohjoh/dumps/f<frame>.kjd
  *   end: N                close at V-blank N
+ *   debug: FLAGS          renderer experiment switches (KJ_DEBUG_* below)
  * Frame-indexed scripts make Azahar captures reproducible; V-blank indexing
  * matches hgss-3ds's tests/inputs format.
  */
@@ -28,6 +29,13 @@ bool kj_script_input(uint32_t vblank, uint16_t *keys, bool *touch, uint16_t *tx,
 /* Seconds to freeze after publishing game frame `frame` (0: none). */
 uint32_t kj_script_freeze(uint32_t frame);
 bool kj_script_dump(uint32_t frame);
+/* Renderer experiment switches for A/B runs without a rebuild. */
+#define KJ_DEBUG_NO_CULL 0x1u
+#define KJ_DEBUG_NO_DEPTH 0x2u
+#define KJ_DEBUG_NO_ALPHA_TEST 0x4u
+#define KJ_DEBUG_NO_BLEND 0x8u
+#define KJ_DEBUG_NO_TEXTURE 0x10u
+uint32_t kj_script_debug(void);
 /* V-blank at which to close (0: never). */
 uint32_t kj_script_end(void);
 
