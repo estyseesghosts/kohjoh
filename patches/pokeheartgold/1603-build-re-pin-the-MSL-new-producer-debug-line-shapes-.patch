@@ -1,0 +1,106 @@
+From d773cf3213b42b9ba84c0a6bc367d7f03fbcd848 Mon Sep 17 00:00:00 2001
+From: pokeheartgold-3ds <port@invalid>
+Date: Sat, 31 Oct 2026 21:44:10 +0000
+Subject: [PATCH] build: re-pin the MSL new producer debug-line shapes after
+ 1519
+
+Patch 1519 added #ifdef SDK_PORT_3DS lines to src/to91_msl_scalar_new.cpp
+and src/to91_msl_array_new.cpp. The DS build does not define the macro, so
+the selected code is unchanged, but the physical source line numbers shift
+and MWCC writes different .debug_info/.debug_line sections and a different
+.dwarf_line symbol in the retained raw compiler product.
+
+Verified: comparing the pinned shape with the tool's own shape.inventory()
+over the current compiler-full objects shows differences in exactly
+.debug_info (payload hash), .debug_line (record/payload hash) and one
+.dwarf_line.* symbol size (36 -> 48 for .debug_line, 226 -> 238 section
+length). Every allocated/executable section is identical, and the tool's
+producer profile still asserts the code function sizes and payloads.
+
+Regenerated with tools/msl-new-partition/shape.py (not edited by hand), as
+the gate documentation requires. profile.json pins the two fixtures
+themselves as modules, so their new hashes are re-pinned in the same patch.
+---
+ tools/msl-new-partition/array-shape.json  | 4 ++--
+ tools/msl-new-partition/profile.json      | 4 ++--
+ tools/msl-new-partition/scalar-shape.json | 8 ++++----
+ 3 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/tools/msl-new-partition/array-shape.json b/tools/msl-new-partition/array-shape.json
+index a205cc8..136a9da 100644
+--- a/tools/msl-new-partition/array-shape.json
++++ b/tools/msl-new-partition/array-shape.json
+@@ -116,7 +116,7 @@
+         0,
+         0
+       ],
+-      "payload_sha256": "17452d6ca704212e5e1cdc9191d9a603b11c567567e8ca55bf767334fff033ea"
++      "payload_sha256": "831fc7530fb525fc9fafc82f191f0dd4d48c3863d99b7bdd66cf4cb228b98f2a"
+     },
+     {
+       "index": 6,
+@@ -201,7 +201,7 @@
+         0,
+         0
+       ],
+-      "payload_sha256": "bddf0cbc550895ad2675b12d8a3cf14b4cdea407a33d1e66eea9a86a719b05c1"
++      "payload_sha256": "4d42ed17ac8846424c5f3459abf80b3149cdbfeeb426b91f23d479358bff91ba"
+     },
+     {
+       "index": 11,
+diff --git a/tools/msl-new-partition/profile.json b/tools/msl-new-partition/profile.json
+index 8ba7b72..a744f81 100644
+--- a/tools/msl-new-partition/profile.json
++++ b/tools/msl-new-partition/profile.json
+@@ -11,8 +11,8 @@
+     "shape.py": "cc26491c69384097da9a1d50c50bc393ed4ae45459d1ea86268a0e45c7a924b2",
+     "select-scalar.py": "7eae79a99b9a47af9da22075da4d5276878923ca7a6bca0f66ed310cd8be7226",
+     "select-array.py": "72fb8a280618686b80b313e00283816e2930c7103b1a4bcffb8b4689580ebea2",
+-    "scalar-shape.json": "8f0c643e8745aeefed8e3ea4a310974fdfa30125b9e72ac7c89b8acb57f6eab8",
+-    "array-shape.json": "77479e7b6395781a05d131e1a6f76358a9bf87f8668d45bc7065309f52aedada",
++    "scalar-shape.json": "7c74e4ca4b44ce33fcfdeea4f1613a330a01efc01e86060ceeebd3141e1abf6e",
++    "array-shape.json": "b708a123d4f95b58ec3ae9108fab86c238f4993237d07249a7187560ed6270bc",
+     "new.mk": "32ea3dde18c6b1c291fda1d297cd62404e664cb941b986ae1e22490c453c5276"
+   },
+   "producers": {
+diff --git a/tools/msl-new-partition/scalar-shape.json b/tools/msl-new-partition/scalar-shape.json
+index f86ed0f..8cf0ba7 100644
+--- a/tools/msl-new-partition/scalar-shape.json
++++ b/tools/msl-new-partition/scalar-shape.json
+@@ -116,7 +116,7 @@
+         0,
+         0
+       ],
+-      "payload_sha256": "a9e82575c1d1c2e680721820b263a973165067eb068f7b3cd1b0d579b55a818f"
++      "payload_sha256": "9deec5f0e5a9d35a3478cbe9981f748581ac458e717356045d6f388e1332e1ce"
+     },
+     {
+       "index": 6,
+@@ -195,13 +195,13 @@
+         0,
+         0,
+         0,
+-        226,
++        238,
+         0,
+         0,
+         0,
+         0
+       ],
+-      "payload_sha256": "491836a8a0857d3be7179ec724f7c3474dff690844ea71ebb13a4eaa248edb30"
++      "payload_sha256": "28f1c8f6ed5cee3a4f6819688b05d1709f891ee95906af9d4140d456ce34e178"
+     },
+     {
+       "index": 11,
+@@ -745,7 +745,7 @@
+       "record": [
+         489,
+         190,
+-        36,
++        48,
+         1,
+         0,
+         10
+-- 
+2.43.0
+

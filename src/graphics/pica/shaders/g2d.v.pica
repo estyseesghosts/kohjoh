@@ -1,0 +1,45 @@
+; g2d.v.pica: 2D layer vertices (BG tiles, OBJ tiles, fills).
+; Input positions are in DS pixels of the engine's 256x192 screen, already
+; scrolled/affine-transformed on the CPU; texcoords are atlas texels.
+; xform maps DS pixels to the rotated PICA clip space of the target:
+;   clip.x = y * xform.x + xform.y      (screen rows -> clip x, tilted)
+;   clip.y = x * xform.z + xform.w
+; uvscale = (1/atlas_w, -1/atlas_h, 0, 1): v counts down from the top.
+
+.fvec xform
+.fvec uvscale
+
+.constf consts(0.0, 1.0, -1.0, 0.5)
+.constf colscale(0.00392156862745, 0.00392156862745, 0.00392156862745, 0.00392156862745)
+.alias  zeros consts.xxxx
+.alias  ones  consts.yyyy
+
+.out outpos position
+.out outtc0 texcoord0
+.out outclr color
+
+.alias inpos v0
+.alias intc  v1
+.alias inclr v2
+
+.proc main
+    ; clip.x = y * sx + ox
+    mov r0, inpos
+    mul r1.x, xform.xxxx, r0.yyyy
+    add r1.x, xform.yyyy, r1.xxxx
+    mul r1.y, xform.zzzz, r0.xxxx
+    add r1.y, xform.wwww, r1.yyyy
+    mov r1.z, consts.zzzz
+    mov r1.w, ones
+    mov outpos, r1
+
+    ; texcoord: u * su, 1 + v * sv
+    mul r2.xy, uvscale.xyyy, intc.xyyy
+    add r2.y, ones, r2.yyyy
+    mov r2.zw, zeros
+    mov outtc0, r2
+
+    mul r3, colscale, inclr
+    mov outclr, r3
+    end
+.end

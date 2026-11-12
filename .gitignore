@@ -1,0 +1,14 @@
+# Build output and user artifacts: never committed.
+/build/
+/dist/*
+!/dist/README.md
+__pycache__/
+*.pyc
+# Game content must never enter the repository.
+*.nds
+*.sav
+*.pak
+*.3dsx
+*.cia
+*.elf
+*.smdh

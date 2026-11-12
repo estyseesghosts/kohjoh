@@ -1,0 +1,44 @@
+From 6899062361d2385cb6135abc140430b6e2345588 Mon Sep 17 00:00:00 2001
+From: terezi <jules@foxtails.me>
+Date: Thu, 12 Nov 2026 05:45:39 -0500
+Subject: [PATCH] main: publish the frame to the port after the V-blank work
+ (SDK_PORT_3DS)
+
+The port renders one coherent snapshot of the DS display state per game
+frame. The point where it is complete is after the V-blank callback, the
+sound update and the vwait task queue: everything the DS would show for
+the next two refreshes has been written. kohjoh patch 2001.
+---
+ src/main.c | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/src/main.c b/src/main.c
+index 3f6376a..3c0b3a1 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -45,6 +45,10 @@ static void Main_RunOverlayManager(void);
+ static void ShowCommunicationErrorAndReset(u32 resetParam, int errorScreen);
+ static BOOL IsLinkModeWithSoftResetCancel(int linkMode);
+ 
++#ifdef SDK_PORT_3DS
++void NitroPort_VBlankWorkDone(void);
++#endif
++
+ void NitroMain(void) {
+     InitSystemForTheGame();
+     InitGraphicMemory();
+@@ -127,6 +131,11 @@ void NitroMain(void) {
+         }
+         DoSoundUpdateFrame();
+         SysTaskQueue_RunTasks(gSystem.vwaitTaskQueue);
++#ifdef SDK_PORT_3DS
++        // The DS state is now what the DS displays for the next field:
++        // the port publishes the frame here (one coherent snapshot).
++        NitroPort_VBlankWorkDone();
++#endif
+     }
+ }
+ 
+-- 
+2.56.0.windows.4
+

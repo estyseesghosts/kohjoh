@@ -1,0 +1,45 @@
+; g3d.v.pica: DS 3D vertices, transformed on the GPU.
+; Each vertex is in DS object space (4.12 fixed, read as short and scaled by
+; 1/4096 here) and names a clip matrix in a 16-entry palette. The palette
+; holds (screen fixup x DS clip matrix) rows, so the DS's projection,
+; viewport, widescreen and 3DS screen rotation are one matrix per entry.
+
+.fvec palette[64]      ; 16 matrices x 4 rows
+.fvec texscale         ; (1/(16*w), -1/(16*h), 0, 1)
+
+.constf consts(0.000244140625, 1.0, 4.0, 0.0)  ; 1/4096, 1, 4, 0
+.constf colscale(0.00392156862745, 0.00392156862745, 0.00392156862745, 0.00392156862745)
+
+.out outpos position
+.out outtc0 texcoord0
+.out outclr color
+
+.alias inpos v0   ; (x, y, z, mtx) shorts / mtx in .w as short? see layout
+.alias inclr v1   ; unsigned bytes r,g,b,a
+.alias intc  v2   ; shorts s,t (12.4 texels)
+.alias inmtx v3   ; unsigned byte matrix index
+
+.proc main
+    ; object-space position
+    mul r0.xyz, consts.xxxx, inpos.xyzz
+    mov r0.w, consts.yyyy
+
+    ; palette index * 4
+    mul r1.x, consts.zzzz, inmtx.xxxx
+    mova a0.x, r1.xxxx
+
+    dp4 r2.x, palette[a0.x + 0], r0
+    dp4 r2.y, palette[a0.x + 1], r0
+    dp4 r2.z, palette[a0.x + 2], r0
+    dp4 r2.w, palette[a0.x + 3], r0
+    mov outpos, r2
+
+    mul r3, colscale, inclr
+    mov outclr, r3
+
+    mul r4.xy, texscale.xyyy, intc.xyyy
+    add r4.y, consts.yyyy, r4.yyyy
+    mov r4.zw, consts.wwww
+    mov outtc0, r4
+    end
+.end
