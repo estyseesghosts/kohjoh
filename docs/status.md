@@ -1,51 +1,67 @@
-# Project progress
+# Project status
 
-This snapshot is based on the checked-in source, commit history and
-[`chatlog.md`](chatlog.md). It is not a release checklist. The chatlog is a
-transcript and can include intermediate or uncommitted states; later status
-entries here take precedence for the present assessment.
+This page summarizes the checked-in code and the recorded work in
+[`chatlog.md`](chatlog.md). The chatlog is chronological: it includes failed
+attempts and work that was not committed. Claims below identify which evidence
+they rely on. The project design and remaining acceptance goals are in
+[`kohjoh.md`](../kohjoh.md).
 
-## Completed and recorded
+## Working foundation
 
-- The game source, relevant Nitro compatibility code and patch stack are pinned
-  and bootstrapped. Provenance and excluded renderer imports are recorded in
-  [`PROVENANCE.md`](../PROVENANCE.md); revisions are in
-  [`upstream.lock`](../upstream.lock).
-- The Windows-oriented build compiles the game and separate DS/3DS runtime
-  source sets and packages a Homebrew `.3dsx` when tools are available. The
-  transcript records a full link and a 5.49 MB artifact before the later
-  renderer/cache work; current build behavior is in
-  [`hgss_game.py`](../tools/game/hgss_game.py).
-- The frame bridge and GPU renderers are present in source. Chatlog records
-  Azahar boot, intro rendering, input/touch and Goldenrod rendering. A recorded
-  600-publish timing run had two VBlanks per publish with no misses in Azahar;
-  that result applies only to that run and emulator.
-- Commit `4063c5e` records Goldenrod field rendering. Commit `40c6984` records
-  the verified cache-off state with pacing lock, tile inset, geometry fast
-  paths, retained 2D and profiler. See `git log` and
-  [`chatlog.md`](chatlog.md).
+- The decompilation, port references, toolchain and Azahar version are pinned
+  in [`upstream.lock`](../upstream.lock). The patch and import history is in
+  [`PROVENANCE.md`](../PROVENANCE.md).
+- The build driver compiles the game and separate DS-side and 3DS-side runtime
+  code, links them, and can package a `.3dsx` when `3dsxtool` is available
+  ([`hgss_game.py`](../tools/game/hgss_game.py)).
+- The runtime, DS frame bridge, 2D renderer and 3D renderer are in source
+  ([`main.c`](../src/app/main.c), [`kj_frame.c`](../src/runtime/kj_frame.c),
+  [`g2d.c`](../src/graphics/g2d/g2d.c),
+  [`g3d.c`](../src/graphics/g3d/g3d.c)). Their presence does not mean all
+  graphics features are supported; unsupported operations are counted.
 
-## In progress or unverified
+## Results recorded in Azahar
 
-- Display-list recording/replay cache is gated by
-  `HGSS_GX3D_LISTCACHE=1` in [`hgss_game.py`](../tools/game/hgss_game.py).
-  The chatlog records white/untextured map geometry and severe slowdown in a
-  cache-enabled build; cache-off restored the intro and Goldenrod. Verify mode
-  stalled before reaching the planned frame, and the checked-out
-  [`kj_g3.c`](../src/runtime/kj_g3.c) has local uncommitted edits. Treat cache
-  behavior as experimental, not a completed optimization.
-- Battle, broader field traversal, missing title-screen Pokémon, full
-  HeartGold/SoulSilver coverage and physical-console performance have not been
-  established by the recorded evidence.
-- The planned CIA packaging and installed-title save flow are specified in
-  [`kohjoh.md`](../kohjoh.md) but are not part of the verified artifact.
-- Linux instructions are a stub because no Linux build is recorded.
+The chatlog records successful boot and intro rendering, button and touch
+input, and a recognizable Goldenrod field scene. It also records a run of 600
+frame publishes at two VBlanks per publish, with no missed publishes in that
+emulator run. These are specific Azahar observations, not physical-console
+benchmarks or complete gameplay tests.
 
-## Evidence boundary
+Commit `4063c5e` records the Goldenrod renderer milestone. Commit `40c6984`
+records a cache-off state with pacing changes, a tile-edge inset, geometry
+fast paths, retained 2D layers and profiling. The latter is the last committed
+milestone named in the current repository history; consult the exact source
+before treating chatlog claims as committed. Coffeepot explains the difference
+between emulator checks and [hardware testing](https://github.com/estyseesghosts/coffeepot/blob/35b59f178e638506dcdfdf649651e20abf9fa8d4/ctr/engineering/testing-on-hardware.md).
 
-Azahar is valuable for integration and visual debugging, but emulator timings
-are not Old 3DS performance measurements. Do not describe the project as
-certified 30 FPS on Old 3DS until the real hardware acceptance work in
-[`kohjoh.md`](../kohjoh.md) has been completed. Coffeepot explains the need for
-separate [emulator and hardware validation](https://github.com/estyseesghosts/coffeepot/blob/35b59f178e638506dcdfdf649651e20abf9fa8d4/ctr/engineering/testing-on-hardware.md)
-and [performance budgets](https://github.com/estyseesghosts/coffeepot/blob/35b59f178e638506dcdfdf649651e20abf9fa8d4/ctr/engineering/performance.md).
+## Current open work
+
+- **Display-list cache:** `HGSS_GX3D_LISTCACHE=1` enables an experimental
+  geometry command cache in the build driver and [`kj_g3.c`](../src/runtime/kj_g3.c).
+  The chatlog reports a white map with sprites still visible and severe
+  slowdown in one enabled run. Cache-off restored intro and Goldenrod. A later
+  verify run never reached its target frame; its cause remains unresolved.
+  Keep the cache disabled unless working on that investigation.
+- **Game coverage:** Intro and a Goldenrod field scene are recorded. The
+  transcript lists missing title-screen Pokémon and an uncompleted route into
+  tall grass/battle as next work. It does not establish full HGSS gameplay,
+  battle, cutscene, menu or graphics-effect compatibility.
+- **Save and install formats:** the runtime currently uses an interim raw save
+  file ([`save_raw.c`](../src/storage/save_raw.c)). A RomFS pack lookup exists
+  in [`paths.c`](../src/storage/paths.c), but a CIA packaging flow and
+  installed-title save archive are not verified implementations.
+- **Linux:** no Linux build is recorded; see [the stub](building-linux.md).
+- **Hardware:** no evidence here establishes sustained 30 FPS or acceptance
+  on an Old 3DS. That requires the physical-device gate in
+  [`kohjoh.md`](../kohjoh.md).
+
+## Reading the evidence
+
+Treat a result as scoped to the exact build, scene and environment described.
+A boot proves that particular artifact started. A screenshot proves what was
+visible in that capture. Neither proves unvisited scenes, save safety or
+hardware frame rate. This matches Coffeepot's guidance on [performance
+measurement](https://github.com/estyseesghosts/coffeepot/blob/35b59f178e638506dcdfdf649651e20abf9fa8d4/ctr/engineering/performance.md):
+measure the limiting stage on the target hardware and keep emulator results
+separate.
