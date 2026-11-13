@@ -74,8 +74,11 @@ for that reason (not visible in Azahar).
 1. Find the save-detection regression on `wip/savestore`; finish SaveStore.
 2. Battle crashes (user-reported): reproduce with `route34-battle.txt`; `logs/crash.txt`.
 3. Route test: Goldenrod → Route 34 grass → wild battle (`tests/inputs/route34-south.txt`).
-4. O3DS re-test of Goldenrod and the title with the skip cap (the white
-   title is unconfirmed). Then cut geometry cost further: display-list cache
-   (fix on `wip/savestore`) and ARM11 performance counters for I-cache
-   misses on hardware.
-5. CIA packaging, SoulSilver build.
+4. O3DS re-test of Goldenrod and the title with `--define KJ_DL_CACHE`
+   (the white title is unconfirmed), with ARM11 performance counters for
+   I-cache misses. H-blank (0.5 ms) and texture work wait for that data.
+5. Verify the display-list cache in a battle and while walking, then
+   enable it by default.
+6. Title/Ho-Oh: lit lists decode live with CPU lighting (`shade` ~11% of
+   samples); vertex lighting on the PICA would cut that and let them record.
+7. CIA packaging, SoulSilver build.
