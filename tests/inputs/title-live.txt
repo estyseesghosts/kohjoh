@@ -1,0 +1,3 @@
+# Title screen at natural pacing (no freezes or dumps): checks the title
+# draws when presentation timing is not held by the script.
+end: 6600
