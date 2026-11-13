@@ -4,7 +4,9 @@
 #include <stdint.h>
 
 /* Per-frame stage timing in ARM11 ticks. PUBLISH is the parent of G2D, G3D,
- * GPU_WAIT and SUBMIT: never add it to them. LOGIC excludes V-blank waits. */
+ * GPU_WAIT and SUBMIT: never add it to them. G2D is reported exclusive of
+ * G3D (the 3D draw is nested in the screen draw). LOGIC excludes V-blank
+ * waits. */
 enum kj_perf_stage {
     KJ_PERF_LOGIC,
     KJ_PERF_VBLANK_WAIT,
