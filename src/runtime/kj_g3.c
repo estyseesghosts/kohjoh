@@ -29,6 +29,14 @@
 #include <stddef.h>
 #include <string.h>
 
+/* The display-list cache is on by default: KJ_DL_VERIFY found 0 mismatches
+ * in the intro, title, Goldenrod idle, and Goldenrod -> Route 34 -> trainer
+ * battle -> field (2026-11-13). --define KJ_DL_NO_CACHE builds the
+ * uncached decoder for A/B runs and bisects. */
+#if !defined(KJ_DL_NO_CACHE) && !defined(KJ_DL_CACHE)
+#define KJ_DL_CACHE
+#endif
+
 extern unsigned char NitroPort_IoReg[];
 
 /* ------------------------------------------------------------- matrices */
@@ -2187,8 +2195,7 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
         build_param_table();
     }
 #ifndef KJ_DL_CACHE
-    /* Retained display lists are off until replay is verified against live
-     * decode (a white-map regression was seen in Azahar). */
+    /* KJ_DL_NO_CACHE: every list decoded live. */
     decode_words(words, count);
     return;
 #endif
