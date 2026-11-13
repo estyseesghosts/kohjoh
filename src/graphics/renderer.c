@@ -40,6 +40,7 @@
 static bool s_ready;
 static uint32_t s_frames;
 static uint32_t s_skipped_presents;
+static bool s_skipped_last; /* the previous publish skipped its picture */
 
 bool kj_renderer_init(void)
 {
@@ -93,12 +94,18 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
     }
     /* Running two or more refreshes behind: this picture would be shown
      * late anyway. Skip its GPU work (the game tick already happened) so
-     * the schedule recovers; counted, never silent. */
-    if (kj_pacing_behind() >= 2u && !kj_script_active()) {
+     * the schedule recovers; counted, never silent. Never two in a row
+     * (coffeepot PICA200/frame-pacing.md, "Skip the picture, keep the
+     * tick"): an uncapped skip starved the screen on O3DS whenever the game
+     * ran slightly behind -- 1606 of 2206 Goldenrod pictures skipped while
+     * the game itself was near full speed (o3ds-log-0, window 6). */
+    if (kj_pacing_behind() >= 2u && !s_skipped_last && !kj_script_active()) {
+        s_skipped_last = true;
         ++s_skipped_presents;
         kj_perf_present_skipped(in->game_frame);
         return;
     }
+    s_skipped_last = false;
     kj_perf_publish_begin();
 
     uint64_t t = kj_perf_now();

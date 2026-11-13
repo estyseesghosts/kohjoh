@@ -31,6 +31,18 @@
 static const kj_g3_frame *s_frame;
 static kj_g3d_stats s_stats;
 
+/* Redundant-state filter for one kj_g3d_draw (reset at its start, after the
+ * program bind). Consecutive DS batches usually share TEV mode, texture and
+ * clip matrices; re-sending them dirtied all six TEV stages, the texture
+ * unit and the whole palette on every draw (coffeepot PICA200/gpu-rendering.md,
+ * "What a draw call costs": state changes are the CPU-side cost). */
+static int s_last_tev;
+static C3D_Tex *s_last_tex;
+static uint32_t s_last_wrap;
+static const kj_g3_matrix *s_last_pal;
+static uint32_t s_last_pal_count;
+static uint32_t s_last_pal_vp;
+
 bool kj_g3d_init(void)
 {
     kj_tex_init();
@@ -181,21 +193,35 @@ static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t d
             make_fixup(target, b->viewport, wbuffer, fix);
             last_vp = b->viewport;
         }
-        upload_palette(b, fix);
+        const kj_g3_matrix *pal = &f->matrices[b->first_matrix];
+        if (s_last_pal == NULL || s_last_pal_count != b->matrix_count || s_last_pal_vp != b->viewport ||
+            memcmp(s_last_pal, pal, b->matrix_count * sizeof(*pal)) != 0) {
+            upload_palette(b, fix);
+            s_last_pal = pal;
+            s_last_pal_count = b->matrix_count;
+            s_last_pal_vp = b->viewport;
+        }
 
         /* texture */
         C3D_Tex *tex = NULL;
         if (((b->tex_param >> 26) & 7u) != 0 && (disp3dcnt & 1u) && !(dbg & KJ_DEBUG_NO_TEXTURE)) {
             tex = kj_tex_get(b->tex_param, b->tex_pltt);
         }
-        if (tex != NULL) {
+        const uint32_t wrap = (b->tex_param >> 16) & 0xFu;
+        if (tex != NULL && (tex != s_last_tex || wrap != s_last_wrap)) {
             C3D_TexSetWrap(tex, wrap_mode((b->tex_param >> 16) & 1u, (b->tex_param >> 18) & 1u),
                            wrap_mode((b->tex_param >> 17) & 1u, (b->tex_param >> 19) & 1u));
             C3D_TexBind(0, tex);
             C3D_FVUnifSet(GPU_VERTEX_SHADER, kj_gpu_uloc_3d_texscale(),
                           1.0f / (16.0f * tex->width), -1.0f / (16.0f * tex->height), 0.0f, 1.0f);
+            s_last_tex = tex;
+            s_last_wrap = wrap;
         }
-        tev_for(b->poly_attr, tex != NULL);
+        const int tev = (int)((b->poly_attr >> 4) & 3u) | (tex != NULL ? 4 : 0);
+        if (tev != s_last_tev) {
+            tev_for(b->poly_attr, tex != NULL);
+            s_last_tev = tev;
+        }
 
         /* culling: bit 6 render back, bit 7 render front; 0 draws both */
         const unsigned faces = (b->poly_attr >> 6) & 3u;
@@ -256,6 +282,9 @@ void kj_g3d_draw(const kj_target *target, bool wide, uint8_t stencil_flags)
     kj_gpu_use_program(KJ_PROGRAM_3D);
     kj_gpu_invalidate(); /* textures are bound directly below */
     kj_gpu_use_program(KJ_PROGRAM_3D);
+    s_last_tev = -1;
+    s_last_tex = NULL;
+    s_last_pal = NULL;
     C3D_BufInfo *bi = C3D_GetBufInfo();
     BufInfo_Init(bi);
     BufInfo_Add(bi, f->verts, sizeof(kj_g3_vertex), 4, 0x2130);

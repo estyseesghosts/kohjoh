@@ -301,7 +301,7 @@ def profile_defines():
     Makefiles append after PORT_CFLAGS); tools/hgss_game.py adds the same
     define to the app objects. Both builds otherwise share every flag.
     """
-    return [PROFILE_OFF_DEFINE] if os.environ.get("HGSS_PROFILE") == "off" else []
+    return [] if os.environ.get("HGSS_PROFILE") == "on" else [PROFILE_OFF_DEFINE]
 
 
 def _make_out(subproject, out):

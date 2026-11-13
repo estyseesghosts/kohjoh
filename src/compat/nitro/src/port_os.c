@@ -23,7 +23,7 @@
  * library does not include libctru's headers -- they clash with the SDK's --
  * so the one prototype it needs is declared here. Host builds (tests, tools)
  * have no counter: timings read 0, the same pattern as port_render2d.c. */
-#ifdef __3DS__
+#if defined(__3DS__) && !defined(HGSS_PROFILE_OFF)
 extern u64 svcGetSystemTick(void);
 #define PORT_NOW() svcGetSystemTick()
 #else

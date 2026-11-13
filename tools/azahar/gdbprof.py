@@ -74,6 +74,29 @@ def load_symbols(elf: str, nm: str):
     return addrs, names
 
 
+def sample(a, r, hist, callers, watch, sym, pcs):
+    for _ in range(a.samples):
+        time.sleep(a.interval)
+        r.interrupt()
+        pc_hex = r.request("p f")
+        try:
+            pc = int.from_bytes(bytes.fromhex(pc_hex[:8]), "little")
+        except ValueError:
+            continue
+        name = sym(pc)
+        hist[name] += 1
+        if name in a.pcs_set:
+            pcs[pc] += 1
+        if name in watch:
+            lr_hex = r.request("p e")
+            try:
+                lr = int.from_bytes(bytes.fromhex(lr_hex[:8]), "little")
+                callers[f"{name} <- {sym(lr)}"] += 1
+            except ValueError:
+                pass
+        r.send("c")
+
+
 def main(argv):
     ap = argparse.ArgumentParser()
     ap.add_argument("elf")
@@ -84,7 +107,10 @@ def main(argv):
     ap.add_argument("--nm", default="C:/devkitPro/devkitARM/bin/arm-none-eabi-nm.exe")
     ap.add_argument("--top", type=int, default=40)
     ap.add_argument("--callers", default="", help="comma list of functions: also histogram their callers (LR)")
+    ap.add_argument("--pcs", default="", help="comma list of functions: also histogram their PCs")
     a = ap.parse_args(argv)
+    a.pcs_set = set(x for x in a.pcs.split(",") if x)
+    pcs = collections.Counter()
 
     addrs, names = load_symbols(a.elf, a.nm)
     r = Rsp("127.0.0.1", a.port)
@@ -100,25 +126,11 @@ def main(argv):
         j = bisect.bisect_right(addrs, addr) - 1
         return names[j] if j >= 0 else f"0x{addr:08x}"
 
-    for _ in range(a.samples):
-        time.sleep(a.interval)
-        r.interrupt()
-        pc_hex = r.request("p f")
-        try:
-            pc = int.from_bytes(bytes.fromhex(pc_hex[:8]), "little")
-        except ValueError:
-            continue
-        name = sym(pc)
-        hist[name] += 1
-        if name in watch:
-            lr_hex = r.request("p e")
-            try:
-                lr = int.from_bytes(bytes.fromhex(lr_hex[:8]), "little")
-                callers[f"{name} <- {sym(lr)}"] += 1
-            except ValueError:
-                pass
-        r.send("c")
-    total = sum(hist.values())
+    try:
+        sample(a, r, hist, callers, watch, sym, pcs)
+    except (ConnectionError, OSError) as e:
+        print(f"(sampling stopped early: {e})")
+    total = sum(hist.values()) or 1
     print(f"{total} samples")
     for name, n in hist.most_common(a.top):
         print(f"{100.0 * n / total:6.2f}%  {n:5d}  {name}")
@@ -126,8 +138,15 @@ def main(argv):
         print("callers:")
         for name, n in callers.most_common(a.top):
             print(f"  {n:5d}  {name}")
-    r.interrupt()
-    r.send("D")
+    if pcs:
+        print("pcs:")
+        for pc, n in sorted(pcs.items()):
+            print(f"  0x{pc:08x} {n:5d}")
+    try:
+        r.interrupt()
+        r.send("D")
+    except (ConnectionError, OSError):
+        pass
     return 0
 
 
