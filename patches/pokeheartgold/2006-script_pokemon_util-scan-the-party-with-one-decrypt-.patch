@@ -1,0 +1,101 @@
+From 09c62588510f7f63dc6d43b1363dcb097d6ef59c Mon Sep 17 00:00:00 2001
+From: terezi <jules@foxtails.me>
+Date: Thu, 12 Nov 2026 23:12:35 -0500
+Subject: [PATCH] script_pokemon_util: scan the party with one decrypt per
+ Pokemon (SDK_PORT_3DS)
+
+GetIdxOfFirstPartyMonWithMove runs every field frame (the Waterfall check
+in field_control.c) and called GetMonData up to five times per Pokemon,
+each a full decrypt, checksum and re-encrypt: the largest game-side cost
+in Goldenrod PC samples. GetMonDataMany reads the five attributes under
+one decrypt with the same checksum handling, so the answer and every
+side effect are unchanged.
+---
+ include/pokemon.h         |  3 +++
+ src/pokemon.c             | 27 +++++++++++++++++++++++++++
+ src/script_pokemon_util.c | 17 +++++++++++++++++
+ 3 files changed, 47 insertions(+)
+
+diff --git a/include/pokemon.h b/include/pokemon.h
+index dd48341..49db124 100644
+--- a/include/pokemon.h
++++ b/include/pokemon.h
+@@ -49,6 +49,9 @@ void CreateMonWithFixedIVs(Pokemon *mon, u16 species, u8 level, u32 ivs, u32 per
+ void CalcMonLevelAndStats(Pokemon *mon);
+ void CalcMonStats(Pokemon *mon);
+ u32 GetMonData(Pokemon *mon, int attr, void *ptr);
++#ifdef SDK_PORT_3DS
++void GetMonDataMany(Pokemon *mon, const int *attrs, u32 *out, int count);
++#endif
+ u32 GetBoxMonData(BoxPokemon *boxMon, int attr, void *ptr);
+ void SetMonData(Pokemon *mon, int attr, const void *ptr);
+ void SetBoxMonData(BoxPokemon *boxMon, int attr, const void *ptr);
+diff --git a/src/pokemon.c b/src/pokemon.c
+index 3d5165d..972e765 100644
+--- a/src/pokemon.c
++++ b/src/pokemon.c
+@@ -427,6 +427,33 @@ u32 GetMonData(Pokemon *mon, int attr, void *dest) {
+     return ret;
+ }
+ 
++#ifdef SDK_PORT_3DS
++// GetMonData for several attributes under one decrypt, checksum and
++// re-encrypt. Results and the checksumFailed flag are the same as calling
++// GetMonData once per attribute (decrypting and re-encrypting restores the
++// same bytes); field code scans the party this way every frame.
++void GetMonDataMany(Pokemon *mon, const int *attrs, u32 *out, int count) {
++    int i;
++    u32 checksum;
++    if (!mon->box.partyDecrypted) {
++        DECRYPT_PTY(mon);
++        DECRYPT_BOX(&mon->box);
++        checksum = CHECKSUM(&mon->box);
++        if (checksum != mon->box.checksum) {
++            GF_ASSERT(checksum == mon->box.checksum);
++            mon->box.checksumFailed = TRUE;
++        }
++    }
++    for (i = 0; i < count; i++) {
++        out[i] = GetMonDataInternal(mon, attrs[i], NULL);
++    }
++    if (!mon->box.partyDecrypted) {
++        ENCRYPT_PTY(mon);
++        ENCRYPT_BOX(&mon->box);
++    }
++}
++
++#endif
+ static u32 GetMonDataInternal(Pokemon *mon, int attr, void *dest) {
+     switch (attr) {
+     case MON_DATA_STATUS:
+diff --git a/src/script_pokemon_util.c b/src/script_pokemon_util.c
+index ba0b679..2d2d769 100644
+--- a/src/script_pokemon_util.c
++++ b/src/script_pokemon_util.c
+@@ -74,6 +74,23 @@ int GetIdxOfFirstPartyMonWithMove(Party *party, u16 move) {
+     Pokemon *mon;
+ 
+     n = Party_GetCount(party);
++#ifdef SDK_PORT_3DS
++    // One decrypt per Pokemon instead of up to five (field_control.c calls
++    // this every field frame); same answer and same checksum handling.
++    for (i = 0; i < n; i++) {
++        static const int attrs[5] = { MON_DATA_IS_EGG, MON_DATA_MOVE1, MON_DATA_MOVE2, MON_DATA_MOVE3, MON_DATA_MOVE4 };
++        u32 v[5];
++        mon = Party_GetMonByIndex(party, i);
++        GetMonDataMany(mon, attrs, v, 5);
++        if (v[0]) {
++            continue;
++        }
++        if (v[1] == move || v[2] == move || v[3] == move || v[4] == move) {
++            return i;
++        }
++    }
++    return 0xFF;
++#endif
+     for (i = 0; i < n; i++) {
+         mon = Party_GetMonByIndex(party, i);
+         if (GetMonData(mon, MON_DATA_IS_EGG, NULL)) {
+-- 
+2.56.0.windows.4
+
