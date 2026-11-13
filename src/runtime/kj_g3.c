@@ -1673,6 +1673,9 @@ typedef struct dl_block {
     uint32_t first_idx, nidx;    /* relative to the block's first vertex */
 } dl_block;
 
+/* Unrecordable lists recheck their content once per this many pictures */
+#define DL_NEVER_RECHECK_MASK 63u
+
 typedef struct dl_entry {
     const uint32_t *ptr;
     uint32_t count;
@@ -2223,6 +2226,15 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
         e->count = (uint32_t)count;
         memcpy(e->words, words, count * 4u);
         e->reads = dl_entry_reads(words, count);
+    } else if (e->never && (s_stats.swaps & DL_NEVER_RECHECK_MASK) != 0u) {
+        /* An unrecordable list decodes live whatever its content, so the
+         * content check only matters for noticing it became recordable;
+         * the title's lit Ho-Oh lists spent 6.8% of samples comparing */
+        e->last_frame = s_stats.swaps;
+        s_dl_cov[DLC_NEVER] += (uint32_t)count;
+        ++s_dl_uncacheable;
+        decode_words(words, count);
+        return;
     } else if (memcmp(e->words, words, count * 4u) != 0) {
         s_dl_cov[DLC_CHANGED] += (uint32_t)count;
         memcpy(e->words, words, count * 4u);
