@@ -111,7 +111,7 @@ builds.
 
 | Variable | Effect in kohjoh today |
 | --- | --- |
-| `HGSS_PROFILE=on` | compiles in the HGSS tick probes (H-blank split timings in `port_os.c`). Off by default since `0089b28`; before that every build carried them |
+| `HGSS_PROFILE=on` | enables frame, GPU, FIFO, H-blank, timer and sound profiling; leave unset for a baseline. Use a separate output directory for each variant. |
 | `HGSS_SND_ADPCM=1` | the alternative sample-saturation path in `port_sound_chip.c` |
 | `HGSS_A0_DIAG=1` | H-blank scan cross-check counters in `port_os.c` |
 | `HGSS_BENCH=1` | hgss-3ds benchmark chainload define; no kohjoh source uses it |

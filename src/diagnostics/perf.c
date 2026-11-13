@@ -1,3 +1,4 @@
+#ifndef HGSS_PROFILE_OFF
 /*
  * perf.c: bounded in-memory frame profiler.
  *
@@ -33,6 +34,8 @@ static uint32_t s_samples[KJ_PERF_STAGE_COUNT][WINDOW];
 static uint32_t s_frame_stage[KJ_PERF_STAGE_COUNT];
 static uint32_t s_interval[WINDOW];
 static unsigned s_n;
+static uint32_t s_game_logic[WINDOW];
+static unsigned s_game_n;
 static uint64_t s_vblank_start, s_publish_start, s_logic_start;
 static uint32_t s_vblanks_since_publish, s_misses, s_windows;
 static bool s_any_publish;
@@ -85,6 +88,21 @@ static int cmp_u32(const void *a, const void *b)
 {
     const uint32_t x = *(const uint32_t *)a, y = *(const uint32_t *)b;
     return x < y ? -1 : x > y;
+}
+
+/* This window counts every game frame, including skipped pictures. */
+static void record_game_logic(void)
+{
+    s_game_logic[s_game_n++] = s_frame_stage[KJ_PERF_LOGIC];
+    if (s_game_n == WINDOW) {
+        qsort(s_game_logic, WINDOW, sizeof(s_game_logic[0]), cmp_u32);
+        kj_log("[gamecpu] 600 game frames, logic us p50 %lu p95 %lu p99 %lu max %lu (includes preemption; excludes V-blank wait)",
+               (unsigned long)(s_game_logic[WINDOW / 2] / TICKS_PER_US),
+               (unsigned long)(s_game_logic[WINDOW * 95 / 100] / TICKS_PER_US),
+               (unsigned long)(s_game_logic[WINDOW * 99 / 100] / TICKS_PER_US),
+               (unsigned long)(s_game_logic[WINDOW - 1] / TICKS_PER_US));
+        s_game_n = 0;
+    }
 }
 
 static void report(void)
@@ -167,7 +185,11 @@ static void note_hitch(uint32_t game_frame, uint32_t refreshes)
 void kj_perf_present_skipped(uint32_t game_frame)
 {
     ++s_skipped;
-    note_hitch(game_frame, 0);
+    (void)game_frame;
+    record_game_logic();
+    memset(s_frame_stage, 0, sizeof(s_frame_stage));
+    memset(kj_perf_counts, 0, sizeof(kj_perf_counts));
+    s_logic_start = svcGetSystemTick();
 }
 
 void kj_perf_publish_end(uint32_t game_frame)
@@ -179,9 +201,6 @@ void kj_perf_publish_end(uint32_t game_frame)
     s_frame_time[s_n] = s_any_publish ? (uint32_t)(now - s_last_submit) : 0u;
     s_last_real = real;
     s_last_submit = now;
-    if (s_any_publish && real_interval != 2u) {
-        note_hitch(game_frame, real_interval);
-    }
     kj_perf_add(KJ_PERF_PUBLISH, now - s_publish_start);
     /* kj_g3d_draw runs inside the screen draw: report g2d exclusive of it,
      * so logic + g2d + g3d + gpu_wait + submit is not double-counted. */
@@ -190,6 +209,10 @@ void kj_perf_publish_end(uint32_t game_frame)
         const uint32_t g3d = s_frame_stage[KJ_PERF_G3D];
         *g2d = *g2d > g3d ? *g2d - g3d : 0u;
     }
+    if (s_any_publish && real_interval != 2u) {
+        note_hitch(game_frame, real_interval);
+    }
+    record_game_logic();
     memset(kj_perf_counts, 0, sizeof(kj_perf_counts));
     for (int s = 0; s < KJ_PERF_STAGE_COUNT; ++s) {
         s_samples[s][s_n] = s_frame_stage[s];
@@ -201,9 +224,11 @@ void kj_perf_publish_end(uint32_t game_frame)
     }
     s_any_publish = true;
     s_vblanks_since_publish = 0;
-    s_logic_start = now;
     if (++s_n == WINDOW) {
         s_n = 0;
         report();
     }
+    s_logic_start = svcGetSystemTick();
 }
+
+#endif

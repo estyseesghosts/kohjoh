@@ -23,7 +23,7 @@
  * library does not include libctru's headers -- they clash with the SDK's --
  * so the one prototype it needs is declared here. Host builds (tests, tools)
  * have no counter: timings read 0, the same pattern as port_render2d.c. */
-#if defined(__3DS__) && !defined(HGSS_PROFILE_OFF)
+#if defined(__3DS__) && defined(HGSS_A0_DIAG) && !defined(HGSS_PROFILE_OFF)
 extern u64 svcGetSystemTick(void);
 #define PORT_NOW() svcGetSystemTick()
 #else
@@ -88,6 +88,7 @@ static void raise_irq(u32 mask, int refresh)
          * switched back to. */
         saved = OSi_PortCpsr;
         OSi_PortCpsr = (saved & ~HW_PSR_CPU_MODE_MASK) | HW_PSR_IRQ_MODE | HW_PSR_IRQ_DISABLE;
+#if defined(HGSS_A0_DIAG) && !defined(HGSS_PROFILE_OFF)
         if (sHBlankWalking) {
             /* The bit OS_IrqHandler will run: the lowest pending, enabled one. */
             u32 pending = reg_OS_IE & reg_OS_IF;
@@ -102,6 +103,9 @@ static void raise_irq(u32 mask, int refresh)
         } else {
             OS_IrqHandler();
         }
+#else
+        OS_IrqHandler();
+#endif
         OSi_PortCpsr = saved;
     }
 }
@@ -117,7 +121,7 @@ NitroLineRegs NitroPort_LineRegs;
 
 /* The last walk's three parts, in ARM11 ticks (NitroPort_HBlankSplit). */
 static u64 sHBlankKeepTicks, sHBlankDmaTicks, sHBlankIrqTicks;
-#ifndef HGSS_PROFILE_OFF
+#if defined(HGSS_A0_DIAG) && !defined(HGSS_PROFILE_OFF)
 /* P1: the parts outside the keep/dma/irq split: the per-walk refresh, the
  * thread-switch step, and the line compare scan. */
 static u64 sHBlankRefreshTicks, sHBlankSwitchTicks, sHBlankCmpTicks;
@@ -209,14 +213,16 @@ void NitroPort_HBlankLines(void)
      * through the SDK's dispatcher) and the per-line register copy; guessing
      * between them has already been wrong once. */
     sHBlankKeepTicks = sHBlankDmaTicks = sHBlankIrqTicks = 0;
-#ifndef HGSS_PROFILE_OFF
+#if defined(HGSS_A0_DIAG) && !defined(HGSS_PROFILE_OFF)
     sHBlankRefreshTicks = sHBlankSwitchTicks = sHBlankCmpTicks = 0;
 #endif
+#if defined(HGSS_A0_DIAG) && !defined(HGSS_PROFILE_OFF)
     memset(sHBlankIrqBitTicks, 0, sizeof(sHBlankIrqBitTicks));
     memset(sHBlankIrqBitCalls, 0, sizeof(sHBlankIrqBitCalls));
+#endif
     /* (GXSTAT and the GXFIFO level interrupt once, not once a scanline: see
      * raise_irq) */
-#ifndef HGSS_PROFILE_OFF
+#if defined(HGSS_A0_DIAG) && !defined(HGSS_PROFILE_OFF)
     { u64 tR = PORT_NOW(); NitroPort_GxRefresh(); sHBlankRefreshTicks += PORT_NOW() - tR; }
 #else
     NitroPort_GxRefresh();
@@ -228,7 +234,9 @@ void NitroPort_HBlankLines(void)
     /* Line 0 has what the last H-blank before it left (the frame's last
      * line's, in the V-blank: its interrupt only), then each line what
      * the H-blank of the line before did. */
+#if defined(HGSS_A0_DIAG) && !defined(HGSS_PROFILE_OFF)
     sHBlankWalking = 1;
+#endif
     HBlank(262, irq, FALSE);
     /* P6: whether the lines differ is decided during the walk, below. */
     NitroPort_LineRegs.active = 0;
@@ -251,16 +259,18 @@ void NitroPort_HBlankLines(void)
         sHBlankKeepTicks += t1 - t0;
         HBlank(y, irq, dma);   /* (the last one's: for the DMAs' source, as on the DS) */
     }
+#if defined(HGSS_A0_DIAG) && !defined(HGSS_PROFILE_OFF)
     sHBlankWalking = 0;
+#endif
     reg_OS_IF &= ~OS_IE_H_BLANK;   /* (not left pending for later) */
     NitroPort_IrqSwitchDeferred = 0;
     if (NitroPort_IrqSwitchWanted) {
-#ifndef HGSS_PROFILE_OFF
+#if defined(HGSS_A0_DIAG) && !defined(HGSS_PROFILE_OFF)
         u64 tS = PORT_NOW();
 #endif
         NitroPort_IrqSwitchWanted = 0;
         NitroPort_IrqThreadSwitch();
-#ifndef HGSS_PROFILE_OFF
+#if defined(HGSS_A0_DIAG) && !defined(HGSS_PROFILE_OFF)
         sHBlankSwitchTicks += PORT_NOW() - tS;
 #endif
     }
@@ -293,7 +303,7 @@ void NitroPort_HBlankSplit(u64 *keep, u64 *dma, u64 *irq)
     *dma = sHBlankDmaTicks;
     *irq = sHBlankIrqTicks;
 }
-#ifndef HGSS_PROFILE_OFF
+#if defined(HGSS_A0_DIAG) && !defined(HGSS_PROFILE_OFF)
 /* P1: the parts outside the keep/dma/irq split: the per-walk refresh, the
  * thread-switch step, and the line compare scan. */
 void NitroPort_HBlankSplit2(u64 *refresh, u64 *sw, u64 *cmp)

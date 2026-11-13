@@ -922,7 +922,9 @@ static void box_test(const uint32_t *p)
         ez[j] = (int64_t)d * c->m[2][j];
     }
 
+#ifndef HGSS_PROFILE_OFF
     ++s_stats.box_tests;
+#endif
     for (int i = 0; i < 8; ++i) {
         int64_t o[4];
         for (int j = 0; j < 4; ++j) {
@@ -957,7 +959,9 @@ static void box_test(const uint32_t *p)
     if (all_out == 0) {
         stat |= 0x2u;
     } else {
+#ifndef HGSS_PROFILE_OFF
         ++s_stats.box_culled;
+#endif
         ++fb->frame.box_culled;
         if (all_out == 0x20u) {
             ++fb->frame.box_culled_far;
@@ -1098,7 +1102,9 @@ void kj_g3_log_op_profile(void)
 static void execute(unsigned op, const uint32_t *p)
 #endif
 {
+#ifndef HGSS_PROFILE_OFF
     ++s_stats.commands;
+#endif
 #ifdef KJ_G3_ZERO_TRACE
     {
         /* Diagnostics: report the first commands that leave a zero matrix. */
@@ -1339,7 +1345,9 @@ void NitroPort_GxDirectWrite(int opcode, uint32_t value)
     const unsigned op = (unsigned)opcode & 0xFF;
     const int need = param_count(op);
 
+#ifndef HGSS_PROFILE_OFF
     ++s_direct_words;
+#endif
     if (need == 0) {
         execute(op, &value);
         return;
@@ -1364,6 +1372,8 @@ static unsigned s_fifo_op;
 static int s_fifo_need, s_fifo_have;
 static uint32_t s_fifo_params[32];
 
+static void fifo_command(unsigned op, const uint32_t *p);
+
 static void fifo_next_command(void)
 {
     while (s_fifo_left > 0) {
@@ -1376,7 +1386,7 @@ static void fifo_next_command(void)
             return;
         }
         if (s_fifo_op != 0) {
-            execute(s_fifo_op, s_fifo_params);
+            fifo_command(s_fifo_op, s_fifo_params);
         }
         if ((s_fifo_cmds & 0xFFFFFF) == 0) {
             /* the rest of the word is NOPs */
@@ -1391,7 +1401,7 @@ void NitroPort_GxFifoWord(uint32_t value)
     if (s_fifo_need > 0) {
         s_fifo_params[s_fifo_have++] = value;
         if (s_fifo_have >= s_fifo_need) {
-            execute(s_fifo_op, s_fifo_params);
+            fifo_command(s_fifo_op, s_fifo_params);
             s_fifo_need = 0;
             fifo_next_command();
         }
@@ -1606,6 +1616,14 @@ vertex:
     }
 }
 
+/* A command completed across FIFO calls still has exactly the same vertex
+ * state as a bulk command. Reuse its fast path instead of forcing every
+ * split vertex through submit_vertex and the general dispatcher. */
+static void fifo_command(unsigned op, const uint32_t *p)
+{
+    hot_command(op, p);
+}
+
 static void build_param_table(void)
 {
     for (unsigned op = 0; op < 256; ++op) {
@@ -1750,7 +1768,9 @@ static void dl_flush_all(void)
 {
     memset(s_dl, 0, sizeof(s_dl));
     s_dl_arena_used = 0;
+#ifndef HGSS_PROFILE_OFF
     ++s_dl_flushes;
+#endif
 }
 static dl_rec s_rec;
 static uint32_t s_dl_bytes;
@@ -1774,12 +1794,16 @@ static void rec_close_block(void)
     if (opened > 1u || (opened == 1u && fb->batches[fb->frame.batch_count - 1].first_index != s_rec.block_i0) ||
         s_rec.nevents >= DL_MAX_EVENTS || s_rec.nblocks >= DL_MAX_EVENTS) {
         s_rec.bad = true; /* batches changed inside the block, or too many events */
+#ifndef HGSS_PROFILE_OFF
         ++s_dl_why[0];
+#endif
     }
     for (uint32_t i = s_rec.block_i0; i < i1 && !s_rec.bad; ++i) {
         if (fb->indices[i] < s_rec.block_v0) {
             s_rec.bad = true; /* shares vertices with an earlier block */
+#ifndef HGSS_PROFILE_OFF
             ++s_dl_why[1];
+#endif
         }
     }
     if (!s_rec.bad) {
@@ -1817,7 +1841,9 @@ static void rec_command(unsigned op, const uint32_t *p)
     }
     if (op == 0x50) {
         s_rec.bad = true;
+#ifndef HGSS_PROFILE_OFF
         ++s_dl_why[4];
+#endif
     }
     if (op >= 0x10 && op <= 0x1C) {
         s_rec.has_matrix = true;
@@ -1877,9 +1903,22 @@ static uint32_t dl_entry_reads(const uint32_t *w, size_t n)
     return reads;
 }
 
+/* The unused tail is not part of the key. Most map lists consume neither
+ * texgen matrices nor shininess; clearing/comparing those bytes on every
+ * cache lookup needlessly streams through the ARM11's small data cache.
+ * All bytes in the selected prefix are initialized, including padding. */
+static size_t dl_key_size(bool lit, bool texgen, uint32_t reads)
+{
+    if (lit) {
+        return s_use_shininess ? sizeof(dl_key) : offsetof(dl_key, shininess);
+    }
+    return texgen || (reads & DL_READS_TEXM) ? offsetof(dl_key, vec)
+                                          : offsetof(dl_key, texm);
+}
+
 static void dl_make_key(dl_key *k, bool lit, bool texgen, uint32_t reads)
 {
-    memset(k, 0, sizeof(*k));
+    memset(k, 0, dl_key_size(lit, texgen, reads));
     k->attr_pending = s_attr_pending;
     k->attr = s_attr;
     k->tex_param = s_tex_param;
@@ -1992,7 +2031,18 @@ static void dl_capture_exit(dl_exit *x, uint32_t v0)
     }
 }
 
-static void decode_words(const uint32_t *words, size_t count);
+static void decode_words_impl(const uint32_t *words, size_t count);
+
+#ifndef HGSS_PROFILE_OFF
+/* Sample one FIFO call in 64. Nested portions are timed only in sampled
+ * calls; the remainder includes lookup, comparison, recording and probe
+ * overhead. Wall time includes preemption. */
+static u32 s_coarse_seq = 0x6d2b79f5u;
+static u32 s_coarse_n, s_coarse_depth;
+static bool s_coarse_sample;
+static u64 s_coarse_total, s_coarse_decode, s_coarse_replay, s_coarse_copy;
+#endif
+
 
 static bool dl_append_block(const dl_entry *e, const dl_block *b, uint32_t *v_first_out)
 {
@@ -2016,6 +2066,9 @@ static bool dl_append_block(const dl_entry *e, const dl_block *b, uint32_t *v_fi
             return false;
         }
     }
+#ifndef HGSS_PROFILE_OFF
+    const u64 copy_start = s_coarse_sample ? svcGetSystemTick() : 0;
+#endif
     const uint32_t v0 = fb->frame.vert_count;
     const uint32_t hi = (uint32_t)slot << 16;
     const uint32_t *src = (const uint32_t *)(e->verts + b->first_vert);
@@ -2038,10 +2091,14 @@ static bool dl_append_block(const dl_entry *e, const dl_block *b, uint32_t *v_fi
     fb->frame.index_count += b->nidx;
     s_batch->index_count += b->nidx;
     *v_first_out = v0;
+#ifndef HGSS_PROFILE_OFF
+    if (s_coarse_sample) s_coarse_copy += svcGetSystemTick() - copy_start;
+#endif
     return true;
 }
 
-static void dl_replay(dl_entry *e)
+
+static void dl_replay_impl(dl_entry *e)
 {
     uint32_t list_v0 = s_buf[s_build].frame.vert_count;
     uint32_t last_block_v0 = list_v0, last_block_rel = 0;
@@ -2077,6 +2134,17 @@ static void dl_replay(dl_entry *e)
         s_prim_verts[i] = e->exit.prim_rel[i] - last_block_rel + last_block_v0;
     }
     update_color_rgba();
+}
+
+static void dl_replay(dl_entry *e)
+{
+#ifndef HGSS_PROFILE_OFF
+    const u64 t = s_coarse_sample ? svcGetSystemTick() : 0;
+#endif
+    dl_replay_impl(e);
+#ifndef HGSS_PROFILE_OFF
+    if (s_coarse_sample) s_coarse_replay += svcGetSystemTick() - t;
+#endif
 }
 
 static uint32_t dl_vertex_bound(const dl_entry *e)
@@ -2134,12 +2202,14 @@ static void dl_verify(const dl_entry *e, const frame_buf *fb)
                           (unsigned long)e->nevents);
         }
     } else {
+#ifndef HGSS_PROFILE_OFF
         ++s_dl_hits;
+#endif
     }
 }
 #endif
 
-static void decode_words(const uint32_t *words, size_t count)
+static void decode_words_impl(const uint32_t *words, size_t count)
 {
 #ifdef KJ_G3_PROFILE
     const u64 t0 = svcGetSystemTick();
@@ -2187,10 +2257,25 @@ static void decode_words(const uint32_t *words, size_t count)
 #endif
 }
 
-void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
+static void decode_words(const uint32_t *words, size_t count)
 {
+#ifndef HGSS_PROFILE_OFF
+    const u64 t = s_coarse_sample ? svcGetSystemTick() : 0;
+#endif
+    decode_words_impl(words, count);
+#ifndef HGSS_PROFILE_OFF
+    if (s_coarse_sample) s_coarse_decode += svcGetSystemTick() - t;
+#endif
+}
+
+static void fifo_words_impl(const uint32_t *words, size_t count)
+{
+#ifndef HGSS_PROFILE_OFF
     ++s_fifo_calls;
+#endif
+#ifndef HGSS_PROFILE_OFF
     s_fifo_words += (u32)count;
+#endif
     if (s_param_count[0x16] == 0) {
         build_param_table();
     }
@@ -2200,15 +2285,25 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
     return;
 #endif
     if (count < DL_MIN_WORDS || count > 0xFFFFFu || s_in_begin || s_fifo_need > 0 || s_rec.active) {
+#ifndef HGSS_PROFILE_OFF
         s_dl_cov[DLC_SHORT] += (uint32_t)count;
+#endif
         if (count < DL_MIN_WORDS) {
+#ifndef HGSS_PROFILE_OFF
             s_dl_cov[DLC_SMALL] += (uint32_t)count;
+#endif
         } else if (s_fifo_need > 0) {
+#ifndef HGSS_PROFILE_OFF
             s_dl_cov[DLC_SPLIT] += (uint32_t)count;
+#endif
         } else if (s_in_begin) {
+#ifndef HGSS_PROFILE_OFF
             s_dl_cov[DLC_BEGIN] += (uint32_t)count;
+#endif
             if ((words[0] & 0xFFu) == 0x40u) {
+#ifndef HGSS_PROFILE_OFF
                 s_dl_cov[DLC_BEGIN_FIRST] += (uint32_t)count;
+#endif
             }
         }
         decode_words(words, count);
@@ -2220,7 +2315,9 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
         return;
     }
     if (e->ptr != words || e->count != count) {
+#ifndef HGSS_PROFILE_OFF
         s_dl_cov[DLC_NEW] += (uint32_t)count;
+#endif
         dl_free(e);
         uint32_t *copy = dl_alloc((uint32_t)count * 4u);
         if (copy == NULL) {
@@ -2238,12 +2335,18 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
          * content check only matters for noticing it became recordable;
          * the title's lit Ho-Oh lists spent 6.8% of samples comparing */
         e->last_frame = s_stats.swaps;
+#ifndef HGSS_PROFILE_OFF
         s_dl_cov[DLC_NEVER] += (uint32_t)count;
+#endif
+#ifndef HGSS_PROFILE_OFF
         ++s_dl_uncacheable;
+#endif
         decode_words(words, count);
         return;
     } else if (memcmp(e->words, words, count * 4u) != 0) {
+#ifndef HGSS_PROFILE_OFF
         s_dl_cov[DLC_CHANGED] += (uint32_t)count;
+#endif
         memcpy(e->words, words, count * 4u);
         dl_drop_recording(e);
         e->never = false;
@@ -2252,8 +2355,12 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
     }
     e->last_frame = s_stats.swaps;
     if (e->never) {
+#ifndef HGSS_PROFILE_OFF
         s_dl_cov[DLC_NEVER] += (uint32_t)count;
+#endif
+#ifndef HGSS_PROFILE_OFF
         ++s_dl_uncacheable;
+#endif
         decode_words(words, count);
         return;
     }
@@ -2261,9 +2368,10 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
     const bool lit = e->needs_light || ((s_attr | s_attr_pending) & 0xFu) != 0;
     dl_key key;
     bool verify = false;
+    const size_t key_bytes = dl_key_size(lit, texgen, e->reads);
     dl_make_key(&key, lit, texgen, e->reads);
     if (e->recorded && e->lit == lit && e->texgen == texgen &&
-        memcmp(&key, &e->key, sizeof(key)) == 0) {
+        memcmp(&key, &e->key, key_bytes) == 0) {
         frame_buf *fb = &s_buf[s_build];
         if (fb->frame.vert_count + dl_vertex_bound(e) <= KJ_G3_MAX_VERTS &&
             fb->frame.index_count + e->nidx <= KJ_G3_MAX_INDICES &&
@@ -2272,8 +2380,12 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
             verify = true;
 #else
             dl_replay(e);
+#ifndef HGSS_PROFILE_OFF
             ++s_dl_hits;
+#endif
+#ifndef HGSS_PROFILE_OFF
             s_dl_cov[DLC_HIT] += (uint32_t)count;
+#endif
             return;
 #endif
         }
@@ -2286,23 +2398,29 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
             ++logged;
             const uint32_t *a = (const uint32_t *)&key, *b = (const uint32_t *)&e->key;
             unsigned first = 0;
-            while (first < sizeof(key) / 4 && a[first] == b[first]) {
+            while (first < key_bytes / 4 && a[first] == b[first]) {
                 ++first;
             }
             NitroPort_Log("[dlmiss] list %p lit %d/%d texgen %d/%d key word %u: %08lx vs %08lx",
                           (const void *)words, lit, e->lit, texgen, e->texgen, first,
-                          first < sizeof(key) / 4 ? (unsigned long)a[first] : 0ul,
-                          first < sizeof(key) / 4 ? (unsigned long)b[first] : 0ul);
+                          first < key_bytes / 4 ? (unsigned long)a[first] : 0ul,
+                          first < key_bytes / 4 ? (unsigned long)b[first] : 0ul);
         }
     }
 #endif
     /* record */
     if (verify) {
+#ifndef HGSS_PROFILE_OFF
         s_dl_cov[DLC_HIT] += (uint32_t)count;
+#endif
     } else if (e->recorded) {
+#ifndef HGSS_PROFILE_OFF
         s_dl_cov[DLC_KEY] += (uint32_t)count;
+#endif
     }
+#ifndef HGSS_PROFILE_OFF
     ++s_dl_misses;
+#endif
     if (e->recorded && !verify) {
         dl_drop_recording(e);
     }
@@ -2325,11 +2443,15 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
     if (fb->frame.dropped_verts + fb->frame.dropped_batches + fb->frame.unsupported != drops0 ||
         s_fifo_need > 0) {
         s_rec.bad = true;
+#ifndef HGSS_PROFILE_OFF
         ++s_dl_why[2];
+#endif
     }
     if (s_rec.vecdep && s_rec.has_matrix) {
         s_rec.bad = true;
+#ifndef HGSS_PROFILE_OFF
         ++s_dl_why[3];
+#endif
     }
     if (s_rec.vecdep && !lit && !s_rec.bad) {
         /* keyed without the lighting state it turned out to read: key on it
@@ -2372,7 +2494,7 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
     e->nverts = nv;
     e->nidx = ni;
 
-    e->key = key;
+    memcpy(&e->key, &key, key_bytes);
     e->lit = lit;
     e->texgen = texgen;
     dl_capture_exit(&e->exit, s_rec.v0);
@@ -2384,7 +2506,9 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
             last_rel = e->blocks[b].first_vert;
         }
         if (!e->exit.prim_valid) {
+#ifndef HGSS_PROFILE_OFF
             ++s_dl_why[5];
+#endif
             dl_drop_recording(e);
             e->never = true;
             return;
@@ -2394,8 +2518,41 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
     e->recorded = true;
 }
 
+void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
+{
+#ifndef HGSS_PROFILE_OFF
+    const bool outer = s_coarse_depth++ == 0;
+    u64 start = 0;
+    if (outer) {
+        /* Deterministic PRNG avoids locking the stride to a model's calls. */
+        s_coarse_seq ^= s_coarse_seq << 13;
+        s_coarse_seq ^= s_coarse_seq >> 17;
+        s_coarse_seq ^= s_coarse_seq << 5;
+        s_coarse_sample = (s_coarse_seq & 63u) == 0;
+        if (s_coarse_sample) {
+            ++s_coarse_n;
+            start = svcGetSystemTick();
+        }
+    }
+#endif
+    fifo_words_impl(words, count);
+#ifndef HGSS_PROFILE_OFF
+    if (outer && s_coarse_sample) s_coarse_total += svcGetSystemTick() - start;
+    --s_coarse_depth;
+    if (outer) s_coarse_sample = false;
+#endif
+}
+
 void kj_g3_dl_stats(uint32_t *hits, uint32_t *misses, uint32_t *uncacheable, uint32_t *bytes)
 {
+#ifndef HGSS_PROFILE_OFF
+    NitroPort_Log("[g3sample] random 1/64 FIFO calls: samples %lu total_ticks %llu decode_ticks %llu replay_ticks %llu (block_copy_ticks %llu nested); remainder includes lookup/recording and probe overhead",
+                  (unsigned long)s_coarse_n, (unsigned long long)s_coarse_total,
+                  (unsigned long long)s_coarse_decode, (unsigned long long)s_coarse_replay,
+                  (unsigned long long)s_coarse_copy);
+    s_coarse_n = 0;
+    s_coarse_total = s_coarse_decode = s_coarse_replay = s_coarse_copy = 0;
+#endif
     *hits = s_dl_hits;
     *misses = s_dl_misses;
     *uncacheable = s_dl_uncacheable;

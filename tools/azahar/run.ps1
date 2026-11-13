@@ -45,7 +45,6 @@ if ($FreshSave) { Remove-Item (Join-Path $root "saves\$Edition.sav") -ErrorActio
 $scriptDst = Join-Path $root "script.txt"
 if ($Script -ne "") { Copy-Item $Script $scriptDst -Force } else { Remove-Item $scriptDst -ErrorAction SilentlyContinue }
 $log = Join-Path $root "logs\$Edition.log"
-Remove-Item $log -ErrorAction SilentlyContinue
 
 $out = Join-Path $OutDir $Tag
 New-Item -ItemType Directory -Force -Path $out | Out-Null
@@ -54,6 +53,17 @@ Copy-Item $Artifact $dsx -Force
 
 Get-Process azahar -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Milliseconds 800
+$logOffset = if (Test-Path $log) { (Get-Item $log).Length } else { 0 }
+function Read-NewLog {
+  if (-not (Test-Path $log)) { return "" }
+  $stream = [System.IO.File]::Open($log, [System.IO.FileMode]::Open,
+    [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+  try {
+    [void]$stream.Seek([Math]::Min($logOffset, $stream.Length), [System.IO.SeekOrigin]::Begin)
+    $reader = [System.IO.StreamReader]::new($stream)
+    try { return $reader.ReadToEnd() } finally { $reader.Dispose() }
+  } finally { $stream.Dispose() }
+}
 $p = Start-Process -FilePath "C:\Program Files\Azahar\azahar.exe" -ArgumentList "`"$dsx`"" -PassThru
 $start = Get-Date
 # A fixed, large window so the two screens are readable in the shots.
@@ -88,7 +98,7 @@ if ($Holds -ne "") {
     $deadline = (Get-Date).AddSeconds($Timeout)
     $found = $false
     while ((Get-Date) -lt $deadline) {
-      if ((Test-Path $log) -and (Select-String -Path $log -SimpleMatch $pat -Quiet)) { $found = $true; break }
+      if ((Read-NewLog).Contains($pat)) { $found = $true; break }
       Start-Sleep -Milliseconds 250
     }
     if (-not $found) { Write-Output "frame $hf never held"; break }
@@ -105,6 +115,6 @@ if ($Shots -ne "") { foreach ($s in $Shots.Split(',')) {
 Start-Sleep -Seconds $Extra
 Get-Process azahar -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Milliseconds 500
-if (Test-Path $log) { Copy-Item $log (Join-Path $out "$Edition.log") -Force; Write-Output "log copied" } else { Write-Output "no program log" }
+if (Test-Path $log) { [System.IO.File]::WriteAllText((Join-Path (Resolve-Path $out) "$Edition.log"), (Read-NewLog)); Write-Output "log copied" } else { Write-Output "no program log" }
 $azlog = Join-Path $env:APPDATA "Azahar\log\azahar_log.txt"
 if (Test-Path $azlog) { Copy-Item $azlog (Join-Path $out "azahar_log.txt") -Force }

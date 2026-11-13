@@ -113,7 +113,9 @@ bool kj_ctr_vblank(void)
     u32 real = real_vblanks();
     if (real > s_emulated + RESYNC_VBLANKS) {
         s_base += real - s_emulated - 1u;
+#ifndef HGSS_PROFILE_OFF
         ++s_resyncs;
+#endif
         real = real_vblanks();
     }
     if (real <= s_emulated) {
@@ -121,7 +123,9 @@ bool kj_ctr_vblank(void)
             gspWaitForVBlank();
         }
     } else {
+#ifndef HGSS_PROFILE_OFF
         ++s_late_vblanks;
+#endif
     }
     ++s_emulated;
     ++s_vblank_count;
@@ -203,6 +207,7 @@ int main(int argc, char **argv)
     settings.language = 1; /* English */
     settings.birth_month = 1;
     settings.birth_day = 1;
+#ifndef HGSS_PROFILE_OFF
     {
         /* Calibration: ticks for a loop of known instruction count (4 per
          * iteration: add, subs, bne + one store), to read emulator timing. */
@@ -218,6 +223,7 @@ int main(int argc, char **argv)
                (unsigned long long)(t1 - t0), (double)(t1 - t0) / 1000000.0);
         (void)sink;
     }
+#endif
     s_base = C3D_FrameCounter(0);
     kj_log("[app] starting the game");
     kj_game_main(&settings);

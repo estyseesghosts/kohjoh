@@ -172,7 +172,9 @@ static void Advance(int i, u64 now)
 void NitroPort_SyncTimers(void)
 {
     u64 now = NitroPort_Cycles();
+#ifndef HGSS_PROFILE_OFF
     u64 t0 = PORT_NOW();
+#endif
     int i;
 
     for (i = 0; i < 4; i++) {
@@ -183,8 +185,10 @@ void NitroPort_SyncTimers(void)
 
         reg_GX_VCOUNT = (u16)((192 + line) % LINES_PER_FRAME);
     }
+#ifndef HGSS_PROFILE_OFF
     sSyncTicks += PORT_NOW() - t0;
     sSyncCalls++;
+#endif
 }
 
 /* The syncs so far and their cost, in ARM11 ticks (NitroPort_SyncTimers).

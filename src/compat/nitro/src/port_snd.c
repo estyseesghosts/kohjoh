@@ -26,7 +26,7 @@
  * is declared here). Host builds have no counter: the Mix-vs-tick split
  * reads 0 there and only the counts are exact. Emulator ticks are mushy
  * (JIT/preemption inflate them); hardware ticks are true. */
-#ifdef __3DS__
+#if defined(__3DS__) && !defined(HGSS_PROFILE_OFF)
 extern u64 svcGetSystemTick(void);
 #define SNDPROF_NOW() svcGetSystemTick()
 #else
@@ -247,8 +247,10 @@ void NitroPort_SoundRender(int16_t *stereo, size_t frames)
         memset(stereo, 0, frames * 4u);
         return;
     }
+#ifndef HGSS_PROFILE_OFF
     sProfRenderCalls += 1u;
     sProfRenderFrames += (uint64_t)frames;
+#endif
     while (done < frames) {
         uint64_t toTick;
         size_t n;
@@ -263,27 +265,40 @@ void NitroPort_SoundRender(int16_t *stereo, size_t frames)
         n = frames - done;
         if (toTick < n) n = (size_t)toTick;
         {
+#ifndef HGSS_PROFILE_OFF
             u64 mixStart = SNDPROF_NOW();
+#endif
             NitroSound_Mix(&sChip, stereo + 2u * done, n);
+#ifndef HGSS_PROFILE_OFF
             sProfMixTicks += (uint64_t)(SNDPROF_NOW() - mixStart);
+#endif
         }
         sTickPhase += SOUND_BUS_CLOCK * (uint64_t)n;
         if (sTickPhase >= SOUND_TICK_SAMPLES) {
             sTickPhase -= SOUND_TICK_SAMPLES;
             {
+#ifndef HGSS_PROFILE_OFF
                 u64 tickStart = SNDPROF_NOW();
+#endif
                 sound_tick();
+#ifndef HGSS_PROFILE_OFF
                 sProfTickTicks += (uint64_t)(SNDPROF_NOW() - tickStart);
+#endif
             }
+#ifndef HGSS_PROFILE_OFF
             sProfSoundTicks += 1u;
+#endif
         }
         sound_unlock();
         done += n;
+#ifndef HGSS_PROFILE_OFF
         sProfStretches += 1u;
+#endif
     }
     /* One cumulative line every 600 renders (~9.4 s of 512-frame blocks):
      * the lead's run reads the hog off it. Outside the lock above, on the
      * audio thread like the other audio logging. */
+#ifndef HGSS_PROFILE_OFF
     if (sProfRenderCalls % 600u == 0u) {
         uint64_t mixCalls, mixFrames, activeCh, formatCh[4], capturing, dependentCh;
 
@@ -306,6 +321,7 @@ void NitroPort_SoundRender(int16_t *stereo, size_t frames)
                       (unsigned long long)capturing,
                       (unsigned long long)dependentCh);
     }
+#endif
 }
 
 /* Called by the game thread (e.g. its OnFrame hook), NOT the audio thread.

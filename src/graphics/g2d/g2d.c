@@ -300,7 +300,9 @@ static uint32_t text_bg(const ctx *c, int bg, run *out)
                 continue;
             }
             if (out->count >= out->cap) {
+#ifndef HGSS_PROFILE_OFF
                 ++s_stats.dropped_quads;
+#endif
                 continue;
             }
             run_note(out, t.slot, toff, tile_bytes);
@@ -372,7 +374,9 @@ static uint32_t affine_bg(const ctx *c, int bg, bool ext16, run *out)
     }
     uint32_t n = (uint32_t)((tx1 - tx0 + 1) * (ty1 - ty0 + 1));
     if (n > 8192u) {
+#ifndef HGSS_PROFILE_OFF
         ++s_stats.unsupported_modes;
+#endif
         return 0;
     }
     if (!run_begin(out, n)) {
@@ -461,7 +465,9 @@ static uint32_t objs(const ctx *c, int prio, bool semi, run *out)
         }
         const int mode = (a0 >> 10) & 3;
         if (mode == 2 || mode == 3) {
+#ifndef HGSS_PROFILE_OFF
             ++s_stats.unsupported_modes; /* OBJ window / bitmap OBJ */
+#endif
             continue;
         }
         if ((mode == 1) != semi) {
@@ -515,7 +521,9 @@ static uint32_t objs(const ctx *c, int prio, bool semi, run *out)
             vf = (a1 >> 13) & 1;
         }
         if (out->count + (uint32_t)(tw * th) > out->cap) {
+#ifndef HGSS_PROFILE_OFF
             ++s_stats.dropped_quads;
+#endif
             continue;
         }
         const float cxs = x + bw / 2.0f, cys = y + bh / 2.0f;
@@ -596,7 +604,9 @@ static void read_fx(const ctx *c, fx *f)
     f->evy = (evy > 16 ? 16 : evy) / 16.0f;
     f->windows = (c->dispcnt & (3u << 13)) != 0;
     if (c->dispcnt & (1u << 15)) {
+#ifndef HGSS_PROFILE_OFF
         ++s_stats.unsupported_modes; /* OBJ window: drawn as outside */
+#endif
     }
     const uint16_t winin = r16(c->regs, 0x48), winout = r16(c->regs, 0x4A);
     f->region_enable[0] = f->windows ? (uint8_t)(winout & 0x3F) : 0x3F;
@@ -664,7 +674,9 @@ static void draw_layer(const fx *f, int layer, const drawable *d, bool force_sem
             blend_off();
             stencil_write_all((uint8_t)(region | flags), rmask);
             draw_quads(d);
+#ifndef HGSS_PROFILE_OFF
             ++s_stats.draws;
+#endif
             continue;
         }
         /* blended over 2nd targets */
@@ -677,7 +689,9 @@ static void draw_layer(const fx *f, int layer, const drawable *d, bool force_sem
         C3D_StencilTest(true, GPU_EQUAL, region, rmask | 1u, 0x01);
         C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, t2 ? GPU_STENCIL_INVERT : GPU_STENCIL_KEEP);
         draw_quads(d);
+#ifndef HGSS_PROFILE_OFF
         s_stats.draws += 2;
+#endif
     }
 }
 
@@ -754,7 +768,9 @@ static void brightness_pass(const fx *f)
     C3D_StencilTest(true, GPU_EQUAL, 2, 2, 0);
     C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_KEEP);
     kj_gpu_draw_quads(q, 1);
+#ifndef HGSS_PROFILE_OFF
     ++s_stats.draws;
+#endif
 }
 
 /* MASTER_BRIGHT over the whole physical screen (sides included). */
@@ -781,7 +797,9 @@ static void master_brightness(const ctx *c, uint16_t mb)
                    GPU_ZERO, GPU_ONE);
     C3D_StencilTest(false, GPU_ALWAYS, 0, 0, 0);
     kj_gpu_draw_quads(q, 1);
+#ifndef HGSS_PROFILE_OFF
     ++s_stats.draws;
+#endif
 }
 
 /* --------------------------------------------------------------- spans */
@@ -859,7 +877,9 @@ static uint32_t s_char_bytes_compared;
 
 static bool chars_same(const layer_cache *lc, const uint8_t *vram)
 {
+#ifndef HGSS_PROFILE_OFF
     s_char_bytes_compared += lc->char_len;
+#endif
     return lc->char_len == 0 || memcmp(lc->chars, vram + lc->char_lo, lc->char_len) == 0;
 }
 
@@ -938,7 +958,9 @@ static bool text_bg_retained(const ctx *c, int bg, drawable *out)
         chars_same(lc, c->bg_vram)) {
         out->base = lc->quads;
         out->count = lc->count;
+#ifndef HGSS_PROFILE_OFF
         ++s_reused_layers;
+#endif
         return true;
     }
     if (!cache_alloc(lc)) {
@@ -989,7 +1011,9 @@ static bool objs_retained(const ctx *c, drawable sub[8])
             sub[i].base = lc->quads + lc->sub_first[i] * 4u;
             sub[i].count = lc->sub_count[i];
         }
+#ifndef HGSS_PROFILE_OFF
         ++s_reused_layers;
+#endif
         return true;
     }
     if (!cache_alloc(lc)) {
@@ -1082,7 +1106,9 @@ static void prepare_span(const ctx *c, bool retain, prepared *pr)
             unsupported = true; /* bitmap BG (256-colour / direct) */
         }
         if (unsupported) {
+#ifndef HGSS_PROFILE_OFF
             ++s_stats.unsupported_modes;
+#endif
             continue;
         }
         if (!affine && !ext16 && retain) {
@@ -1104,7 +1130,9 @@ static void prepare_span(const ctx *c, bool retain, prepared *pr)
             }
             ++s_rebuilt_layers;
         }
+#ifndef HGSS_PROFILE_OFF
         s_stats.bg_quads += pr->bg[bg].count;
+#endif
         kj_perf_count(KJ_COUNT_QUADS, pr->bg[bg].count);
     }
     if (layers_on & 0x10u) {
@@ -1126,7 +1154,9 @@ static void prepare_span(const ctx *c, bool retain, prepared *pr)
             ++s_rebuilt_layers;
         }
         for (int i = 0; i < 8; ++i) {
+#ifndef HGSS_PROFILE_OFF
             s_stats.obj_quads += pr->obj[i].count;
+#endif
             kj_perf_count(KJ_COUNT_QUADS, pr->obj[i].count);
         }
     }
@@ -1237,7 +1267,9 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
         prepared_ok = true;
         if (pr.all_reused && !has_3d && memo->drawn && memo->engine == engine &&
             memcmp(memo->regs, io, KJ_LINE_REG_BYTES) == 0 && memcmp(memo->pal, pal, 1024) == 0) {
+#ifndef HGSS_PROFILE_OFF
             ++s_skipped_screens;
+#endif
             kj_perf_add(KJ_PERF_G2D, kj_perf_now() - t0);
             return;
         }
@@ -1256,7 +1288,9 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
         return;
     }
     if (display_mode != 1) {
+#ifndef HGSS_PROFILE_OFF
         ++s_stats.unsupported_modes; /* VRAM / main-memory display: tracked blocker */
+#endif
         C3D_RenderTargetClear(target->rt, C3D_CLEAR_ALL, 0x000000FFu, 0);
         kj_perf_add(KJ_PERF_G2D, kj_perf_now() - t0);
         return;
@@ -1270,7 +1304,9 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
     bool drew_3d = false;
     if (prepared_ok) {
         draw_span(&c, &pr, has_3d, &drew_3d);
+#ifndef HGSS_PROFILE_OFF
         ++s_stats.spans;
+#endif
         kj_perf_count(KJ_COUNT_SPANS, 1);
     } else {
         for (int y0 = 0; y0 < 192;) {
@@ -1281,7 +1317,9 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
             c.dispcnt = r32(c.regs, 0);
             prepare_span(&c, false, &pr);
             draw_span(&c, &pr, has_3d, &drew_3d);
+#ifndef HGSS_PROFILE_OFF
             ++s_stats.spans;
+#endif
         kj_perf_count(KJ_COUNT_SPANS, 1);
             y0 = y1;
         }

@@ -132,7 +132,9 @@ void kj_gpu_bind_texture(int unit, C3D_Tex *tex)
 kj_v2d *kj_gpu_quads_alloc(uint32_t quads, uint32_t *first_quad)
 {
     if (s_arena_used + quads > ARENA_QUADS) {
+#ifndef HGSS_PROFILE_OFF
         s_arena_dropped += quads;
+#endif
         return NULL;
     }
     *first_quad = s_arena_used;
