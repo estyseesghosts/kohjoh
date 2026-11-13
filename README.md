@@ -1,11 +1,12 @@
 # kohjoh
 
-Pokémon HeartGold/SoulSilver on the Nintendo 3DS: the original game code
-(pinned decompilation) on a new GPU-native runtime, aiming for 30 FPS on an
-Old 3DS. Bring your own ROM; this repository contains no game data.
+a native homebrew port of pokemon heartgold and soulsilver for the original 3DS
 
-Status: boots and plays the intro and Goldenrod field in Azahar (emulator
-evidence only). See [docs/status.md](docs/status.md).
+not tested or known to be stable yet; runs near full-speed on real hardware, excluding geometry-heavy map areas && the intro ho-oh/lugia 
+
+this repository does not contain any unlicensed game data. 
+for heartgold, you need a file with sha-1 starting with 4fcded0e2713dc03929845de...
+for soulsilver, f8dc38ea20c17541a43b58c5...
 
 - Build: [docs/building-windows.md](docs/building-windows.md)
 - How it works: [docs/architecture.md](docs/architecture.md)

@@ -27,6 +27,7 @@ enum kj_perf_count {
     KJ_COUNT_TEX_BYTES,  /* 3D texture bytes compared */
     KJ_COUNT_COUNT
 };
+#ifndef HGSS_PROFILE_OFF
 extern uint32_t kj_perf_counts[KJ_COUNT_COUNT];
 #define kj_perf_count(c, n) (kj_perf_counts[(c)] += (uint32_t)(n))
 
@@ -36,9 +37,20 @@ void kj_perf_publish_begin(void);
 /* game_frame: the published game frame (for locating hitches); call after
  * the frame is submitted. */
 void kj_perf_publish_end(uint32_t game_frame);
-/* A publish the renderer skipped (counted as a hitch). */
+/* A skipped picture: records its game CPU sample without a submission. */
 void kj_perf_present_skipped(uint32_t game_frame);
 uint64_t kj_perf_now(void);
 void kj_perf_add(enum kj_perf_stage stage, uint64_t ticks);
+
+#else
+#define kj_perf_count(c, n) ((void)0)
+#define kj_perf_vblank_begin() ((void)0)
+#define kj_perf_vblank_end() ((void)0)
+#define kj_perf_publish_begin() ((void)0)
+#define kj_perf_publish_end(frame) ((void)0)
+#define kj_perf_present_skipped(frame) ((void)0)
+#define kj_perf_now() (0ull)
+#define kj_perf_add(stage, ticks) ((void)0)
+#endif
 
 #endif

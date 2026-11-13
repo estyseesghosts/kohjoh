@@ -370,6 +370,8 @@ def ctr_sources() -> list[Path]:
 def ctr_cflags(out: Path) -> list[str]:
     return ["-std=gnu11", "-O2", "-g", *WARNINGS, *SECTION_FLAGS,
             "-Wno-unused-function", *ARM_FLAGS, *game_defines(),
+            *(["-DHGSS_PROFILE_OFF"] if profile_mode() == "off" else []),
+            *[f"-D{d}" for d in EXTRA_DEFINES],
             f"-I{devkitpro() / 'libctru' / 'include'}",
             f"-I{REPO / 'src'}", f"-I{REPO / 'src' / 'runtime'}", f"-I{out / 'gen'}"]
 
@@ -1088,6 +1090,8 @@ def write_build_info(dsx: Path, game: str, target: str,
     digest = hashlib.sha256(dsx.read_bytes()).hexdigest()
     body = (f"game: {game}\n"
             f"target: {target}\n"
+            f"profiling: {profile_mode()}\n"
+            f"defines: {', '.join(EXTRA_DEFINES) or '(none)'}\n"
             f"texture_profile: {'yes' if target == '3ds' and os.environ.get('HGSS_TEXTURE_PROFILE') == '1' else 'no'}\n"
              f"texture_hint: {'yes' if target == '3ds' and os.environ.get('HGSS_TEXTURE_HINT') == '1' else 'no'}\n"
              f"palette_hash: {'yes' if os.environ.get('HGSS_PALETTE_HASH') == '1' else 'no'}\n"
@@ -1587,11 +1591,11 @@ def build_libraries(root: Path, target: str, out: Path, jobs: int) -> tuple[bool
     prof_mode = profile_mode()
     prof_marker = sdk_out / ".profile-mode"
     if not prof_marker.exists() or prof_marker.read_text().strip() != prof_mode:
-        # HGSS_PROFILE toggles the 2D tick reads (port_render2d.c) and the
-        # geometry diagnostics (port_gx3d.c); both objects must rebuild so a
-        # PROFILE and an OFF artifact never share one archive.
-        (sdk_out / "port" / "port_gx3d.o").unlink(missing_ok=True)
-        (sdk_out / "port" / "port_render2d.o").unlink(missing_ok=True)
+        # Make does not track changed command-line defines. Rebuild every
+        # port object that uses this switch when an output tree is reused.
+        for name in ("port_gx3d", "port_render2d", "port_os", "port_timer",
+                     "port_snd", "port_sound_chip"):
+            (sdk_out / "port" / f"{name}.o").unlink(missing_ok=True)
     nitro_cmd = [sys.executable, str(TOOLS / "hgss_nitro.py"), "make",
                  "--target", target, "--out", str(sdk_out), "--subproject", "nitro",
                  "lib", "-k", "-j", str(jobs)]

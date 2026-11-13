@@ -96,11 +96,17 @@ static void publish(void)
     /* The per-line registers of this frame: H-blank handlers and DMAs run
      * once per V-blank, after the game's V-blank work armed them. */
     {
+#ifndef HGSS_PROFILE_OFF
         const u64 t0 = svcGetSystemTick();
+#endif
         if (NitroPort_HBlankLinesOnce()) {
+#ifndef HGSS_PROFILE_OFF
             ++s_hblank_walks;
+#endif
         }
+#ifndef HGSS_PROFILE_OFF
         s_hblank_ticks += svcGetSystemTick() - t0;
+#endif
     }
 
     memset(&in, 0, sizeof(in));
@@ -129,10 +135,14 @@ void NitroPort_OnFrame(void)
 
     ++s_vblanks;
     {
+#ifndef HGSS_PROFILE_OFF
         const u64 t0 = svcGetSystemTick();
+#endif
         NitroPort_SoundPumpReplies();
+#ifndef HGSS_PROFILE_OFF
         s_pump_ticks += svcGetSystemTick() - t0;
         ++s_pump_calls;
+#endif
     }
 
     if (!kj_ctr_vblank()) {

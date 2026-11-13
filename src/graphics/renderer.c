@@ -47,6 +47,8 @@ static bool s_skipped_last; /* the previous publish skipped its picture */
  * memory fills; C3D_GetDrawingTime is the latest completed queue, so it is
  * averaged, never matched to the current picture). */
 static bool s_perflog_on;
+static bool s_perflog_valid;
+static uint64_t s_perflog_tick;
 static GSPGPU_PerfLog s_perflog_prev;
 static float s_draw_ms_sum;
 static float s_draw_ms_max;
@@ -77,8 +79,10 @@ bool kj_renderer_init(void)
     if (!kj_g2d_init() || !kj_g3d_init()) {
         return false;
     }
+#ifndef HGSS_PROFILE_OFF
     s_perflog_on = R_SUCCEEDED(GSPGPU_SetPerfLogMode(true)) &&
                    R_SUCCEEDED(GSPGPU_GetPerfLog(&s_perflog_prev));
+#endif
     s_ready = true;
     kj_log("[gpu] renderer ready (linear free %lu KiB, VRAM free %lu KiB)",
            (unsigned long)(linearSpaceFree() / 1024), (unsigned long)(vramSpaceFree() / 1024));
@@ -104,6 +108,7 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
     if (!s_ready) {
         return;
     }
+    kj_perf_publish_begin();
     /* Running two or more refreshes behind: this picture would be shown
      * late anyway. Skip its GPU work (the game tick already happened) so
      * the schedule recovers; counted, never silent. Never two in a row
@@ -113,12 +118,13 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
      * second while the game ran at half speed (o3ds-log-0, window 6). */
     if (kj_pacing_behind() >= 2u && !s_skipped_last && !kj_script_active()) {
         s_skipped_last = true;
+#ifndef HGSS_PROFILE_OFF
         ++s_skipped_presents;
+#endif
         kj_perf_present_skipped(in->game_frame);
         return;
     }
     s_skipped_last = false;
-    kj_perf_publish_begin();
 
     uint64_t t = kj_perf_now();
     C3D_FrameBegin(0); /* waits for the previous frame's GPU work */
@@ -137,6 +143,7 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
     t = kj_perf_now();
     C3D_FrameEnd(0);
     kj_perf_add(KJ_PERF_SUBMIT, kj_perf_now() - t);
+#ifndef HGSS_PROFILE_OFF
     {
         const float draw_ms = C3D_GetDrawingTime();
         const float usage = C3D_GetCmdBufUsage();
@@ -150,8 +157,12 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
         }
     }
 
+#endif
+#ifndef HGSS_PROFILE_OFF
     ++s_frames;
+#endif
     kj_perf_publish_end(in->game_frame);
+#ifndef HGSS_PROFILE_OFF
     if (s_frames % 600u == 0u) {
         kj_g2d_stats g;
         kj_g3d_stats d;
@@ -201,7 +212,11 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
             GSPGPU_PerfLog now;
             unsigned long p3d = 0, ppf = 0, psc = 0;
 
+            const uint64_t perf_tick = svcGetSystemTick();
+            const uint64_t wall_us = (perf_tick - s_perflog_tick) * 1000000u / SYSCLOCK_ARM11;
+            bool valid = false;
             if (s_perflog_on && R_SUCCEEDED(GSPGPU_GetPerfLog(&now))) {
+                valid = s_perflog_valid;
                 /* Differences of the running totals (unsigned, so a wrap
                  * still subtracts correctly), per picture. */
                 p3d = (now.entries[GSPGPU_EVENT_P3D].totalDurationUs -
@@ -212,11 +227,27 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
                        s_perflog_prev.entries[GSPGPU_EVENT_PSC0].totalDurationUs +
                        now.entries[GSPGPU_EVENT_PSC1].totalDurationUs -
                        s_perflog_prev.entries[GSPGPU_EVENT_PSC1].totalDurationUs) / 600u;
+                /* Each operation engine is serial. Its total cannot exceed
+                 * the wall interval (PSC is the sum of two fill engines).
+                 * Reject counter resets/torn reads instead of presenting a
+                 * nearly-2^32 unsigned difference as GPU work. */
+                if (p3d > wall_us / 600u + 1u || ppf > wall_us / 600u + 1u ||
+                    psc > 2u * (wall_us / 600u + 1u)) {
+                    valid = false;
+                }
+                s_perflog_tick = perf_tick;
                 s_perflog_prev = now;
+                s_perflog_valid = true;
+            } else {
+                s_perflog_valid = false;
             }
+            /* Discard the first window: GSP start timestamps survive enable,
+             * and the first observed P3D total was nonsensical on O3DS log 3.
+             * A failed read also requires a fresh baseline. */
+            if (!valid) p3d = ppf = psc = 0;
             kj_log("[gputime] 600 pictures: GSP us/picture P3D %lu PPF %lu PSC %lu (log %s); "
                    "C3D drawing ms avg %.2f max %.2f; cmdbuf use max %u%%",
-                   p3d, ppf, psc, s_perflog_on ? "on" : "off", (double)(s_draw_ms_sum / 600.0f),
+                   p3d, ppf, psc, valid ? "valid" : "baseline/unavailable", (double)(s_draw_ms_sum / 600.0f),
                    (double)s_draw_ms_max, (unsigned)(s_cmdbuf_max * 100.0f));
             s_draw_ms_sum = 0.0f;
             s_draw_ms_max = 0.0f;
@@ -224,6 +255,7 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
         }
     }
 
+#endif
     /* Test directives: deterministic per-frame capture. */
     if (kj_script_dump(in->game_frame)) {
         char path[96];

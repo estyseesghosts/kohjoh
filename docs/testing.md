@@ -77,14 +77,47 @@ ROM. `tools/melonds/shots.ps1` saves timed screenshots to
 
 ## Profiling
 
+Build the baseline with `HGSS_PROFILE` unset and the diagnostic build with
+`HGSS_PROFILE=on`, using a separate `--out` for each. The build-info sidecar
+records `profiling` and any `--define` switches. The baseline omits the
+frame, GPU, FIFO and mixer profiling probes; ordinary lifecycle and error
+logging remains enabled. Log and crash files append across launches, with a
+`--- new run ---` separator in the main log. Scripted frame dumps still use
+their frame-number filenames and can overwrite earlier dumps.
+The instrumented build times the whole H-blank walk. Per-scanline and IRQ
+probes require `HGSS_A0_DIAG`; they are too intrusive for normal profiling.
+Use the normal build for hardware performance comparisons.
+
+`[gamecpu]` reports logic percentiles over 600 game frames, including frames
+whose picture was skipped. `[perf] logic` now covers only the single game
+frame producing each displayed picture. Older logs accumulated skipped
+frames into the next picture: **80 ms per picture could cover two game
+frames**, and is not an 80 ms game update. Display intervals still cover
+all intervening skipped pictures. Skips have their own count and no longer
+inflate the display hitch count; hitch g2d is exclusive of g3d.
+
+`[g3sample]` randomly samples FIFO calls with probability 1/64 using a
+reproducible xorshift sequence, avoiding correlation with repeated model
+call patterns. Total, live decode and replay are raw ARM11 ticks for the
+samples; preemption and probe overhead remain included. `block_copy_ticks` is nested inside replay and covers vertex/index copying
+and rebasing; replay minus that child includes state events, matrix/palette
+preparation and exit-state restoration. Do not add the child to replay.
+The outer remainder is lookup/comparison/recording. These are estimates, not exact window totals.
+The first GSP reporting window establishes a baseline and is explicitly
+marked `baseline/unavailable`; failed reads invalidate its baseline. Deltas
+exceeding elapsed wall time for an operation engine are rejected and
+rebaselined (two engines for the summed fill counters).
+
 - **Counters**: every 600 *presented* frames the log gets `[perf]` (stage p50/p95/p99/max),
   `[pace]` (late V-blanks, resyncs, skipped presents), `[gpu]` (layers
   reused/rebuilt, screens skipped, unsupported counts) and `[ds]` (geometry
-  words, H-blank cost, display-list cache). `[ds] per game frame` divides by
+  words, H-blank cost, display-list cache). The legacy `cmds` counter counts
+  general-dispatch commands and excludes bulk fast commands; use FIFO words
+  for workload comparisons. `[ds] per game frame` divides by
   the H-blank walk count (one walk per game frame) and prints it with the
   picture count, so skipped presents no longer inflate it. `[perf] g2d` is
   exclusive: the g3d time spent inside it is subtracted (before `6191966`
-  g2d included g3d). `[dlcov]` (with `KJ_DL_VERIFY`) splits FIFO words into
+  g2d included g3d). `[dlcov]` splits FIFO words into
   bypassed (small, split mid-command, open BEGIN) and new/changed/never/hit/
   keymiss; `[dlwhy]` counts uncacheable reasons and arena flushes.
   `[gpu] ... char KiB compared` is the retained layers' character check.
@@ -115,12 +148,22 @@ ROM. `tools/melonds/shots.ps1` saves timed screenshots to
 - **Code size**: Azahar does not model the 16 KiB I-cache. After editing a
   hot loop, check `arm-none-eabi-nm -S --size-sort` on the `.elf`
   (`NitroPort_GxFifoWords` must stay well under 16 KiB).
-- **Probes**: `HGSS_PROFILE=on` compiles the HGSS H-blank/2D tick probes in
-  (several hundred `svcGetSystemTick` calls a frame). Normal builds leave
-  them out; never make a timing claim from a probe build.
+- **Probes**: `HGSS_PROFILE=on` enables frame, GPU, audio and sampled FIFO
+  reporting. `HGSS_A0_DIAG` additionally enables the intrusive per-line
+  H-blank probes. Neither is a hardware performance baseline.
 - **Present skipping is disabled while a script runs** (`kj_script_active`).
   To see pacing as the player does (title, field), run without `-Script`.
 - **Calibration**: the `[calib]` log line shows Azahar's ticks per instruction
   (measured 1.0). Treat Azahar milliseconds as instruction counts.
 - `--define KJ_G3_PROFILE` times each geometry opcode. Each probe costs ~390
   ticks; subtract it, and prefer PC sampling.
+
+## Native hot-path regression checks
+
+Inside the devkitPro MSYS2 shell, run `python tests/native/check_hotpaths.py`.
+It compiles the current sound/geometry code and the `HEAD` versions with
+host GCC, compares output/state hashes for 100,000 randomized ADPCM programs
+and 2,000 synthetic geometry frames (split FIFO, cache hits, all primitives,
+lighting and texgen modes), and checks skipped-frame CPU and hitch accounting
+with a mocked clock. `--reference REV` selects another baseline. No game
+assets are needed. This is differential coverage, not a complete DS oracle.

@@ -70,7 +70,7 @@ static void handler(ERRF_ExceptionInfo *excep, CpuRegisters *regs)
         /* The crash file first: it needs no lock the faulting thread could
          * hold (the log ring does). */
         if (s_crash_path[0] != '\0') {
-            FILE *f = fopen(s_crash_path, "w");
+            FILE *f = fopen(s_crash_path, "a");
             if (f != NULL) {
                 fwrite(text, 1, n > 0 ? (size_t)n : 0, f);
                 fclose(f);

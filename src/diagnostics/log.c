@@ -90,7 +90,11 @@ void kj_log_init(const char *path)
     LightLock_Init(&s_lock);
     LightEvent_Init(&s_wake, RESET_ONESHOT);
     s_start_tick = svcGetSystemTick();
-    s_file = path != NULL ? fopen(path, "w") : NULL;
+    s_file = path != NULL ? fopen(path, "a") : NULL;
+    if (s_file != NULL) {
+        fputs("\n--- new run ---\n", s_file);
+        fflush(s_file);
+    }
     s_ready = true;
     s_running = true;
     /* Lowest application priority: it runs while the game waits for V-blank. */

@@ -152,7 +152,9 @@ static void tev_for(uint32_t attr, bool textured)
         C3D_TexEnvFunc(env, C3D_Alpha, GPU_REPLACE);
     } else {
         if (((attr >> 4) & 3u) == 2u) {
+#ifndef HGSS_PROFILE_OFF
             ++s_stats.unsupported; /* toon/highlight drawn as modulate */
+#endif
         }
         C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_PRIMARY_COLOR, 0);
         C3D_TexEnvFunc(env, C3D_Both, GPU_MODULATE);
@@ -185,7 +187,9 @@ static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t d
         if (b->flags & KJ_G3_BATCH_SHADOW) {
             const unsigned id = (b->poly_attr >> 24) & 63u;
             if (id == 0) {
+#ifndef HGSS_PROFILE_OFF
                 ++s_stats.unsupported; /* shadow mask volume: not drawn */
+#endif
                 continue;
             }
         }
@@ -254,8 +258,12 @@ static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t d
         (void)stencil_flags;
         C3D_DrawElements(GPU_TRIANGLES, (int)b->index_count, C3D_UNSIGNED_SHORT,
                          f->indices + b->first_index);
+#ifndef HGSS_PROFILE_OFF
         ++s_stats.draws;
+#endif
+#ifndef HGSS_PROFILE_OFF
         s_stats.triangles += b->index_count / 3u;
+#endif
     }
 }
 
@@ -267,16 +275,30 @@ void kj_g3d_draw(const kj_target *target, bool wide, uint8_t stencil_flags)
         return;
     }
     uint64_t t0 = kj_perf_now();
+#ifndef HGSS_PROFILE_OFF
     s_stats.batches += f->batch_count;
+#endif
+#ifndef HGSS_PROFILE_OFF
     s_stats.unsupported += f->unsupported + f->dropped_batches + f->dropped_verts;
+#endif
+#ifndef HGSS_PROFILE_OFF
     s_stats.box_tests += f->box_tests;
+#endif
+#ifndef HGSS_PROFILE_OFF
     s_stats.box_culled += f->box_culled;
+#endif
+#ifndef HGSS_PROFILE_OFF
     s_stats.box_culled_far += f->box_culled_far;
+#endif
     if (f->disp3dcnt & (1u << 7)) {
+#ifndef HGSS_PROFILE_OFF
         ++s_stats.unsupported; /* fog */
+#endif
     }
     if (f->disp3dcnt & (1u << 5)) {
+#ifndef HGSS_PROFILE_OFF
         ++s_stats.unsupported; /* edge marking (baseline excluded) */
+#endif
     }
 
     /* Invalidate first (textures are bound directly below), then bind the

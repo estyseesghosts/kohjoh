@@ -261,7 +261,9 @@ static bool decode(const desc *d, const uint8_t *src, const uint8_t *idx, C3D_Te
 
     if (d->pal_len > 0) {
         if (!gather_pal(palbuf, d->pal_addr, d->pal_len)) {
+#ifndef HGSS_PROFILE_OFF
             ++s_stats.missing_bank;
+#endif
             return false;
         }
         memcpy(pal, palbuf, d->pal_len);
@@ -324,7 +326,9 @@ static bool decode(const desc *d, const uint8_t *src, const uint8_t *idx, C3D_Te
                 uint16_t c[4];
                 bool trans3 = false;
                 if (!gather_pal(pb, d->pal_addr + (ix & 0x3FFFu) * 4u, 8)) {
+#ifndef HGSS_PROFILE_OFF
                     ++s_stats.missing_bank;
+#endif
                     return false;
                 }
                 for (int k = 0; k < 4; ++k) {
@@ -383,7 +387,9 @@ static bool still_valid(tex_entry *e, const desc *d)
     if (data < 0 || index < 0) {
         return true; /* bank unmapped this frame: keep what we have */
     }
+#ifndef HGSS_PROFILE_OFF
     s_stats.compared_bytes += total;
+#endif
     kj_perf_count(KJ_COUNT_TEX_BYTES, total);
     if (data || index) {
         return false;
@@ -440,14 +446,18 @@ C3D_Tex *kj_tex_get(uint32_t tex_param, uint32_t pltt_base)
             gather_pal(e->pal_shadow, d.pal_addr, e->pal_len);
         }
         decode(&d, e->shadow, e->shadow + d.data_len, &e->tex);
+#ifndef HGSS_PROFILE_OFF
         ++s_stats.uploads;
+#endif
         kj_perf_count(KJ_COUNT_TEX_UPLOAD, 1);
         return &e->tex;
     }
 
     const int v = find_victim();
     if (v < 0) {
+#ifndef HGSS_PROFILE_OFF
         ++s_stats.full;
+#endif
         return NULL;
     }
     entry_free(&s_cache[v]);
@@ -457,13 +467,17 @@ C3D_Tex *kj_tex_get(uint32_t tex_param, uint32_t pltt_base)
     while (s_cache_bytes + bytes > CACHE_BYTES_MAX) {
         const int u = find_victim();
         if (u < 0 || u == v) {
+#ifndef HGSS_PROFILE_OFF
             ++s_stats.full;
+#endif
             return NULL;
         }
         entry_free(&s_cache[u]);
     }
     if (!C3D_TexInit(&e->tex, (u16)d.w, (u16)d.h, rgba8_fmt ? GPU_RGBA8 : GPU_RGBA5551)) {
+#ifndef HGSS_PROFILE_OFF
         ++s_stats.full;
+#endif
         return NULL;
     }
     const uint32_t total = d.data_len + d.index_len;
@@ -479,7 +493,9 @@ C3D_Tex *kj_tex_get(uint32_t tex_param, uint32_t pltt_base)
         free(e->shadow);
         free(e->pal_shadow);
         memset(e, 0, sizeof(*e));
+#ifndef HGSS_PROFILE_OFF
         ++s_stats.missing_bank;
+#endif
         return NULL;
     }
     C3D_TexSetFilter(&e->tex, GPU_NEAREST, GPU_NEAREST);
@@ -493,7 +509,9 @@ C3D_Tex *kj_tex_get(uint32_t tex_param, uint32_t pltt_base)
     s_cache_bytes += bytes;
     s_last_hit = v;
     s_hint[h] = (int16_t)v;
+#ifndef HGSS_PROFILE_OFF
     ++s_stats.uploads;
+#endif
         kj_perf_count(KJ_COUNT_TEX_UPLOAD, 1);
     return &e->tex;
 }

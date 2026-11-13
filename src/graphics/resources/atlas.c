@@ -165,7 +165,9 @@ static int find_free_slot(void)
         if (s_slots[s].last_frame != s_frame) {
             table_remove(s_slots[s].key);
             s_slots[s].used = 0;
+#ifndef HGSS_PROFILE_OFF
             ++s_stats.evictions;
+#endif
             return (int)s;
         }
     }
@@ -197,7 +199,9 @@ static void convert(uint16_t slot, const uint8_t *tile, bool bpp8, const kj_pale
         memcpy(info->bytes, tile, 32);
     }
     info->transparent = any == 0;
+#ifndef HGSS_PROFILE_OFF
     ++s_stats.conversions;
+#endif
     kj_perf_count(KJ_COUNT_TILE_CONV, 1);
 }
 
@@ -210,7 +214,9 @@ kj_tile_ref kj_atlas_tile(uint32_t source_id, const uint8_t *tile, uint32_t offs
     const size_t nbytes = bpp8 ? 64u : 32u;
     uint32_t i = hash_key(key);
 
+#ifndef HGSS_PROFILE_OFF
     ++s_stats.lookups;
+#endif
     while (s_table[i] != EMPTY) {
         slot_info *info = &s_slots[s_table[i]];
         if (info->key == key) {
@@ -242,7 +248,9 @@ kj_tile_ref kj_atlas_tile(uint32_t source_id, const uint8_t *tile, uint32_t offs
 
     const int slot = find_free_slot();
     if (slot < 0) {
+#ifndef HGSS_PROFILE_OFF
         ++s_stats.full;
+#endif
         return ref;
     }
     slot_info *info = &s_slots[slot];

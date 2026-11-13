@@ -2,7 +2,18 @@
 
 As of 2026-11-13. Evidence levels: **built** (compiles and links), **run**
 (boots in Azahar), **verified** (checked in Azahar against an expectation),
-**O3DS** (measured on an Old 3DS). Nothing here has reached O3DS.
+**O3DS** (measured on an Old 3DS). Hardware logs below supply O3DS observations; sustained deadline certification remains open.
+
+## Latest investigation (uncommitted, 2026-11-13)
+
+`o3ds-log-3` confirms CPU pressure from geometry and audio, with GPU queues
+around 4 ms in the steady field window. Previous ~80 ms "logic" figures
+often accumulated **two game frames per picture**. The profiler now records
+independent game-frame CPU percentiles and removes ordinary per-line probes.
+Split FIFO decoding, display-list key traffic and ADPCM magnitude arithmetic
+have been reduced, with matching differential output/state hashes and
+synthetic ARM instruction reductions. O3DS speedup remains unmeasured.
+See [today's worklog](worklog/2026-11-13.md#o3ds-log-3-repair-measurements-and-cpu-hot-paths).
 
 ## On `master`
 
