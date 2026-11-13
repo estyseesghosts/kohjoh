@@ -279,8 +279,9 @@ void kj_g3d_draw(const kj_target *target, bool wide, uint8_t stencil_flags)
         ++s_stats.unsupported; /* edge marking (baseline excluded) */
     }
 
-    kj_gpu_use_program(KJ_PROGRAM_3D);
-    kj_gpu_invalidate(); /* textures are bound directly below */
+    /* Invalidate first (textures are bound directly below), then bind the
+     * 3D program once; binding before the invalidate bound it twice. */
+    kj_gpu_invalidate();
     kj_gpu_use_program(KJ_PROGRAM_3D);
     s_last_tev = -1;
     s_last_tex = NULL;
