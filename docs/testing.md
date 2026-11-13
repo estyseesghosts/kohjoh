@@ -80,9 +80,13 @@ ROM. `tools/melonds/shots.ps1` saves timed screenshots to
 - **Counters**: every 600 *presented* frames the log gets `[perf]` (stage p50/p95/p99/max),
   `[pace]` (late V-blanks, resyncs, skipped presents), `[gpu]` (layers
   reused/rebuilt, screens skipped, unsupported counts) and `[ds]` (geometry
-  words, H-blank cost, display-list cache). `[ds] per frame` divides by the
-  600 presented frames, not game frames: when presents were skipped, divide
-  the totals by the walk count (one H-blank walk per game frame) instead.
+  words, H-blank cost, display-list cache). `[ds] per game frame` divides by
+  the H-blank walk count (one walk per game frame) and prints it with the
+  picture count, so skipped presents no longer inflate it. `[perf] g2d` is
+  exclusive: the g3d time spent inside it is subtracted (before `6191966`
+  g2d included g3d). `[dlcov]` (with `KJ_DL_CACHE`) splits FIFO words into
+  bypassed (small, split mid-command, open BEGIN) and new/changed/never/hit/
+  keymiss; `[dlwhy]` counts uncacheable reasons and arena flushes.
   `[gpu] ... char KiB compared` is the retained layers' character check.
 - **PC sampling**: with Azahar's GDB stub enabled (`use_gdbstub=true`, port
   24689), `python tools/azahar/gdbprof.py build/kj/pokeheartgold-3ds.elf

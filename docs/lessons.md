@@ -94,6 +94,15 @@ What went wrong, and the fix:
 - **Sampler bias.** Tight loops (the crypto XOR) looked bigger in samples
   than in `[perf]` time. Measure with stage times.
 
+- **Measuring the wrong thing.** The display-list cache replayed 4% of
+  words. The first guess (lists left with BEGIN open) explained 13%; a
+  coverage counter (`[dlcov]`) showed 65% of words were split mid-command
+  by NitroSDK's 118-word DMA bursts. Count where the work goes before
+  fixing a guessed cause.
+- **Bump arenas that flush.** Re-recording into fresh space filled the arena
+  and flushed it twice per 600 frames (29.6 ms spikes). Reuse an entry's
+  storage when it re-records.
+
 ## Rules
 
 1. Commit each verified step; keep `master` building and verified.

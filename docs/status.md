@@ -20,7 +20,9 @@ As of 2026-11-12. Evidence levels: **built** (compiles and links), **run**
 | Geometry decoder fast paths | verified | Goldenrod renders; logic 37 → 25 ms/frame (Azahar) |
 | Pokémon-data keystream cache (game patch 2002) | built | crypto was ~12% of field instructions |
 | Present skip (never two in a row) | run | `0089b28`; O3DS starvation diagnosed from o3ds-log-0 |
-| Display-list cache | **off** (`--define KJ_DL_CACHE`) | **do not enable on master**: it corrupts the heap; fixed on `wip/savestore` |
+| Display-list cache | verified, **off by default** (`--define KJ_DL_CACHE`) | heap fix ported; `KJ_DL_VERIFY` 0 mismatches in Goldenrod idle, intro, title; battle and walking untested |
+| GX command DMA in one transfer (SDK patch 2003) | verified | 65% of FIFO words had been split mid-command; logic 21.8 → 21.0 ms |
+| Party move scan, one decrypt per mon (game patch 2006) | verified | Goldenrod idle logic −0.1 ms |
 | Saves | run | interim raw file `saves/<edition>.sav` ([`save_raw.c`](../src/storage/save_raw.c)) |
 | Audio | run | user heard music; Azahar here lacks DSP firmware (`ndspInit` fails) |
 | CIA, RomFS pack, title save archive | not implemented | path lookup only ([`paths.c`](../src/storage/paths.c)) |
@@ -36,12 +38,16 @@ G3 decode cost of ~8.4 ms per game frame (probes subtracted) and g2d
 
 **Azahar, Goldenrod idle (instruction counts, a floor for O3DS):**
 
-| Stage, ms/frame | `92a9a6d` | `d089ca2` | round 3 |
-| --- | --- | --- | --- |
-| logic (game + G3 decode + H-blank walk) | 25.6 | 21.8 | 21.8 |
-| H-blank walk | 2.1 | 0.5 | 0.5 |
-| g2d | 4.8 | 4.1 | 3.4 |
-| g3d | 4.2 | 3.5 | 2.8 |
+| Stage, ms/frame | `92a9a6d` | `d089ca2` | round 3 | `4dc90e6` + `KJ_DL_CACHE` |
+| --- | --- | --- | --- | --- |
+| logic (game + G3 decode + H-blank walk) | 25.6 | 21.8 | 21.8 | 13.7 (max 17.0) |
+| H-blank walk | 2.1 | 0.5 | 0.5 | 0.5 |
+| g2d (inclusive of g3d before `6191966`) | 4.8 | 4.1 | 3.4 | 0.6 exclusive |
+| g3d | 4.2 | 3.5 | 2.8 | 2.8 |
+
+With the cache, 74% of FIFO words replay. The 2D "retention cliff" under
+scanline effects (chatlog05) does not occur in Goldenrod idle: one span per
+frame, no rebuilt layers. Walking and Route 34 are unmeasured.
 
 Where the remaining time goes (PC samples, Goldenrod): G3 decode loop ~22%,
 idle ~27%, Pokemon data crypto ~11% (`GetIdxOfFirstPartyMonWithMove`
