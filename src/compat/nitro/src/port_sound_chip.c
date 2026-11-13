@@ -450,16 +450,40 @@ static inline int pcm_advance(Channel *c, uint64_t *phase, uint32_t *index,
  * mixes frame by frame. Output is bit-identical to the one-pass loop.
  */
 
+/*
+ * saturate() for the render loop. ARMv6 SSAT clamps in the pipeline's
+ * saturate stage (coffeepot cpu-optimization: ARM11 pipeline, ARMv6
+ * instructions); GCC's compare form needed both limits from the literal
+ * pool on every sample. Same result: signed 16-bit saturation.
+ */
+static inline int32_t sat16(int32_t value)
+{
+#if defined(__arm__) && defined(__ARM_ARCH) && __ARM_ARCH >= 6
+    int32_t result;
+
+    __asm__("ssat %0, #16, %1" : "=r"(result) : "r"(value));
+    return result;
+#else
+    return saturate(value);
+#endif
+}
+
 /* Samples (before volume) for up to frames frames; returns how many frames
- * the channel played (fewer if its sound ended). */
+ * the channel played (fewer if its sound ended). subStep: the caller knows
+ * the step is under one sample per frame (stepWhole 0), so a frame decodes
+ * at most one sample; a constant there frees registers in the loop. */
 static inline __attribute__((always_inline)) size_t adpcm_render_frames(
-    Channel *c, int32_t *out, size_t frames, const int interpolate)
+    Channel *c, int32_t *out, size_t frames, const int interpolate,
+    const int subStep)
 {
     NitroSoundVoice *v = c->v;
     const uint8_t *source = c->source;
     const uint32_t nSamples = c->nSamples;
     const uint32_t loopAt = c->loopAt;
-    const uint32_t stepWhole = (uint32_t)(c->step >> 32);
+    /* index is at least 1 where it is compared, so 0 never matches: the
+     * clean-loop check in one compare. */
+    uint32_t loopMark = v->adpcmClean ? loopAt : 0u;
+    const uint32_t stepWhole = subStep ? 0u : (uint32_t)(c->step >> 32);
     const uint32_t stepFrac = (uint32_t)c->step;
     uint32_t frac = (uint32_t)v->phase;
     uint32_t index = v->sampleIndex;
@@ -494,6 +518,7 @@ static inline __attribute__((always_inline)) size_t adpcm_render_frames(
                 predictor = v->predictor;
                 stepIndex = v->stepIndex;
                 last = v->lastSample;
+                loopMark = v->adpcmClean ? loopAt : 0u;
                 continue;
             }
             {
@@ -522,7 +547,7 @@ static inline __attribute__((always_inline)) size_t adpcm_render_frames(
 #endif
                 last = predictor;
                 predictor += (code & 8u) ? -change : change;
-                predictor = saturate(predictor);
+                predictor = sat16(predictor);
                 stepIndex += sIndexDelta[code & 7u];
                 if (stepIndex < 0) {
                     stepIndex = 0;
@@ -530,7 +555,7 @@ static inline __attribute__((always_inline)) size_t adpcm_render_frames(
                 if (stepIndex > 88) {
                     stepIndex = 88;
                 }
-                if (index == loopAt && v->adpcmClean) {
+                if (index == loopMark) {
                     v->loopSaved = 1;
                     v->loopSource = c->sourceAddr;
                     v->loopAt = loopAt;
@@ -551,9 +576,12 @@ static inline __attribute__((always_inline)) size_t adpcm_render_frames(
 static size_t adpcm_render(Channel *c, int32_t *out, size_t frames)
 {
     if (c->interpolate) {
-        return adpcm_render_frames(c, out, frames, 1);
+        if ((c->step >> 32) == 0u) {
+            return adpcm_render_frames(c, out, frames, 1, 1);
+        }
+        return adpcm_render_frames(c, out, frames, 1, 0);
     }
-    return adpcm_render_frames(c, out, frames, 0);
+    return adpcm_render_frames(c, out, frames, 0, 0);
 }
 
 /*
