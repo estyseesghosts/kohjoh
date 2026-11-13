@@ -144,13 +144,18 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
                (unsigned long)g.dropped_quads, (unsigned long)(g.char_bytes_compared / 1024u));
         kj_ds_profile dp;
         kj_ds_take_profile(&dp);
-        const double us = 1000000.0 / SYSCLOCK_ARM11 / 600.0; /* per-frame microseconds */
-        kj_log("[ds] per frame: g3 fifo calls %llu (%lu fifo words, %lu direct words, %lu cmds), "
-               "timer sync %.0f us (%llu calls), sound pump %.0f us, hblank %.0f us (%lu walks)",
-               (unsigned long long)(dp.g3_fifo_ticks / 600u), (unsigned long)(dp.g3_fifo_words / 600u),
-               (unsigned long)(dp.g3_direct_words / 600u), (unsigned long)(dp.g3_commands / 600u),
-               dp.timer_sync_ticks * us, (unsigned long long)(dp.timer_sync_calls / 600u),
-               dp.sound_pump_ticks * us, dp.hblank_ticks * us, (unsigned long)dp.hblank_walks);
+        /* Per game frame: one H-blank walk runs per game frame, so walks is
+         * the game-frame denominator even when pictures were skipped. */
+        const uint32_t gf = dp.hblank_walks != 0u ? dp.hblank_walks : 600u;
+        const double us = 1000000.0 / SYSCLOCK_ARM11 / (double)gf;
+        kj_log("[ds] per game frame (%lu game frames / 600 pictures): g3 fifo calls %llu "
+               "(%lu fifo words, %lu direct words, %lu cmds), timer sync %.0f us (%llu calls), "
+               "sound pump %.0f us, hblank %.0f us",
+               (unsigned long)gf, (unsigned long long)(dp.g3_fifo_ticks / gf),
+               (unsigned long)(dp.g3_fifo_words / gf), (unsigned long)(dp.g3_direct_words / gf),
+               (unsigned long)(dp.g3_commands / gf), dp.timer_sync_ticks * us,
+               (unsigned long long)(dp.timer_sync_calls / gf), dp.sound_pump_ticks * us,
+               dp.hblank_ticks * us);
         kj_log("[ds] display lists: %lu replayed, %lu decoded, %lu uncacheable, %lu KiB retained",
                (unsigned long)dp.dl_hits, (unsigned long)dp.dl_misses,
                (unsigned long)dp.dl_uncacheable, (unsigned long)(dp.dl_bytes / 1024u));

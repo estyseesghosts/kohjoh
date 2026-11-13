@@ -1679,6 +1679,7 @@ typedef struct dl_entry {
     bool recorded;
     bool never;        /* proven unrecordable for this content */
     bool needs_light;  /* seen lighting its normals: key on lighting state */
+    uint32_t reads;    /* DL_READS_*: entry inputs the list consumes */
     uint32_t *words;
     dl_key key;
     bool lit, texgen;
@@ -1708,9 +1709,45 @@ typedef struct dl_rec {
 } dl_rec;
 
 static dl_entry s_dl[DL_SLOTS];
+
+/* All recordings live in one bump arena, flushed wholesale when full: no
+ * per-list heap traffic (thousands of small malloc/free pairs a frame), and
+ * no per-entry ownership to get wrong. */
+static uint8_t *s_dl_arena;
+static uint32_t s_dl_arena_used;
+static uint32_t s_dl_flushes;
+
+static void *dl_alloc(uint32_t n)
+{
+    if (s_dl_arena == NULL) {
+        s_dl_arena = malloc(DL_BYTES_MAX);
+        if (s_dl_arena == NULL) {
+            return NULL;
+        }
+    }
+    n = (n + 3u) & ~3u;
+    if (n == 0 || s_dl_arena_used + n > DL_BYTES_MAX) {
+        return NULL;
+    }
+    void *ptr = s_dl_arena + s_dl_arena_used;
+    s_dl_arena_used += n;
+    return ptr;
+}
+
+static void dl_flush_all(void)
+{
+    memset(s_dl, 0, sizeof(s_dl));
+    s_dl_arena_used = 0;
+    ++s_dl_flushes;
+}
 static dl_rec s_rec;
 static uint32_t s_dl_bytes;
 static uint32_t s_dl_hits, s_dl_misses, s_dl_uncacheable;
+/* Word coverage of the cache: short lists, a new slot, changed contents,
+ * proven uncacheable, replayed, recorded but missed on the entry key. */
+enum { DLC_SHORT, DLC_SMALL, DLC_BEGIN, DLC_BEGIN_FIRST, DLC_SPLIT, DLC_NEW, DLC_CHANGED, DLC_NEVER, DLC_HIT, DLC_KEY, DLC_COUNT };
+static uint32_t s_dl_cov[DLC_COUNT];
+static uint32_t s_dl_why[6]; /* batch-in-block, shared-verts, straddle/drops, lit+matrix, swap, open-prim */
 
 /* Close the vertex block in progress (if it produced anything). */
 static void rec_close_block(void)
@@ -1725,10 +1762,12 @@ static void rec_close_block(void)
     if (opened > 1u || (opened == 1u && fb->batches[fb->frame.batch_count - 1].first_index != s_rec.block_i0) ||
         s_rec.nevents >= DL_MAX_EVENTS || s_rec.nblocks >= DL_MAX_EVENTS) {
         s_rec.bad = true; /* batches changed inside the block, or too many events */
+        ++s_dl_why[0];
     }
     for (uint32_t i = s_rec.block_i0; i < i1 && !s_rec.bad; ++i) {
         if (fb->indices[i] < s_rec.block_v0) {
             s_rec.bad = true; /* shares vertices with an earlier block */
+            ++s_dl_why[1];
         }
     }
     if (!s_rec.bad) {
@@ -1766,6 +1805,7 @@ static void rec_command(unsigned op, const uint32_t *p)
     }
     if (op == 0x50) {
         s_rec.bad = true;
+        ++s_dl_why[4];
     }
     if (op >= 0x10 && op <= 0x1C) {
         s_rec.has_matrix = true;
@@ -1781,7 +1821,51 @@ static void rec_command(unsigned op, const uint32_t *p)
 }
 
 
-static void dl_make_key(dl_key *k, bool lit, bool texgen)
+/* Which entry inputs a list reads before it writes them (scan in order). */
+#define DL_READS_COLOR 1u
+#define DL_READS_COORD 2u
+#define DL_READS_TEXCOORD 4u
+#define DL_READS_TEXM 8u
+
+static uint32_t dl_entry_reads(const uint32_t *w, size_t n)
+{
+    uint32_t reads = 0, written = 0;
+    size_t i = 0;
+    while (i < n) {
+        uint32_t cmds = w[i++];
+        for (int k = 0; k < 4; ++k, cmds >>= 8) {
+            const unsigned op = cmds & 0xFF;
+            switch (op) {
+            case 0x20:
+                /* NORMAL (0x21) writes the colour only when lighting is on,
+                 * which can change inside the list: not counted as a write */
+                written |= DL_READS_COLOR;
+                break;
+            case 0x22:
+                written |= DL_READS_TEXCOORD;
+                break;
+            case 0x23: case 0x24:
+                reads |= ~written & (DL_READS_COLOR | DL_READS_TEXCOORD);
+                written |= DL_READS_COORD;
+                break;
+            case 0x25: case 0x26: case 0x27: case 0x28:
+                reads |= ~written & (DL_READS_COLOR | DL_READS_TEXCOORD | DL_READS_COORD);
+                written |= DL_READS_COORD;
+                break;
+            case 0x2A: case 0x10: case 0x11: case 0x12: case 0x13: case 0x14: case 0x15:
+            case 0x16: case 0x17: case 0x18: case 0x19: case 0x1A: case 0x1B: case 0x1C:
+                reads |= DL_READS_TEXM; /* texgen or texture matrix may change inside */
+                break;
+            default:
+                break;
+            }
+            i += s_param_count[op];
+        }
+    }
+    return reads;
+}
+
+static void dl_make_key(dl_key *k, bool lit, bool texgen, uint32_t reads)
 {
     memset(k, 0, sizeof(*k));
     k->attr_pending = s_attr_pending;
@@ -1789,16 +1873,23 @@ static void dl_make_key(dl_key *k, bool lit, bool texgen)
     k->tex_param = s_tex_param;
     k->tex_pltt = s_tex_pltt;
     k->viewport = s_viewport;
-    k->color = s_color;
-    k->coord01 = (uint16_t)s_coord[0] | ((uint32_t)(uint16_t)s_coord[1] << 16);
-    k->coord2 = (uint16_t)s_coord[2];
-    k->texcoord[0] = s_texcoord[0];
-    k->texcoord[1] = s_texcoord[1];
-    k->texcoord_raw[0] = s_texcoord_raw[0];
-    k->texcoord_raw[1] = s_texcoord_raw[1];
+    if (reads & DL_READS_COLOR) {
+        k->color = s_color;
+    }
+    if (reads & DL_READS_COORD) {
+        k->coord01 = (uint16_t)s_coord[0] | ((uint32_t)(uint16_t)s_coord[1] << 16);
+        k->coord2 = (uint16_t)s_coord[2];
+    }
+    if (reads & DL_READS_TEXCOORD) {
+        k->texcoord[0] = s_texcoord[0];
+        k->texcoord[1] = s_texcoord[1];
+        k->texcoord_raw[0] = s_texcoord_raw[0];
+        k->texcoord_raw[1] = s_texcoord_raw[1];
+    }
     k->mtx_mode = (uint32_t)s_mtx_mode;
-    (void)texgen;
-    memcpy(k->texm, s_tex.m, sizeof(k->texm)); /* texgen may be enabled inside the list */
+    if (texgen || (reads & DL_READS_TEXM)) {
+        memcpy(k->texm, s_tex.m, sizeof(k->texm));
+    }
     if (lit) {
         for (int i = 0; i < 3; ++i) {
             for (int j = 0; j < 3; ++j) {
@@ -1840,25 +1931,16 @@ static dl_entry *dl_slot(const uint32_t *ptr, uint32_t count)
 
 static void dl_drop_recording(dl_entry *e)
 {
-    free(e->events);
-    free(e->blocks);
-    free(e->verts);
-    free(e->idx);
     e->events = NULL;
     e->blocks = NULL;
     e->verts = NULL;
     e->idx = NULL;
     e->nevents = e->nblocks = e->nverts = e->nidx = 0;
-    s_dl_bytes -= e->bytes - e->count * 4u;
-    e->bytes = e->count * 4u;
     e->recorded = false;
 }
 
 static void dl_free(dl_entry *e)
 {
-    dl_drop_recording(e);
-    free(e->words);
-    s_dl_bytes -= e->bytes;
     memset(e, 0, sizeof(*e));
 }
 
@@ -1975,6 +2057,61 @@ static uint32_t dl_vertex_bound(const dl_entry *e)
     return e->nverts;
 }
 
+#ifdef KJ_DL_VERIFY
+static uint32_t s_verify_logged;
+
+/* A hit decoded live: does the live output equal what replay would copy? */
+static void dl_verify(const dl_entry *e, const frame_buf *fb)
+{
+    const uint32_t nv = fb->frame.vert_count - s_rec.v0, ni = fb->frame.index_count - s_rec.i0;
+    const char *why = NULL;
+    uint32_t at = 0;
+    if (s_rec.bad) {
+        why = "live decode no longer recordable";
+    } else if (nv != e->nverts || ni != e->nidx) {
+        why = "vertex/index counts";
+    } else if (s_rec.nblocks != e->nblocks || s_rec.nevents != e->nevents) {
+        why = "event structure";
+    } else if (memcmp(s_rec.events, e->events, e->nevents * 4u) != 0) {
+        why = "events";
+    } else {
+        for (uint32_t i = 0; i < nv && why == NULL; ++i) {
+            const uint32_t *a = (const uint32_t *)&fb->verts[s_rec.v0 + i];
+            const uint32_t *b = (const uint32_t *)&e->verts[i];
+            if (a[0] != b[0] || (a[1] & 0xFFFFu) != (b[1] & 0xFFFFu) || a[2] != b[2] || a[3] != b[3]) {
+                why = "vertex data";
+                at = i;
+            }
+        }
+        for (uint32_t bk = 0; bk < e->nblocks && why == NULL; ++bk) {
+            const dl_block *bl = &e->blocks[bk];
+            for (uint32_t i = 0; i < bl->nidx; ++i) {
+                const uint32_t live = fb->indices[s_rec.i0 + bl->first_idx + i] - (s_rec.v0 + bl->first_vert);
+                if (live != e->idx[bl->first_idx + i]) {
+                    why = "indices";
+                    at = bk;
+                    break;
+                }
+            }
+        }
+    }
+    if (why != NULL) {
+        if (s_verify_logged < 40) {
+            ++s_verify_logged;
+            NitroPort_Log("[dlverify] MISMATCH %s at %lu: list %p (%lu words) nv %lu/%lu ni %lu/%lu "
+                          "blocks %lu/%lu events %lu/%lu",
+                          why, (unsigned long)at, (const void *)e->ptr, (unsigned long)e->count,
+                          (unsigned long)nv, (unsigned long)e->nverts, (unsigned long)ni,
+                          (unsigned long)e->nidx, (unsigned long)s_rec.nblocks,
+                          (unsigned long)e->nblocks, (unsigned long)s_rec.nevents,
+                          (unsigned long)e->nevents);
+        }
+    } else {
+        ++s_dl_hits;
+    }
+}
+#endif
+
 static void decode_words(const uint32_t *words, size_t count)
 {
 #ifdef KJ_G3_PROFILE
@@ -2037,6 +2174,17 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
     return;
 #endif
     if (count < DL_MIN_WORDS || count > 0xFFFFFu || s_in_begin || s_fifo_need > 0 || s_rec.active) {
+        s_dl_cov[DLC_SHORT] += (uint32_t)count;
+        if (count < DL_MIN_WORDS) {
+            s_dl_cov[DLC_SMALL] += (uint32_t)count;
+        } else if (s_fifo_need > 0) {
+            s_dl_cov[DLC_SPLIT] += (uint32_t)count;
+        } else if (s_in_begin) {
+            s_dl_cov[DLC_BEGIN] += (uint32_t)count;
+            if ((words[0] & 0xFFu) == 0x40u) {
+                s_dl_cov[DLC_BEGIN_FIRST] += (uint32_t)count;
+            }
+        }
         decode_words(words, count);
         return;
     }
@@ -2046,25 +2194,30 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
         return;
     }
     if (e->ptr != words || e->count != count) {
+        s_dl_cov[DLC_NEW] += (uint32_t)count;
         dl_free(e);
-        e->words = malloc(count * 4u);
-        if (e->words == NULL) {
+        uint32_t *copy = dl_alloc((uint32_t)count * 4u);
+        if (copy == NULL) {
+            dl_flush_all();
             decode_words(words, count);
             return;
         }
+        e->words = copy;
         e->ptr = words;
         e->count = (uint32_t)count;
         memcpy(e->words, words, count * 4u);
-        e->bytes = (uint32_t)count * 4u;
-        s_dl_bytes += e->bytes;
+        e->reads = dl_entry_reads(words, count);
     } else if (memcmp(e->words, words, count * 4u) != 0) {
+        s_dl_cov[DLC_CHANGED] += (uint32_t)count;
         memcpy(e->words, words, count * 4u);
         dl_drop_recording(e);
         e->never = false;
         e->needs_light = false;
+        e->reads = dl_entry_reads(words, count);
     }
     e->last_frame = s_stats.swaps;
     if (e->never) {
+        s_dl_cov[DLC_NEVER] += (uint32_t)count;
         ++s_dl_uncacheable;
         decode_words(words, count);
         return;
@@ -2072,26 +2225,58 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
     const bool texgen = (s_tex_param >> 30) != 0;
     const bool lit = e->needs_light || ((s_attr | s_attr_pending) & 0xFu) != 0;
     dl_key key;
-    dl_make_key(&key, lit, texgen);
+    bool verify = false;
+    dl_make_key(&key, lit, texgen, e->reads);
     if (e->recorded && e->lit == lit && e->texgen == texgen &&
         memcmp(&key, &e->key, sizeof(key)) == 0) {
         frame_buf *fb = &s_buf[s_build];
         if (fb->frame.vert_count + dl_vertex_bound(e) <= KJ_G3_MAX_VERTS &&
             fb->frame.index_count + e->nidx <= KJ_G3_MAX_INDICES &&
             fb->frame.batch_count + e->nblocks + 2 <= KJ_G3_MAX_BATCHES) {
+#ifdef KJ_DL_VERIFY
+            verify = true;
+#else
             dl_replay(e);
             ++s_dl_hits;
+            s_dl_cov[DLC_HIT] += (uint32_t)count;
             return;
+#endif
         }
     }
 
+#ifdef KJ_DL_VERIFY
+    if (e->recorded && !verify) {
+        static uint32_t logged;
+        if (logged < 30 && s_stats.swaps > 4600u) {
+            ++logged;
+            const uint32_t *a = (const uint32_t *)&key, *b = (const uint32_t *)&e->key;
+            unsigned first = 0;
+            while (first < sizeof(key) / 4 && a[first] == b[first]) {
+                ++first;
+            }
+            NitroPort_Log("[dlmiss] list %p lit %d/%d texgen %d/%d key word %u: %08lx vs %08lx",
+                          (const void *)words, lit, e->lit, texgen, e->texgen, first,
+                          first < sizeof(key) / 4 ? (unsigned long)a[first] : 0ul,
+                          first < sizeof(key) / 4 ? (unsigned long)b[first] : 0ul);
+        }
+    }
+#endif
     /* record */
+    if (verify) {
+        s_dl_cov[DLC_HIT] += (uint32_t)count;
+    } else if (e->recorded) {
+        s_dl_cov[DLC_KEY] += (uint32_t)count;
+    }
     ++s_dl_misses;
-    if (e->recorded) {
+    if (e->recorded && !verify) {
         dl_drop_recording(e);
     }
     frame_buf *fb = &s_buf[s_build];
-    memset(&s_rec, 0, offsetof(dl_rec, events));
+    /* reset every scalar field (the arrays need no clearing; nevents and
+     * nblocks follow them in the struct, so one memset cannot cover them) */
+    s_rec.active = s_rec.bad = s_rec.has_matrix = s_rec.vecdep = false;
+    s_rec.nevents = 0;
+    s_rec.nblocks = 0;
     s_rec.active = true;
     s_rec.base = words;
     s_rec.v0 = fb->frame.vert_count;
@@ -2105,9 +2290,11 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
     if (fb->frame.dropped_verts + fb->frame.dropped_batches + fb->frame.unsupported != drops0 ||
         s_fifo_need > 0) {
         s_rec.bad = true;
+        ++s_dl_why[2];
     }
     if (s_rec.vecdep && s_rec.has_matrix) {
         s_rec.bad = true;
+        ++s_dl_why[3];
     }
     if (s_rec.vecdep && !lit && !s_rec.bad) {
         /* keyed without the lighting state it turned out to read: key on it
@@ -2115,20 +2302,23 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
         e->needs_light = true;
         return;
     }
+#ifdef KJ_DL_VERIFY
+    if (verify) {
+        dl_verify(e, fb);
+        return;
+    }
+#endif
     if (s_rec.bad) {
         e->never = true;
         return;
     }
-    if (s_dl_bytes >= DL_BYTES_MAX) {
-        return;
-    }
     const uint32_t nv = fb->frame.vert_count - s_rec.v0, ni = fb->frame.index_count - s_rec.i0;
-    e->events = malloc(s_rec.nevents * 4u + 4u);
-    e->blocks = malloc(s_rec.nblocks * sizeof(dl_block) + 4u);
-    e->verts = nv ? malloc(nv * sizeof(kj_g3_vertex)) : NULL;
-    e->idx = ni ? malloc(ni * 2u) : NULL;
+    e->events = dl_alloc(s_rec.nevents * 4u + 4u);
+    e->blocks = dl_alloc(s_rec.nblocks * (uint32_t)sizeof(dl_block) + 4u);
+    e->verts = nv ? dl_alloc(nv * (uint32_t)sizeof(kj_g3_vertex)) : NULL;
+    e->idx = ni ? dl_alloc(ni * 2u) : NULL;
     if (e->events == NULL || e->blocks == NULL || (nv && e->verts == NULL) || (ni && e->idx == NULL)) {
-        dl_drop_recording(e);
+        dl_flush_all(); /* arena full: start over (re-recorded on later calls) */
         return;
     }
     memcpy(e->events, s_rec.events, s_rec.nevents * 4u);
@@ -2147,10 +2337,7 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
     }
     e->nverts = nv;
     e->nidx = ni;
-    const uint32_t extra = s_rec.nevents * 4u + s_rec.nblocks * (uint32_t)sizeof(dl_block) +
-                           nv * (uint32_t)sizeof(kj_g3_vertex) + ni * 2u;
-    e->bytes += extra;
-    s_dl_bytes += extra;
+
     e->key = key;
     e->lit = lit;
     e->texgen = texgen;
@@ -2163,6 +2350,7 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
             last_rel = e->blocks[b].first_vert;
         }
         if (!e->exit.prim_valid) {
+            ++s_dl_why[5];
             dl_drop_recording(e);
             e->never = true;
             return;
@@ -2177,7 +2365,23 @@ void kj_g3_dl_stats(uint32_t *hits, uint32_t *misses, uint32_t *uncacheable, uin
     *hits = s_dl_hits;
     *misses = s_dl_misses;
     *uncacheable = s_dl_uncacheable;
-    *bytes = s_dl_bytes;
+    *bytes = s_dl_arena_used;
+    NitroPort_Log("[dlwhy] batch-in-block %lu shared-verts %lu straddle/drops %lu lit+matrix %lu "
+                  "swap %lu open-prim %lu flushes %lu",
+                  (unsigned long)s_dl_why[0], (unsigned long)s_dl_why[1], (unsigned long)s_dl_why[2],
+                  (unsigned long)s_dl_why[3], (unsigned long)s_dl_why[4], (unsigned long)s_dl_why[5],
+                  (unsigned long)s_dl_flushes);
+    NitroPort_Log("[dlcov] bypass: small %lu split %lu open-begin %lu (begin first %lu)",
+                  (unsigned long)s_dl_cov[DLC_SMALL], (unsigned long)s_dl_cov[DLC_SPLIT],
+                  (unsigned long)s_dl_cov[DLC_BEGIN], (unsigned long)s_dl_cov[DLC_BEGIN_FIRST]);
+    NitroPort_Log("[dlcov] words: short %lu new %lu changed %lu never %lu hit %lu keymiss %lu",
+                  (unsigned long)s_dl_cov[DLC_SHORT], (unsigned long)s_dl_cov[DLC_NEW],
+                  (unsigned long)s_dl_cov[DLC_CHANGED], (unsigned long)s_dl_cov[DLC_NEVER],
+                  (unsigned long)s_dl_cov[DLC_HIT], (unsigned long)s_dl_cov[DLC_KEY]);
+    memset(s_dl_cov, 0, sizeof(s_dl_cov));
+    memset(s_dl_why, 0, sizeof(s_dl_why));
+    s_dl_flushes = 0;
+    (void)s_dl_bytes;
     s_dl_hits = s_dl_misses = s_dl_uncacheable = 0;
 }
 

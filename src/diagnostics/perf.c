@@ -183,6 +183,13 @@ void kj_perf_publish_end(uint32_t game_frame)
         note_hitch(game_frame, real_interval);
     }
     kj_perf_add(KJ_PERF_PUBLISH, now - s_publish_start);
+    /* kj_g3d_draw runs inside the screen draw: report g2d exclusive of it,
+     * so logic + g2d + g3d + gpu_wait + submit is not double-counted. */
+    {
+        uint32_t *g2d = &s_frame_stage[KJ_PERF_G2D];
+        const uint32_t g3d = s_frame_stage[KJ_PERF_G3D];
+        *g2d = *g2d > g3d ? *g2d - g3d : 0u;
+    }
     memset(kj_perf_counts, 0, sizeof(kj_perf_counts));
     for (int s = 0; s < KJ_PERF_STAGE_COUNT; ++s) {
         s_samples[s][s_n] = s_frame_stage[s];
