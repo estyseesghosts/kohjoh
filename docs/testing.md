@@ -84,10 +84,18 @@ ROM. `tools/melonds/shots.ps1` saves timed screenshots to
   the H-blank walk count (one walk per game frame) and prints it with the
   picture count, so skipped presents no longer inflate it. `[perf] g2d` is
   exclusive: the g3d time spent inside it is subtracted (before `6191966`
-  g2d included g3d). `[dlcov]` (with `KJ_DL_CACHE`) splits FIFO words into
+  g2d included g3d). `[dlcov]` (with `KJ_DL_VERIFY`) splits FIFO words into
   bypassed (small, split mid-command, open BEGIN) and new/changed/never/hit/
   keymiss; `[dlwhy]` counts uncacheable reasons and arena flushes.
   `[gpu] ... char KiB compared` is the retained layers' character check.
+  `[gputime]`: GSP perf-log microseconds per picture (P3D command lists, PPF
+  display transfers, PSC fills; 0 in Azahar, which does not implement the
+  log), `C3D_GetDrawingTime` average/max (the latest completed queue, so not
+  tied to one picture) and the peak command-buffer use.
+  `[sndprof]` (every ~9.4 s of audio, on the audio thread): cumulative mixer
+  ticks, frames and active channels; cycles per channel-sample is
+  Δmix_ticks / (Δactive_ch / Δmix_calls) / Δmix_frames. Needs
+  `dspfirm.cdc` in Azahar's `sdmc/3ds/`, or NDSP fails and the mixer never runs.
 - **PC sampling**: with Azahar's GDB stub enabled (`use_gdbstub=true`, port
   24689), `python tools/azahar/gdbprof.py build/kj/pokeheartgold-3ds.elf
   --samples 1500 --interval 0.02 [--callers fn1,fn2]` prints a function

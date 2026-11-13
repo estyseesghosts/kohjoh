@@ -20,7 +20,8 @@ As of 2026-11-13. Evidence levels: **built** (compiles and links), **run**
 | Geometry decoder fast paths | verified | Goldenrod renders; logic 37 → 25 ms/frame (Azahar) |
 | Pokémon-data keystream cache (game patch 2002) | built | crypto was ~12% of field instructions |
 | Present skip (never two in a row) | run | `0089b28`; O3DS starvation diagnosed from o3ds-log-0 |
-| Display-list cache | verified, **off by default** (`--define KJ_DL_CACHE`) | heap fix ported; `KJ_DL_VERIFY` 0 mismatches in Goldenrod idle, intro, title; battle and walking untested |
+| Display-list cache | verified, **on by default** since `c2087f3` (`--define KJ_DL_NO_CACHE` to disable) | `KJ_DL_VERIFY` 0 mismatches in Goldenrod idle, intro, title, and Goldenrod → Route 34 → trainer battle → field; battle frames use no lists |
+| GPU timing `[gputime]` (`6444c8b`) | run | C3D drawing time and command-buffer peak; GSP perf log reads 0 in Azahar (not emulated), O3DS untested |
 | GX command DMA in one transfer (SDK patch 2003) | verified | 65% of FIFO words had been split mid-command; logic 21.8 → 21.0 ms |
 | Party move scan, one decrypt per mon (game patch 2006) | verified | Goldenrod idle logic −0.1 ms |
 | Saves | run | interim raw file `saves/<edition>.sav` ([`save_raw.c`](../src/storage/save_raw.c)) |
@@ -80,11 +81,11 @@ also spilled to the stack every frame, which Azahar does not charge).
 1. Find the save-detection regression on `wip/savestore`; finish SaveStore.
 2. Battle crashes (user-reported): reproduce with `route34-battle.txt`; `logs/crash.txt`.
 3. Route test: Goldenrod → Route 34 grass → wild battle (`tests/inputs/route34-south.txt`).
-4. O3DS re-test of Goldenrod and the title with `--define KJ_DL_CACHE`
-   (the white title is unconfirmed), with ARM11 performance counters for
-   I-cache misses. H-blank (0.5 ms) and texture work wait for that data.
-5. Verify the display-list cache in a battle and while walking, then
-   enable it by default.
+4. O3DS re-test of Goldenrod, the title and a battle on a default build
+   (cache, mixer and `[gputime]` all in), with ARM11 performance counters
+   for I-cache misses. H-blank (0.5 ms) and texture work wait for that data.
+5. Whole-batch frustum culling (chatlog06: 72 of 124 Goldenrod batches lie
+   wholly outside one plane).
 6. Title/Ho-Oh: lit lists decode live with CPU lighting (`shade` ~11% of
    samples); vertex lighting on the PICA would cut that and let them record.
 7. CIA packaging, SoulSilver build.
