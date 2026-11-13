@@ -94,8 +94,8 @@ The shared vendored-library trees are `build/hgss-sdk`, `build/hgss-nns`, and
 | --- | --- | --- |
 | `KJ_G3_PROFILE` | times each geometry opcode (`[g3prof]`); each probe costs ~390 ticks | diagnostic |
 | `KJ_G3_ZERO_TRACE` | logs the first geometry commands that leave a zero position/projection matrix (`[g3zero]`) | diagnostic |
-| `KJ_DL_CACHE` | display-list cache (replays recorded vertex blocks; state commands still run) | heap fix ported; verified clean in Goldenrod idle only; off by default until more scenes verify |
-| `KJ_DL_VERIFY` | with `KJ_DL_CACHE`: decode hits live and compare with the recording (`[dlverify] MISMATCH`), plus `[dlwhy]`/`[dlcov]` coverage lines | diagnostic |
+| `KJ_DL_NO_CACHE` | turns off the display-list cache (on by default: replays recorded vertex blocks; state commands still run) | A/B and bisects |
+| `KJ_DL_VERIFY` | with the cache on: decode hits live and compare with the recording (`[dlverify] MISMATCH`), plus `[dlwhy]`/`[dlcov]` coverage lines | diagnostic |
 
 Always pass these as `--define`. An inline variable such as `FOO=1 python ...`
 works inside the `bash.exe -lc` shell but **is dropped when MSYS2 Python is
