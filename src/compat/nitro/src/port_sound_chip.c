@@ -433,6 +433,189 @@ static inline int pcm_advance(Channel *c, uint64_t *phase, uint32_t *index,
 }
 
 /*
+ * ADPCM is the mixer's hot path on the Old 3DS: in o3ds-log-1 the mixer
+ * took 23-30% of the application core in every window, about 170 cycles
+ * per channel and output frame, and 99% of the active channels were ADPCM.
+ * The one-pass loop kept more values live than the ARM11 has registers and
+ * spilled its output pointers and 64-bit phase to the stack every frame
+ * (coffeepot cpu-optimization: look for sp-relative spills in hot loops).
+ * It is split in two passes instead: adpcm_render decodes and resamples
+ * into a local buffer, mix_scaled applies volume, shift and pan.
+ *
+ * The phase is kept as its 32-bit fraction. That is exact when the whole
+ * part is 0 at the start of the block (each frame's whole steps are
+ * consumed before the next frame) and a frame's step is under 2,048
+ * samples (so the per-frame cap never applies; the largest step, timer
+ * period 1 at 32,768 Hz, is 511). mix_block checks both and otherwise
+ * mixes frame by frame. Output is bit-identical to the one-pass loop.
+ */
+
+/* Samples (before volume) for up to frames frames; returns how many frames
+ * the channel played (fewer if its sound ended). */
+static inline __attribute__((always_inline)) size_t adpcm_render_frames(
+    Channel *c, int32_t *out, size_t frames, const int interpolate)
+{
+    NitroSoundVoice *v = c->v;
+    const uint8_t *source = c->source;
+    const uint32_t nSamples = c->nSamples;
+    const uint32_t loopAt = c->loopAt;
+    const uint32_t stepWhole = (uint32_t)(c->step >> 32);
+    const uint32_t stepFrac = (uint32_t)c->step;
+    uint32_t frac = (uint32_t)v->phase;
+    uint32_t index = v->sampleIndex;
+    int32_t predictor = v->predictor;
+    int32_t stepIndex = v->stepIndex;
+    int32_t last = v->lastSample;
+    size_t i;
+
+    for (i = 0; i < frames; ++i) {
+        const uint32_t next = frac + stepFrac;
+        uint32_t advances = stepWhole + (next < frac ? 1u : 0u);
+
+        out[i] = interpolate ? lerp(last, predictor, frac) : predictor;
+        frac = next;
+        while (advances != 0u) {
+            --advances;
+            index++;
+            if (index >= nSamples) {
+                /* The end: what advance_voice does, with the state written
+                 * back first (the phase still holding the whole steps not
+                 * yet taken, as the 64-bit loop left it). */
+                v->sampleIndex = index - 1u;
+                v->predictor = predictor;
+                v->stepIndex = stepIndex;
+                v->phase = ((uint64_t)advances << 32) | frac;
+                v->lastSample = last;
+                advance_voice(c);
+                if (!v->running) {
+                    return i + 1u;
+                }
+                index = v->sampleIndex;
+                predictor = v->predictor;
+                stepIndex = v->stepIndex;
+                last = v->lastSample;
+                continue;
+            }
+            {
+                const uint32_t nibble = index - 1u;
+                const uint8_t byte = source[4u + nibble / 2u];
+#ifdef HGSS_SND_ADPCM
+                const unsigned code = (byte >> ((nibble & 1u) << 2)) & 15u;
+                const int32_t st = sStep[stepIndex];
+                const int32_t change = (st >> 3) + (st >> 2) * (int32_t)(code & 1u)
+                                     + (st >> 1) * (int32_t)((code >> 1) & 1u)
+                                     + st * (int32_t)((code >> 2) & 1u);
+#else
+                const unsigned code = (nibble & 1u) ? byte >> 4 : byte & 15u;
+                const int32_t st = sStep[stepIndex];
+                int32_t change = st >> 3;
+
+                if (code & 1u) {
+                    change += st >> 2;
+                }
+                if (code & 2u) {
+                    change += st >> 1;
+                }
+                if (code & 4u) {
+                    change += st;
+                }
+#endif
+                last = predictor;
+                predictor += (code & 8u) ? -change : change;
+                predictor = saturate(predictor);
+                stepIndex += sIndexDelta[code & 7u];
+                if (stepIndex < 0) {
+                    stepIndex = 0;
+                }
+                if (stepIndex > 88) {
+                    stepIndex = 88;
+                }
+                if (index == loopAt && v->adpcmClean) {
+                    v->loopSaved = 1;
+                    v->loopSource = c->sourceAddr;
+                    v->loopAt = loopAt;
+                    v->loopPredictor = predictor;
+                    v->loopStepIndex = stepIndex;
+                }
+            }
+        }
+    }
+    v->sampleIndex = index;
+    v->predictor = predictor;
+    v->stepIndex = stepIndex;
+    v->phase = frac;
+    v->lastSample = last;
+    return frames;
+}
+
+static size_t adpcm_render(Channel *c, int32_t *out, size_t frames)
+{
+    if (c->interpolate) {
+        return adpcm_render_frames(c, out, frames, 1);
+    }
+    return adpcm_render_frames(c, out, frames, 0);
+}
+
+/*
+ * Adds rendered samples to L and R with the channel's volume, shift and
+ * pan; values (if not NULL) gets each frame's sample after volume and
+ * shift. The same arithmetic as voice_mix, so the same result: a hard pan
+ * adds (x * 127) / 127 = x to one side and (x * 0) / 127 = 0 to the other.
+ */
+static void mix_scaled(Channel *c, const int32_t *samples, int32_t *L, int32_t *R,
+                       int32_t *values, size_t frames)
+{
+    const int32_t volume = c->volume;
+    const int32_t panL = 127 - c->pan;
+    const int32_t panR = c->pan;
+    const unsigned shift = c->shift;
+    size_t i;
+
+    if (volume == 0) {
+        /* Silent: (x * 0) / 127 >> shift is 0 on both sides. */
+        for (i = 0; i < frames; ++i) {
+            if (values) {
+                values[i] = 0;
+            }
+            STATS_TAP(c, i, 0);
+        }
+        return;
+    }
+    if (panR == 0) {
+        for (i = 0; i < frames; ++i) {
+            const int32_t scaled = ((samples[i] * volume) / 127) >> shift;
+
+            if (values) {
+                values[i] = scaled;
+            }
+            STATS_TAP(c, i, scaled);
+            L[i] += scaled;
+        }
+    } else if (panL == 0) {
+        for (i = 0; i < frames; ++i) {
+            const int32_t scaled = ((samples[i] * volume) / 127) >> shift;
+
+            if (values) {
+                values[i] = scaled;
+            }
+            STATS_TAP(c, i, scaled);
+            R[i] += scaled;
+        }
+    } else {
+        for (i = 0; i < frames; ++i) {
+            const int32_t scaled = ((samples[i] * volume) / 127) >> shift;
+
+            if (values) {
+                values[i] = scaled;
+            }
+            STATS_TAP(c, i, scaled);
+            L[i] += (scaled * panL) / 127;
+            R[i] += (scaled * panR) / 127;
+        }
+    }
+}
+
+/*
  * A channel's samples for a run of frames, added to L and R: what
  * voice_mix gives frame by frame, with the channel's settings and its
  * decoder in local variables; values (if not NULL) gets each frame's
@@ -452,104 +635,13 @@ static void mix_block(Channel *c, int32_t *L, int32_t *R, int32_t *values, size_
     uint64_t phase = v->phase;
     size_t i;
 
-    if (c->format == 2u && c->source && c->nSamples) {
-        /* ADPCM: the decoder's state kept in registers between samples. */
-        const uint8_t *source = c->source;
-        const uint32_t nSamples = c->nSamples, loopAt = c->loopAt;
-        const int interpolate = c->interpolate;
-        const int silent = volume == 0;
-        uint32_t index = v->sampleIndex;
-        int32_t predictor = v->predictor, stepIndex = v->stepIndex;
-        int32_t last = v->lastSample;
+    if (c->format == 2u && c->source && c->nSamples && frames <= MIX_BLOCK &&
+        (v->phase >> 32) == 0u && (step >> 32) < 2048u) {
+        /* ADPCM: rendered, then mixed (see adpcm_render). */
+        int32_t samples[MIX_BLOCK];
+        const size_t played = adpcm_render(c, samples, frames);
 
-        for (i = 0; i < frames; ++i) {
-            uint32_t advances;
-
-            /* A silent channel adds nothing; the decoder still has to run,
-             * because its state is the sound's position when the volume
-             * comes back. */
-            if (silent) {
-                if (values) values[i] = 0;
-                STATS_TAP(c, i, 0);
-            } else {
-                int32_t scaled = ((interpolate ? lerp(last, predictor, phase) : predictor) * volume) / 127;
-
-                scaled >>= shift;
-                if (values) values[i] = scaled;
-                STATS_TAP(c, i, scaled);
-                L[i] += (scaled * panL) / 127;
-                R[i] += (scaled * panR) / 127;
-            }
-            phase += step;
-            /* As voice_mix's loop: one source sample per whole step, at
-             * most 2048 per frame. */
-            advances = (uint32_t)(phase >> 32);
-            if (advances > 2048u) advances = 2048u;
-            while (advances--) {
-                phase -= PHASE_ONE;
-                index++;
-                if (index >= nSamples) {
-                    /* The end: what advance_voice does, with the state
-                     * written back first. */
-                    v->sampleIndex = index - 1u;
-                    v->predictor = predictor;
-                    v->stepIndex = stepIndex;
-                    v->phase = phase;
-                    v->lastSample = last;
-                    advance_voice(c);
-                    if (!v->running) return;
-                    index = v->sampleIndex;
-                    predictor = v->predictor;
-                    stepIndex = v->stepIndex;
-                    last = v->lastSample;
-                    continue;
-                } else {
-                    uint32_t nibble = index - 1u;
-                    uint8_t byte = source[4u + nibble / 2u];
-                    /* Branchless nibble select (parity alternates every
-                     * sample: worst case for predictors) and change
-                     * (same exactness argument as adpcm_step). */
-#ifdef HGSS_SND_ADPCM
-                    unsigned code = (byte >> (((nibble & 1u)) << 2)) & 15u;
-                    int32_t st = sStep[stepIndex];
-                    int32_t change = (st >> 3) + (st >> 2) * (int32_t)(code & 1u)
-                                   + (st >> 1) * (int32_t)((code >> 1) & 1u)
-                                   + st * (int32_t)((code >> 2) & 1u);
-#else
-                    unsigned code = (nibble & 1u) ? byte >> 4 : byte & 15u;
-                    int32_t st = sStep[stepIndex];
-                    int32_t change = st >> 3;
-#endif
-
-                    last = predictor;
-
-#ifdef HGSS_SND_ADPCM
-                    predictor += (code & 8u) ? -change : change;
-#else
-                    if (code & 1u) change += st >> 2;
-                    if (code & 2u) change += st >> 1;
-                    if (code & 4u) change += st;
-                    predictor += (code & 8u) ? -change : change;
-#endif
-                    predictor = saturate(predictor);
-                    stepIndex += sIndexDelta[code & 7u];
-                    if (stepIndex < 0) stepIndex = 0;
-                    if (stepIndex > 88) stepIndex = 88;
-                    if (index == loopAt && v->adpcmClean) {
-                        v->loopSaved = 1;
-                        v->loopSource = c->sourceAddr;
-                        v->loopAt = loopAt;
-                        v->loopPredictor = predictor;
-                        v->loopStepIndex = stepIndex;
-                    }
-                }
-            }
-        }
-        v->sampleIndex = index;
-        v->predictor = predictor;
-        v->stepIndex = stepIndex;
-        v->phase = phase;
-        v->lastSample = last;
+        mix_scaled(c, samples, L, R, values, played);
         return;
     }
     if (c->format <= 1u && c->source && c->nSamples) {
