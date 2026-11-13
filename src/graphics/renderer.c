@@ -42,6 +42,16 @@ static uint32_t s_frames;
 static uint32_t s_skipped_presents;
 static bool s_skipped_last; /* the previous publish skipped its picture */
 
+/* GPU-side time per 600 pictures (coffeepot performance.md, "Per-operation
+ * GPU times": P3D is command-list execution, PPF display transfers, PSC
+ * memory fills; C3D_GetDrawingTime is the latest completed queue, so it is
+ * averaged, never matched to the current picture). */
+static bool s_perflog_on;
+static GSPGPU_PerfLog s_perflog_prev;
+static float s_draw_ms_sum;
+static float s_draw_ms_max;
+static float s_cmdbuf_max;
+
 bool kj_renderer_init(void)
 {
     if (!C3D_Init(CMDBUF_BYTES)) {
@@ -67,6 +77,8 @@ bool kj_renderer_init(void)
     if (!kj_g2d_init() || !kj_g3d_init()) {
         return false;
     }
+    s_perflog_on = R_SUCCEEDED(GSPGPU_SetPerfLogMode(true)) &&
+                   R_SUCCEEDED(GSPGPU_GetPerfLog(&s_perflog_prev));
     s_ready = true;
     kj_log("[gpu] renderer ready (linear free %lu KiB, VRAM free %lu KiB)",
            (unsigned long)(linearSpaceFree() / 1024), (unsigned long)(vramSpaceFree() / 1024));
@@ -125,6 +137,18 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
     t = kj_perf_now();
     C3D_FrameEnd(0);
     kj_perf_add(KJ_PERF_SUBMIT, kj_perf_now() - t);
+    {
+        const float draw_ms = C3D_GetDrawingTime();
+        const float usage = C3D_GetCmdBufUsage();
+
+        s_draw_ms_sum += draw_ms;
+        if (draw_ms > s_draw_ms_max) {
+            s_draw_ms_max = draw_ms;
+        }
+        if (usage > s_cmdbuf_max) {
+            s_cmdbuf_max = usage;
+        }
+    }
 
     ++s_frames;
     kj_perf_publish_end(in->game_frame);
@@ -173,6 +197,31 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
                (unsigned long)d.tex_bytes_compared, (unsigned long)d.tex_cache_full,
                (unsigned long)d.unsupported, (unsigned long)d.box_tests,
                (unsigned long)d.box_culled, (unsigned long)d.box_culled_far);
+        {
+            GSPGPU_PerfLog now;
+            unsigned long p3d = 0, ppf = 0, psc = 0;
+
+            if (s_perflog_on && R_SUCCEEDED(GSPGPU_GetPerfLog(&now))) {
+                /* Differences of the running totals (unsigned, so a wrap
+                 * still subtracts correctly), per picture. */
+                p3d = (now.entries[GSPGPU_EVENT_P3D].totalDurationUs -
+                       s_perflog_prev.entries[GSPGPU_EVENT_P3D].totalDurationUs) / 600u;
+                ppf = (now.entries[GSPGPU_EVENT_PPF].totalDurationUs -
+                       s_perflog_prev.entries[GSPGPU_EVENT_PPF].totalDurationUs) / 600u;
+                psc = (now.entries[GSPGPU_EVENT_PSC0].totalDurationUs -
+                       s_perflog_prev.entries[GSPGPU_EVENT_PSC0].totalDurationUs +
+                       now.entries[GSPGPU_EVENT_PSC1].totalDurationUs -
+                       s_perflog_prev.entries[GSPGPU_EVENT_PSC1].totalDurationUs) / 600u;
+                s_perflog_prev = now;
+            }
+            kj_log("[gputime] 600 pictures: GSP us/picture P3D %lu PPF %lu PSC %lu (log %s); "
+                   "C3D drawing ms avg %.2f max %.2f; cmdbuf use max %u%%",
+                   p3d, ppf, psc, s_perflog_on ? "on" : "off", (double)(s_draw_ms_sum / 600.0f),
+                   (double)s_draw_ms_max, (unsigned)(s_cmdbuf_max * 100.0f));
+            s_draw_ms_sum = 0.0f;
+            s_draw_ms_max = 0.0f;
+            s_cmdbuf_max = 0.0f;
+        }
     }
 
     /* Test directives: deterministic per-frame capture. */
