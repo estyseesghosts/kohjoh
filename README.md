@@ -14,7 +14,7 @@ for soulsilver, f8dc38ea20c17541a43b58c5...
 - Testing and profiling: [docs/testing.md](docs/testing.md)
 - Lessons and pitfalls: [docs/lessons.md](docs/lessons.md), [docs/troubleshooting.md](docs/troubleshooting.md)
 - Design brief: [kohjoh.md](kohjoh.md); imports and licences: [PROVENANCE.md](PROVENANCE.md)
-- Complain about this wiki: [on discord](https://discord.gg/wJNprjYCun)
+- Complain about this project: [on discord](https://discord.gg/wJNprjYCun)
 
 GPL-3.0 (see [LICENSE](LICENSE)).
 
