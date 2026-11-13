@@ -145,10 +145,26 @@ void kj_ctr_terminate(void)
     exit(0);
 }
 
+static void restore_forwarder_loader(int argc, char **argv)
+{
+    static const char prefix[] = "kohjoh-forwarder:restore=";
+    for (int i = 1; i < argc; i++) {
+        if (strncmp(argv[i], prefix, sizeof(prefix) - 1) == 0) {
+            const char *value = argv[i] + sizeof(prefix) - 1;
+            char *end;
+            unsigned long long tid = strtoull(value, &end, 16);
+            s64 version;
+            if (*value && *end == '\0' && tid &&
+                R_SUCCEEDED(svcGetSystemInfo(&version, 0x10000, 0)))
+                *(volatile u64 *)(OS_SHAREDCFG_VADDR + 0x808) = (u64)tid;
+            break;
+        }
+    }
+}
+
 int main(int argc, char **argv)
 {
-    (void)argc;
-    (void)argv;
+    restore_forwarder_loader(argc, argv);
 
     /* O3DS baseline: run at 268 MHz without the L2 even on a New 3DS. */
     osSetSpeedupEnable(false);
