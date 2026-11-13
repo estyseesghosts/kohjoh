@@ -81,6 +81,7 @@ static int32_t sign_bits(uint32_t v, int bits)
 }
 
 static void normals_changed(void);
+static void vec_changed(void);
 
 static void clip_changed(void)
 {
@@ -133,7 +134,7 @@ static void load_matrix(const mtx *m)
     if (s_mtx_mode == 2) {
         s_pos = *m;
         s_vec = *m;
-        normals_changed();
+        vec_changed();
     } else {
         *selected() = *m;
     }
@@ -148,11 +149,56 @@ static void mult_matrix(const mtx *m, bool scale_only_pos)
         mtx_mul(&s_pos, m, &s_pos);
         if (!scale_only_pos) {
             mtx_mul(&s_vec, m, &s_vec);
-            normals_changed();
+            vec_changed();
         }
     } else {
         mtx *t = selected();
         mtx_mul(t, m, t);
+    }
+    if (s_mtx_mode != 3) {
+        clip_changed();
+    }
+}
+
+/* MTX_SCALE: S * M with S = diag(sx, sy, sz, 1) scales rows 0-2 of M; the
+ * full product's other terms are exact multiples of 4096 (identical after
+ * >> 12). Mode 2 scales the position matrix only (GBATEK). 12 products
+ * instead of 64 (O3DS: 1.1 ms per game frame, o3ds-log-0). */
+static void scale_rows(mtx *t, const uint32_t *p)
+{
+    for (int i = 0; i < 3; ++i) {
+        const int64_t f = (int32_t)p[i];
+        for (int j = 0; j < 4; ++j) {
+            t->m[i][j] = (int32_t)((f * t->m[i][j]) >> 12);
+        }
+    }
+}
+
+static void scale_matrix(const uint32_t *p)
+{
+    scale_rows(s_mtx_mode == 2 ? &s_pos : selected(), p);
+    if (s_mtx_mode != 3) {
+        clip_changed();
+    }
+}
+
+/* MTX_TRANS: T * M changes row 3 only: row3 = t . rows0-2 + row3. */
+static void translate_rows(mtx *t, const uint32_t *p)
+{
+    for (int j = 0; j < 4; ++j) {
+        const int64_t acc = (int64_t)(int32_t)p[0] * t->m[0][j] + (int64_t)(int32_t)p[1] * t->m[1][j] +
+                            (int64_t)(int32_t)p[2] * t->m[2][j] + (int64_t)4096 * t->m[3][j];
+        t->m[3][j] = (int32_t)(acc >> 12);
+    }
+}
+
+static void translate_matrix(const uint32_t *p)
+{
+    if (s_mtx_mode == 2) {
+        translate_rows(&s_pos, p);
+        translate_rows(&s_vec, p); /* row 3 of the vector matrix: lighting never reads it */
+    } else {
+        translate_rows(selected(), p);
     }
     if (s_mtx_mode != 3) {
         clip_changed();
@@ -221,7 +267,7 @@ static void stack_op(unsigned op, uint32_t param)
         s_pos = s_pos_stack[s_posvec_sp & 31];
         s_vec = s_vec_stack[s_posvec_sp & 31];
         clip_changed();
-        normals_changed();
+        vec_changed();
         break;
     }
     case 0x13: { /* STORE */
@@ -241,7 +287,7 @@ static void stack_op(unsigned op, uint32_t param)
         s_pos = s_pos_stack[i];
         s_vec = s_vec_stack[i];
         clip_changed();
-        normals_changed();
+        vec_changed();
         break;
     }
     }
@@ -306,6 +352,28 @@ static struct {
 static void normals_changed(void)
 {
     ++s_normal_gen;
+}
+
+/* Lighting reads only the vector matrix's 3x3 part. NNS restores a matrix
+ * per node, and map props are translated, not rotated: comparing content
+ * keeps the normal cache warm across objects (O3DS: NORMAL cost 2.2 ms per
+ * game frame with the cache flushed at every restore, o3ds-log-0). */
+static int32_t s_shade_vec[3][3];
+
+static void vec_changed(void)
+{
+    bool same = true;
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            if (s_shade_vec[i][j] != s_vec.m[i][j]) {
+                s_shade_vec[i][j] = s_vec.m[i][j];
+                same = false;
+            }
+        }
+    }
+    if (!same) {
+        ++s_normal_gen;
+    }
 }
 
 static uint16_t shade_uncached(uint32_t value);
@@ -834,18 +902,38 @@ static void box_test(const uint32_t *p)
     const int32_t h = sign_bits(p[2], 16), d = sign_bits(p[2] >> 16, 16);
     const mtx *c = clip_matrix();
     unsigned all_out = 0x3F;
+    /* The corners are sums of the box origin's row and the three edge
+     * rows: 16 products instead of 128, same exact 64-bit sums (O3DS: 5,300
+     * ticks per test, o3ds-log-0). */
+    int64_t base[4], ex[4], ey[4], ez[4];
+    for (int j = 0; j < 4; ++j) {
+        base[j] = (int64_t)x * c->m[0][j] + (int64_t)y * c->m[1][j] + (int64_t)z * c->m[2][j] +
+                  (int64_t)4096 * c->m[3][j];
+        ex[j] = (int64_t)w * c->m[0][j];
+        ey[j] = (int64_t)h * c->m[1][j];
+        ez[j] = (int64_t)d * c->m[2][j];
+    }
 
     ++s_stats.box_tests;
     for (int i = 0; i < 8; ++i) {
-        const int64_t vx = x + ((i & 1) ? w : 0);
-        const int64_t vy = y + ((i & 2) ? h : 0);
-        const int64_t vz = z + ((i & 4) ? d : 0);
         int64_t o[4];
         for (int j = 0; j < 4; ++j) {
-            o[j] = (vx * c->m[0][j] + vy * c->m[1][j] + vz * c->m[2][j] + (int64_t)4096 * c->m[3][j]) >> 12;
+            int64_t v = base[j];
+            if (i & 1) {
+                v += ex[j];
+            }
+            if (i & 2) {
+                v += ey[j];
+            }
+            if (i & 4) {
+                v += ez[j];
+            }
+            o[j] = v >> 12;
         }
-        /* Widescreen: the visible x range is 1.25x the DS's. */
-        const int64_t wx = s_wide ? (o[3] * 5) / 4 : o[3];
+        /* Widescreen: the visible x range is 1.25x the DS's (o * 5 / 4,
+         * truncating toward zero, without a 64-bit division call). */
+        const int64_t w5 = o[3] * 5;
+        const int64_t wx = s_wide ? (w5 + (w5 < 0 ? 3 : 0)) >> 2 : o[3];
         unsigned out = 0;
         out |= (o[0] < -wx) ? 0x01u : 0u;
         out |= (o[0] > wx) ? 0x02u : 0u;
@@ -1051,24 +1139,12 @@ static void execute_body(unsigned op, const uint32_t *p)
         mult_matrix(&m, false);
         break;
     }
-    case 0x1B: {
-        mtx m;
-        mtx_identity(&m);
-        m.m[0][0] = (int32_t)p[0];
-        m.m[1][1] = (int32_t)p[1];
-        m.m[2][2] = (int32_t)p[2];
-        mult_matrix(&m, true);
+    case 0x1B:
+        scale_matrix(p);
         break;
-    }
-    case 0x1C: {
-        mtx m;
-        mtx_identity(&m);
-        m.m[3][0] = (int32_t)p[0];
-        m.m[3][1] = (int32_t)p[1];
-        m.m[3][2] = (int32_t)p[2];
-        mult_matrix(&m, false);
+    case 0x1C:
+        translate_matrix(p);
         break;
-    }
     case 0x20:
         s_color = (uint16_t)(p[0] & 0x7FFF);
         update_color_rgba();
@@ -1142,47 +1218,72 @@ static void execute_body(unsigned op, const uint32_t *p)
             material_changed();
         }
         break;
-    case 0x30:
-        s_diffuse = (uint16_t)(p[0] & 0x7FFF);
-        s_ambient = (uint16_t)((p[0] >> 16) & 0x7FFF);
+    case 0x30: {
+        /* NNS re-sends the material per object: invalidate shading only on
+         * a real change. */
+        const uint16_t dif = (uint16_t)(p[0] & 0x7FFF), amb = (uint16_t)((p[0] >> 16) & 0x7FFF);
+        if (dif != s_diffuse || amb != s_ambient) {
+            s_diffuse = dif;
+            s_ambient = amb;
+            normals_changed();
+        }
         if (p[0] & 0x8000) {
             s_color = s_diffuse;
             update_color_rgba();
         }
-        normals_changed();
         break;
-    case 0x31:
-        s_specular = (uint16_t)(p[0] & 0x7FFF);
-        s_emission = (uint16_t)((p[0] >> 16) & 0x7FFF);
-        s_use_shininess = (p[0] & 0x8000) != 0;
-        normals_changed();
+    }
+    case 0x31: {
+        const uint16_t spe = (uint16_t)(p[0] & 0x7FFF), emi = (uint16_t)((p[0] >> 16) & 0x7FFF);
+        const bool shin = (p[0] & 0x8000) != 0;
+        if (spe != s_specular || emi != s_emission || shin != s_use_shininess) {
+            s_specular = spe;
+            s_emission = emi;
+            s_use_shininess = shin;
+            normals_changed();
+        }
         break;
+    }
     case 0x32: {
         const unsigned i = (p[0] >> 30) & 3;
         int32_t in[3];
         for (int j = 0; j < 3; ++j) {
             in[j] = sign_bits(p[0] >> (j * 10), 10) * 8;
         }
-        transform_vector(in, &s_vec, s_light_dir[i]);
-        s_light_half[i][0] = s_light_dir[i][0] / 2;
-        s_light_half[i][1] = s_light_dir[i][1] / 2;
-        s_light_half[i][2] = (s_light_dir[i][2] - 4096) / 2;
-        normals_changed();
+        int32_t dir[3];
+        transform_vector(in, &s_vec, dir);
+        if (dir[0] != s_light_dir[i][0] || dir[1] != s_light_dir[i][1] || dir[2] != s_light_dir[i][2]) {
+            s_light_dir[i][0] = dir[0];
+            s_light_dir[i][1] = dir[1];
+            s_light_dir[i][2] = dir[2];
+            s_light_half[i][0] = dir[0] / 2;
+            s_light_half[i][1] = dir[1] / 2;
+            s_light_half[i][2] = (dir[2] - 4096) / 2;
+            normals_changed();
+        }
         break;
     }
-    case 0x33:
-        s_light_color[(p[0] >> 30) & 3] = (uint16_t)(p[0] & 0x7FFF);
-        normals_changed();
+    case 0x33: {
+        const uint16_t c = (uint16_t)(p[0] & 0x7FFF);
+        if (s_light_color[(p[0] >> 30) & 3] != c) {
+            s_light_color[(p[0] >> 30) & 3] = c;
+            normals_changed();
+        }
         break;
+    }
     case 0x34:
-        memcpy(s_shininess, p, sizeof(s_shininess));
-        normals_changed();
+        if (memcmp(s_shininess, p, sizeof(s_shininess)) != 0) {
+            memcpy(s_shininess, p, sizeof(s_shininess));
+            normals_changed();
+        }
         break;
     case 0x40:
         if (s_attr != s_attr_pending) {
+            if ((s_attr ^ s_attr_pending) & 0xFu) {
+                normals_changed(); /* light enables: all shade() reads of attr */
+            }
             s_attr = s_attr_pending;
             material_changed();
-            normals_changed();
             update_color_rgba();
         }
         s_primitive = (int)(p[0] & 3);
@@ -1478,6 +1579,35 @@ static inline __attribute__((always_inline)) void hot_command(unsigned op, const
             return;
         }
         submit_vertex();
+        return;
+    case 0x24: /* VTX_10 */
+        v = p[0];
+        s_coord[0] = (int16_t)(sign_bits(v, 10) * 64);
+        s_coord[1] = (int16_t)(sign_bits(v >> 10, 10) * 64);
+        s_coord[2] = (int16_t)(sign_bits(v >> 20, 10) * 64);
+        if (fast_vertex()) {
+            return;
+        }
+        submit_vertex();
+        return;
+    case 0x28: /* VTX_DIFF */
+        v = p[0];
+        s_coord[0] = (int16_t)(s_coord[0] + sign_bits(v, 10));
+        s_coord[1] = (int16_t)(s_coord[1] + sign_bits(v >> 10, 10));
+        s_coord[2] = (int16_t)(s_coord[2] + sign_bits(v >> 20, 10));
+        if (fast_vertex()) {
+            return;
+        }
+        submit_vertex();
+        return;
+    case 0x21: /* NORMAL without normal texgen */
+        if ((s_tex_param >> 30) == 2) {
+            break;
+        }
+        if (s_attr & 0xF) {
+            s_color = shade(p[0]);
+            update_color_rgba();
+        }
         return;
     default:
         break;

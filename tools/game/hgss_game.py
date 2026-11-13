@@ -211,14 +211,14 @@ def port_cflags(target: str, cxx: bool = False) -> list[str]:
              "-fno-delete-null-pointer-checks"]
     flags += PORT_DEFINES
     # Instrumentation build (Packet A / PICA200-INSTRUMENTATION §B): the
-    # default is PROFILE (every counter and counter log compiled in).
-    # HGSS_PROFILE=off compiles an OFF build for timing claims: the 2D
+    # kohjoh default is OFF; HGSS_PROFILE=on compiles the PROFILE build
+    # (every counter and tick probe). The OFF build: the 2D
     # renderer's per-draw tick reads (R2D_NOW) become zero and the geometry
     # diagnostics stop logging. The two builds must differ only in this
     # define; everything else (flags, commit, inputs) stays identical.
     # The same define must reach libnitro.a/libnitrosystem.a, which is why
     # tools/hgss_nitro.py also injects it (see its sdk_includes callers).
-    if os.environ.get("HGSS_PROFILE") == "off":
+    if profile_mode() == "off":
         flags += ["-DHGSS_PROFILE_OFF"]
     # Automated benchmark builds only (docs/autobench.md): HGSS_BENCH=1
     # compiles the hb:ldr chainload path in hgss/game/app/main_3ds.c.
@@ -1048,8 +1048,8 @@ def experiment_build_id(short: str, dirty: bool) -> str:
     # The instrumentation mode must be visible in the run's banner too: a
     # PROFILE and an OFF log from the same commit are otherwise identical in
     # their first line, and a timing claim would be unattributable.
-    if os.environ.get("HGSS_PROFILE") == "off":
-        tag += "-profoff"
+    if profile_mode() == "profile":
+        tag += "-prof"
     return tag
 
 
@@ -1524,7 +1524,10 @@ def gx3d_sdk_mode() -> str:
 
 def profile_mode() -> str:
     """The instrumentation mode compiled into the archives (see hgss_nitro)."""
-    return "off" if os.environ.get("HGSS_PROFILE") == "off" else "profile"
+    # kohjoh: OFF unless asked for. The PROFILE probes are svcGetSystemTick
+    # calls (several hundred per frame in the H-blank walk alone), and every
+    # normal build used to carry them (o3ds-log-0 was such a build).
+    return "profile" if os.environ.get("HGSS_PROFILE") == "on" else "off"
 
 
 def profile_mode_matches(out: Path) -> bool:

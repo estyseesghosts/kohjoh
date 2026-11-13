@@ -45,7 +45,6 @@ static const uint8_t *s_pal_slot[6];
 static uint8_t s_morton[64];
 static kj_tex_stats s_stats;
 static int s_last_hit = -1;
-static uint8_t s_scratch[512 * 1024 + 128 * 1024];
 
 static void build_morton(void)
 {
@@ -132,6 +131,32 @@ static bool gather(uint8_t *dst, uint32_t addr, uint32_t len)
         len -= n;
     }
     return true;
+}
+
+/* Compare texture memory with a shadow in place, without gathering it into
+ * a scratch copy first (one read stream instead of copy + compare: this
+ * runs for every texture used, every frame). 1 = differs, 0 = same,
+ * -1 = a slot is unmapped. */
+static int differs(const uint8_t *shadow, uint32_t addr, uint32_t len)
+{
+    while (len > 0) {
+        const unsigned slot = (addr >> 17) & 3u;
+        const uint32_t off = addr & 0x1FFFFu;
+        uint32_t n = 0x20000u - off;
+        if (n > len) {
+            n = len;
+        }
+        if (s_tex_slot[slot] == NULL) {
+            return -1;
+        }
+        if (memcmp(shadow, s_tex_slot[slot] + off, n) != 0) {
+            return 1;
+        }
+        shadow += n;
+        addr += n;
+        len -= n;
+    }
+    return 0;
 }
 
 static bool gather_pal(uint8_t *dst, uint32_t addr, uint32_t len)
@@ -341,15 +366,15 @@ static bool still_valid(tex_entry *e, const desc *d)
         return true;
     }
     e->checked_frame = s_frame;
-    uint8_t *tmp = s_scratch;
     const uint32_t total = d->data_len + d->index_len;
-    if (!gather(tmp, d->addr, d->data_len) ||
-        (d->index_len && !gather(tmp + d->data_len, d->index_addr, d->index_len))) {
+    const int data = differs(e->shadow, d->addr, d->data_len);
+    const int index = d->index_len ? differs(e->shadow + d->data_len, d->index_addr, d->index_len) : 0;
+    if (data < 0 || index < 0) {
         return true; /* bank unmapped this frame: keep what we have */
     }
     s_stats.compared_bytes += total;
     kj_perf_count(KJ_COUNT_TEX_BYTES, total);
-    if (memcmp(tmp, e->shadow, total) != 0) {
+    if (data || index) {
         return false;
     }
     if (e->pal_len) {
