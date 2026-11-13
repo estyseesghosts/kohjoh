@@ -97,8 +97,8 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
      * the schedule recovers; counted, never silent. Never two in a row
      * (coffeepot PICA200/frame-pacing.md, "Skip the picture, keep the
      * tick"): an uncapped skip starved the screen on O3DS whenever the game
-     * ran slightly behind -- 1606 of 2206 Goldenrod pictures skipped while
-     * the game itself was near full speed (o3ds-log-0, window 6). */
+     * ran behind -- 1606 of 2206 Goldenrod pictures skipped, ~4 shown a
+     * second while the game ran at half speed (o3ds-log-0, window 6). */
     if (kj_pacing_behind() >= 2u && !s_skipped_last && !kj_script_active()) {
         s_skipped_last = true;
         ++s_skipped_presents;
@@ -136,11 +136,12 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
         kj_g3d_take_stats(&d);
         kj_atlas_take_stats(&a);
         kj_log("[gpu] 600 frames: 2D screens skipped %lu, layers reused %lu rebuilt %lu, "
-               "bg quads %lu obj quads %lu draws %lu spans %lu unsupported %lu dropped %lu",
+               "bg quads %lu obj quads %lu draws %lu spans %lu unsupported %lu dropped %lu, "
+               "char KiB compared %lu",
                (unsigned long)g.skipped_screens, (unsigned long)g.reused_layers,
                (unsigned long)g.rebuilt_layers, (unsigned long)g.bg_quads, (unsigned long)g.obj_quads,
                (unsigned long)g.draws, (unsigned long)g.spans, (unsigned long)g.unsupported_modes,
-               (unsigned long)g.dropped_quads);
+               (unsigned long)g.dropped_quads, (unsigned long)(g.char_bytes_compared / 1024u));
         kj_ds_profile dp;
         kj_ds_take_profile(&dp);
         const double us = 1000000.0 / SYSCLOCK_ARM11 / 600.0; /* per-frame microseconds */

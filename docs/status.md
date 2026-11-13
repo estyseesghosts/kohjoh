@@ -19,18 +19,39 @@ As of 2026-11-12. Evidence levels: **built** (compiles and links), **run**
 | Retained 2D layers, unchanged-screen skip | verified | Goldenrod: bottom screen skipped 557 of 600 frames |
 | Geometry decoder fast paths | verified | Goldenrod renders; logic 37 → 25 ms/frame (Azahar) |
 | Pokémon-data keystream cache (game patch 2002) | built | crypto was ~12% of field instructions |
+| Present skip (never two in a row) | run | `0089b28`; O3DS starvation diagnosed from o3ds-log-0 |
 | Display-list cache | **off** (`--define KJ_DL_CACHE`) | **do not enable on master**: it corrupts the heap; fixed on `wip/savestore` |
 | Saves | run | interim raw file `saves/<edition>.sav` ([`save_raw.c`](../src/storage/save_raw.c)) |
 | Audio | run | user heard music; Azahar here lacks DSP firmware (`ndspInit` fails) |
 | CIA, RomFS pack, title save archive | not implemented | path lookup only ([`paths.c`](../src/storage/paths.c)) |
 
-### Performance (Azahar instruction counts, not O3DS)
+### Performance
 
-Azahar charges one tick per guest instruction (`[calib]` log line), so its
-times are instruction counts — a floor for O3DS, which also pays cache misses.
-Goldenrod at rest: game thread ~25 ms/frame (geometry decode is the largest
-part), publish ~5 ms, ~29% idle. Full speed on O3DS is **not** established and
-is unlikely at these numbers; see [next work](#next).
+**O3DS, profiled build `92a9a6d` (o3ds-log-0):** Route 34 near 30 FPS;
+Goldenrod unplayable. In the Goldenrod window the game ran ~15 game
+frames/s (half speed) but showed only ~4 pictures/s: 1606 of 2206 were
+skipped (uncapped present skip, fixed in `0089b28`), a
+G3 decode cost of ~8.4 ms per game frame (probes subtracted) and g2d
+13 ms p50 per picture. Not yet re-measured on hardware after the fixes.
+
+**Azahar, Goldenrod idle (instruction counts, a floor for O3DS):**
+
+| Stage, ms/frame | `92a9a6d` | `d089ca2` | round 3 |
+| --- | --- | --- | --- |
+| logic (game + G3 decode + H-blank walk) | 25.6 | 21.8 | 21.8 |
+| H-blank walk | 2.1 | 0.5 | 0.5 |
+| g2d | 4.8 | 4.1 | 3.4 |
+| g3d | 4.2 | 3.5 | 2.8 |
+
+Where the remaining time goes (PC samples, Goldenrod): G3 decode loop ~22%,
+idle ~27%, Pokemon data crypto ~11% (`GetIdxOfFirstPartyMonWithMove`
+every field frame: 6 mons x 5 `GetMonData`, each decrypt + checksum +
+re-encrypt), citro3d recording ~10%. Per frame: 51k G3 words, ~124 draws,
+8.4k triangles, 67 box tests (56 culled by the game).
+
+Azahar charges one tick per instruction and does not model the 16 KiB
+I-cache; O3DS pays both. The decode loop was shrunk from 14.6 to 2.0 KiB
+for that reason (not visible in Azahar).
 
 ## On `wip/savestore` (commit `59dbed5`, does not build)
 
@@ -47,6 +68,8 @@ is unlikely at these numbers; see [next work](#next).
 1. Find the save-detection regression on `wip/savestore`; finish SaveStore.
 2. Battle crashes (user-reported): reproduce with `route34-battle.txt`; `logs/crash.txt`.
 3. Route test: Goldenrod → Route 34 grass → wild battle (`tests/inputs/route34-south.txt`).
-4. Cut geometry cost: display-list cache hit rate (texgen-1 lists), then O3DS
-   test kit with ARM11 performance counters.
+4. O3DS re-test of Goldenrod and the title with the skip cap (the white
+   title is unconfirmed). Then cut geometry cost further: display-list cache
+   (fix on `wip/savestore`) and ARM11 performance counters for I-cache
+   misses on hardware.
 5. CIA packaging, SoulSilver build.

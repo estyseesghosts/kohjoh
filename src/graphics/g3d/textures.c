@@ -45,6 +45,16 @@ static const uint8_t *s_pal_slot[6];
 static uint8_t s_morton[64];
 static kj_tex_stats s_stats;
 static int s_last_hit = -1;
+/* Entry hints by key hash: a draw used to scan all 384 entries whenever it
+ * changed texture (Goldenrod: ~120 draws a frame). A hint is only a guess;
+ * the entry's key is always compared, so a stale hint costs one compare. */
+#define HINTS 256u
+static int16_t s_hint[HINTS];
+
+static unsigned hint_of(uint32_t key, uint32_t pkey)
+{
+    return ((key ^ (pkey * 0x9E3779B1u)) * 2654435761u) >> 24;
+}
 
 static void build_morton(void)
 {
@@ -60,6 +70,7 @@ static void build_morton(void)
 void kj_tex_init(void)
 {
     memset(s_cache, 0, sizeof(s_cache));
+    memset(s_hint, 0xFF, sizeof(s_hint));
     build_morton();
 }
 
@@ -396,13 +407,19 @@ C3D_Tex *kj_tex_get(uint32_t tex_param, uint32_t pltt_base)
     const uint32_t pkey = d.fmt == 7 ? 0 : pltt_base;
 
     int hit = -1;
+    const unsigned h = hint_of(key, pkey);
+    const int hint = s_hint[h];
     if (s_last_hit >= 0 && s_cache[s_last_hit].used && s_cache[s_last_hit].key_param == key &&
         s_cache[s_last_hit].key_pltt == pkey) {
         hit = s_last_hit;
+    } else if (hint >= 0 && s_cache[hint].used && s_cache[hint].key_param == key &&
+               s_cache[hint].key_pltt == pkey) {
+        hit = hint;
     } else {
         for (int i = 0; i < CACHE_ENTRIES; ++i) {
             if (s_cache[i].used && s_cache[i].key_param == key && s_cache[i].key_pltt == pkey) {
                 hit = i;
+                s_hint[h] = (int16_t)i;
                 break;
             }
         }
@@ -475,6 +492,7 @@ C3D_Tex *kj_tex_get(uint32_t tex_param, uint32_t pltt_base)
     e->checked_frame = s_frame;
     s_cache_bytes += bytes;
     s_last_hit = v;
+    s_hint[h] = (int16_t)v;
     ++s_stats.uploads;
         kj_perf_count(KJ_COUNT_TEX_UPLOAD, 1);
     return &e->tex;
