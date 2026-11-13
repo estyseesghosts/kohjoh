@@ -19,4 +19,7 @@ GPL-3.0 (see [LICENSE](LICENSE)).
 
 ## Installation
 
-Download the matching `kohjoh-gold.3dsx` or `kohjoh-silver.3dsx` into `/3ds/` on your SD card. Run `python prepare.py your-game.nds` from the asset tools bundle and copy the resulting files into `/3ds/kohjoh/data/`. The tool supports unmodified USA dumps of the corresponding retail game. The optional CIA is a Luma3DS HOME Menu shortcut; it launches the 3DSX from that exact path and keeps saves on SD. The forwarder requires Luma3DS and has not yet been tested on hardware.
+1. Download the matching `kohjoh-gold.3dsx` or `kohjoh-silver.3dsx` into `/3ds/` on your SD card.
+2. Prepare your game data from your own unmodified USA dump (needs Python 3.10+): on Windows, drag the `.nds` onto `tools/rompack/prepare.bat`; elsewhere run `python tools/rompack/prepare.py your-game.nds --sd /path/to/sd`. Without `--sd` it writes `kohjoh-data/`; copy its files into `/3ds/kohjoh/data/`. Takes a few seconds; the ROM is only read.
+
+The optional CIA is a Luma3DS HOME Menu shortcut; it launches the 3DSX from that exact path and keeps saves on SD. The forwarder requires Luma3DS and has not yet been tested on hardware.

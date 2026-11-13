@@ -148,7 +148,8 @@ branch: switch branches → `bootstrap.py --clean`.
 
 ## Data pack
 
-Not yet run from this repository (tested via hgss-3ds's identical builder):
+`python tools/rompack/prepare.py <rom> [--sd SD_ROOT | -o DIR]` does all of this in one step
+(verify, extract, pack with the right build ID, check the result). The manual steps:
 
 ```sh
 python tools/rompack/verify_rom.py HeartGold.nds
