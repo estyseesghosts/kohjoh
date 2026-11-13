@@ -1404,7 +1404,7 @@ static uint8_t s_param_count[256];
  * the vertex and assembles the primitive inline. Returns false to make the
  * caller take the general path. Kept small: it runs ~14k times a frame in
  * Goldenrod (ARM11 L1 I-cache: coffeepot icachebench). */
-static inline __attribute__((always_inline)) bool fast_vertex(void)
+static bool fast_vertex(void)
 {
     if (!s_in_begin || !s_batch_ok || s_cur_gmtx_version != s_clip_version ||
         s_slot_gid != s_cur_gmtx || (s_tex_param >> 30) == 3) {
@@ -1534,78 +1534,56 @@ done:
     return true;
 }
 
-/* Decode one command of the bulk path, with vertex/texcoord fast paths. */
+/* Decode one command of the bulk path, with vertex/texcoord fast paths.
+ * Every vertex opcode only sets coordinates and shares one vertex tail, so
+ * fast_vertex is emitted once: the decode loop has to stay inside the
+ * ARM11's 16 KiB I-cache (coffeepot cpu-optimization.md, icachebench: CPI
+ * 1.1 up to 16 KiB, 5.6 from 32 KiB). With the fast path inlined into
+ * each opcode and both decode branches this function was 14.6 KiB. */
 static inline __attribute__((always_inline)) void hot_command(unsigned op, const uint32_t *p)
 {
-    uint32_t v;
+    uint32_t v = p[0];
     switch (op) {
     case 0x22:
         if ((s_tex_param >> 30) != 0) {
             break;
         }
-        v = p[0];
         s_texcoord[0] = s_texcoord_raw[0] = (int16_t)v;
         s_texcoord[1] = s_texcoord_raw[1] = (int16_t)(v >> 16);
         return;
     case 0x23:
-        s_coord[0] = (int16_t)p[0];
-        s_coord[1] = (int16_t)(p[0] >> 16);
+        s_coord[0] = (int16_t)v;
+        s_coord[1] = (int16_t)(v >> 16);
         s_coord[2] = (int16_t)p[1];
-        if (fast_vertex()) {
-            return;
-        }
-        submit_vertex();
-        return;
-    case 0x25:
-        s_coord[0] = (int16_t)p[0];
-        s_coord[1] = (int16_t)(p[0] >> 16);
-        if (fast_vertex()) {
-            return;
-        }
-        submit_vertex();
-        return;
-    case 0x26:
-        s_coord[0] = (int16_t)p[0];
-        s_coord[2] = (int16_t)(p[0] >> 16);
-        if (fast_vertex()) {
-            return;
-        }
-        submit_vertex();
-        return;
-    case 0x27:
-        s_coord[1] = (int16_t)p[0];
-        s_coord[2] = (int16_t)(p[0] >> 16);
-        if (fast_vertex()) {
-            return;
-        }
-        submit_vertex();
-        return;
+        goto vertex;
     case 0x24: /* VTX_10 */
-        v = p[0];
         s_coord[0] = (int16_t)(sign_bits(v, 10) * 64);
         s_coord[1] = (int16_t)(sign_bits(v >> 10, 10) * 64);
         s_coord[2] = (int16_t)(sign_bits(v >> 20, 10) * 64);
-        if (fast_vertex()) {
-            return;
-        }
-        submit_vertex();
-        return;
+        goto vertex;
+    case 0x25:
+        s_coord[0] = (int16_t)v;
+        s_coord[1] = (int16_t)(v >> 16);
+        goto vertex;
+    case 0x26:
+        s_coord[0] = (int16_t)v;
+        s_coord[2] = (int16_t)(v >> 16);
+        goto vertex;
+    case 0x27:
+        s_coord[1] = (int16_t)v;
+        s_coord[2] = (int16_t)(v >> 16);
+        goto vertex;
     case 0x28: /* VTX_DIFF */
-        v = p[0];
         s_coord[0] = (int16_t)(s_coord[0] + sign_bits(v, 10));
         s_coord[1] = (int16_t)(s_coord[1] + sign_bits(v >> 10, 10));
         s_coord[2] = (int16_t)(s_coord[2] + sign_bits(v >> 20, 10));
-        if (fast_vertex()) {
-            return;
-        }
-        submit_vertex();
-        return;
+        goto vertex;
     case 0x21: /* NORMAL without normal texgen */
         if ((s_tex_param >> 30) == 2) {
             break;
         }
         if (s_attr & 0xF) {
-            s_color = shade(p[0]);
+            s_color = shade(v);
             update_color_rgba();
         }
         return;
@@ -1613,6 +1591,11 @@ static inline __attribute__((always_inline)) void hot_command(unsigned op, const
         break;
     }
     execute(op, p);
+    return;
+vertex:
+    if (!fast_vertex()) {
+        submit_vertex();
+    }
 }
 
 static void build_param_table(void)
@@ -2021,15 +2004,17 @@ static void decode_words(const uint32_t *words, size_t count)
             if (op == 0) {
                 continue;
             }
+#ifdef KJ_DL_CACHE
             if (s_rec.active) {
                 rec_command(op, words + i);
-                hot_command(op, words + i);
-                if (op < 0x20 || op > 0x28) {
-                    rec_open_block(); /* the next block starts after this command */
-                }
-            } else {
-                hot_command(op, words + i);
             }
+#endif
+            hot_command(op, words + i);
+#ifdef KJ_DL_CACHE
+            if (s_rec.active && (op < 0x20 || op > 0x28)) {
+                rec_open_block(); /* the next block starts after this command */
+            }
+#endif
             i += s_param_count[op];
         }
     }

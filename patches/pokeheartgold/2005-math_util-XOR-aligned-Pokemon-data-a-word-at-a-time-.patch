@@ -1,0 +1,74 @@
+From 57e061f6aaca0395a2f5a99de37b6038e19e92e0 Mon Sep 17 00:00:00 2001
+From: terezi <jules@foxtails.me>
+Date: Thu, 12 Nov 2026 19:36:50 -0500
+Subject: [PATCH] math_util: XOR aligned Pokemon data a word at a time
+ (SDK_PORT_3DS)
+
+GetMonData decrypts, checksums and re-encrypts a Pokemon on every call,
+and field code calls it many times a frame (8.7% of Goldenrod samples in
+Azahar after the geometry work). The cached keystream is now 4-byte
+aligned and aligned data is XORed in words: same bytes, half the loads
+and stores. Unaligned data keeps the halfword loop.
+---
+ src/math_util.c | 23 ++++++++++++++++++-----
+ 1 file changed, 18 insertions(+), 5 deletions(-)
+
+diff --git a/src/math_util.c b/src/math_util.c
+index 1e5e516..3515f9d 100644
+--- a/src/math_util.c
++++ b/src/math_util.c
+@@ -159,15 +159,20 @@ static u16 MonEncryptionLCRNG(u32 *seed_p);
+ #define MON_KEYSTREAM_SLOTS 32
+ static struct {
+     u32 seed;
+-    u8 valid;
+-    u16 stream[MON_KEYSTREAM_WORDS];
++    u32 valid;
++    // 4-byte aligned so aligned data can be XORed a word (two halfwords,
++    // little-endian) at a time: half the loads and stores.
++    union {
++        u16 h[MON_KEYSTREAM_WORDS];
++        u32 w[MON_KEYSTREAM_WORDS / 2];
++    } stream;
+ } sMonKeystreams[MON_KEYSTREAM_SLOTS];
+ 
+ static const u16 *MonKeystream(u32 seed) {
+     // direct-mapped by seed: a full party is 12 seeds (party + box each)
+     int i = (int)((seed * 2654435761u) >> 27) & (MON_KEYSTREAM_SLOTS - 1);
+     if (sMonKeystreams[i].valid && sMonKeystreams[i].seed == seed) {
+-        return sMonKeystreams[i].stream;
++        return sMonKeystreams[i].stream.h;
+     }
+     sMonKeystreams[i].seed = seed;
+     sMonKeystreams[i].valid = 1;
+@@ -175,10 +180,10 @@ static const u16 *MonKeystream(u32 seed) {
+         u32 s = seed;
+         int k;
+         for (k = 0; k < MON_KEYSTREAM_WORDS; k++) {
+-            sMonKeystreams[i].stream[k] = MonEncryptionLCRNG(&s);
++            sMonKeystreams[i].stream.h[k] = MonEncryptionLCRNG(&s);
+         }
+     }
+-    return sMonKeystreams[i].stream;
++    return sMonKeystreams[i].stream.h;
+ }
+ #endif
+ 
+@@ -187,6 +192,14 @@ void _MonEncryptSegment(u16 *data, u32 size, u32 seed) {
+ #ifdef SDK_PORT_3DS
+     if (size / 2 <= MON_KEYSTREAM_WORDS) {
+         const u16 *stream = MonKeystream(seed);
++        if ((((u32)data | size) & 3) == 0) {
++            u32 *d = (u32 *)data;
++            const u32 *k = (const u32 *)stream;
++            for (i = 0; i < size / 4; i++) {
++                d[i] ^= k[i];
++            }
++            return;
++        }
+         for (i = 0; i < size / 2; i++) {
+             data[i] ^= stream[i];
+         }
+-- 
+2.56.0.windows.4
+
