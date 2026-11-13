@@ -1,0 +1,25 @@
+name: Build
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitarm:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build prerequisites
+        run: apt-get update && apt-get install -y git python3 make
+      - name: Bootstrap game source
+        run: python3 tools/game/bootstrap.py
+      - name: Build both editions
+        run: |
+          python3 tools/game/hgss_game.py --game heartgold --target 3ds --out "$PWD/build/gold" -j 2
+          python3 tools/game/hgss_game.py --game soulsilver --target 3ds --out "$PWD/build/silver" -j 2
+          cp build/gold/pokeheartgold.3dsx build/kohjoh-gold.3dsx
+          cp build/silver/pokesoulsilver.3dsx build/kohjoh-silver.3dsx
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kohjoh-3dsx
+          path: build/kohjoh-*.3dsx
