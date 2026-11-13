@@ -1,6 +1,6 @@
 # Project status
 
-As of 2026-11-12. Evidence levels: **built** (compiles and links), **run**
+As of 2026-11-13. Evidence levels: **built** (compiles and links), **run**
 (boots in Azahar), **verified** (checked in Azahar against an expectation),
 **O3DS** (measured on an Old 3DS). Nothing here has reached O3DS.
 
@@ -24,7 +24,8 @@ As of 2026-11-12. Evidence levels: **built** (compiles and links), **run**
 | GX command DMA in one transfer (SDK patch 2003) | verified | 65% of FIFO words had been split mid-command; logic 21.8 → 21.0 ms |
 | Party move scan, one decrypt per mon (game patch 2006) | verified | Goldenrod idle logic −0.1 ms |
 | Saves | run | interim raw file `saves/<edition>.sav` ([`save_raw.c`](../src/storage/save_raw.c)) |
-| Audio | run | user heard music; Azahar here lacks DSP firmware (`ndspInit` fails) |
+| Audio | run | user heard music; Azahar now has DSP firmware, NDSP runs |
+| Sound mixer ADPCM render pass (`da6b36c`, `dacb07d`) | verified | host differential test bit-exact (100k programs); Azahar title 125 → 102 instructions per channel-sample |
 | CIA, RomFS pack, title save archive | not implemented | path lookup only ([`paths.c`](../src/storage/paths.c)) |
 
 ### Performance
@@ -68,6 +69,11 @@ for that reason (not visible in Azahar).
   bench save is not detected. Bisected: not caused by SDK patch 2003. Cause open.
 - SDK patch 2003: GX command buffers in one transfer.
 - Scripted runs ignore live input (stray keyboard input contaminated a test).
+
+**Sound mixer (o3ds-log-1):** 20-30% of the O3DS application core in every
+window, ~170 cycles per channel-sample, almost all channels ADPCM. Cut by
+18% in Azahar instructions (`dacb07d`); O3DS gain unmeasured (the old loop
+also spilled to the stack every frame, which Azahar does not charge).
 
 ## Next
 

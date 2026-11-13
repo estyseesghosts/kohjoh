@@ -102,6 +102,11 @@ What went wrong, and the fix:
 - **Bump arenas that flush.** Re-recording into fresh space filled the arena
   and flushed it twice per 600 frames (29.6 ms spikes). Reuse an entry's
   storage when it re-records.
+- **An unprofiled thread.** The DS sound mixer runs on its own thread and
+  took 20-30% of the O3DS application core (o3ds-log-1), but Azahar lacked
+  DSP firmware, so `ndspInit` failed and the mixer never ran in any
+  emulator profile. Make sure every thread the device runs also runs under
+  test (`dspfirm.cdc` is now in Azahar's sdmc).
 
 ## Rules
 
