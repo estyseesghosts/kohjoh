@@ -1692,6 +1692,7 @@ typedef struct dl_entry {
     uint32_t nverts;
     uint16_t *idx;
     uint32_t nidx;
+    uint32_t cap_events, cap_blocks, cap_verts, cap_idx; /* storage kept across re-recordings */
     uint32_t bytes;
     uint32_t last_frame;
 } dl_entry;
@@ -1929,14 +1930,29 @@ static dl_entry *dl_slot(const uint32_t *ptr, uint32_t count)
     return victim;
 }
 
+/* The recording's storage stays with the entry (capacities in cap_*): a list
+ * re-recorded every frame or two (keyed on changing entry state) reuses it
+ * instead of filling the arena, whose flush re-records everything in one
+ * frame (Goldenrod: 29.6 ms logic against 13.7, twice per 600 frames). */
 static void dl_drop_recording(dl_entry *e)
 {
-    e->events = NULL;
-    e->blocks = NULL;
-    e->verts = NULL;
-    e->idx = NULL;
     e->nevents = e->nblocks = e->nverts = e->nidx = 0;
     e->recorded = false;
+}
+
+/* Room for need elements in *ptr: the existing storage if large enough. */
+static bool dl_reserve(void **ptr, uint32_t *cap, uint32_t need, uint32_t elem)
+{
+    if (need <= *cap) {
+        return true;
+    }
+    void *p = dl_alloc(need * elem);
+    if (p == NULL) {
+        return false;
+    }
+    *ptr = p;
+    *cap = need;
+    return true;
 }
 
 static void dl_free(dl_entry *e)
@@ -2313,11 +2329,10 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
         return;
     }
     const uint32_t nv = fb->frame.vert_count - s_rec.v0, ni = fb->frame.index_count - s_rec.i0;
-    e->events = dl_alloc(s_rec.nevents * 4u + 4u);
-    e->blocks = dl_alloc(s_rec.nblocks * (uint32_t)sizeof(dl_block) + 4u);
-    e->verts = nv ? dl_alloc(nv * (uint32_t)sizeof(kj_g3_vertex)) : NULL;
-    e->idx = ni ? dl_alloc(ni * 2u) : NULL;
-    if (e->events == NULL || e->blocks == NULL || (nv && e->verts == NULL) || (ni && e->idx == NULL)) {
+    if (!dl_reserve((void **)&e->events, &e->cap_events, s_rec.nevents + 1u, 4u) ||
+        !dl_reserve((void **)&e->blocks, &e->cap_blocks, s_rec.nblocks + 1u, (uint32_t)sizeof(dl_block)) ||
+        !dl_reserve((void **)&e->verts, &e->cap_verts, nv, (uint32_t)sizeof(kj_g3_vertex)) ||
+        !dl_reserve((void **)&e->idx, &e->cap_idx, ni, 2u)) {
         dl_flush_all(); /* arena full: start over (re-recorded on later calls) */
         return;
     }
