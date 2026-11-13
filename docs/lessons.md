@@ -1,4 +1,4 @@
-# Lessons from the first day
+# Lessons
 
 What helped, what cost time, and the rules that follow.
 
@@ -57,6 +57,42 @@ What helped, what cost time, and the rules that follow.
   `wip/savestore`'s SDK patch 2003 while building `master`; `check_patches.py`
   only detects missing patches, not extra ones. Re-created with
   `bootstrap.py --clean` on 2026-11-12; after switching branches, do the same.
+- **An uncapped present skip starves the screen.** "Skip the picture when
+  two refreshes behind" never presents while the game runs slightly over
+  budget: O3DS Goldenrod ran at half speed but skipped 1606 of 2206
+  pictures, ~4 a second (and probably left the title's white flash on screen). Skip at most one
+  picture in a row (coffeepot frame-pacing, "skip the picture, keep the tick").
+- **"Uninstrumented" builds still carried probes.** `PORT_NOW` in the H-blank
+  walk ignored `HGSS_PROFILE_OFF`, and profiling was the default: ~800
+  `svcGetSystemTick` calls a frame. Probes are now opt-in (`HGSS_PROFILE=on`).
+- **Azahar cannot see code size.** Force-inlining the vertex fast path into
+  every opcode made the decode loop 14.6 KiB; the O3DS I-cache is 16 KiB and
+  CPI reaches 5.6 past 32 KiB (coffeepot icachebench). Check hot-function
+  sizes with `nm -S` after touching a hot loop.
+
+## Session 2 (O3DS Goldenrod performance)
+
+What went right:
+- **Reading the hardware log before the code.** o3ds-log-0's `[pace]` and
+  `[frame]` lines showed presentation starvation; the per-opcode G3 profile
+  (probe cost subtracted: ~440 ticks, the cost of the empty END opcode)
+  ranked the decoder's real costs on O3DS.
+- **The wiki had both answers**: "never skip two in a row" (frame-pacing)
+  and the 16 KiB I-cache cliff (cpu-optimization, icachebench).
+- **Exact rewrites, checked by counters**: every decoder change kept the
+  same batches, draws and triangles per 600 frames in Azahar.
+
+What went wrong, and the fix:
+- **Misreading a counter.** `[ds] per frame` divides by presented frames;
+  with skips it overstated per-game-frame costs, and an early note claimed
+  the game ran "near full speed" when that window ran at half speed. Fixed
+  in docs; counter semantics are now written in testing.md.
+- **Harness races.** A second `run.ps1` killed the emulator of the first
+  (three lost runs). Stop the old harness before starting another.
+- **Lost samples.** gdbprof printed nothing when Azahar closed; it now
+  prints what it has.
+- **Sampler bias.** Tight loops (the crypto XOR) looked bigger in samples
+  than in `[perf]` time. Measure with stage times.
 
 ## Rules
 
@@ -67,3 +103,5 @@ What helped, what cost time, and the rules that follow.
 4. Profile with PC sampling; treat Azahar time as instruction count.
 5. Every cache needs an exact validity check and a verify mode.
 6. After any build-system change, rerun intro, Goldenrod (with save) and input.
+7. After touching a hot loop, check its size with `nm -S` (16 KiB I-cache).
+8. One Azahar harness at a time.

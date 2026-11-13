@@ -104,14 +104,14 @@ started directly from Git Bash**. `--define` works either way.
 ### Legacy environment variables (from hgss-3ds)
 
 `hgss_game.py` and `src/compat/nitro/Makefile` still read these hgss-3ds
-variables. Set them inside the `-lc` shell, for example `HGSS_PROFILE=off
+variables. Set them inside the `-lc` shell, for example `HGSS_PROFILE=on
 python tools/game/hgss_game.py ...`. Each one is recorded in
 `build-info.txt` and appended to the build tag. Leave them unset for normal
 builds.
 
 | Variable | Effect in kohjoh today |
 | --- | --- |
-| `HGSS_PROFILE=off` | compiles out the H-blank timing probes in `port_os.c` |
+| `HGSS_PROFILE=on` | compiles in the HGSS tick probes (H-blank split timings in `port_os.c`). Off by default since `0089b28`; before that every build carried them |
 | `HGSS_SND_ADPCM=1` | the alternative sample-saturation path in `port_sound_chip.c` |
 | `HGSS_A0_DIAG=1` | H-blank scan cross-check counters in `port_os.c` |
 | `HGSS_BENCH=1` | hgss-3ds benchmark chainload define; no kohjoh source uses it |

@@ -87,11 +87,21 @@ def sample(a, r, hist, callers, watch, sym, pcs):
         hist[name] += 1
         if name in a.pcs_set:
             pcs[pc] += 1
+        if name in a.stack_map:
+            # a return address saved on the stack (callers further up)
+            sp_hex = r.request("p d")
+            try:
+                sp = int.from_bytes(bytes.fromhex(sp_hex[:8]), "little")
+                mem = r.request(f"m {sp + a.stack_map[name]:x},4")
+                ra = int.from_bytes(bytes.fromhex(mem[:8]), "little")
+                callers[f"{name} <stack- {sym(ra)} 0x{ra:08x}"] += 1
+            except ValueError:
+                pass
         if name in watch:
             lr_hex = r.request("p e")
             try:
                 lr = int.from_bytes(bytes.fromhex(lr_hex[:8]), "little")
-                callers[f"{name} <- {sym(lr)}"] += 1
+                callers[f"{name} <- {sym(lr)} 0x{lr:08x}"] += 1
             except ValueError:
                 pass
         r.send("c")
@@ -107,9 +117,15 @@ def main(argv):
     ap.add_argument("--nm", default="C:/devkitPro/devkitARM/bin/arm-none-eabi-nm.exe")
     ap.add_argument("--top", type=int, default=40)
     ap.add_argument("--callers", default="", help="comma list of functions: also histogram their callers (LR)")
+    ap.add_argument("--stack", default="", help="FUNC:OFFSET,...: histogram the word at SP+OFFSET when sampled in FUNC")
     ap.add_argument("--pcs", default="", help="comma list of functions: also histogram their PCs")
     a = ap.parse_args(argv)
     a.pcs_set = set(x for x in a.pcs.split(",") if x)
+    a.stack_map = {}
+    for item in a.stack.split(","):
+        if item:
+            fn, off = item.split(":")
+            a.stack_map[fn] = int(off, 0)
     pcs = collections.Counter()
 
     addrs, names = load_symbols(a.elf, a.nm)

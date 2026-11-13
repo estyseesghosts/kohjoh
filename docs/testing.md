@@ -77,14 +77,37 @@ ROM. `tools/melonds/shots.ps1` saves timed screenshots to
 
 ## Profiling
 
-- **Counters**: every 600 publishes the log gets `[perf]` (stage p50/p95/p99/max),
+- **Counters**: every 600 *presented* frames the log gets `[perf]` (stage p50/p95/p99/max),
   `[pace]` (late V-blanks, resyncs, skipped presents), `[gpu]` (layers
   reused/rebuilt, screens skipped, unsupported counts) and `[ds]` (geometry
-  words, H-blank cost, display-list cache).
+  words, H-blank cost, display-list cache). `[ds] per frame` divides by the
+  600 presented frames, not game frames: when presents were skipped, divide
+  the totals by the walk count (one H-blank walk per game frame) instead.
+  `[gpu] ... char KiB compared` is the retained layers' character check.
 - **PC sampling**: with Azahar's GDB stub enabled (`use_gdbstub=true`, port
   24689), `python tools/azahar/gdbprof.py build/kj/pokeheartgold-3ds.elf
   --samples 1500 --interval 0.02 [--callers fn1,fn2]` prints a function
   histogram (and callers via LR). This found every hotspot so far.
+  - `--pcs fn1,fn2`: per-PC histogram inside those functions (map with
+    `arm-none-eabi-objdump -d`).
+  - `--stack fn:offset`: histogram of the word at SP+offset while sampled in
+    `fn`, i.e. a return address further up the stack. Example: the caller of
+    `GetMonData` from `_MonEncryptSegment` is `--stack _MonEncryptSegment:36`
+    (16 bytes pushed by it, 8 locals + 12 to `lr` in `GetMonData`).
+  - Partial results are printed if Azahar closes mid-run. Give the harness a
+    late enough last shot, and never start a second harness while one runs:
+    each `run.ps1` kills every Azahar when it finishes.
+  - Samples are taken when Azahar's JIT stops at a block boundary, so tight
+    loops are over-represented. Use samples to find *where*; use `[perf]`
+    stage times (instruction counts) to measure *how much*.
+- **Code size**: Azahar does not model the 16 KiB I-cache. After editing a
+  hot loop, check `arm-none-eabi-nm -S --size-sort` on the `.elf`
+  (`NitroPort_GxFifoWords` must stay well under 16 KiB).
+- **Probes**: `HGSS_PROFILE=on` compiles the HGSS H-blank/2D tick probes in
+  (several hundred `svcGetSystemTick` calls a frame). Normal builds leave
+  them out; never make a timing claim from a probe build.
+- **Present skipping is disabled while a script runs** (`kj_script_active`).
+  To see pacing as the player does (title, field), run without `-Script`.
 - **Calibration**: the `[calib]` log line shows Azahar's ticks per instruction
   (measured 1.0). Treat Azahar milliseconds as instruction counts.
 - `--define KJ_G3_PROFILE` times each geometry opcode. Each probe costs ~390

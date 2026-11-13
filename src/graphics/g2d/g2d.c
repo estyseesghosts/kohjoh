@@ -855,8 +855,11 @@ static bool cache_alloc(layer_cache *lc)
     return lc->quads != NULL;
 }
 
+static uint32_t s_char_bytes_compared;
+
 static bool chars_same(const layer_cache *lc, const uint8_t *vram)
 {
+    s_char_bytes_compared += lc->char_len;
     return lc->char_len == 0 || memcmp(lc->chars, vram + lc->char_lo, lc->char_len) == 0;
 }
 
@@ -1314,7 +1317,9 @@ void kj_g2d_take_stats(kj_g2d_stats *out)
     s_stats.skipped_screens = s_skipped_screens;
     s_stats.reused_layers = s_reused_layers;
     s_stats.rebuilt_layers = s_rebuilt_layers;
+    s_stats.char_bytes_compared = s_char_bytes_compared;
     s_skipped_screens = s_reused_layers = s_rebuilt_layers = 0;
+    s_char_bytes_compared = 0;
     *out = s_stats;
     out->dropped_quads += kj_gpu_quads_dropped();
     memset(&s_stats, 0, sizeof(s_stats));
