@@ -207,6 +207,19 @@ output, sampled parent/child accounting, attribution overflow/reset, and
 persistent cache rejection/recheck reasons. `--reference REV` selects another baseline. No game
 assets are needed. This is differential coverage, not a complete DS oracle.
 
+The suite also compares 10,000 matrix programs and tests active/pending light
+dependencies, live-parameter state-only replay, and command-layout changes.
+For the state-only exit-colour regression, the new cached output must match
+both uncached decoders; the older cached output differs. Use
+`--reference eaac5fd` to reproduce the pre-optimization comparison.
+
+`goldenrod-quick-perf.txt` enters CONTINUE from the benchmark save earlier
+than the original idle script. Use `-Shots 60,100` and inspect the captures
+before treating its later windows as stationary Goldenrod measurements.
+State-only `[dltop]` replay hits now include command-layout reuse with live
+parameters: those hits still execute matrix/light/state commands and copy
+zero vertices. They are distinct from retained vertex-block replay.
+
 Run `python tests/native/visibility_test.py` for the offline clip-plane checks.
 `python tools/capture/g3_visibility.py dump.kjd --csv batches.csv` classifies
 offscreen triangles and whole batches without adding CPU culling to the game.
