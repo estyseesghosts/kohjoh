@@ -101,6 +101,13 @@ typedef struct NitroSoundStageProfile {
     uint32_t sources;          /* distinct (address, length) started in the window */
     uint64_t sourceBytes;      /* their compressed bytes */
     uint32_t sourceOverflow;   /* starts not tracked: table full */
+    uint64_t cacheHitBlocks;   /* ADPCM blocks served by the decoded cache */
+    uint64_t cacheMissBlocks;  /* ADPCM blocks decoded live */
+    uint64_t cacheFilled;      /* samples decoded into the cache */
+    uint64_t cacheEvicted;     /* entries evicted for space */
+    uint64_t cacheInvalidated; /* entries dropped: data or voice state differed */
+    uint64_t cacheBytes;       /* arena log position */
+    uint32_t cacheVerifyMismatches; /* NITRO_SOUND_ADPCM_VERIFY builds: cached != live */
 } NitroSoundStageProfile;
 
 void NitroSound_SetProfileClock(uint64_t (*now)(void));

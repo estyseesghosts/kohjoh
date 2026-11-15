@@ -13,7 +13,7 @@ Unicorn and compares:
 
 Run with a Python that has unicorn and pyelftools, for example
 build/diagnosis/venv/Scripts/python.exe tests/native/sound_arm.py
-  [--reference HEAD] [--programs 300] [--ticks 1200] [--define NAME ...]
+  [--reference HEAD] [--programs 1000] [--ticks 1800] [--define NAME ...]
   [--interpolate 0|1] [--expect-differ]
 """
 import argparse
@@ -124,8 +124,8 @@ def sizes(elf_path):
 def main():
     a = argparse.ArgumentParser()
     a.add_argument('--reference', default='HEAD')
-    a.add_argument('--programs', type=int, default=300)
-    a.add_argument('--ticks', type=int, default=1200)
+    a.add_argument('--programs', type=int, default=1000)
+    a.add_argument('--ticks', type=int, default=1800)
     a.add_argument('--interpolate', type=int, choices=(0, 1), default=None,
                    help='bench interpolation (default: both)')
     a.add_argument('--define', action='append', default=[],
@@ -163,6 +163,15 @@ def main():
             failed |= not same and not args.expect_differ
             print(f"{'PASS' if same else 'DIFFER'} coverage {args.programs} programs: "
                   f'{digests[0]} {digests[1]}', flush=True)
+            # The same programs with an 8 KiB ADPCM cache, so entries are
+            # evicted constantly (the full-size cache never fills here).
+            exe = tmp / 'working-coverage-evict.elf'
+            build(ROOT / CHIP, exe, [f'-DSOUND_PROGRAM_COVERAGE={args.programs}'],
+                  [*args.define, 'NITRO_SOUND_ADPCM_CACHE_KIB=8'])
+            evict = run(exe, False)['hash']
+            same = digests[0] == evict
+            failed |= not same and not args.expect_differ
+            print(f"{'PASS' if same else 'DIFFER'} coverage, 8 KiB ADPCM cache: {evict}", flush=True)
         modes = [args.interpolate] if args.interpolate is not None else [0, 1]
         for interpolate in modes:
             results = []

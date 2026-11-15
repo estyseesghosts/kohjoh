@@ -181,6 +181,15 @@ rebaselined (two engines for the summed fill counters).
   submit) and render µs; `[sndpmu]`: ARM11 counters around the render
   (cycles, I-cache misses, D-cache read misses; 0 in Azahar, which does not
   emulate them).
+  `[sndcache]` (profile builds, cumulative): ADPCM blocks served by the
+  decoded-sample cache and decoded live, samples decoded into it, entries
+  evicted and invalidated (data or voice state differed), arena position,
+  and verify mismatches (`HGSS_SND_VERIFY=1` builds; must stay 0).
+  Mixer correctness: `build/diagnosis/venv/Scripts/python.exe
+  tests/native/sound_arm.py [--reference REV]` (Unicorn; see its header)
+  compares 1,000 full-chip register programs (also with an 8 KiB cache that
+  evicts constantly) and an HGSS-like bench bit for bit, prints mixer
+  instructions per channel-frame, and checks `div127` exhaustively.
 - **PC sampling**: with Azahar's GDB stub enabled (`use_gdbstub=true`, port
   24689), `python tools/azahar/gdbprof.py build/kj/pokeheartgold-3ds.elf
   --samples 1500 --interval 0.02 [--callers fn1,fn2]` prints a function

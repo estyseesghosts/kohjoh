@@ -1043,6 +1043,7 @@ def experiment_build_id(short: str, dirty: bool) -> str:
                              ("HGSS_GX3D_LAZYINSERT", "-lazy"),
                              ("HGSS_GX3D_BG3SLOT", "-slot3"),
                              ("HGSS_SND_ADPCM", "-adpcm"),
+                             ("HGSS_SND_VERIFY", "-sndverify"),
                              ("HGSS_BENCH", "-bench"),
                              ("HGSS_A0_DIAG", "-a0diag")):
         if os.environ.get(variable) == "1":
@@ -1583,6 +1584,10 @@ def build_libraries(root: Path, target: str, out: Path, jobs: int) -> tuple[bool
     if not sndadpcm_marker.exists() or sndadpcm_marker.read_text().strip() != sndadpcm_mode:
         # Branchless ADPCM decode lives in the sound chip object only.
         (sdk_out / "port" / "port_sound_chip.o").unlink(missing_ok=True)
+    sndverify_mode = "1" if os.environ.get("HGSS_SND_VERIFY") == "1" else "0"
+    sndverify_marker = sdk_out / ".sndverify-mode"
+    if not sndverify_marker.exists() or sndverify_marker.read_text().strip() != sndverify_mode:
+        (sdk_out / "port" / "port_sound_chip.o").unlink(missing_ok=True)
     a0_mode = "1" if os.environ.get("HGSS_A0_DIAG") == "1" else "0"
     a0_marker = sdk_out / ".a0-mode"
     if not a0_marker.exists() or a0_marker.read_text().strip() != a0_mode:
@@ -1612,6 +1617,7 @@ def build_libraries(root: Path, target: str, out: Path, jobs: int) -> tuple[bool
             gx3d_marker.write_text(gx3d_mode + "\n")
             bg3slot_marker.write_text(bg3slot_mode + "\n")
             sndadpcm_marker.write_text(sndadpcm_mode + "\n")
+            sndverify_marker.write_text(sndverify_mode + "\n")
             a0_marker.write_text(a0_mode + "\n")
             prof_marker.write_text(prof_mode + "\n")
         ok = ok and proc.returncode == 0

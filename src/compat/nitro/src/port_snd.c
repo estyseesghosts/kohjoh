@@ -404,6 +404,14 @@ static void report_stages_and_locks(void)
                   (unsigned long)prof.sources,
                   (unsigned long long)prof.sourceBytes,
                   (unsigned long)prof.sourceOverflow);
+    NitroPort_Log("[sndcache] hit_blocks %llu live_blocks %llu filled %llu evicted %llu invalidated %llu arena_at %llu verify_mismatch %lu",
+                  (unsigned long long)prof.cacheHitBlocks,
+                  (unsigned long long)prof.cacheMissBlocks,
+                  (unsigned long long)prof.cacheFilled,
+                  (unsigned long long)prof.cacheEvicted,
+                  (unsigned long long)prof.cacheInvalidated,
+                  (unsigned long long)prof.cacheBytes,
+                  (unsigned long)prof.cacheVerifyMismatches);
     NitroSound_ResetSourceWindow();
     /* Copied under the lock, logged outside it: logging writes to the SD
      * card and must not hold up the game's sound commands. */

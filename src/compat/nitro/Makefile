@@ -225,6 +225,11 @@ endif
 ifeq ($(HGSS_SND_ADPCM),1)
   CFLAGS += -DHGSS_SND_ADPCM=1
 endif
+# Decoded-ADPCM cache verify mode: every cached block also decoded live and
+# compared ([sndcache] verify_mismatch in profile builds).
+ifeq ($(HGSS_SND_VERIFY),1)
+  CFLAGS += -DNITRO_SOUND_ADPCM_VERIFY=1
+endif
 ifeq ($(HGSS_A0_DIAG),1)
   CFLAGS += -DHGSS_A0_DIAG=1
 endif

@@ -872,6 +872,384 @@ static int adpcm_decode_run(Channel *c, int16_t *run, uint32_t count)
     return 1;
 }
 
+#ifndef NITRO_SOUND_NO_ADPCM_CACHE
+/*
+ * Decoded-ADPCM cache (chatlog11 pass 4). HGSS's instruments are short
+ * looping ADPCM samples played over and over: in Azahar's Goldenrod window
+ * 15-20 distinct sounds (39-53 KB compressed) are started, every decode is
+ * from clean state, and over 95% of decoding repeats earlier work
+ * ([sndadpcm]). An entry keeps a sound's decoded PCM16, its step index at
+ * every 8th sample, and a copy of the compressed bytes it was decoded from.
+ *
+ * Exactness does not rest on the address alone (memory is reused, a capture
+ * or the game can rewrite it). Each block served from the cache first
+ * compares the bytes the live decoder would read in that block with the
+ * entry's copy, and the voice's decoder state with the entry's state at
+ * its index; any difference drops the entry and the block decodes live.
+ * The voice's state (index, predictor, step index, loop state) is written
+ * back exactly as live decoding leaves it, so a voice can leave the cache
+ * at any block. NITRO_SOUND_ADPCM_VERIFY also decodes every cached block
+ * live and counts differences; NITRO_SOUND_NO_ADPCM_CACHE turns it off.
+ *
+ * Memory: a 384 KiB arena (NITRO_SOUND_ADPCM_CACHE_KIB), entries placed
+ * one after another and the oldest evicted first; about 2.6 bytes per
+ * sample. Goldenrod's window (~106,000 samples, ~280 KB) and the bench
+ * (322 KB) do not fit the plan's first 256 KiB: there the bench evicted 92
+ * entries and decoded 4x its unique samples; at 384 KiB it hits every block
+ * and never evicts. Entries start only near a
+ * note's start and fill as far as the block needs (at most one block more
+ * than the live decoder would decode), so no block decodes a whole sound.
+ */
+#ifndef NITRO_SOUND_ADPCM_CACHE_KIB
+#define NITRO_SOUND_ADPCM_CACHE_KIB 384u
+#endif
+#define CACHE_ARENA_BYTES (NITRO_SOUND_ADPCM_CACHE_KIB * 1024u)
+#define CACHE_ENTRIES 128u
+#define CACHE_BUCKETS 64u
+#define CACHE_MAX_ENTRY_BYTES (CACHE_ARENA_BYTES / 4u)
+
+typedef struct AdpcmEntry {
+    uint32_t source;        /* key: the data's address */
+    uint32_t nSamples;      /* key: its length in samples */
+    uint32_t offset;        /* placement in the arena */
+    uint32_t size;
+    uint32_t filled;        /* pcm[0 .. filled - 1] decoded */
+    int32_t predictor;      /* decoder state at sample filled - 1 */
+    int32_t stepIndex;
+    int16_t next;           /* hash chain, -1 at the end */
+    uint8_t live;
+} AdpcmEntry;
+
+static uint32_t sCacheArena[CACHE_ARENA_BYTES / 4u];
+static AdpcmEntry sCacheEntry[CACHE_ENTRIES];
+static int16_t sCacheBucket[CACHE_BUCKETS];
+static uint32_t sCacheTail;
+static unsigned sCacheNextEntry;
+#ifndef HGSS_PROFILE_OFF
+static uint64_t sCacheHitBlocks, sCacheMissBlocks, sCacheFilled, sCacheEvicted;
+static uint64_t sCacheInvalidated;
+#endif
+#ifdef NITRO_SOUND_ADPCM_VERIFY
+uint32_t NitroSound_AdpcmVerifyMismatches;
+#endif
+
+static void cache_reset(void)
+{
+    unsigned i;
+
+    memset(sCacheEntry, 0, sizeof(sCacheEntry));
+    for (i = 0; i < CACHE_BUCKETS; ++i) {
+        sCacheBucket[i] = -1;
+    }
+    sCacheTail = 0;
+    sCacheNextEntry = 0;
+}
+
+static unsigned cache_bucket(uint32_t source)
+{
+    return (source >> 2) % CACHE_BUCKETS;
+}
+
+static int16_t *cache_pcm(const AdpcmEntry *e)
+{
+    return (int16_t *)(void *)((uint8_t *)sCacheArena + e->offset);
+}
+
+static uint8_t *cache_checkpoints(const AdpcmEntry *e)
+{
+    return (uint8_t *)(cache_pcm(e) + e->nSamples);
+}
+
+/* Word-aligned, as the data (SAD is a word address), so they compare by
+ * words. */
+static uint32_t cache_bytes_offset(uint32_t nSamples)
+{
+    return (2u * nSamples + nSamples / 8u + 1u + 3u) & ~3u;
+}
+
+static uint8_t *cache_bytes(const AdpcmEntry *e)
+{
+    return (uint8_t *)cache_pcm(e) + cache_bytes_offset(e->nSamples);
+}
+
+static void cache_drop(AdpcmEntry *e)
+{
+    int16_t *link = &sCacheBucket[cache_bucket(e->source)];
+    const int16_t self = (int16_t)(e - sCacheEntry);
+
+    while (*link >= 0) {
+        if (*link == self) {
+            *link = e->next;
+            break;
+        }
+        link = &sCacheEntry[*link].next;
+    }
+    e->live = 0;
+}
+
+static AdpcmEntry *cache_find(uint32_t source, uint32_t nSamples)
+{
+    int16_t at = sCacheBucket[cache_bucket(source)];
+
+    while (at >= 0) {
+        AdpcmEntry *e = &sCacheEntry[at];
+
+        if (e->source == source && e->nSamples == nSamples) {
+            return e;
+        }
+        at = e->next;
+    }
+    return NULL;
+}
+
+/* A new entry for c's sound with sample 0 (the header) decoded; NULL if the
+ * sound is too large. The arena is a log: space is taken after the newest
+ * entry (or from the start), and whatever lies there is evicted. */
+static AdpcmEntry *cache_create(const Channel *c)
+{
+    const uint32_t n = c->nSamples;
+    const uint32_t size = (cache_bytes_offset(n) + c->endByte + 3u) & ~3u;
+    uint32_t at = sCacheTail;
+    AdpcmEntry *e;
+    unsigned i;
+
+    if (size > CACHE_MAX_ENTRY_BYTES || c->endByte < 4u || (c->sourceAddr & 3u) != 0u) {
+        return NULL;
+    }
+    if (at + size > CACHE_ARENA_BYTES) {
+        at = 0;
+    }
+    for (i = 0; i < CACHE_ENTRIES; ++i) {
+        AdpcmEntry *old = &sCacheEntry[i];
+
+        if (old->live && old->offset < at + size && at < old->offset + old->size) {
+            cache_drop(old);
+#ifndef HGSS_PROFILE_OFF
+            ++sCacheEvicted;
+#endif
+        }
+    }
+    e = &sCacheEntry[sCacheNextEntry];
+    sCacheNextEntry = (sCacheNextEntry + 1u) % CACHE_ENTRIES;
+    if (e->live) {
+        cache_drop(e);
+#ifndef HGSS_PROFILE_OFF
+        ++sCacheEvicted;
+#endif
+    }
+    e->source = c->sourceAddr;
+    e->nSamples = n;
+    e->offset = at;
+    e->size = size;
+    e->live = 1;
+    e->next = sCacheBucket[cache_bucket(e->source)];
+    sCacheBucket[cache_bucket(e->source)] = (int16_t)(e - sCacheEntry);
+    sCacheTail = at + size;
+    memcpy(cache_bytes(e), c->source, 4u);
+    e->predictor = pcm16(c->source, 0);
+    e->stepIndex = c->source[2] <= 88 ? c->source[2] : 88;
+    cache_pcm(e)[0] = (int16_t)e->predictor;
+    cache_checkpoints(e)[0] = (uint8_t)e->stepIndex;
+    e->filled = 1;
+    return e;
+}
+
+/* Decodes the entry on to sample upTo - 1, from bytes copied out of the
+ * live data first; a checkpoint at every 8th sample. */
+static void cache_fill(AdpcmEntry *e, const uint8_t *source, uint32_t upTo)
+{
+    int16_t *pcm = cache_pcm(e);
+    uint8_t *checkpoints = cache_checkpoints(e);
+    uint8_t *bytes = cache_bytes(e);
+
+#ifndef HGSS_PROFILE_OFF
+    sCacheFilled += upTo > e->filled ? upTo - e->filled : 0u;
+#endif
+    while (e->filled < upTo) {
+        const uint32_t checkpoint = (e->filled + 7u) & ~7u;
+        const uint32_t last = checkpoint < upTo - 1u ? checkpoint : upTo - 1u;
+        const uint32_t first = 4u + (e->filled - 1u) / 2u;
+        const uint32_t end = 4u + (last - 1u) / 2u + 1u;
+
+        memcpy(bytes + first, source + first, end - first);
+        adpcm_decode_span(bytes, e->filled - 1u, last - e->filled + 1u, pcm + e->filled,
+                          &e->predictor, &e->stepIndex);
+        e->filled = last + 1u;
+        if (last == checkpoint) {
+            checkpoints[checkpoint / 8u] = (uint8_t)e->stepIndex;
+        }
+    }
+}
+
+/* The step index at sample k (< filled): from the checkpoint before it, on
+ * through at most 7 nibbles of the copied bytes (it depends on them only). */
+static int32_t cache_step_index(const AdpcmEntry *e, uint32_t k)
+{
+    const uint8_t *bytes = cache_bytes(e) + 4u;
+    uint32_t nibble = k & ~7u;
+    int32_t stepIndex = cache_checkpoints(e)[k / 8u];
+
+    for (; nibble < k; ++nibble) {
+        const uint32_t byte = bytes[nibble >> 1];
+        const uint32_t code = (nibble & 1u) ? byte >> 4 : byte & 15u;
+
+        stepIndex += sIndexDelta[code & 7u];
+        stepIndex = stepIndex < 0 ? 0 : stepIndex;
+        stepIndex = stepIndex > 88 ? 88 : stepIndex;
+    }
+    return stepIndex;
+}
+
+/* The live data's bytes for nibbles first..last are the entry's. */
+static int cache_bytes_match(const AdpcmEntry *e, const uint8_t *source, uint32_t first,
+                             uint32_t last)
+{
+    /* From the word holding the first byte (bytes before it were copied
+     * too); whole words, then the bytes up to the last. */
+    uint32_t at = (4u + first / 2u) & ~3u;
+    const uint32_t to = 4u + last / 2u + 1u;
+    const uint8_t *copy = cache_bytes(e);
+
+    for (; at + 4u <= to; at += 4u) {
+        if (*(const uint32_t *)(const void *)(source + at) !=
+            *(const uint32_t *)(const void *)(copy + at)) {
+            return 0;
+        }
+    }
+    for (; at < to; ++at) {
+        if (source[at] != copy[at]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+/* The loop state live decoding saves when it reaches the loop start. */
+static void cache_save_loop(NitroSoundVoice *v, const Channel *c, const AdpcmEntry *e)
+{
+    v->loopSaved = 1;
+    v->loopSource = c->sourceAddr;
+    v->loopAt = c->loopAt;
+    v->loopPredictor = cache_pcm(e)[c->loopAt];
+    v->loopStepIndex = cache_step_index(e, c->loopAt);
+}
+
+/*
+ * adpcm_decode_run's result from the cache: run[0 .. count + 1] and the
+ * voice's decoder state, exactly. 0 if the cache cannot serve the block (the
+ * voice is untouched then and the caller decodes live).
+ */
+static int adpcm_cached_run(Channel *c, int16_t *run, uint32_t count)
+{
+    NitroSoundVoice *v = c->v;
+    const uint32_t n = c->nSamples;
+    const uint32_t loopAt = c->loopAt;
+    const int loops = c->repeat == 1u && loopAt < n;
+    const uint32_t index = v->sampleIndex;
+    const int wraps = loops && count >= n - index;
+    const uint32_t need = wraps ? n : index + count + 1u;
+    AdpcmEntry *e;
+    const int16_t *pcm;
+    uint32_t at, done;
+
+    if (!v->adpcmClean || v->adpcmSource != c->sourceAddr || index >= n || n < 2u) {
+        return 0;
+    }
+    if (!loops && count >= n - index) {
+        return 0;                          /* the sound ends: the exact path's */
+    }
+    e = cache_find(c->sourceAddr, n);
+    if (!e) {
+        /* Only near a note's start: never decode far ahead of the voice. */
+        if (need > count + MIX_BLOCK || !(e = cache_create(c))) {
+            return 0;
+        }
+    }
+    if (need > e->filled) {
+        if (need - e->filled > count + 16u) {
+            return 0;
+        }
+        cache_fill(e, c->source, need);
+    }
+    pcm = cache_pcm(e);
+    /* The voice's own state must be the entry's (the data may have
+     * changed since the voice decoded it). */
+    if (v->predictor != pcm[index] || v->stepIndex != cache_step_index(e, index)) {
+        goto stale;
+    }
+    /* The bytes live decoding would read in this block. A wrap with no
+     * saved loop state decodes the start again (adpcm_to_loop). */
+    if (wraps) {
+        const int restores = loopAt != 0u && v->loopSaved &&
+                             v->loopSource == c->sourceAddr && v->loopAt == loopAt;
+
+        if (restores && (v->loopPredictor != pcm[loopAt] ||
+                         v->loopStepIndex != cache_step_index(e, loopAt))) {
+            goto stale;
+        }
+        if (!cache_bytes_match(e, c->source, restores ? (index < loopAt ? index : loopAt) : 0u,
+                               n - 2u) ||
+            (!restores && *(const uint32_t *)(const void *)c->source !=
+                          *(const uint32_t *)(const void *)cache_bytes(e))) {
+            goto stale;
+        }
+    } else if (count != 0u && !cache_bytes_match(e, c->source, index, index + count - 1u)) {
+        goto stale;
+    }
+
+    run[0] = (int16_t)v->lastSample;
+    run[1] = pcm[index];
+    at = index;
+    done = 0;
+    while (done < count) {
+        uint32_t span;
+
+        if (at + 1u >= n) {
+            /* The wrap, as adpcm_to_loop leaves it. */
+            const int restores = loopAt != 0u && v->loopSaved &&
+                                 v->loopSource == c->sourceAddr && v->loopAt == loopAt;
+
+            STATS_EVENT(c->channel, NITRO_SOUND_EV_LOOP);
+            at = loopAt;
+            if (!restores) {
+                v->adpcmClean = 1;
+                v->adpcmSource = c->sourceAddr;
+                if (loopAt != 0u) {
+                    cache_save_loop(v, c, e);
+                }
+            }
+            run[2u + done] = pcm[at];
+            ++done;
+            continue;
+        }
+        span = n - 1u - at;
+        if (span > count - done) {
+            span = count - done;
+        }
+        memcpy(run + 2u + done, pcm + at + 1u, span * sizeof(int16_t));
+        if (loopAt > at && loopAt <= at + span) {
+            cache_save_loop(v, c, e);      /* live decoding passes the loop start */
+        }
+        at += span;
+        done += span;
+    }
+    v->sampleIndex = at;
+    v->predictor = pcm[at];
+    v->stepIndex = cache_step_index(e, at);
+#ifndef HGSS_PROFILE_OFF
+    ++sCacheHitBlocks;
+#endif
+    return 1;
+
+stale:
+    cache_drop(e);
+#ifndef HGSS_PROFILE_OFF
+    ++sCacheInvalidated;
+#endif
+    return 0;
+}
+#endif
+
 /* Each frame's sample from the run by its phase. lastSample: the sample
  * before the cursor's, as the interpolating decoder leaves it (unread
  * without interpolation). */
@@ -897,13 +1275,54 @@ static inline __attribute__((always_inline)) void adpcm_resample(
     v->lastSample = run[count];
 }
 
+/* The block's run from the cache when it can serve it, else decoded. */
+static int adpcm_run(Channel *c, int16_t *run, uint32_t count)
+{
+#ifndef NITRO_SOUND_NO_ADPCM_CACHE
+#ifdef NITRO_SOUND_ADPCM_VERIFY
+    NitroSoundVoice before = *c->v;
+#endif
+    if (adpcm_cached_run(c, run, count)) {
+#ifdef NITRO_SOUND_ADPCM_VERIFY
+        {
+            NitroSoundVoice cached = *c->v;
+            int16_t live[RUN_MAX];
+            uint32_t k;
+
+            *c->v = before;
+            if (!adpcm_decode_run(c, live, count) || c->v->sampleIndex != cached.sampleIndex ||
+                c->v->predictor != cached.predictor || c->v->stepIndex != cached.stepIndex ||
+                c->v->loopSaved != cached.loopSaved ||
+                c->v->loopPredictor != cached.loopPredictor ||
+                c->v->loopStepIndex != cached.loopStepIndex) {
+                ++NitroSound_AdpcmVerifyMismatches;
+            } else {
+                for (k = 0; k < count + 2u; ++k) {
+                    if (live[k] != run[k]) {
+                        ++NitroSound_AdpcmVerifyMismatches;
+                        break;
+                    }
+                }
+            }
+            *c->v = cached;
+        }
+#endif
+        return 1;
+    }
+#ifndef HGSS_PROFILE_OFF
+    ++sCacheMissBlocks;
+#endif
+#endif
+    return adpcm_decode_run(c, run, count);
+}
+
 static size_t adpcm_render(Channel *c, int32_t *out, size_t frames)
 {
     const uint64_t advance = (uint64_t)(uint32_t)c->v->phase + (uint64_t)frames * c->step;
     const uint64_t count = advance >> 32;
     int16_t run[RUN_MAX];
 
-    if (count <= RUN_MAX - 2u && adpcm_decode_run(c, run, (uint32_t)count)) {
+    if (count <= RUN_MAX - 2u && adpcm_run(c, run, (uint32_t)count)) {
         if (c->interpolate) {
             adpcm_resample(c, run, (uint32_t)count, out, frames, 1);
         } else {
@@ -1312,6 +1731,9 @@ void NitroSound_Reset(NitroSoundChip *chip, uint32_t outputRate)
     memset(chip, 0, sizeof(*chip));
     memset((void *)NitroPort_SoundRegisters, 0, sizeof(NitroPort_SoundRegisters));
     chip->outputRate = outputRate ? outputRate : NITRO_SOUND_RATE;
+#ifndef NITRO_SOUND_NO_ADPCM_CACHE
+    cache_reset();
+#endif
     put8(0x500u, 127u);
     put8(0x501u, 128u);
 }
@@ -1632,6 +2054,7 @@ void NitroSound_StageProfile(NitroSoundStageProfile *out)
 {
     unsigned i;
 
+    memset(out, 0, sizeof(*out));
     for (i = 0; i < NITRO_SOUND_STAGE_COUNT; ++i) {
         out->stageTicks[i] = sProfStage[i];
     }
@@ -1644,6 +2067,17 @@ void NitroSound_StageProfile(NitroSoundStageProfile *out)
     out->sources = sProfSources;
     out->sourceBytes = sProfSourceTotalBytes;
     out->sourceOverflow = sProfSourceOverflow;
+#ifndef NITRO_SOUND_NO_ADPCM_CACHE
+    out->cacheHitBlocks = sCacheHitBlocks;
+    out->cacheMissBlocks = sCacheMissBlocks;
+    out->cacheFilled = sCacheFilled;
+    out->cacheEvicted = sCacheEvicted;
+    out->cacheInvalidated = sCacheInvalidated;
+    out->cacheBytes = sCacheTail;
+#endif
+#ifdef NITRO_SOUND_ADPCM_VERIFY
+    out->cacheVerifyMismatches = NitroSound_AdpcmVerifyMismatches;
+#endif
 }
 
 void NitroSound_ResetSourceWindow(void)

@@ -114,6 +114,7 @@ builds.
 | --- | --- |
 | `HGSS_PROFILE=on` | enables frame, GPU, FIFO, H-blank, timer and sound profiling; leave unset for a baseline. Use a separate output directory for each variant. |
 | `HGSS_SND_ADPCM=1` | the alternative sample-saturation path in `port_sound_chip.c` |
+| `HGSS_SND_VERIFY=1` | decoded-ADPCM cache verify mode: every cached block is also decoded live and compared (`[sndcache] verify_mismatch`, profile builds) |
 | `HGSS_A0_DIAG=1` | H-blank scan cross-check counters in `port_os.c` |
 | `HGSS_BENCH=1` | hgss-3ds benchmark chainload define; no kohjoh source uses it |
 | `HGSS_GX3D_*`, `HGSS_TEXTURE_*`, `HGSS_PALETTE_HASH` | set a define that no kohjoh source reads; no effect |

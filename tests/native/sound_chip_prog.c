@@ -26,6 +26,7 @@
 
 void *memset(void *dst, int value, size_t count);
 void *memcpy(void *dst, const void *src, size_t count);
+int memcmp(const void *a, const void *b, size_t count);
 
 #include SOURCE
 
@@ -88,6 +89,19 @@ HARNESS_NO_LIBCALL void *memcpy(void *dst, const void *src, size_t count)
         *to++ = *from++;
     }
     return dst;
+}
+
+HARNESS_NO_LIBCALL int memcmp(const void *a, const void *b, size_t count)
+{
+    const uint8_t *x = a;
+    const uint8_t *y = b;
+
+    for (; count != 0u; --count, ++x, ++y) {
+        if (*x != *y) {
+            return *x < *y ? -1 : 1;
+        }
+    }
+    return 0;
 }
 
 static uint32_t harness_random(void)
@@ -282,6 +296,24 @@ static uint16_t harness_random_timer(void)
     }
 }
 
+/* Sounds a program's notes share, as instruments are shared: the same
+ * address and length started on several channels and again later. */
+#define COVERAGE_POOL 6u
+static uint32_t pool_offset[COVERAGE_POOL];
+static uint32_t pool_words[COVERAGE_POOL];
+static uint32_t pool_loop[COVERAGE_POOL];
+
+static void harness_coverage_pool(void)
+{
+    unsigned i;
+
+    for (i = 0; i < COVERAGE_POOL; ++i) {
+        pool_offset[i] = harness_below(SAMPLE_MEMORY_SIZE / 4u - 1300u) * 4u;
+        pool_words[i] = 2u + harness_below(300u);
+        pool_loop[i] = harness_below(pool_words[i]);
+    }
+}
+
 static void harness_coverage_note(unsigned channel)
 {
     unsigned format = harness_below(10u) < 6u ? 2u : harness_below(4u);
@@ -289,7 +321,19 @@ static void harness_coverage_note(unsigned channel)
     uint32_t loop_words = harness_below(length_words + 4u);
     uint32_t offset = harness_below(SAMPLE_MEMORY_SIZE / 4u - 1300u) * 4u;
     uint32_t ctrl = harness_random_ctrl(format);
-    uint32_t source = (uint32_t)(uintptr_t)&sample_memory[offset];
+    uint32_t source;
+
+    if (harness_below(3u) != 0u) {
+        const unsigned pick = harness_below(COVERAGE_POOL);
+
+        offset = pool_offset[pick];
+        length_words = pool_words[pick];
+        loop_words = harness_below(4u) != 0u ? pool_loop[pick] : harness_below(length_words);
+        if (harness_below(2u) == 0u) {
+            ctrl = (ctrl & ~(3u << 27)) | (1u << 27);     /* looping */
+        }
+    }
+    source = (uint32_t)(uintptr_t)&sample_memory[offset];
 
     if (harness_below(40u) == 0u) {
         length_words = harness_below(3u);                 /* empty and tiny sounds */
@@ -297,7 +341,7 @@ static void harness_coverage_note(unsigned channel)
     if (harness_below(60u) == 0u) {
         source = 0u;                                      /* no data */
     }
-    if (format == 2u && source != 0u) {
+    if (format == 2u && source != 0u && harness_below(4u) == 0u) {
         sample_memory[offset + 2u] = (uint8_t)harness_below(100u);
     }
     harness_start(channel, ctrl, source, harness_random_timer(), (uint16_t)loop_words,
@@ -389,6 +433,17 @@ static void harness_coverage_step(void)
             for (i = 0; i < 64u; ++i) {
                 sample_memory[at + i] = (uint8_t)harness_random();
             }
+        } else if (harness_below(2u) == 0u) {
+            /* A few bytes inside a shared sound: before, in or after where
+             * its players are, header included. */
+            const unsigned pick = harness_below(COVERAGE_POOL);
+            const uint32_t bytes = pool_words[pick] * 4u;
+            unsigned i;
+
+            for (i = 1u + harness_below(3u); i != 0u; --i) {
+                sample_memory[pool_offset[pick] + harness_below(bytes)] ^=
+                    (uint8_t)(1u + harness_below(255u));
+            }
         }
         break;
     default:
@@ -435,6 +490,7 @@ static void harness_coverage(unsigned programs)
         if ((program & 7u) == 0u) {
             harness_fill_memory();
         }
+        harness_coverage_pool();
         for (call = 0; call < calls; ++call) {
             unsigned steps = harness_below(6u);
             size_t frames = harness_coverage_frames();
@@ -463,9 +519,11 @@ static void harness_coverage(unsigned programs)
 /*
  * HGSS-like: o3ds logs show about 11 active channels, ~99% ADPCM, no
  * capture, sometimes a PSG voice. Instruments loop; a sequencer tick
- * (every 170-171 frames) moves envelopes and starts notes.
+ * (every 170-171 frames) moves envelopes and starts notes. Sizes follow
+ * Azahar's Goldenrod [sndadpcm] windows: 15-20 distinct sounds averaging
+ * ~2.6 KB compressed, each started ~12 times per 9.4 s.
  */
-#define BENCH_INSTRUMENTS 12u
+#define BENCH_INSTRUMENTS 18u
 
 static uint32_t bench_offset[BENCH_INSTRUMENTS];
 static uint32_t bench_words[BENCH_INSTRUMENTS];
@@ -499,7 +557,7 @@ static void harness_bench(unsigned ticks)
     harness_put8(0x500u, 127u);
     harness_put8(0x501u, 0x80u);
     for (i = 0; i < BENCH_INSTRUMENTS; ++i) {
-        uint32_t words = 250u + harness_below(1500u);
+        uint32_t words = 150u + harness_below(1000u);
 
         bench_offset[i] = offset;
         bench_words[i] = words;
