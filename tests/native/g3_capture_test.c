@@ -43,6 +43,7 @@ int main(int argc, char **argv)
                                    KJ_G3_MAX_VERTS * sizeof(kj_g3_vertex));
         }
         kj_g3_set_capture(!discard || capture);
+        assert(NitroPort_SkipSceneBuild() == (discard && !capture));
         for (unsigned call = 0; call < 6; ++call) {
             const uint32_t matrix[] = {4096, 0, 0, 0, 4096, 0, 0, 0, 4096,
                                        frame * 3, call * 3, 0};
@@ -91,6 +92,7 @@ int main(int argc, char **argv)
         kj_g3_set_capture(false);
         execute(0x40, (const uint32_t[]){0});
         execute(0x23, (const uint32_t[]){0, 0});
+        assert(NitroPort_SkipSceneBuild() == 0);
         kj_g3_set_capture(true);
         assert(!s_capture_scene);
         execute(0x50, (const uint32_t[]){0});
