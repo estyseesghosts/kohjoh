@@ -50,13 +50,22 @@ types, no enums, `kj_ds_*` / `kj_ctr_*` functions.
 
 ## 3D ([`kj_g3.c`](../src/runtime/kj_g3.c), [`g3d.c`](../src/graphics/g3d/g3d.c))
 
-- The DS side interprets the G3 command stream: matrix stacks (20.12 fixed),
-  lighting, texgen, box/position/vector tests and result registers on the
-  CPU, exactly as the game reads them back.
+- The DS side interprets matrix stacks (20.12 fixed), texgen and readable
+  box/position/vector tests on the CPU. NORMAL latches its transformed normal
+  and immutable lighting inputs; the PICA evaluates DS diffuse/specular,
+  shininess, ambient and emission with exact fixed-point rounding.
+- Lit display lists cache expanded object-space positions and retain live
+  state events. Source validation is exact; animated matrices and lights do
+  not prevent reuse. Literal-colour meshes retain the baked block cache.
 - Vertices stay in object space; each batch carries a palette of up to 16 clip
   matrices. The 3DS side multiplies each by one fixup matrix (viewport,
   widescreen x-scale 0.8, screen rotation, depth range) and the vertex shader
-  transforms on the GPU.
+  transforms on the GPU. Lit draws use six clip matrices to leave uniform
+  space for four lights and the shininess table; the vertex ABI stays 16 bytes.
+- The prior publish selects capture before the next scene starts. Field and
+  title producers skip discarded geometry traversal and FIFO submission,
+  preserving game updates, animation and resource retirement. Other producers
+  retain the state-preserving decoder fallback.
 - The box test is widened for widescreen so side content is not culled.
 - DS textures convert once per content change ([`textures.c`](../src/graphics/g3d/textures.c)).
 - Not yet supported (counted, never silently dropped): fog, toon/highlight,
