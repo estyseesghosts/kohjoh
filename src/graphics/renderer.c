@@ -48,6 +48,10 @@ bool kj_ctr_capture_next_frame(void)
     /* Coffeepot frame-pacing.md: skip building an unstarted picture, keep
      * the tick, never twice in a row. Scripts require every captured frame. */
     s_skip_capture = kj_pacing_behind() >= 2u && !s_skipped_last && !kj_script_active();
+#ifdef KJ_TEST_SKIP_CAPTURE
+    /* Alternating dry ticks for scripted producer correctness QA. */
+    s_skip_capture = !s_skipped_last;
+#endif
     return !s_skip_capture;
 }
 

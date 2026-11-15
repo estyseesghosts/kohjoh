@@ -565,6 +565,9 @@ static bool s_capture_requested = true;
 static bool s_capture_scene = true;
 #ifndef HGSS_PROFILE_OFF
 static uint32_t s_captured_scenes, s_discarded_scenes;
+static uint32_t s_skipped_producers, s_capture_frame_fifo;
+static uint64_t s_skipped_producer_fifo;
+static bool s_producer_skipped;
 static uint64_t s_discarded_vertices, s_discarded_indices;
 #endif
 static bool s_wide;
@@ -618,10 +621,29 @@ void kj_g3_set_wide(bool wide)
 
 void kj_g3_set_capture(bool capture)
 {
+#ifndef HGSS_PROFILE_OFF
+    if (s_producer_skipped) {
+        s_skipped_producer_fifo += s_capture_frame_fifo;
+    }
+    s_capture_frame_fifo = 0;
+    s_producer_skipped = false;
+#endif
     s_capture_requested = capture;
     if (s_buf[s_build].frame.vert_count == 0 && !s_in_begin) {
         s_capture_scene = capture;
     }
+}
+
+int NitroPort_SkipSceneBuild(void)
+{
+    if (s_capture_requested || s_in_begin || s_buf[s_build].frame.vert_count != 0) {
+        return 0;
+    }
+#ifndef HGSS_PROFILE_OFF
+    ++s_skipped_producers;
+    s_producer_skipped = true;
+#endif
+    return 1;
 }
 
 void kj_g3_get_stats(kj_g3_stats *out)
@@ -2890,6 +2912,7 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
 void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
 {
 #ifndef HGSS_PROFILE_OFF
+    s_capture_frame_fifo += (uint32_t)count;
     const bool outer = s_coarse_depth++ == 0;
     u64 start = 0;
     u64 decode = 0, replay = 0, copy = 0;
@@ -2934,11 +2957,15 @@ void kj_g3_dl_stats(uint32_t *hits, uint32_t *misses, uint32_t *uncacheable, uin
     s_coarse_n = 0;
     s_coarse_total = s_coarse_decode = s_coarse_replay = s_coarse_copy = 0;
     dl_profile_report();
-    NitroPort_Log("[g3capture] swapped scenes captured %lu discarded %lu; "
+    NitroPort_Log("[g3capture] producer skips %lu (FIFO words %llu); swapped scenes captured %lu discarded %lu; "
                   "discarded vertices %llu indices %llu (DS state/tests/counts still executed)",
+                  (unsigned long)s_skipped_producers,
+                  (unsigned long long)s_skipped_producer_fifo,
                   (unsigned long)s_captured_scenes, (unsigned long)s_discarded_scenes,
                   (unsigned long long)s_discarded_vertices, (unsigned long long)s_discarded_indices);
     s_captured_scenes = s_discarded_scenes = 0;
+    s_skipped_producers = 0;
+    s_skipped_producer_fifo = 0;
     s_discarded_vertices = s_discarded_indices = 0;
 #endif
     *hits = s_dl_hits;
