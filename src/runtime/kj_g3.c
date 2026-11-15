@@ -452,22 +452,20 @@ static uint16_t shade_uncached(uint32_t value);
 /* Material x light-colour products change per material, not per normal.
  * Keep the exact DS 5-bit product table and rounding; animation changes
  * the vector matrix without invalidating these colour-only terms. */
-static bool s_light_terms_dirty = true;
+static uint32_t s_light_terms_dirty = 0xFu;
 static struct {
     uint8_t ambient[3], diffuse[3], specular[3];
 } s_light_terms[4];
 
-static void update_light_terms(void)
+static void update_light_terms(unsigned i)
 {
-    for (unsigned i = 0; i < 4; ++i) {
-        for (unsigned c = 0; c < 3; ++c) {
-            const unsigned l = (s_light_color[i] >> (5 * c)) & 31u;
-            s_light_terms[i].ambient[c] = s_product[(s_ambient >> (5 * c)) & 31u][l];
-            s_light_terms[i].diffuse[c] = s_product[(s_diffuse >> (5 * c)) & 31u][l];
-            s_light_terms[i].specular[c] = s_product[(s_specular >> (5 * c)) & 31u][l];
-        }
+    for (unsigned c = 0; c < 3; ++c) {
+        const unsigned l = (s_light_color[i] >> (5 * c)) & 31u;
+        s_light_terms[i].ambient[c] = s_product[(s_ambient >> (5 * c)) & 31u][l];
+        s_light_terms[i].diffuse[c] = s_product[(s_diffuse >> (5 * c)) & 31u][l];
+        s_light_terms[i].specular[c] = s_product[(s_specular >> (5 * c)) & 31u][l];
     }
-    s_light_terms_dirty = false;
+    s_light_terms_dirty &= ~(1u << i);
 }
 
 static uint16_t shade(uint32_t value)
@@ -498,10 +496,6 @@ static uint16_t shade_uncached(uint32_t value)
     int32_t normal[3], n[3];
     unsigned r = s_emission & 31u, g = (s_emission >> 5) & 31u, b = (s_emission >> 10) & 31u;
 
-    if (s_light_terms_dirty) {
-        update_light_terms();
-    }
-
     for (int j = 0; j < 3; ++j) {
         normal[j] = sign_bits(value >> (j * 10), 10) * 8;
     }
@@ -509,6 +503,9 @@ static uint16_t shade_uncached(uint32_t value)
     for (int i = 0; i < 4; ++i) {
         if (!(s_attr & (1u << i))) {
             continue;
+        }
+        if (s_light_terms_dirty & (1u << i)) {
+            update_light_terms((unsigned)i);
         }
         int64_t dot = 0, half_dot = 0;
         for (int j = 0; j < 3; ++j) {
@@ -1392,7 +1389,7 @@ static void execute_body(unsigned op, const uint32_t *p)
         if (dif != s_diffuse || amb != s_ambient) {
             s_diffuse = dif;
             s_ambient = amb;
-            s_light_terms_dirty = true;
+            s_light_terms_dirty = 0xFu;
             normals_changed();
         }
         if (p[0] & 0x8000) {
@@ -1405,10 +1402,12 @@ static void execute_body(unsigned op, const uint32_t *p)
         const uint16_t spe = (uint16_t)(p[0] & 0x7FFF), emi = (uint16_t)((p[0] >> 16) & 0x7FFF);
         const bool shin = (p[0] & 0x8000) != 0;
         if (spe != s_specular || emi != s_emission || shin != s_use_shininess) {
+            if (spe != s_specular) {
+                s_light_terms_dirty = 0xFu;
+            }
             s_specular = spe;
             s_emission = emi;
             s_use_shininess = shin;
-            s_light_terms_dirty = true;
             normals_changed();
         }
         break;
@@ -1436,7 +1435,7 @@ static void execute_body(unsigned op, const uint32_t *p)
         const uint16_t c = (uint16_t)(p[0] & 0x7FFF);
         if (s_light_color[(p[0] >> 30) & 3] != c) {
             s_light_color[(p[0] >> 30) & 3] = c;
-            s_light_terms_dirty = true;
+            s_light_terms_dirty |= 1u << ((p[0] >> 30) & 3u);
             normals_changed();
         }
         break;
