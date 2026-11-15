@@ -65,6 +65,9 @@ with tempfile.TemporaryDirectory(prefix='kohjoh-test-') as tmp:
             run([*common,'-DHGSS_PROFILE_OFF','-DKJ_DL_VERIFY',f'-DSOURCE="{source.as_posix()}"',root/f'tests/native/{fixture}.c','-o',exe])
             assert run([exe])==hashes[1], 'lit-normal cache replay changed geometry'
             print('PASS lit-normal dependencies: replay/live verification',flush=True)
+    exe=tmp/'dl_key_test.exe'
+    run([*common,'-DHGSS_PROFILE_OFF',f'-DSOURCE="{source.as_posix()}"',root/'tests/native/dl_key_test.c','-o',exe])
+    print(run([exe]), flush=True)
     exe=tmp/'perf_test.exe'
     run([*common,'-I',root/'src',root/'tests/native/perf_test.c','-o',exe])
     print(run([exe]))

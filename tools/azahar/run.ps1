@@ -19,6 +19,7 @@ param(
   [int]$Timeout = 300,
   [string]$Tag = "run",
   [string]$OutDir = "build/azahar",
+  [string]$Emulator = "C:\Program Files\Azahar\azahar.exe",
   [int]$Extra = 2
 )
 $ErrorActionPreference = "Stop"
@@ -35,7 +36,25 @@ public struct RECT { public int Left, Top, Right, Bottom; }
 if (-not ("N.W" -as [type])) { Add-Type -MemberDefinition $sig -Name "W" -Namespace "N" | Out-Null }
 [N.W]::SetProcessDPIAware() | Out-Null
 
-$sd = Join-Path $env:APPDATA "Azahar\sdmc\3ds"
+$Emulator = (Resolve-Path -LiteralPath $Emulator).Path
+# Azahar's portable layout uses user/ beside its executable. A private copy
+# with a different executable name also survives older harnesses that kill
+# all processes named azahar. Never stage into another instance's SD card.
+$portable = Join-Path (Split-Path -Parent $Emulator) "user"
+$userRoot = if (Test-Path -LiteralPath $portable -PathType Container) {
+  $portable
+} else {
+  Join-Path $env:APPDATA "Azahar"
+}
+if (Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $Emulator }) {
+  throw "This emulator executable is already running. Use a separate portable installation for concurrent tests."
+}
+$config = Join-Path $userRoot "config\qt-config.ini"
+if ((Test-Path -LiteralPath $config) -and
+    (Select-String -LiteralPath $config -Pattern '^use_custom_storage=true$' -Quiet)) {
+  throw "Disable custom storage in this emulator profile before staging; it can point to another instance's SD/NAND."
+}
+$sd = Join-Path $userRoot "sdmc\3ds"
 $root = Join-Path $sd "kohjoh"
 foreach ($d in @($root, "$root\data", "$root\saves", "$root\logs")) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
 if ($Pack -ne "") { Copy-Item $Pack (Join-Path $root "data\$Edition.pak") -Force }
@@ -51,8 +70,6 @@ New-Item -ItemType Directory -Force -Path $out | Out-Null
 $dsx = Join-Path $sd "kohjoh.3dsx"
 Copy-Item $Artifact $dsx -Force
 
-Get-Process azahar -ErrorAction SilentlyContinue | Stop-Process -Force
-Start-Sleep -Milliseconds 800
 $logOffset = if (Test-Path $log) { (Get-Item $log).Length } else { 0 }
 function Read-NewLog {
   if (-not (Test-Path $log)) { return "" }
@@ -64,7 +81,9 @@ function Read-NewLog {
     try { return $reader.ReadToEnd() } finally { $reader.Dispose() }
   } finally { $stream.Dispose() }
 }
-$p = Start-Process -FilePath "C:\Program Files\Azahar\azahar.exe" -ArgumentList "`"$dsx`"" -PassThru
+$windowStyle = if ($Shots -ne "" -or $Holds -ne "") { "Normal" } else { "Hidden" }
+$p = Start-Process -FilePath $Emulator -ArgumentList "`"$dsx`"" -WindowStyle $windowStyle -PassThru
+try {
 $start = Get-Date
 # A fixed, large window so the two screens are readable in the shots.
 for ($i = 0; $i -lt 50; $i++) {
@@ -113,8 +132,11 @@ if ($Shots -ne "") { foreach ($s in $Shots.Split(',')) {
   Shot ("t{0:000}" -f [int]$t)
 } }
 Start-Sleep -Seconds $Extra
-Get-Process azahar -ErrorAction SilentlyContinue | Stop-Process -Force
+} finally {
+  # Own only the process we launched, including on screenshot/script errors.
+  if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue }
+}
 Start-Sleep -Milliseconds 500
 if (Test-Path $log) { [System.IO.File]::WriteAllText((Join-Path (Resolve-Path $out) "$Edition.log"), (Read-NewLog)); Write-Output "log copied" } else { Write-Output "no program log" }
-$azlog = Join-Path $env:APPDATA "Azahar\log\azahar_log.txt"
+$azlog = Join-Path $userRoot "log\azahar_log.txt"
 if (Test-Path $azlog) { Copy-Item $azlog (Join-Path $out "azahar_log.txt") -Force }
