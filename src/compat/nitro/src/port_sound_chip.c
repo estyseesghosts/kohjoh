@@ -1270,6 +1270,22 @@ static void capture_frame(CaptureRun *run, int32_t signal)
  * division is skipped then (coffeepot cpu-optimization: specialise the
  * common case). sat16 is ARMv6 SSAT.
  */
+/* Two saturated 16-bit samples in one word, left in the low halfword:
+ * ARMv6 PKHBT packs them in one instruction where GCC used UXTH and ORR
+ * (coffeepot cpu-optimization: ARMv6 packed instructions in ordinary
+ * registers). The samples are already in 16-bit range (sat16). */
+static inline uint32_t pack_stereo(int32_t left, int32_t right)
+{
+#if defined(__arm__) && defined(__ARM_ARCH) && __ARM_ARCH >= 6
+    uint32_t word;
+
+    __asm__("pkhbt %0, %1, %2, lsl #16" : "=r"(word) : "r"(left), "r"(right));
+    return word;
+#else
+    return (uint32_t)(uint16_t)left | ((uint32_t)right << 16);
+#endif
+}
+
 static void output_block(int16_t *stereo, const int32_t *L, const int32_t *R, size_t frames,
                          int32_t masterVolume, unsigned shift)
 {
@@ -1278,10 +1294,7 @@ static void output_block(int16_t *stereo, const int32_t *L, const int32_t *R, si
 
     if (masterVolume == 127) {
         for (i = 0; i < frames; ++i) {
-            const int32_t left = sat16(L[i] >> shift);
-            const int32_t right = sat16(R[i] >> shift);
-
-            out[i] = (uint32_t)(uint16_t)left | ((uint32_t)right << 16);
+            out[i] = pack_stereo(sat16(L[i] >> shift), sat16(R[i] >> shift));
         }
         return;
     }
@@ -1289,7 +1302,7 @@ static void output_block(int16_t *stereo, const int32_t *L, const int32_t *R, si
         const int32_t left = sat16(((L[i] * masterVolume) / 127) >> shift);
         const int32_t right = sat16(((R[i] * masterVolume) / 127) >> shift);
 
-        out[i] = (uint32_t)(uint16_t)left | ((uint32_t)right << 16);
+        out[i] = pack_stereo(left, right);
     }
 }
 
