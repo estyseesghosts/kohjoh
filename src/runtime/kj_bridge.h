@@ -186,6 +186,10 @@ typedef struct kj_frame_input {
  * DS would display now. The renderer records and submits the frame. */
 void kj_ctr_publish_frame(const kj_frame_input *in);
 
+/* Decide the next picture before game/geometry work starts. False skips
+ * capture and publication together, never the simulation or DS tests. */
+bool kj_ctr_capture_next_frame(void);
+
 /* Each emulated DS V-blank (the game's OS_Halt). Paces the game to the 3DS
  * display, reads input, services APT. Returns false when the app must
  * close. */
