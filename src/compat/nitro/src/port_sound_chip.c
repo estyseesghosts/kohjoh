@@ -916,12 +916,14 @@ typedef struct AdpcmEntry {
     uint32_t filled;        /* pcm[0 .. filled - 1] decoded */
     int32_t predictor;      /* decoder state at sample filled - 1 */
     int32_t stepIndex;
-    int16_t next;           /* hash chain, -1 at the end */
+    int16_t next;           /* hash chain: the next entry's index + 1, 0 at the end */
     uint8_t live;
 } AdpcmEntry;
 
 static uint32_t sCacheArena[CACHE_ARENA_BYTES / 4u];
 static AdpcmEntry sCacheEntry[CACHE_ENTRIES];
+/* Each bucket's first entry's index + 1, 0 if empty: the zeroed table is
+ * empty, so the cache is safe before cache_reset. */
 static int16_t sCacheBucket[CACHE_BUCKETS];
 static uint32_t sCacheTail;
 static unsigned sCacheNextEntry;
@@ -935,12 +937,8 @@ uint32_t NitroSound_AdpcmVerifyMismatches;
 
 static void cache_reset(void)
 {
-    unsigned i;
-
     memset(sCacheEntry, 0, sizeof(sCacheEntry));
-    for (i = 0; i < CACHE_BUCKETS; ++i) {
-        sCacheBucket[i] = -1;
-    }
+    memset(sCacheBucket, 0, sizeof(sCacheBucket));
     sCacheTail = 0;
     sCacheNextEntry = 0;
 }
@@ -975,14 +973,14 @@ static uint8_t *cache_bytes(const AdpcmEntry *e)
 static __attribute__((noinline, cold)) void cache_drop(AdpcmEntry *e)
 {
     int16_t *link = &sCacheBucket[cache_bucket(e->source)];
-    const int16_t self = (int16_t)(e - sCacheEntry);
+    const int16_t self = (int16_t)(e - sCacheEntry + 1);
 
-    while (*link >= 0) {
+    while (*link != 0) {
         if (*link == self) {
             *link = e->next;
             break;
         }
-        link = &sCacheEntry[*link].next;
+        link = &sCacheEntry[*link - 1].next;
     }
     e->live = 0;
 }
@@ -991,8 +989,8 @@ static AdpcmEntry *cache_find(uint32_t source, uint32_t nSamples)
 {
     int16_t at = sCacheBucket[cache_bucket(source)];
 
-    while (at >= 0) {
-        AdpcmEntry *e = &sCacheEntry[at];
+    while (at != 0) {
+        AdpcmEntry *e = &sCacheEntry[at - 1];
 
         if (e->source == source && e->nSamples == nSamples) {
             return e;
@@ -1043,7 +1041,7 @@ static __attribute__((noinline, cold)) AdpcmEntry *cache_create(const Channel *c
     e->size = size;
     e->live = 1;
     e->next = sCacheBucket[cache_bucket(e->source)];
-    sCacheBucket[cache_bucket(e->source)] = (int16_t)(e - sCacheEntry);
+    sCacheBucket[cache_bucket(e->source)] = (int16_t)(e - sCacheEntry + 1);
     sCacheTail = at + size;
     memcpy(cache_bytes(e), c->source, 4u);
     e->predictor = pcm16(c->source, 0);
