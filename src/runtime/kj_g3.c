@@ -2090,6 +2090,57 @@ static void dl_make_key(dl_key *k, bool lit, bool texgen, uint32_t reads)
     }
 }
 
+/* Compare live inputs in place. A hit must not clear and fill a temporary
+ * key before comparing it: most lists replay every frame. Keep the stored
+ * key as an exact snapshot, with no hash/generation collision assumption.
+ * Coffeepot cpu-optimization.md: small hot data, avoid repeated copies. */
+static bool dl_key_matches(const dl_key *k, bool lit, bool texgen, uint32_t reads)
+{
+    if (k->attr_pending != s_attr_pending || k->attr != s_attr ||
+        k->tex_param != s_tex_param || k->tex_pltt != s_tex_pltt ||
+        k->viewport != s_viewport || k->mtx_mode != (uint32_t)s_mtx_mode) {
+        return false;
+    }
+    if ((reads & DL_READS_COLOR) && k->color != s_color) {
+        return false;
+    }
+    if ((reads & DL_READS_COORD) &&
+        (k->coord01 != ((uint16_t)s_coord[0] | ((uint32_t)(uint16_t)s_coord[1] << 16)) ||
+         k->coord2 != (uint16_t)s_coord[2])) {
+        return false;
+    }
+    if ((reads & DL_READS_TEXCOORD) &&
+        (memcmp(k->texcoord, s_texcoord, sizeof(k->texcoord)) != 0 ||
+         memcmp(k->texcoord_raw, s_texcoord_raw, sizeof(k->texcoord_raw)) != 0)) {
+        return false;
+    }
+    if ((texgen || (reads & DL_READS_TEXM)) &&
+        memcmp(k->texm, s_tex.m, sizeof(k->texm)) != 0) {
+        return false;
+    }
+    if (!lit) {
+        return true;
+    }
+    for (unsigned i = 0; i < 3; ++i) {
+        if (memcmp(k->vec[i], s_vec.m[i], sizeof(k->vec[i])) != 0) {
+            return false;
+        }
+    }
+    if (memcmp(k->light_dir, s_light_dir, sizeof(k->light_dir)) != 0 ||
+        memcmp(k->light_half, s_light_half, sizeof(k->light_half)) != 0 ||
+        k->material[0] != s_diffuse || k->material[1] != s_ambient ||
+        k->material[2] != s_specular || k->material[3] != s_emission ||
+        k->use_shininess != s_use_shininess) {
+        return false;
+    }
+    for (unsigned i = 0; i < 4; ++i) {
+        if (k->light_color[i] != s_light_color[i]) {
+            return false;
+        }
+    }
+    return !s_use_shininess || memcmp(k->shininess, s_shininess, sizeof(k->shininess)) == 0;
+}
+
 static dl_entry *dl_slot(const uint32_t *ptr, uint32_t count)
 {
     const uint32_t h = (uint32_t)(((uintptr_t)ptr >> 2) * 2654435761u ^ count * 40503u);
@@ -2617,14 +2668,12 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
     }
     const bool texgen = (s_tex_param >> 30) != 0;
     const bool lit = e->needs_light || ((s_attr | s_attr_pending) & 0xFu) != 0;
-    dl_key key;
     bool verify = false;
     const unsigned entry_lights = ((s_attr & 0xFu) != 0) | (((s_attr_pending & 0xFu) != 0) << 1);
     const uint32_t reads = e->reads[entry_lights];
     const size_t key_bytes = dl_key_size(lit, texgen, reads);
-    dl_make_key(&key, lit, texgen, reads);
     if (e->recorded && e->lit == lit && e->texgen == texgen &&
-        memcmp(&key, &e->key, key_bytes) == 0) {
+        dl_key_matches(&e->key, lit, texgen, reads)) {
         frame_buf *fb = &s_buf[s_build];
         if (fb->frame.vert_count + dl_vertex_bound(e) <= KJ_G3_MAX_VERTS &&
             fb->frame.index_count + e->nidx <= KJ_G3_MAX_INDICES &&
@@ -2644,6 +2693,9 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
         }
     }
 
+    /* Only a miss (or diagnostic live verification) needs an entry snapshot. */
+    dl_key key;
+    dl_make_key(&key, lit, texgen, reads);
 #ifdef KJ_DL_VERIFY
     if (e->recorded && !verify) {
         static uint32_t logged;
