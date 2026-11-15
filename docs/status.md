@@ -121,7 +121,8 @@ Azahar ticks per channel-sample (6.6% of the core in Goldenrod;
 
 ## Next
 
-0. O3DS run of the 2026-11-15 audio builds (normal and profile): compare
+0. O3DS run of the 2026-11-15 builds in `build/hw-2026-11-15/` (both
+   editions, normal and profile; audio plus PRs #6-#8): compare
    `[sndprof]`, `[sndpmu]`, `[sndout]` and `[gamecpu]` with `docs/logs/1`,
    and listen to held against interpolated samples (`KJ_SND_INTERPOLATE`).
 

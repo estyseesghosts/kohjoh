@@ -110,6 +110,33 @@ What went wrong, and the fix:
 
 ## Session 4 (audio cost, 2026-11-15)
 
+What was done ([audio worklog](worklog/2026-11-15-audio.md)):
+- chatlog11's software audio plan in full, five passes: measurement
+  (`[sndstage]`, `[sndadpcm]`, `[sndcache]`, `[sndlock]`, `[sndout]`,
+  `[sndpmu]`), ordinary-routing fast path, ADPCM decoded as a run then
+  resampled, exact `div127`, PKHBT output, 192-frame blocks, held samples
+  by default, decoded-ADPCM cache with a verify build, kernel cache flush
+  for wave buffers. Azahar Goldenrod mixer 107.6 -> 48-49 ticks per
+  channel-sample (14.8% -> 5-7% of the core); every step bit-exact.
+- New tests: `tests/native/sound_arm.py` (Unicorn full-chip differential,
+  HGSS-like bench), `div127_test.c`, `tools/azahar/sndprof.py`.
+- Merged origin/main and PRs #6, #7, #8 into `main`; integration testing
+  found and fixed a cache hang (`037e134`); pushed `main`.
+- Built normal and profile artifacts of both editions for O3DS testing.
+
+What was learned:
+- Azahar charges one tick per instruction and models neither cache nor
+  PMU: it ranks instruction-count changes only. I-cache and D-cache effects
+  need `[sndpmu]` on hardware.
+- The game never waited on the sound lock, and the "1 underrun" in every
+  hardware log was the start-up wake-up: measuring first removed two
+  planned changes.
+- HGSS audio is almost all ADPCM, and >95% of decoding repeats the same
+  15-20 sounds: decoding, not mixing, was the cost.
+- Stacked PRs (#6 <- #7 <- #8) target each other's branches; merging them
+  into `main` by push does not close them on GitHub. A PR that adds a game
+  patch also needs `git -C build/upstream am` before it builds.
+
 What went right:
 - **A full-chip differential harness first.** `tests/native/sound_arm.py`
   runs the reference and working mixer under Unicorn on the same random
@@ -120,6 +147,10 @@ What went right:
   data (256 KiB thrashed), not from the plan's first guess.
 - **A line-level instruction profile** (Unicorn per-address counts mapped
   with addr2line) located the spills the stage timers could only hint at.
+- **Committing each verified pass** kept every regression bisectable to one
+  change.
+- **Testing the merged tree before pushing.** The full native suite on the
+  merge found a hang no single branch showed.
 
 What went wrong, and the fix:
 - **A digest that hashed raw addresses** reported a block-size change as a
@@ -133,10 +164,10 @@ What went wrong, and the fix:
   data from logs of the real workload.
 - **Editing files from Windows Python** turned LF into CRLF (a 900-line
   diff); write with `newline=''`.
-- **`sed` insertions through Git Bash** turned a `"
-"` in
-  `hgss_game.py` into a real newline (SyntaxError at build time). Use the
-  editor tool or a script file for anything with escapes.
+- **Escapes through Git Bash.** A `sed` insertion turned a backslash-n in
+  `hgss_game.py` into a real newline (SyntaxError at build time), and the
+  same happened twice more in later probes and in this file. Write such
+  text with the editor tool, or avoid the escape (`putc(10)`).
 - **A cache check placed in the wrong path:** an early header comparison
   in the fill path compared the wrong bytes. The verify build and the
   harness caught it; every cache check belongs where the entry is used.
@@ -144,10 +175,10 @@ What went wrong, and the fix:
   a sound between channels or rewrote bytes inside a playing sound, so
   breaking cache invalidation still passed. Mutate each safety check once
   and confirm the harness fails before trusting it.
-
 - **State that is only valid after a reset.** The ADPCM cache's bucket
-  table meant "empty" as -1, set by the reset; a test that skipped the
-  reset hung. Make the zeroed state valid instead.
+  table meant "empty" as -1, set by the reset; `sound_diff.c` skips the
+  reset and hung in `cache_find`. Links are now index + 1, so the zeroed
+  table is empty. Make the zeroed state valid.
 - **Killing a test that was working.** A host check looked idle (Python
   at 1.7 s CPU, no children) but its test binary ran under another parent.
   List every process created since the start, with CPU time, before
@@ -155,6 +186,11 @@ What went wrong, and the fix:
 - **Two harnesses for one module.** `sound_arm.py` resets the chip;
   `check_hotpaths.py`'s `sound_diff.c` does not. Run both after mixer
   changes.
+- **Cygwin signals in a tight loop.** An `alarm()` watchdog never fired;
+  a watchdog thread with `-finstrument-functions` named the looping
+  function in one run.
+- **A stray `cat >` with no input** stalled a command for a minute and
+  left its scripts unwritten.
 
 ## Rules
 
