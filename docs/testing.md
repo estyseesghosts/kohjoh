@@ -243,3 +243,29 @@ width. It uses per-batch viewports, per-vertex palette slots, and W-buffer
 semantics. Counts are conservative clip rejection, not occlusion or measured
 GPU time. Scripted dumps perform synchronous SD I/O: capture separately from
 timing runs. See [scene investigation](worklog/2026-11-14.md) for the hardware run plan.
+
+## Concurrent agent testing
+
+Use a separate Git worktree and a private clone of the patched decomp for
+each agent. Give it its own SDK shims and output directory; a separate
+`--out` alone still shares generated upstream headers and shim directories.
+Do not rebuild or clean another agent's upstream tree.
+
+For parallel emulator tests, copy the Azahar installation into that
+worktree's ignored `build/emulator/`, rename its executable (for example
+`kj-geometry.exe`), and create `user/` beside it for portable mode. Copy only
+the needed settings, DSP firmware, data pack and benchmark save into this
+private profile. Disable custom storage and check that any explicit SD/NAND
+paths point into the private profile. Then run:
+
+```powershell
+pwsh tools/azahar/run.ps1 -Emulator build/emulator/kj-geometry.exe `
+  -Artifact build/fifo/pokeheartgold.3dsx -Shots 40,100 -Tag geometry
+```
+
+The harness stages and collects from portable `user/` when present, refuses
+an already running executable or enabled custom storage, and stops only its
+own process in `finally`. A distinct executable name protects this instance
+from older harnesses that still kill all processes named `azahar`. Avoid
+concurrent host timing comparisons: emulator correctness tests can run in
+parallel, but their contention invalidates performance comparisons.
