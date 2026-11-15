@@ -41,6 +41,15 @@ static bool s_ready;
 static uint32_t s_frames;
 static uint32_t s_skipped_presents;
 static bool s_skipped_last; /* the previous publish skipped its picture */
+static bool s_skip_capture; /* committed before this picture's game work */
+
+bool kj_ctr_capture_next_frame(void)
+{
+    /* Coffeepot frame-pacing.md: skip building an unstarted picture, keep
+     * the tick, never twice in a row. Scripts require every captured frame. */
+    s_skip_capture = kj_pacing_behind() >= 2u && !s_skipped_last && !kj_script_active();
+    return !s_skip_capture;
+}
 
 /* GPU-side time per 600 pictures (coffeepot performance.md, "Per-operation
  * GPU times": P3D is command-list execution, PPF display transfers, PSC
@@ -116,14 +125,15 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
         return;
     }
     kj_perf_publish_begin(in->g3 != NULL ? in->g3->serial : 0);
-    /* Running two or more refreshes behind: this picture would be shown
-     * late anyway. Skip its GPU work (the game tick already happened) so
-     * the schedule recovers; counted, never silent. Never two in a row
+    /* The previous boundary committed this picture's capture decision
+     * before game/geometry work. Apply that same decision here: a partial
+     * dry scene must never be submitted after a late policy change.
+     * Skip at most one picture in a row
      * (coffeepot PICA200/frame-pacing.md, "Skip the picture, keep the
      * tick"): an uncapped skip starved the screen on O3DS whenever the game
      * ran behind -- 1606 of 2206 Goldenrod pictures skipped, ~4 shown a
      * second while the game ran at half speed (o3ds-log-0, window 6). */
-    if (kj_pacing_behind() >= 2u && !s_skipped_last && !kj_script_active()) {
+    if (s_skip_capture) {
         s_skipped_last = true;
 #ifndef HGSS_PROFILE_OFF
         ++s_skipped_presents;
