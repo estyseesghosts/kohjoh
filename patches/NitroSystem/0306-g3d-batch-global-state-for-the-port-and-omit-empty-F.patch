@@ -1,0 +1,68 @@
+From ff01c660febf78c38f1fbaccb07f5b0916d9ec84 Mon Sep 17 00:00:00 2001
+From: terezi <jules@foxtails.me>
+Date: Sat, 14 Nov 2026 19:41:42 -0500
+Subject: [PATCH] g3d: batch global state for the port and omit empty FIFO
+ transfers
+
+---
+ src/g3d_gecom.c |  5 ++++-
+ src/g3d_glb.c   | 16 ++++++++++++++++
+ 2 files changed, 20 insertions(+), 1 deletion(-)
+
+diff --git a/src/g3d_gecom.c b/src/g3d_gecom.c
+index 0f85268..7abce97 100644
+--- a/src/g3d_gecom.c
++++ b/src/g3d_gecom.c
+@@ -68,10 +68,13 @@ void NNS_G3dGeBufferOP_N(u32 op, const u32 *args, u32 num) {
+     }
+     #if defined(SDK_PORT_3DS)
+     NitroPort_GxFifoWord(op);
++    if (num) {
++        MIi_CpuSend32(args, &reg_G3X_GXFIFO, num * sizeof(u32));
++    }
+     #else
+     reg_G3X_GXFIFO = op;
+-    #endif
+     MIi_CpuSend32(args, &reg_G3X_GXFIFO, num * sizeof(u32));
++    #endif
+ }
+ 
+ // reads the current position (pPos) and direction (pDir) matrices
+diff --git a/src/g3d_glb.c b/src/g3d_glb.c
+index d6719af..699cf0c 100644
+--- a/src/g3d_glb.c
++++ b/src/g3d_glb.c
+@@ -1,6 +1,10 @@
+ #include <nitro.h>
+ #include <nnsys/g3d/gecom.h>
+ #include <nnsys/g3d_internal.h>
++#if defined(SDK_PORT_3DS)
++#include <nnsys/g3d_util_internal.h>
++extern void NitroPort_GxFifoWords(const u32 *words, size_t count);
++#endif
+ 
+ #pragma force_active on
+ 
+@@ -55,7 +59,19 @@ void NNS_G3dGlbInit(void) {
+ }
+ 
+ void NNS_G3dGlbFlushP(void) {
++#if defined(SDK_PORT_3DS)
++    /* Keep the initial opcode with its parameters. The normal OP_N path
++     * separates them, forcing this hot 62-word tail through split decoding.
++     * Preserve the original buffering/order whenever earlier work is pending. */
++    if (!gGeBufferState.isLocked &&
++        (!gGeBufferState.pBuffer || !gGeBufferState.pBuffer[0])) {
++        NitroPort_GxFifoWords((const u32 *)&NNS_G3dGlb, 63);
++    } else {
++        NNS_G3dGeBufferOP_N(NNS_G3dGlb.cmd0, (u32 *)&NNS_G3dGlb + 1, 62);
++    }
++#else
+     NNS_G3dGeBufferOP_N(NNS_G3dGlb.cmd0, (u32 *)&NNS_G3dGlb + 1, 62);
++#endif
+     NNS_G3dGlb.flag &= ~NNS_G3D_GLB_FLAG_FLUSH_WVP;
+     NNS_G3dGlb.flag &= ~NNS_G3D_GLB_FLAG_FLUSH_VP;
+ }
+-- 
+2.56.0.windows.4
+

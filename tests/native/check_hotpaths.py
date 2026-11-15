@@ -43,6 +43,28 @@ with tempfile.TemporaryDirectory(prefix='kohjoh-test-') as tmp:
     run([*common,f'-DSOURCE="{source.as_posix()}"',root/'tests/native/g3_diff.c','-o',exe])
     assert run([exe])==results[1], 'profiled geometry changed output'
     print('PASS g3: sampled attribution, nested totals, table overflow/reset, unchanged output',flush=True)
+    for fixture in ('matrix_diff', 'dl_dependencies_test'):
+        hashes=[]
+        for variant,source in [('before',tmp/'g3_before.c'),('after',root/'src/runtime/kj_g3.c')]:
+            exe=tmp/(fixture+'_'+variant+'.exe')
+            run([*common,'-DHGSS_PROFILE_OFF',f'-DSOURCE="{source.as_posix()}"',root/f'tests/native/{fixture}.c','-o',exe])
+            hashes.append(run([exe]))
+        if fixture == 'matrix_diff':
+            assert hashes[0]==hashes[1], (fixture,hashes)
+            print(f'PASS {fixture}: {hashes[1]}',flush=True)
+        if fixture == 'dl_dependencies_test':
+            for variant,source in [('before',tmp/'g3_before.c'),('after',root/'src/runtime/kj_g3.c')]:
+                exe=tmp/(fixture+'_uncached_'+variant+'.exe')
+                run([*common,'-DHGSS_PROFILE_OFF','-DKJ_DL_NO_CACHE',f'-DSOURCE="{source.as_posix()}"',root/f'tests/native/{fixture}.c','-o',exe])
+                oracle=run([exe])
+                print(f'{fixture} {variant} uncached {oracle}, cached {hashes[0 if variant == "before" else 1]}',flush=True)
+                assert oracle==hashes[1], (fixture,variant,'uncached oracle differs',oracle,hashes[1])
+            print(f'PASS {fixture}: cached output matches both uncached decoders',flush=True)
+            exe=tmp/'dependencies_verify.exe'
+            source=root/'src/runtime/kj_g3.c'
+            run([*common,'-DHGSS_PROFILE_OFF','-DKJ_DL_VERIFY',f'-DSOURCE="{source.as_posix()}"',root/f'tests/native/{fixture}.c','-o',exe])
+            assert run([exe])==hashes[1], 'lit-normal cache replay changed geometry'
+            print('PASS lit-normal dependencies: replay/live verification',flush=True)
     exe=tmp/'perf_test.exe'
     run([*common,'-I',root/'src',root/'tests/native/perf_test.c','-o',exe])
     print(run([exe]))
