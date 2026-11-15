@@ -43,6 +43,11 @@ static int16_t output[2u * 1024u] __attribute__((aligned(32)));
 static NitroSoundChip chip;
 static uint32_t rng_state = 42u;
 static uint64_t digest_state = 1469598103934665603ull;
+#ifdef SOUND_TRACE
+volatile uint64_t trace_digest[SOUND_TRACE];
+volatile uint32_t trace_frames[SOUND_TRACE];
+static unsigned trace_count;
+#endif
 
 /* GCC would turn these loops into calls to themselves. */
 #define HARNESS_NO_LIBCALL __attribute__((optimize("no-tree-loop-distribute-patterns")))
@@ -142,7 +147,18 @@ static void harness_digest_state(const int16_t *stereo, size_t frames)
     unsigned channel;
 
     harness_digest(stereo, frames * 4u);
-    harness_digest((const void *)&NitroPort_SoundRegisters[0x400], 0x120u);
+    /* Registers, with the source and capture addresses taken relative to
+     * sample memory: the build's layout (code size) moves the arrays. */
+    for (channel = 0; channel < 0x120u; channel += 4u) {
+        uint32_t word = harness_get32(0x400u + channel);
+        const int is_address = (channel < 0x100u && (channel & 15u) == REG_SAD) ||
+                               channel == 0x110u || channel == 0x118u;
+
+        if (is_address && word != 0u) {
+            word -= (uint32_t)(uintptr_t)sample_memory;
+        }
+        harness_digest_word(word);
+    }
     for (channel = 0; channel < NITRO_SOUND_CHANNEL_COUNT; ++channel) {
         const NitroSoundVoice *v = &chip.voice[channel];
 
@@ -340,9 +356,24 @@ static void harness_coverage_step(void)
         harness_put32(base + REG_CNT, ctrl & 0x7fffffffu);
         break;
     case 7:
-        harness_put8(0x500u, (uint8_t)harness_below(128u));
-        harness_put8(0x501u, (uint8_t)(harness_below(4u) == 0u ? harness_random() : 0x80u));
+    {
+        /* SOUNDCNT: master volume; routing and bypass one field at a time
+         * (so each meets ordinary routing), output off, or anything. */
+        static const uint8_t controls[] = { 0x80u, 0x80u, 0x00u, 0x90u, 0xa0u, 0xb0u,
+                                            0x81u, 0x82u, 0x83u, 0x84u, 0x88u, 0x8cu };
+        uint8_t control = controls[harness_below(sizeof(controls))];
+
+        if (harness_below(4u) == 0u) {
+            control = (uint8_t)harness_random();
+        }
+        harness_put8(0x500u, (uint8_t)(harness_below(3u) == 0u ? 127u : harness_below(128u)));
+        harness_put8(0x501u, control);
+        if (harness_below(2u) == 0u) {
+            harness_put8(0x508u, 0u);   /* captures off, so routing alone decides */
+            harness_put8(0x509u, 0u);
+        }
         break;
+    }
     case 8:
         harness_coverage_capture();
         break;
@@ -413,6 +444,17 @@ static void harness_coverage(unsigned programs)
             }
             harness_mix(frames);
             harness_digest_state(output, frames);
+#ifdef SOUND_TRACE
+            if (trace_count < SOUND_TRACE) {
+                trace_digest[trace_count] = digest_state;
+                trace_frames[trace_count++] = (uint32_t)frames | (program << 16);
+            }
+#ifdef SOUND_TRACE_STOP
+            if (trace_count == SOUND_TRACE_STOP) {
+                return;
+            }
+#endif
+#endif
         }
         harness_digest(sample_memory, SAMPLE_MEMORY_SIZE);
     }

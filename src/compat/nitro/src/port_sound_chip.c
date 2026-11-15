@@ -34,7 +34,11 @@ static uint32_t sFrameIndex;
 #define STATS_CHANNEL_OF(base) (((base) - 0x400u) / 16u)
 #define STATS_TAP(c, i, v) do { if ((c)->tap) (c)->tap[(i)] = (v); } while (0)
 #else
+#ifdef NITRO_SOUND_MIX_BLOCK
+#define MIX_BLOCK NITRO_SOUND_MIX_BLOCK
+#else
 #define MIX_BLOCK 128
+#endif
 #define STATS_EVENT(channel, bit) ((void)0)
 #define STATS_CHANNEL_OF(base) 0u
 #define STATS_TAP(c, i, v) ((void)0)
@@ -946,18 +950,41 @@ static void mix_block(Channel *c, int32_t *L, int32_t *R, int32_t *values, size_
  * (Bit 0, adding channel 1/3 into channel 0/2, isn't done: nothing in the
  * game uses it.)
  */
-static void do_capture(NitroSoundChip *chip, unsigned slot, int32_t signal)
+/*
+ * A capture's settings for one NitroSound_Mix call. Within a call only the
+ * capture itself writes its registers (a one-shot clears its enable bit),
+ * and channel 1/3's timer does not change, so the control byte, buffer,
+ * format and step are read once instead of for every output frame
+ * (chatlog11 pass 2: prepared capture state). Recording still happens frame
+ * by frame, in the same order relative to the channels that play the
+ * buffer back, so reverb feedback is unchanged.
+ */
+typedef struct CaptureRun {
+    NitroSoundCapture *cap;
+    uint8_t *dst;
+    uint32_t bufferSize;
+    unsigned bytesPerSample;
+    unsigned controlReg;
+    uint8_t ctl;
+    int recording;      /* on, with a usable buffer: frames record */
+    int fromChannel;    /* bit 1: records channel 0/2, else the mixer */
+} CaptureRun;
+
+static void capture_prepare(NitroSoundChip *chip, unsigned slot, CaptureRun *run)
 {
     NitroSoundCapture *cap = &chip->capture[slot];
-    unsigned controlReg = 0x508u + slot;
-    unsigned base = 0x510u + slot * 8u;
-    uint8_t ctl = reg8(controlReg);
-    unsigned bytesPerSample = (ctl & 8u) ? 1u : 2u;
-    uint32_t bufferSize = (uint32_t)reg16(base + 4u) * 4u;
-    uint8_t *dst = (uint8_t *)(uintptr_t)reg32(base);
+    const unsigned base = 0x510u + slot * 8u;
     uint32_t period;
 
-    if (!(ctl & 128u)) {
+    run->cap = cap;
+    run->controlReg = 0x508u + slot;
+    run->ctl = reg8(run->controlReg);
+    run->bytesPerSample = (run->ctl & 8u) ? 1u : 2u;
+    run->bufferSize = (uint32_t)reg16(base + 4u) * 4u;
+    run->dst = (uint8_t *)(uintptr_t)reg32(base);
+    run->fromChannel = (run->ctl & 2u) != 0;
+    run->recording = 0;
+    if (!(run->ctl & 128u)) {
         cap->running = 0;
         return;
     }
@@ -966,33 +993,79 @@ static void do_capture(NitroSoundChip *chip, unsigned slot, int32_t signal)
         cap->phase = 0;
         cap->running = 1;
     }
-    if (!dst || bufferSize < bytesPerSample) return;
-
+    if (!run->dst || run->bufferSize < run->bytesPerSample) {
+        return;
+    }
     period = 0x10000u - reg16(CHANNEL_BASE(slot ? 3u : 1u) + REG_TIMER);
     if (cap->stepPeriod != period || cap->stepRate != chip->outputRate) {
         cap->stepPeriod = period;
         cap->stepRate = chip->outputRate;
         cap->step = (SOUND_CLOCK << 32) / ((uint64_t)period * chip->outputRate);
     }
+    run->recording = 1;
+}
+
+/* One output frame of a capture: what reading the registers every frame
+ * gave (see capture_prepare). */
+static void capture_frame(CaptureRun *run, int32_t signal)
+{
+    NitroSoundCapture *cap = run->cap;
+
+    if (!run->recording) {
+        return;
+    }
     cap->phase += cap->step;
     while (cap->phase >= PHASE_ONE) {
         cap->phase -= PHASE_ONE;
-        if (cap->index + bytesPerSample > bufferSize) {
-            if (ctl & 4u) {             /* one-shot: done */
-                put8(controlReg, (uint8_t)(ctl & 127u));
+        if (cap->index + run->bytesPerSample > run->bufferSize) {
+            if (run->ctl & 4u) {        /* one-shot: done */
+                put8(run->controlReg, (uint8_t)(run->ctl & 127u));
                 cap->running = 0;
+                run->recording = 0;
                 return;
             }
             cap->index = 0;
         }
-        if (bytesPerSample == 1u) {
-            dst[cap->index] = (uint8_t)((int8_t)(saturate(signal) >> 8));
+        if (run->bytesPerSample == 1u) {
+            run->dst[cap->index] = (uint8_t)((int8_t)(saturate(signal) >> 8));
         } else {
             int16_t value = saturate(signal);
-            dst[cap->index] = (uint8_t)value;
-            dst[cap->index + 1u] = (uint8_t)((uint16_t)value >> 8);
+            run->dst[cap->index] = (uint8_t)value;
+            run->dst[cap->index + 1u] = (uint8_t)((uint16_t)value >> 8);
         }
-        cap->index += bytesPerSample;
+        cap->index += run->bytesPerSample;
+    }
+}
+
+/*
+ * The output stage for a block: master volume, the headroom shift, 16-bit
+ * saturation, one word per stereo frame. The left sample is the low
+ * halfword (little-endian), as two halfword stores gave; frames are 4 bytes,
+ * so each word store is aligned. Master volume 127 is the identity
+ * ((x * 127) / 127 is x exactly; |x| stays far below 2^31 / 127), so the
+ * division is skipped then (coffeepot cpu-optimization: specialise the
+ * common case). sat16 is ARMv6 SSAT.
+ */
+static void output_block(int16_t *stereo, const int32_t *L, const int32_t *R, size_t frames,
+                         int32_t masterVolume, unsigned shift)
+{
+    uint32_t *out = (uint32_t *)(void *)stereo;
+    size_t i;
+
+    if (masterVolume == 127) {
+        for (i = 0; i < frames; ++i) {
+            const int32_t left = sat16(L[i] >> shift);
+            const int32_t right = sat16(R[i] >> shift);
+
+            out[i] = (uint32_t)(uint16_t)left | ((uint32_t)right << 16);
+        }
+        return;
+    }
+    for (i = 0; i < frames; ++i) {
+        const int32_t left = sat16(((L[i] * masterVolume) / 127) >> shift);
+        const int32_t right = sat16(((R[i] * masterVolume) / 127) >> shift);
+
+        out[i] = (uint32_t)(uint16_t)left | ((uint32_t)right << 16);
     }
 }
 
@@ -1034,7 +1107,9 @@ void NitroSound_Mix(NitroSoundChip *chip, int16_t *stereo, size_t frames)
     unsigned count = 0, channel, k;
     unsigned control;
     int32_t masterVolume;
-    int capturing, bypass1, bypass3;
+    int capturing, bypass1, bypass3, ordinary;
+    unsigned outShift;
+    CaptureRun captureRun[2];
     unsigned leftFrom, rightFrom;
     size_t i;
     uint64_t stageStart = 0u;
@@ -1083,6 +1158,24 @@ void NitroSound_Mix(NitroSoundChip *chip, int16_t *stereo, size_t frames)
             sProfCapturing += 1u;
     }
 #endif
+    outShift = chip->outputShift > 4u ? 4u : chip->outputShift;
+    /*
+     * Ordinary routing: no capture, channels 1 and 3 in the mixer, both
+     * outputs from the mixer. Then every channel adds into one stereo pair
+     * of arrays and the output stage reads it directly: the channel 1/3
+     * arrays, their clears and the per-frame routing are not needed
+     * (chatlog11 pass 2). Integer sums do not depend on their order (they
+     * wrap under -fwrapv), so the result is the general path's exactly.
+     * Every HGSS sound log so far mixes this way (cap_inst 0 in [sndprof]).
+     */
+    ordinary = !capturing && !bypass1 && !bypass3 && leftFrom == 0 && rightFrom == 0;
+#ifdef NITRO_SOUND_STATS
+    ordinary = 0;   /* the frame hook lives in the general path */
+#endif
+    if (capturing) {
+        capture_prepare(chip, 0, &captureRun[0]);
+        capture_prepare(chip, 1, &captureRun[1]);
+    }
 
     if (capturing) {
         /* A channel that reads a capture's buffer (reverb plays the
@@ -1113,7 +1206,32 @@ void NitroSound_Mix(NitroSoundChip *chip, int16_t *stereo, size_t frames)
         enum { BLOCK = MIX_BLOCK };
         size_t at;
 
-        for (at = 0; at < frames; at += BLOCK) {
+        for (at = 0; at < frames && ordinary; at += BLOCK) {
+            int32_t mixL[BLOCK], mixR[BLOCK];
+            const size_t n = frames - at < BLOCK ? frames - at : BLOCK;
+
+            stageStart = PROF_NOW();
+            memset(mixL, 0, n * sizeof(int32_t));
+            memset(mixR, 0, n * sizeof(int32_t));
+            PROF_ADD(NITRO_SOUND_STAGE_CLEAR, stageStart);
+            stageStart = PROF_NOW();
+            for (k = 0; k < count; ++k) {
+                Channel *c = &channels[k];
+
+                if (c->v->running) {
+                    mix_block(c, mixL, mixR, NULL, n);
+                }
+            }
+            PROF_ADD(NITRO_SOUND_STAGE_CHANNELS, stageStart);
+            stageStart = PROF_NOW();
+            if (control & 128u) {
+                output_block(stereo + 2u * at, mixL, mixR, n, masterVolume, outShift);
+            } else {
+                memset(stereo + 2u * at, 0, n * 4u);
+            }
+            PROF_ADD(NITRO_SOUND_STAGE_OUTPUT, stageStart);
+        }
+        for (at = 0; at < frames && !ordinary; at += BLOCK) {
             int32_t mixL[BLOCK], mixR[BLOCK], ch1L[BLOCK], ch1R[BLOCK], ch3L[BLOCK], ch3R[BLOCK];
             int32_t value0[BLOCK], value2[BLOCK];   /* channels 0 and 2, for captures */
             size_t n = frames - at < BLOCK ? frames - at : BLOCK;
@@ -1182,8 +1300,8 @@ void NitroSound_Mix(NitroSoundChip *chip, int16_t *stereo, size_t frames)
                     mixR[i] += ch3R[i];
                 }
                 if (capturing) {
-                    do_capture(chip, 0, (reg8(0x508u) & 2u) ? value0[i] : mixL[i]);
-                    do_capture(chip, 1, (reg8(0x509u) & 2u) ? value2[i] : mixR[i]);
+                    capture_frame(&captureRun[0], captureRun[0].fromChannel ? value0[i] : mixL[i]);
+                    capture_frame(&captureRun[1], captureRun[1].fromChannel ? value2[i] : mixR[i]);
                 }
                 if (control & 128u) {
                     int32_t left = leftFrom == 0 ? mixL[i] : leftFrom == 1 ? ch1L[i]
@@ -1201,11 +1319,8 @@ void NitroSound_Mix(NitroSoundChip *chip, int16_t *stereo, size_t frames)
                      * attenuating a flat-topped sample just halves the flat
                      * top, leaving the clipping distortion in the waveform.
                      * See outputShift in nitro_port_sound_chip.h. */
-                    if (chip->outputShift) {
-                        unsigned shift = chip->outputShift > 4u ? 4u : chip->outputShift;
-                        outputL >>= shift;
-                        outputR >>= shift;
-                    }
+                    outputL >>= outShift;
+                    outputR >>= outShift;
                 }
                 stereo[2u * (at + i)] = saturate(outputL);
                 stereo[2u * (at + i) + 1u] = saturate(outputR);
