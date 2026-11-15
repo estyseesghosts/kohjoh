@@ -11,6 +11,16 @@ distinct from unobserved LCD presentation. An offline visibility census
 reproduces 72 wholly offscreen Goldenrod batches. See the
 [investigation and hardware run plan](worklog/2026-11-14.md).
 
+The subsequent [hardware-log follow-up](worklog/2026-11-14-hotpaths.md)
+confirms ~37 ms logic / ~43 ms active game-frame medians in Goldenrod on O3DS.
+Commit `a5f2d14` targets split global-state submissions, repeated state-list
+recording, false lit-normal colour dependencies and affine matrix arithmetic.
+Native correctness checks and HeartGold Azahar intro/title/Goldenrod checks
+pass. Matching Goldenrod A/B reduces emulator logic median 7.3% and active
+logic+publish median 6.0%, with unchanged triangles; Ho-Oh changes little.
+Both editions' normal/profiled artifacts are built. Hardware speedup still
+requires a matching re-test; SoulSilver runtime validation remains open.
+
 ## Latest investigation (uncommitted, 2026-11-13)
 
 `o3ds-log-3` confirms CPU pressure from geometry and audio, with GPU queues
