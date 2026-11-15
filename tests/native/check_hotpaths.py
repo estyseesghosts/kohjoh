@@ -68,6 +68,16 @@ with tempfile.TemporaryDirectory(prefix='kohjoh-test-') as tmp:
     exe=tmp/'dl_key_test.exe'
     run([*common,'-DHGSS_PROFILE_OFF',f'-DSOURCE="{source.as_posix()}"',root/'tests/native/dl_key_test.c','-o',exe])
     print(run([exe]), flush=True)
+    capture_hash = None
+    for mode in ([], ['-DKJ_DL_NO_CACHE'], ['-DKJ_DL_VERIFY']):
+        exe=tmp/'g3_capture_test.exe'
+        run([*common,'-DHGSS_PROFILE_OFF',*mode,f'-DSOURCE="{source.as_posix()}"',root/'tests/native/g3_capture_test.c','-o',exe])
+        full, dry = run([exe]), run([exe, 'discard'])
+        assert full == dry, ('discard changed DS state/next picture', mode, full, dry)
+        if capture_hash is not None:
+            assert capture_hash == dry, ('cache mode changed capture', mode, capture_hash, dry)
+        capture_hash = dry
+    print(f'PASS capture: {capture_hash}, unchanged DS tests/counts and following pictures; no discarded vertex writes', flush=True)
     exe=tmp/'perf_test.exe'
     run([*common,'-I',root/'src',root/'tests/native/perf_test.c','-o',exe])
     print(run([exe]))

@@ -21,6 +21,8 @@ extern "C" {
 void NitroPort_GxDirectWrite(int opcode, uint32_t value);
 void NitroPort_GxFifoWord(uint32_t value);
 void NitroPort_GxFifoWords(const uint32_t *words, size_t count);
+/* Render-only producers may suppress a not-yet-started discarded scene. */
+int NitroPort_SkipSceneBuild(void);
 
 /* Bring GXSTAT's stack levels, test bits and RAM counters up to date. */
 void NitroPort_Gx3dRefreshStatus(void);

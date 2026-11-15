@@ -1,0 +1,152 @@
+From 2557dd95a622c518d008ebdf26faf270bd84e62f Mon Sep 17 00:00:00 2001
+From: terezi <jules@foxtails.me>
+Date: Sun, 15 Nov 2026 17:26:17 -0500
+Subject: [PATCH] Skip discarded field and title scene producers while keeping
+ updates
+
+---
+ include/billboard_lists.h |  3 +++
+ src/billboard_lists.c     | 11 ++++++++++
+ src/field/fieldmap.c      |  7 +++++++
+ src/title_screen.c        | 42 +++++++++++++++++++++++++++++++++------
+ 4 files changed, 57 insertions(+), 6 deletions(-)
+
+diff --git a/include/billboard_lists.h b/include/billboard_lists.h
+index 3b11d70f..fad6c810 100644
+--- a/include/billboard_lists.h
++++ b/include/billboard_lists.h
+@@ -8,6 +8,9 @@
+ void BillboardLists_Create(int count, enum HeapID heapID);
+ void BillboardLists_Delete(void);
+ void BillboardLists_Draw(void);
++#ifdef SDK_PORT_3DS
++void BillboardLists_AdvanceRetirements(void);
++#endif
+ void Billboard_ClearPendingFree(Billboard *billboard);
+ void BillboardObject_SetVisible(BillboardObject *object, u8 visible);
+ NNSG3dResMdl *BillboardObject_GetModel(BillboardObject *object);
+diff --git a/src/billboard_lists.c b/src/billboard_lists.c
+index ee9afb64..487188cb 100644
+--- a/src/billboard_lists.c
++++ b/src/billboard_lists.c
+@@ -137,6 +137,17 @@ void BillboardLists_Draw(void) {
+     }
+ }
+ 
++#ifdef SDK_PORT_3DS
++/* Acknowledge deferred frees even when this tick produces no geometry. */
++void BillboardLists_AdvanceRetirements(void) {
++    for (int i = 0; i < sBillboardLists.count; ++i) {
++        if (sBillboardLists.list[i].state == BILLBOARD_FREE_REQUESTED) {
++            sBillboardLists.list[i].state = BILLBOARD_FREE_PENDING;
++        }
++    }
++}
++#endif
++
+ Billboard *Billboard_Create(BillboardCreateParams *params) {
+     Billboard *billboard = BillboardLists_GetFree();
+     if (billboard == NULL) {
+diff --git a/src/field/fieldmap.c b/src/field/fieldmap.c
+index 737a617c..c51bba0c 100644
+--- a/src/field/fieldmap.c
++++ b/src/field/fieldmap.c
+@@ -583,6 +583,13 @@ static void FieldMap_FreeObjVramTransfer(void) {
+ }
+ 
+ static void FieldMap_Render3D(FieldSystem *fieldSystem) {
++#ifdef SDK_PORT_3DS
++    extern int NitroPort_SkipSceneBuild(void);
++    if (NitroPort_SkipSceneBuild()) {
++        BillboardLists_AdvanceRetirements();
++        return;
++    }
++#endif
+     CameraAngle camAngle;
+ 
+     Thunk_G3X_Reset();
+diff --git a/src/title_screen.c b/src/title_screen.c
+index 36d8b7bb..9e544063 100644
+--- a/src/title_screen.c
++++ b/src/title_screen.c
+@@ -91,7 +91,11 @@ static void TitleScreen_Delete3DVramMan(TitleScreenOverlayData *data);
+ static void TitleScreen_Load3DObjects(TitleScreenAnimObject *animObj, int texFileId, int anim1Id, int anim2Id, int anim3Id, int anim4Id, enum HeapID heapID);
+ static void TitleScreen_Unload3DObjects(TitleScreenAnimObject *animObj);
+ static void TitleScreen_AdvanceAnimObjsFrame(NNSG3dAnmObj **ppAnmObj, fx32 frameBy);
++#ifdef SDK_PORT_3DS
++static void TitleScreenAnimObjs_Run(TitleScreenAnimObject *animObj, BOOL draw);
++#else
+ static void TitleScreenAnimObjs_Run(TitleScreenAnimObject *animObj);
++#endif
+ static void TitleScreen_InitBgs(TitleScreenOverlayData *data);
+ static void TitleScreen_ReleaseBgs(TitleScreenOverlayData *data);
+ static BOOL TitleScreenAnim_InitObjectsAndCamera(TitleScreenAnimData *animData, BgConfig *bgConfig, enum HeapID heapID);
+@@ -383,7 +387,11 @@ static void TitleScreen_AdvanceAnimObjsFrame(NNSG3dAnmObj **ppAnmObj, fx32 frame
+     }
+ }
+ 
++#ifdef SDK_PORT_3DS
++static void TitleScreenAnimObjs_Run(TitleScreenAnimObject *animObj, BOOL draw) {
++#else
+ static void TitleScreenAnimObjs_Run(TitleScreenAnimObject *animObj) {
++#endif
+     MtxFx33 mtx = {
+         .m = {
+               { FX32_ONE, 0, 0 },
+@@ -396,15 +404,27 @@ static void TitleScreenAnimObjs_Run(TitleScreenAnimObject *animObj) {
+     case TITLESCREEN_MODEL_OFF:
+         break;
+     case TITLESCREEN_MODEL_STOP:
+-        Thunk_G3X_Reset();
+-        RequestSwap3DBuffers(GX_SORTMODE_AUTO, GX_BUFFERMODE_W);
++#ifdef SDK_PORT_3DS
++        if (draw) {
++#endif
++            Thunk_G3X_Reset();
++            RequestSwap3DBuffers(GX_SORTMODE_AUTO, GX_BUFFERMODE_W);
++#ifdef SDK_PORT_3DS
++        }
++#endif
+         animObj->state = TITLESCREEN_MODEL_OFF;
+         break;
+     case TITLESCREEN_MODEL_RUN:
+-        Thunk_G3X_Reset();
+-        Camera_PushLookAtToNNSGlb();
+-        Math_CalcRotationMatrixXYZ(&mtx, &animObj->rotationVec);
+-        GF3dRender_DrawModel(&animObj->renderObj, &animObj->translation, &mtx, &animObj->scale);
++#ifdef SDK_PORT_3DS
++        if (draw) {
++#endif
++            Thunk_G3X_Reset();
++            Camera_PushLookAtToNNSGlb();
++            Math_CalcRotationMatrixXYZ(&mtx, &animObj->rotationVec);
++            GF3dRender_DrawModel(&animObj->renderObj, &animObj->translation, &mtx, &animObj->scale);
++#ifdef SDK_PORT_3DS
++        }
++#endif
+         switch (animObj->subState) {
+         case TITLESCREEN_MODELSUB_STOP:
+             TitleScreen_AdvanceAnimObjsFrame(animObj->_3dAnmObjs, 0);
+@@ -568,9 +588,19 @@ static BOOL TitleScreenAnim_Run(TitleScreenAnimData *animData, BgConfig *bgConfi
+         ret = TRUE;
+         break;
+     }
++#ifdef SDK_PORT_3DS
++    extern int NitroPort_SkipSceneBuild(void);
++    BOOL draw = !NitroPort_SkipSceneBuild();
++    TitleScreenAnimObjs_Run(&animData->hooh_lugia, draw);
++    TitleScreenAnimObjs_Run(&animData->sparkles, draw);
++    if (draw) {
++        RequestSwap3DBuffers(GX_SORTMODE_AUTO, GX_BUFFERMODE_W);
++    }
++#else
+     TitleScreenAnimObjs_Run(&animData->hooh_lugia);
+     TitleScreenAnimObjs_Run(&animData->sparkles);
+     RequestSwap3DBuffers(GX_SORTMODE_AUTO, GX_BUFFERMODE_W);
++#endif
+     TitleScreenAnim_RunTopScreenGlow(animData);
+     return ret;
+ }
+-- 
+2.49.0
+

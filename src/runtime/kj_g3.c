@@ -561,6 +561,15 @@ typedef struct frame_buf {
 static frame_buf s_buf[2];
 static int s_build;          /* index of the frame being built */
 static bool s_have_display;  /* a swap has happened */
+static bool s_capture_requested = true;
+static bool s_capture_scene = true;
+#ifndef HGSS_PROFILE_OFF
+static uint32_t s_captured_scenes, s_discarded_scenes;
+static uint32_t s_skipped_producers, s_capture_frame_fifo;
+static uint64_t s_skipped_producer_fifo;
+static bool s_producer_skipped;
+static uint64_t s_discarded_vertices, s_discarded_indices;
+#endif
 static bool s_wide;
 static kj_g3_stats s_stats;
 
@@ -610,6 +619,33 @@ void kj_g3_set_wide(bool wide)
     s_wide = wide;
 }
 
+void kj_g3_set_capture(bool capture)
+{
+#ifndef HGSS_PROFILE_OFF
+    if (s_producer_skipped) {
+        s_skipped_producer_fifo += s_capture_frame_fifo;
+    }
+    s_capture_frame_fifo = 0;
+    s_producer_skipped = false;
+#endif
+    s_capture_requested = capture;
+    if (s_buf[s_build].frame.vert_count == 0 && !s_in_begin) {
+        s_capture_scene = capture;
+    }
+}
+
+int NitroPort_SkipSceneBuild(void)
+{
+    if (s_capture_requested || s_in_begin || s_buf[s_build].frame.vert_count != 0) {
+        return 0;
+    }
+#ifndef HGSS_PROFILE_OFF
+    ++s_skipped_producers;
+    s_producer_skipped = true;
+#endif
+    return 1;
+}
+
 void kj_g3_get_stats(kj_g3_stats *out)
 {
     *out = s_stats;
@@ -635,11 +671,13 @@ static bool current_gmtx(uint32_t *out)
         if (fb->pool_count >= KJ_G3_MAX_MATRICES) {
             return false;
         }
-        const mtx *c = clip_matrix();
-        kj_g3_matrix *dst = &fb->pool[fb->pool_count];
-        for (int i = 0; i < 4; ++i) {
-            for (int j = 0; j < 4; ++j) {
-                dst->m[i][j] = (float)c->m[i][j] * (1.0f / 4096.0f);
+        if (s_capture_scene) {
+            const mtx *c = clip_matrix();
+            kj_g3_matrix *dst = &fb->pool[fb->pool_count];
+            for (int i = 0; i < 4; ++i) {
+                for (int j = 0; j < 4; ++j) {
+                    dst->m[i][j] = (float)c->m[i][j] * (1.0f / 4096.0f);
+                }
             }
         }
         s_cur_gmtx = fb->pool_count++;
@@ -733,7 +771,10 @@ static int palette_slot(uint32_t gid)
     if (fb->frame.matrix_count >= KJ_G3_MAX_MATRICES) {
         return -1;
     }
-    fb->matrices[fb->frame.matrix_count++] = fb->pool[gid];
+    if (s_capture_scene) {
+        fb->matrices[fb->frame.matrix_count] = fb->pool[gid];
+    }
+    ++fb->frame.matrix_count;
     s_palette_gid[count] = gid;
     s_batch->matrix_count = count + 1;
     return count;
@@ -780,8 +821,10 @@ static bool local_vertex(uint32_t v, uint32_t *out)
         return false;
     }
     const uint32_t n = fb->frame.vert_count++;
-    fb->verts[n] = fb->verts[v];
-    fb->verts[n].mtx = (uint8_t)slot;
+    if (s_capture_scene) {
+        fb->verts[n] = fb->verts[v];
+        fb->verts[n].mtx = (uint8_t)slot;
+    }
     fb->vert_gmtx[n] = fb->vert_gmtx[v];
     *out = n;
     return true;
@@ -866,10 +909,12 @@ static void submit_vertex(void)
     /* 16 bytes as four words: x|y, z|mtx, rgba, s|t (kj_g3_vertex layout) */
     const uint32_t n = fb->frame.vert_count++;
     uint32_t *w = (uint32_t *)&fb->verts[n];
-    w[0] = (uint16_t)s_coord[0] | ((uint32_t)(uint16_t)s_coord[1] << 16);
-    w[1] = (uint16_t)s_coord[2] | ((uint32_t)slot << 16);
-    w[2] = s_color_rgba;
-    w[3] = (uint16_t)s_texcoord[0] | ((uint32_t)(uint16_t)s_texcoord[1] << 16);
+    if (s_capture_scene) {
+        w[0] = (uint16_t)s_coord[0] | ((uint32_t)(uint16_t)s_coord[1] << 16);
+        w[1] = (uint16_t)s_coord[2] | ((uint32_t)slot << 16);
+        w[2] = s_color_rgba;
+        w[3] = (uint16_t)s_texcoord[0] | ((uint32_t)(uint16_t)s_texcoord[1] << 16);
+    }
     fb->vert_gmtx[n] = (uint16_t)gid;
     s_slot_gid = gid;
     s_slot_idx = slot;
@@ -1102,8 +1147,20 @@ static void swap_buffers(uint32_t param)
     memcpy(f->toon_table, NitroPort_IoReg + 0x380, 64);
     f->serial = ++s_stats.swaps;
 
-    s_have_display = true;
-    s_build ^= 1;
+    if (s_capture_scene) {
+        s_have_display = true;
+        s_build ^= 1;
+#ifndef HGSS_PROFILE_OFF
+        ++s_captured_scenes;
+#endif
+    } else {
+#ifndef HGSS_PROFILE_OFF
+        ++s_discarded_scenes;
+        s_discarded_vertices += f->vert_count;
+        s_discarded_indices += f->index_count;
+#endif
+    }
+    s_capture_scene = s_capture_requested;
 
     fb = build();
     memset(&fb->frame, 0, sizeof(fb->frame));
@@ -1508,10 +1565,12 @@ static bool fast_vertex(void)
         return false;
     }
     uint32_t *w = (uint32_t *)&fb->verts[n];
-    w[0] = (uint16_t)s_coord[0] | ((uint32_t)(uint16_t)s_coord[1] << 16);
-    w[1] = (uint16_t)s_coord[2] | ((uint32_t)s_slot_idx << 16);
-    w[2] = s_color_rgba;
-    w[3] = (uint16_t)s_texcoord[0] | ((uint32_t)(uint16_t)s_texcoord[1] << 16);
+    if (s_capture_scene) {
+        w[0] = (uint16_t)s_coord[0] | ((uint32_t)(uint16_t)s_coord[1] << 16);
+        w[1] = (uint16_t)s_coord[2] | ((uint32_t)s_slot_idx << 16);
+        w[2] = s_color_rgba;
+        w[3] = (uint16_t)s_texcoord[0] | ((uint32_t)(uint16_t)s_texcoord[1] << 16);
+    }
     fb->vert_gmtx[n] = (uint16_t)s_cur_gmtx;
     fb->frame.vert_count = n + 1;
 
@@ -2349,10 +2408,12 @@ static bool dl_append_block(const dl_entry *e, const dl_block *b, uint32_t *v_fi
     const uint32_t *src = (const uint32_t *)(e->verts + b->first_vert);
     uint32_t *dst = (uint32_t *)&fb->verts[v0];
     for (uint32_t i = 0; i < b->nverts; ++i) {
-        dst[0] = src[0];
-        dst[1] = (src[1] & 0xFFFFu) | hi;
-        dst[2] = src[2];
-        dst[3] = src[3];
+        if (s_capture_scene) {
+            dst[0] = src[0];
+            dst[1] = (src[1] & 0xFFFFu) | hi;
+            dst[2] = src[2];
+            dst[3] = src[3];
+        }
         fb->vert_gmtx[v0 + i] = (uint16_t)gid;
         src += 4;
         dst += 4;
@@ -2369,7 +2430,7 @@ static bool dl_append_block(const dl_entry *e, const dl_block *b, uint32_t *v_fi
 #ifndef HGSS_PROFILE_OFF
     if (s_coarse_sample) {
         s_coarse_copy += svcGetSystemTick() - copy_start;
-        s_sample_copy_bytes += (uint64_t)b->nverts * sizeof(kj_g3_vertex) + b->nidx * 2u;
+        s_sample_copy_bytes += (s_capture_scene ? (uint64_t)b->nverts * sizeof(kj_g3_vertex) : 0) + b->nidx * 2u;
     }
 #endif
     return true;
@@ -2679,7 +2740,12 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
             fb->frame.index_count + e->nidx <= KJ_G3_MAX_INDICES &&
             fb->frame.batch_count + e->nblocks + 2 <= KJ_G3_MAX_BATCHES) {
 #ifdef KJ_DL_VERIFY
-            verify = true;
+            if (s_capture_scene) {
+                verify = true;
+            } else {
+                dl_replay(e, words);
+                return;
+            }
 #else
             dl_replay(e, words);
 #ifndef HGSS_PROFILE_OFF
@@ -2693,6 +2759,11 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
         }
     }
 
+    if (!s_capture_scene) {
+        /* State/tests/counts still run; never record unwritten GPU vertices. */
+        decode_words(words, count);
+        return;
+    }
     /* Only a miss (or diagnostic live verification) needs an entry snapshot. */
     dl_key key;
     dl_make_key(&key, lit, texgen, reads);
@@ -2841,6 +2912,7 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
 void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
 {
 #ifndef HGSS_PROFILE_OFF
+    s_capture_frame_fifo += (uint32_t)count;
     const bool outer = s_coarse_depth++ == 0;
     u64 start = 0;
     u64 decode = 0, replay = 0, copy = 0;
@@ -2885,6 +2957,16 @@ void kj_g3_dl_stats(uint32_t *hits, uint32_t *misses, uint32_t *uncacheable, uin
     s_coarse_n = 0;
     s_coarse_total = s_coarse_decode = s_coarse_replay = s_coarse_copy = 0;
     dl_profile_report();
+    NitroPort_Log("[g3capture] producer skips %lu (FIFO words %llu); swapped scenes captured %lu discarded %lu; "
+                  "discarded vertices %llu indices %llu (DS state/tests/counts still executed)",
+                  (unsigned long)s_skipped_producers,
+                  (unsigned long long)s_skipped_producer_fifo,
+                  (unsigned long)s_captured_scenes, (unsigned long)s_discarded_scenes,
+                  (unsigned long long)s_discarded_vertices, (unsigned long long)s_discarded_indices);
+    s_captured_scenes = s_discarded_scenes = 0;
+    s_skipped_producers = 0;
+    s_skipped_producer_fifo = 0;
+    s_discarded_vertices = s_discarded_indices = 0;
 #endif
     *hits = s_dl_hits;
     *misses = s_dl_misses;

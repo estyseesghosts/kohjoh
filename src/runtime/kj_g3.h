@@ -18,6 +18,12 @@ const kj_g3_frame *kj_g3_take_frame(void);
  * objects in the extension are not culled. */
 void kj_g3_set_wide(bool wide);
 
+/* Select capture for the next picture before its geometry is produced.
+ * A partially built scene keeps its choice until SWAP_BUFFERS. Discarded
+ * scenes still execute DS state/tests and counts; they never replace the
+ * last complete display scene. */
+void kj_g3_set_capture(bool capture);
+
 /* Vertex/index storage lives in GPU-readable memory; the 3DS side provides
  * it at startup (before the game runs). Two sets: build and display. */
 typedef struct kj_g3_storage {

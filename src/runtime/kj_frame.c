@@ -122,6 +122,7 @@ static void publish(void)
     in.engine_a_on_top = NitroPort_EngineAOnTop() != FALSE;
     s_last_publish_vblank = s_vblanks;
     kj_ctr_publish_frame(&in);
+    kj_g3_set_capture(kj_ctr_capture_next_frame());
 }
 
 void NitroPort_VBlankWorkDone(void)
