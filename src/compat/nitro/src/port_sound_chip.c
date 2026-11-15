@@ -34,10 +34,17 @@ static uint32_t sFrameIndex;
 #define STATS_CHANNEL_OF(base) (((base) - 0x400u) / 16u)
 #define STATS_TAP(c, i, v) do { if ((c)->tap) (c)->tap[(i)] = (v); } while (0)
 #else
+/* Frames per block. port_snd.c mixes in stretches up to the next sequencer
+ * tick, 170-171 frames; a 192-frame block takes a whole stretch at once
+ * instead of 128 + 43 (chatlog11 pass 2A). Unicorn bench: 96 -0.2%, 176 and
+ * 192 -2.5%, 256 -2.4% instructions against 128; the ordinary path's arrays
+ * (2 x 768 bytes, plus the channel's 768-byte samples and run) stay far
+ * inside the 16 KiB data cache. The general path's eight arrays take 6 KiB
+ * of the audio thread's 32 KiB stack. */
 #ifdef NITRO_SOUND_MIX_BLOCK
 #define MIX_BLOCK NITRO_SOUND_MIX_BLOCK
 #else
-#define MIX_BLOCK 128
+#define MIX_BLOCK 192
 #endif
 #define STATS_EVENT(channel, bit) ((void)0)
 #define STATS_CHANNEL_OF(base) 0u
