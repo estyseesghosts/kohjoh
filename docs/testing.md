@@ -14,6 +14,7 @@ profiling; it is not an O3DS timing authority.
 | `-Shots 10,30` | screenshots at seconds after launch |
 | `-Holds 900,5050` | screenshot when the log says game frame N is held |
 | `-Tag`, `-Timeout`, `-Extra` | output folder, hold timeout, seconds kept after the last shot |
+| `-Emulator exe` | Azahar executable (portable `user/` beside it is used when present; see parallel tests below) |
 
 Outputs: `build/azahar/<tag>/` (PNGs, program log, Azahar log). The harness
 resizes the window and is DPI-aware so captures are complete.
@@ -201,8 +202,9 @@ rebaselined (two engines for the summed fill counters).
     `GetMonData` from `_MonEncryptSegment` is `--stack _MonEncryptSegment:36`
     (16 bytes pushed by it, 8 locals + 12 to `lr` in `GetMonData`).
   - Partial results are printed if Azahar closes mid-run. Give the harness a
-    late enough last shot, and never start a second harness while one runs:
-    each `run.ps1` kills every Azahar when it finishes.
+    late enough last shot, and never start a second harness on the same
+    executable: `run.ps1` refuses one already running, and harnesses older
+    than `8fb6f54` kill every Azahar when they finish.
   - Samples are taken when Azahar's JIT stops at a block boundary, so tight
     loops are over-represented. Use samples to find *where*; use `[perf]`
     stage times (instruction counts) to measure *how much*.

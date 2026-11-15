@@ -56,6 +56,7 @@ See [today's worklog](worklog/2026-11-13.md#o3ds-log-3-repair-measurements-and-c
 | Audio | run | user heard music; Azahar now has DSP firmware, NDSP runs |
 | Sound mixer ADPCM render pass (`da6b36c`, `dacb07d`) | verified | host differential test bit-exact (100k programs); Azahar title 125 → 102 instructions per channel-sample |
 | Audio cost plan (chatlog11, `4756c78`..`52f78b6`) | verified (Azahar) | Unicorn full-chip differential bit-exact; Azahar Goldenrod mixer 107.6 → 48.0 ticks per channel-sample, 14.8% → 6.6% of the core; decoded-ADPCM cache verify build 0 mismatches; held samples (DS) by default. O3DS unmeasured. [worklog](worklog/2026-11-15-audio.md) |
+| FIFO cache hits compare keys in place (PR #6, merged `8fb6f54`) | verified (host) | `check_hotpaths.py` differentials and 20k-key corpus; O3DS unmeasured. [worklog](worklog/2026-11-15-fifo.md) |
 | CIA, RomFS pack, title save archive | not implemented | path lookup only ([`paths.c`](../src/storage/paths.c)) |
 
 ### Performance
@@ -102,8 +103,9 @@ for that reason (not visible in Azahar).
 
 **Sound mixer (o3ds-log-1):** 20-30% of the O3DS application core in every
 window, ~170 cycles per channel-sample, almost all channels ADPCM. Cut by
-18% in Azahar instructions (`dacb07d`); O3DS gain unmeasured (the old loop
-also spilled to the stack every frame, which Azahar does not charge).
+18% in Azahar instructions (`dacb07d`), then by the chatlog11 plan to 48
+Azahar ticks per channel-sample (6.6% of the core in Goldenrod;
+[audio worklog](worklog/2026-11-15-audio.md)). O3DS gain unmeasured.
 
 ## Next
 

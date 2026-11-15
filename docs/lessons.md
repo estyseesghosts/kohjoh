@@ -133,6 +133,17 @@ What went wrong, and the fix:
   data from logs of the real workload.
 - **Editing files from Windows Python** turned LF into CRLF (a 900-line
   diff); write with `newline=''`.
+- **`sed` insertions through Git Bash** turned a `"
+"` in
+  `hgss_game.py` into a real newline (SyntaxError at build time). Use the
+  editor tool or a script file for anything with escapes.
+- **A cache check placed in the wrong path:** an early header comparison
+  in the fill path compared the wrong bytes. The verify build and the
+  harness caught it; every cache check belongs where the entry is used.
+- **Gaps found only by mutation:** the first coverage programs never shared
+  a sound between channels or rewrote bytes inside a playing sound, so
+  breaking cache invalidation still passed. Mutate each safety check once
+  and confirm the harness fails before trusting it.
 
 ## Rules
 
