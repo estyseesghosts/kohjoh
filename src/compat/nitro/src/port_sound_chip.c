@@ -972,7 +972,7 @@ static uint8_t *cache_bytes(const AdpcmEntry *e)
     return (uint8_t *)cache_pcm(e) + cache_bytes_offset(e->nSamples);
 }
 
-static void cache_drop(AdpcmEntry *e)
+static __attribute__((noinline, cold)) void cache_drop(AdpcmEntry *e)
 {
     int16_t *link = &sCacheBucket[cache_bucket(e->source)];
     const int16_t self = (int16_t)(e - sCacheEntry);
@@ -1005,7 +1005,7 @@ static AdpcmEntry *cache_find(uint32_t source, uint32_t nSamples)
 /* A new entry for c's sound with sample 0 (the header) decoded; NULL if the
  * sound is too large. The arena is a log: space is taken after the newest
  * entry (or from the start), and whatever lies there is evicted. */
-static AdpcmEntry *cache_create(const Channel *c)
+static __attribute__((noinline, cold)) AdpcmEntry *cache_create(const Channel *c)
 {
     const uint32_t n = c->nSamples;
     const uint32_t size = (cache_bytes_offset(n) + c->endByte + 3u) & ~3u;
@@ -1056,7 +1056,7 @@ static AdpcmEntry *cache_create(const Channel *c)
 
 /* Decodes the entry on to sample upTo - 1, from bytes copied out of the
  * live data first; a checkpoint at every 8th sample. */
-static void cache_fill(AdpcmEntry *e, const uint8_t *source, uint32_t upTo)
+static __attribute__((noinline)) void cache_fill(AdpcmEntry *e, const uint8_t *source, uint32_t upTo)
 {
     int16_t *pcm = cache_pcm(e);
     uint8_t *checkpoints = cache_checkpoints(e);
