@@ -1,0 +1,23 @@
+# Keep every game update, deliberately discard every second scene in QA.
+every: 10
+0 -
+300 START
+310 START
+320 START
+330 START
+340 START
+350 START
+400 START
+410 START
+420 START
+430 START
+440 START
+450 START
+1800 A
+1820 A
+1840 A
+dump 1501
+freeze 1501 3
+dump 2101
+freeze 2101 3
+end: 5000
