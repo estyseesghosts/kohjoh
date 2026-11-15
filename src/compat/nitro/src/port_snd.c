@@ -87,11 +87,65 @@ typedef struct PortSoundAlarm {
 } PortSoundAlarm;
 static PortSoundAlarm sAlarms[16];
 
-static void sound_lock(void)
+/*
+ * Who takes the lock, for the profile build's [sndlock] line: the game
+ * thread sending sound commands (it runs the ARM7 command processor itself),
+ * the game thread reading driver status or pumping replies, and the audio
+ * thread mixing a stretch. coffeepot ctr/engineering/audio.md ("measure
+ * synchronisation, not only mixing") and threading.md (G-Diffuser's 25.8 ms
+ * audio-lock wait) are why waits and holds are counted separately.
+ */
+enum {
+    SOUND_ROLE_COMMAND,
+    SOUND_ROLE_STATUS,
+    SOUND_ROLE_AUDIO,
+    SOUND_ROLE_COUNT
+};
+
+#ifndef HGSS_PROFILE_OFF
+#define LOCK_HIST_BUCKETS 16u
+typedef struct LockStats {
+    uint64_t acquires;
+    uint64_t contended;
+    uint64_t waitTicks;
+    uint64_t waitMax;
+    uint64_t holdTicks;
+    uint64_t holdMax;
+    uint32_t holdHist[LOCK_HIST_BUCKETS];   /* log2 microseconds */
+} LockStats;
+/* Updated only while the lock is held (waits are added after acquiring),
+ * read under the lock by the report: no torn values. */
+static LockStats sLockStats[SOUND_ROLE_COUNT];
+static uint64_t sLockHeldSince;
+
+static unsigned lock_bucket(uint64_t ticks)
+{
+    uint64_t us = ticks / 268u;
+    unsigned b = 0;
+
+    while (us != 0u && b + 1u < LOCK_HIST_BUCKETS) {
+        us >>= 1;
+        ++b;
+    }
+    return b;
+}
+#endif
+
+static void sound_lock_as(int role)
 {
     unsigned spins = 0;
+#ifndef HGSS_PROFILE_OFF
+    uint64_t waitStart = 0u;
+    int contended = 0;
+#endif
 
     while (__sync_lock_test_and_set(&sLock, 1u)) {
+#ifndef HGSS_PROFILE_OFF
+        if (!contended) {
+            contended = 1;
+            waitStart = SNDPROF_NOW();
+        }
+#endif
         while (__atomic_load_n(&sLock, __ATOMIC_RELAXED)) {
             /* Short critical sections, so spin a little; then sleep, never
              * the ARM9 OS scheduler. The sleep matters: the sound thread
@@ -103,10 +157,55 @@ static void sound_lock(void)
             }
         }
     }
+#ifndef HGSS_PROFILE_OFF
+    {
+        LockStats *st = &sLockStats[role];
+
+        ++st->acquires;
+        if (contended) {
+            uint64_t wait = SNDPROF_NOW() - waitStart;
+
+            ++st->contended;
+            st->waitTicks += wait;
+            if (wait > st->waitMax) {
+                st->waitMax = wait;
+            }
+        }
+        /* Status reads are many and tiny: counted, not timed. */
+        sLockHeldSince = role == SOUND_ROLE_STATUS ? 0u : SNDPROF_NOW();
+    }
+#else
+    (void)role;
+#endif
 }
+
+static void sound_unlock_as(int role)
+{
+#ifndef HGSS_PROFILE_OFF
+    if (role != SOUND_ROLE_STATUS) {
+        LockStats *st = &sLockStats[role];
+        uint64_t hold = SNDPROF_NOW() - sLockHeldSince;
+
+        st->holdTicks += hold;
+        if (hold > st->holdMax) {
+            st->holdMax = hold;
+        }
+        ++st->holdHist[lock_bucket(hold)];
+    }
+#else
+    (void)role;
+#endif
+    __sync_lock_release(&sLock);
+}
+
+static void sound_lock(void)
+{
+    sound_lock_as(SOUND_ROLE_STATUS);
+}
+
 static void sound_unlock(void)
 {
-    __sync_lock_release(&sLock);
+    sound_unlock_as(SOUND_ROLE_STATUS);
 }
 
 /* ARM9 SDK status getters share this lock with the real ARM7 driver.
@@ -139,6 +238,9 @@ void NitroPort_ResetSoundState(void)
      * shift in NitroSound_Mix (not after it) keeps loud peaks smooth: a
      * post-saturation trim would only halve an already flat-topped sample. */
     sChip.outputShift = 1;
+#if defined(__3DS__) && !defined(HGSS_PROFILE_OFF)
+    NitroSound_SetProfileClock(svcGetSystemTick);
+#endif
     /* Executes Nintendo's ARM7 init, but not its OS/CreateThread path. */
     N7_SND_Init(0);
     __atomic_store_n(&sReady, 1, __ATOMIC_RELEASE);
@@ -161,11 +263,11 @@ void NitroPort_HandleSound(int tag, u32 data, BOOL err)
 {
     (void)tag;
     if (err || data == 0u) return; /* request-command-proc wakeup */
-    sound_lock();
+    sound_lock_as(SOUND_ROLE_COMMAND);
     /* The ARM9 SDK allows at most eight in-flight command lists, so a
      * 32-entry FIFO cannot overflow during supported operation. */
     if (sCount == SOUND_QUEUE_CAPACITY) {
-        sound_unlock();
+        sound_unlock_as(SOUND_ROLE_COMMAND);
         NitroPort_Log("[nitro] ARM7 sound queue overrun");
         return;
     }
@@ -180,7 +282,7 @@ void NitroPort_HandleSound(int tag, u32 data, BOOL err)
         N7_SND_CommandProc();
         N7_SND_UpdateSharedWork();
     }
-    sound_unlock();
+    sound_unlock_as(SOUND_ROLE_COMMAND);
 }
 
 /* Called by the ARM7 driver's SND_StartChannel (NitroSDK patch 0023), under
@@ -230,6 +332,82 @@ static void sound_tick(void)
     }
 }
 
+#ifndef HGSS_PROFILE_OFF
+/* p99 of a log2-microsecond histogram: the upper edge of the bucket that
+ * reaches 99% of the samples. */
+static unsigned lock_p99_us(const uint32_t *hist)
+{
+    uint64_t total = 0u, seen = 0u;
+    unsigned b;
+
+    for (b = 0; b < LOCK_HIST_BUCKETS; ++b) {
+        total += hist[b];
+    }
+    for (b = 0; b < LOCK_HIST_BUCKETS; ++b) {
+        seen += hist[b];
+        if (total != 0u && seen * 100u >= total * 99u) {
+            return 1u << b;
+        }
+    }
+    return 0u;
+}
+
+/*
+ * Cumulative, sampled mixer stages ([sndstage]: one Mix call in 16 timed;
+ * CHANNELS contains ADPCM and SCALE; the remainder of TOTAL is probes and
+ * per-call bookkeeping), ADPCM reuse ([sndadpcm]: decoded nibbles, those a
+ * decoded-sample cache could serve, sounds started, and the distinct sounds
+ * started in this window with their compressed bytes) and the lock
+ * ([sndlock]: per role acquires, contended waits, hold times). Audio thread.
+ */
+static void report_stages_and_locks(void)
+{
+    NitroSoundStageProfile prof;
+    static const char *const names[SOUND_ROLE_COUNT] = { "command", "status", "audio" };
+    LockStats copy[SOUND_ROLE_COUNT];
+    unsigned role;
+
+    NitroSound_StageProfile(&prof);
+    NitroPort_Log("[sndstage] calls %llu frames %llu ch_frames %llu setup %llu clear %llu channels %llu adpcm %llu scale %llu output %llu total %llu",
+                  (unsigned long long)prof.sampledCalls,
+                  (unsigned long long)prof.sampledFrames,
+                  (unsigned long long)prof.sampledChannelFrames,
+                  (unsigned long long)prof.stageTicks[NITRO_SOUND_STAGE_SETUP],
+                  (unsigned long long)prof.stageTicks[NITRO_SOUND_STAGE_CLEAR],
+                  (unsigned long long)prof.stageTicks[NITRO_SOUND_STAGE_CHANNELS],
+                  (unsigned long long)prof.stageTicks[NITRO_SOUND_STAGE_ADPCM],
+                  (unsigned long long)prof.stageTicks[NITRO_SOUND_STAGE_SCALE],
+                  (unsigned long long)prof.stageTicks[NITRO_SOUND_STAGE_OUTPUT],
+                  (unsigned long long)prof.stageTicks[NITRO_SOUND_STAGE_TOTAL]);
+    NitroPort_Log("[sndadpcm] decoded %llu clean %llu keyons %llu window_sources %lu window_bytes %llu overflow %lu",
+                  (unsigned long long)prof.decoded,
+                  (unsigned long long)prof.decodedClean,
+                  (unsigned long long)prof.keyOns,
+                  (unsigned long)prof.sources,
+                  (unsigned long long)prof.sourceBytes,
+                  (unsigned long)prof.sourceOverflow);
+    NitroSound_ResetSourceWindow();
+    /* Copied under the lock, logged outside it: logging writes to the SD
+     * card and must not hold up the game's sound commands. */
+    sound_lock_as(SOUND_ROLE_STATUS);
+    memcpy(copy, sLockStats, sizeof(copy));
+    sound_unlock_as(SOUND_ROLE_STATUS);
+    for (role = 0; role < SOUND_ROLE_COUNT; ++role) {
+        const LockStats *st = &copy[role];
+
+        NitroPort_Log("[sndlock] %s acquires %llu contended %llu wait_ticks %llu wait_max %llu hold_ticks %llu hold_max %llu hold_p99_us %u",
+                      names[role],
+                      (unsigned long long)st->acquires,
+                      (unsigned long long)st->contended,
+                      (unsigned long long)st->waitTicks,
+                      (unsigned long long)st->waitMax,
+                      (unsigned long long)st->holdTicks,
+                      (unsigned long long)st->holdMax,
+                      lock_p99_us(st->holdHist));
+    }
+}
+#endif
+
 /* Audio-side clock, completely independent of game frames and OS_Halt.
  * Exactly 32768 output samples correspond to one second; an original
  * sequencer tick fires every 5.2095 ms (SOUND_TICK_SAMPLES), including
@@ -255,7 +433,7 @@ void NitroPort_SoundRender(int16_t *stereo, size_t frames)
         uint64_t toTick;
         size_t n;
 
-        sound_lock();
+        sound_lock_as(SOUND_ROLE_AUDIO);
         if (sCount) {
             N7_SND_CommandProc();
             N7_SND_UpdateSharedWork();
@@ -289,7 +467,7 @@ void NitroPort_SoundRender(int16_t *stereo, size_t frames)
             sProfSoundTicks += 1u;
 #endif
         }
-        sound_unlock();
+        sound_unlock_as(SOUND_ROLE_AUDIO);
         done += n;
 #ifndef HGSS_PROFILE_OFF
         sProfStretches += 1u;
@@ -320,6 +498,7 @@ void NitroPort_SoundRender(int16_t *stereo, size_t frames)
                       (unsigned long long)formatCh[3],
                       (unsigned long long)capturing,
                       (unsigned long long)dependentCh);
+        report_stages_and_locks();
     }
 #endif
 }

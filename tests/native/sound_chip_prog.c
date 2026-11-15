@@ -47,10 +47,27 @@ static uint64_t digest_state = 1469598103934665603ull;
 /* GCC would turn these loops into calls to themselves. */
 #define HARNESS_NO_LIBCALL __attribute__((optimize("no-tree-loop-distribute-patterns")))
 
+/* Word stores, as newlib's ARM memset does for the mixer's word-aligned
+ * arrays (a byte loop would overstate the clears several times over). */
 HARNESS_NO_LIBCALL void *memset(void *dst, int value, size_t count)
 {
     uint8_t *bytes = dst;
+    const uint32_t word = 0x01010101u * (uint8_t)value;
 
+    while (count != 0u && ((uintptr_t)bytes & 3u) != 0u) {
+        *bytes++ = (uint8_t)value;
+        --count;
+    }
+    while (count >= 16u) {
+        uint32_t *words = (uint32_t *)(void *)bytes;
+
+        words[0] = word;
+        words[1] = word;
+        words[2] = word;
+        words[3] = word;
+        bytes += 16;
+        count -= 16u;
+    }
     while (count--) {
         *bytes++ = (uint8_t)value;
     }

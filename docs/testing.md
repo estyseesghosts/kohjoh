@@ -166,6 +166,21 @@ rebaselined (two engines for the summed fill counters).
   ticks, frames and active channels; cycles per channel-sample is
   Δmix_ticks / (Δactive_ch / Δmix_calls) / Δmix_frames. Needs
   `dspfirm.cdc` in Azahar's `sdmc/3ds/`, or NDSP fails and the mixer never runs.
+  `python tools/azahar/sndprof.py LOG [--from S]` computes it.
+  Printed with it (profile builds): `[sndstage]` cumulative ticks of one
+  `NitroSound_Mix` call in 16 (setup, clear, channels ⊃ adpcm + scale,
+  output; total includes the ~24 clock probes per sampled call, so stage
+  ticks per channel-frame read higher than `[sndprof]`); `[sndadpcm]`
+  cumulative nibbles decoded (`clean`: decoder state came from the data
+  alone), ADPCM key-ons, and the distinct sounds started in the window with
+  their compressed bytes; `[sndlock]` per lock role (game `command`, game
+  `status`, `audio`): acquires, contended waits with ticks and max, hold
+  ticks/max/p99 µs (status holds not timed). Every 600 wave buffers,
+  `[sndout]`: wake-ups, underruns (all buffers played; start-up excluded),
+  queue low-water in frames, NDSP dropped frames, refill (wake to last
+  submit) and render µs; `[sndpmu]`: ARM11 counters around the render
+  (cycles, I-cache misses, D-cache read misses; 0 in Azahar, which does not
+  emulate them).
 - **PC sampling**: with Azahar's GDB stub enabled (`use_gdbstub=true`, port
   24689), `python tools/azahar/gdbprof.py build/kj/pokeheartgold-3ds.elf
   --samples 1500 --interval 0.02 [--callers fn1,fn2]` prints a function

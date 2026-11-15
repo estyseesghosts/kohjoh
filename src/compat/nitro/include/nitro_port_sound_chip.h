@@ -75,6 +75,39 @@ void NitroSound_Mix(NitroSoundChip *chip, int16_t *stereo, size_t frames);
  * starts over from its beginning, as on the DS. */
 void NitroSound_KeyOn(NitroSoundChip *chip, unsigned channel);
 
+#ifndef HGSS_PROFILE_OFF
+/* Profile builds: sampled mixer stage ticks and ADPCM reuse counters
+ * (port_snd.c's [sndstage] and [sndadpcm] lines). CHANNELS contains ADPCM and
+ * SCALE; TOTAL is whole sampled calls. */
+enum {
+    NITRO_SOUND_STAGE_SETUP,
+    NITRO_SOUND_STAGE_CLEAR,
+    NITRO_SOUND_STAGE_CHANNELS,
+    NITRO_SOUND_STAGE_ADPCM,
+    NITRO_SOUND_STAGE_SCALE,
+    NITRO_SOUND_STAGE_OUTPUT,
+    NITRO_SOUND_STAGE_TOTAL,
+    NITRO_SOUND_STAGE_COUNT
+};
+
+typedef struct NitroSoundStageProfile {
+    uint64_t stageTicks[NITRO_SOUND_STAGE_COUNT];
+    uint64_t sampledCalls;
+    uint64_t sampledFrames;
+    uint64_t sampledChannelFrames;
+    uint64_t decoded;          /* ADPCM nibbles decoded */
+    uint64_t decodedClean;     /* of them, with decoder state from the data alone */
+    uint64_t keyOns;           /* ADPCM sounds started */
+    uint32_t sources;          /* distinct (address, length) started in the window */
+    uint64_t sourceBytes;      /* their compressed bytes */
+    uint32_t sourceOverflow;   /* starts not tracked: table full */
+} NitroSoundStageProfile;
+
+void NitroSound_SetProfileClock(uint64_t (*now)(void));
+void NitroSound_StageProfile(NitroSoundStageProfile *out);
+void NitroSound_ResetSourceWindow(void);
+#endif
+
 #ifdef NITRO_SOUND_STATS
 /* Test-only (3ds_port/nitro/tests/sdat_render.c): the mixer's state for one
  * output frame, handed to the frame hook once the frame is made. Only built
