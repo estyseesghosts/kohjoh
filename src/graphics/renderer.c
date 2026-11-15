@@ -44,8 +44,8 @@ static bool s_skipped_last; /* the previous publish skipped its picture */
 
 /* GPU-side time per 600 pictures (coffeepot performance.md, "Per-operation
  * GPU times": P3D is command-list execution, PPF display transfers, PSC
- * memory fills; C3D_GetDrawingTime is the latest completed queue, so it is
- * averaged, never matched to the current picture). */
+ * memory fills; C3D_GetDrawingTime is sampled after the next FrameBegin
+ * wait and associated with the preceding non-empty submission). */
 static bool s_perflog_on;
 static bool s_perflog_valid;
 static uint64_t s_perflog_tick;
@@ -53,6 +53,13 @@ static GSPGPU_PerfLog s_perflog_prev;
 static float s_draw_ms_sum;
 static float s_draw_ms_max;
 static float s_cmdbuf_max;
+#ifndef HGSS_PROFILE_OFF
+static bool s_queue_pending;
+static uint32_t s_queue_game, s_queue_scene;
+static uint32_t s_completed_game, s_completed_scene, s_completed_queues;
+static uint32_t s_empty_submissions, s_same_scene, s_previous_scene;
+static uint32_t s_window_first_game;
+#endif
 
 bool kj_renderer_init(void)
 {
@@ -108,7 +115,7 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
     if (!s_ready) {
         return;
     }
-    kj_perf_publish_begin();
+    kj_perf_publish_begin(in->g3 != NULL ? in->g3->serial : 0);
     /* Running two or more refreshes behind: this picture would be shown
      * late anyway. Skip its GPU work (the game tick already happened) so
      * the schedule recovers; counted, never silent. Never two in a row
@@ -129,6 +136,22 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
     uint64_t t = kj_perf_now();
     C3D_FrameBegin(0); /* waits for the previous frame's GPU work */
     kj_perf_add(KJ_PERF_GPU_WAIT, kj_perf_now() - t);
+#ifndef HGSS_PROFILE_OFF
+    /* Coffeepot performance.md: only after FrameBegin's queue wait does
+     * drawing time belong to the previous non-empty submission. Empty
+     * frames leave C3D's old timer unchanged; never count it again. */
+    if (s_queue_pending) {
+        const float draw_ms = C3D_GetDrawingTime();
+        s_draw_ms_sum += draw_ms;
+        if (draw_ms > s_draw_ms_max) {
+            s_draw_ms_max = draw_ms;
+        }
+        ++s_completed_queues;
+        s_completed_game = s_queue_game;
+        s_completed_scene = s_queue_scene;
+        s_queue_pending = false;
+    }
+#endif
     kj_gpu_quads_reset();
     kj_atlas_begin_frame();
     kj_g2d_begin_frame();
@@ -140,18 +163,25 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
     kj_screen_draw(KJ_SCREEN_TOP, top_engine, in);
     kj_screen_draw(KJ_SCREEN_BOTTOM, top_engine ^ 1, in);
 
+#ifndef HGSS_PROFILE_OFF
+    s_queue_pending = kj_target_get(KJ_SCREEN_TOP)->rt->used ||
+                      kj_target_get(KJ_SCREEN_BOTTOM)->rt->used;
+    s_empty_submissions += !s_queue_pending;
+    s_queue_game = in->game_frame;
+    s_queue_scene = in->g3 != NULL ? in->g3->serial : 0;
+    if (s_frames % 600u == 0u) {
+        s_window_first_game = in->game_frame;
+    }
+    s_same_scene += s_frames != 0u && s_queue_scene == s_previous_scene;
+    s_previous_scene = s_queue_scene;
+#endif
     t = kj_perf_now();
     C3D_FrameEnd(0);
     kj_perf_add(KJ_PERF_SUBMIT, kj_perf_now() - t);
 #ifndef HGSS_PROFILE_OFF
     {
-        const float draw_ms = C3D_GetDrawingTime();
         const float usage = C3D_GetCmdBufUsage();
 
-        s_draw_ms_sum += draw_ms;
-        if (draw_ms > s_draw_ms_max) {
-            s_draw_ms_max = draw_ms;
-        }
         if (usage > s_cmdbuf_max) {
             s_cmdbuf_max = usage;
         }
@@ -164,6 +194,15 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
     kj_perf_publish_end(in->game_frame);
 #ifndef HGSS_PROFILE_OFF
     if (s_frames % 600u == 0u) {
+        kj_log("[scene] submissions %lu-%lu game %lu-%lu latest scene %lu; same scene %lu; "
+               "empty submissions %lu; GPU queue complete game %lu scene %lu; "
+               "LCD presentation unobserved (submission intervals are a proxy)",
+               (unsigned long)(s_frames - 599u), (unsigned long)s_frames,
+               (unsigned long)s_window_first_game, (unsigned long)in->game_frame,
+               (unsigned long)s_queue_scene, (unsigned long)s_same_scene,
+               (unsigned long)s_empty_submissions, (unsigned long)s_completed_game,
+               (unsigned long)s_completed_scene);
+        s_same_scene = s_empty_submissions = 0;
         kj_g2d_stats g;
         kj_g3d_stats d;
         kj_atlas_stats a;
@@ -246,12 +285,15 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
              * A failed read also requires a fresh baseline. */
             if (!valid) p3d = ppf = psc = 0;
             kj_log("[gputime] 600 pictures: GSP us/picture P3D %lu PPF %lu PSC %lu (log %s); "
-                   "C3D drawing ms avg %.2f max %.2f; cmdbuf use max %u%%",
-                   p3d, ppf, psc, valid ? "valid" : "baseline/unavailable", (double)(s_draw_ms_sum / 600.0f),
+                   "C3D completed queues %lu drawing ms avg %.2f max %.2f; cmdbuf use max %u%%",
+                   p3d, ppf, psc, valid ? "valid" : "baseline/unavailable",
+                   (unsigned long)s_completed_queues,
+                   (double)(s_completed_queues != 0u ? s_draw_ms_sum / s_completed_queues : 0.0f),
                    (double)s_draw_ms_max, (unsigned)(s_cmdbuf_max * 100.0f));
             s_draw_ms_sum = 0.0f;
             s_draw_ms_max = 0.0f;
             s_cmdbuf_max = 0.0f;
+            s_completed_queues = 0;
         }
     }
 
