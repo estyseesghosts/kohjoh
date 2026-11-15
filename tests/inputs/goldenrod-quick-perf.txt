@@ -1,0 +1,21 @@
+# Benchmark-save input: skip the intro, enter CONTINUE, then stand still.
+# No dumps/freezes. Scripts disable present skipping: this measures CPU work,
+# not the player's real presentation cadence. Capture at 60 and 100 seconds.
+every: 10
+0 -
+300 START
+310 START
+320 START
+330 START
+340 START
+350 START
+400 START
+410 START
+420 START
+430 START
+440 START
+450 START
+1800 A
+1820 A
+1840 A
+end: 7200

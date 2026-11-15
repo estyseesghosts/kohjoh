@@ -86,6 +86,39 @@ static void mtx_mul(mtx *out, const mtx *a, const mtx *b)
     *out = r;
 }
 
+/* Left operand from MTX_MULT_4x3/3x3 has an implicit affine column.
+ * Preserve the single fixed-point rounding after each dot product, including
+ * projective right operands. Repeated base transforms need 36/48 products
+ * instead of 64, before the identity/translation fast paths below.
+ * See Coffeepot cpu-optimization.md: reduce integer work before using SIMD. */
+static void mtx_mul_affine(mtx *out, const mtx *a, const mtx *b, bool rotation_only)
+{
+    mtx r;
+    const unsigned rows = rotation_only ? 3u : 4u;
+    for (unsigned i = 0; i < rows; ++i) {
+        for (unsigned j = 0; j < 4; ++j) {
+            int64_t acc = (int64_t)a->m[i][0] * b->m[0][j] +
+                          (int64_t)a->m[i][1] * b->m[1][j] +
+                          (int64_t)a->m[i][2] * b->m[2][j];
+            if (i == 3) {
+                acc += (int64_t)FX_ONE * b->m[3][j];
+            }
+            r.m[i][j] = (int32_t)(acc >> 12);
+        }
+    }
+    if (rotation_only) {
+        memcpy(r.m[3], b->m[3], sizeof(r.m[3]));
+    }
+    *out = r;
+}
+
+static bool rotation_is_identity(const mtx *m)
+{
+    return m->m[0][0] == FX_ONE && m->m[1][1] == FX_ONE && m->m[2][2] == FX_ONE &&
+           m->m[0][1] == 0 && m->m[0][2] == 0 && m->m[1][0] == 0 &&
+           m->m[1][2] == 0 && m->m[2][0] == 0 && m->m[2][1] == 0;
+}
+
 static int32_t sign_bits(uint32_t v, int bits)
 {
     const uint32_t mask = 1u << (bits - 1);
@@ -156,17 +189,36 @@ static void load_matrix(const mtx *m)
     }
 }
 
-static void mult_matrix(const mtx *m, bool scale_only_pos)
+static void translate_matrix(const uint32_t *p);
+
+static void mult_matrix(const mtx *m, unsigned op)
 {
+    if (op == 0x1A && rotation_is_identity(m)) {
+        return;
+    }
+    if (op == 0x19 && rotation_is_identity(m)) {
+        const uint32_t translation[3] = {
+            (uint32_t)m->m[3][0], (uint32_t)m->m[3][1], (uint32_t)m->m[3][2]
+        };
+        translate_matrix(translation);
+        return;
+    }
     if (s_mtx_mode == 2) {
-        mtx_mul(&s_pos, m, &s_pos);
-        if (!scale_only_pos) {
+        if (op == 0x18) {
+            mtx_mul(&s_pos, m, &s_pos);
             mtx_mul(&s_vec, m, &s_vec);
-            vec_changed();
+        } else {
+            mtx_mul_affine(&s_pos, m, &s_pos, op == 0x1A);
+            mtx_mul_affine(&s_vec, m, &s_vec, op == 0x1A);
         }
+        vec_changed();
     } else {
         mtx *t = selected();
-        mtx_mul(t, m, t);
+        if (op == 0x18) {
+            mtx_mul(t, m, t);
+        } else {
+            mtx_mul_affine(t, m, t, op == 0x1A);
+        }
     }
     if (s_mtx_mode != 3) {
         clip_changed();
@@ -189,6 +241,9 @@ static void scale_rows(mtx *t, const uint32_t *p)
 
 static void scale_matrix(const uint32_t *p)
 {
+    if (p[0] == FX_ONE && p[1] == FX_ONE && p[2] == FX_ONE) {
+        return;
+    }
     scale_rows(s_mtx_mode == 2 ? &s_pos : selected(), p);
     if (s_mtx_mode != 3) {
         clip_changed();
@@ -207,6 +262,9 @@ static void translate_rows(mtx *t, const uint32_t *p)
 
 static void translate_matrix(const uint32_t *p)
 {
+    if ((p[0] | p[1] | p[2]) == 0) {
+        return;
+    }
     if (s_mtx_mode == 2) {
         translate_rows(&s_pos, p);
         translate_rows(&s_vec, p); /* row 3 of the vector matrix: lighting never reads it */
@@ -1165,7 +1223,7 @@ static void execute_body(unsigned op, const uint32_t *p)
     case 0x18: case 0x19: case 0x1A: {
         mtx m;
         read_matrix(&m, op, p);
-        mult_matrix(&m, false);
+        mult_matrix(&m, op);
         break;
     }
     case 0x1B:
@@ -1726,7 +1784,9 @@ typedef struct dl_entry {
 #ifndef HGSS_PROFILE_OFF
     uint32_t reject_mask; /* persistent reason for never, even in later windows */
 #endif
-    uint32_t reads;    /* DL_READS_*: entry inputs the list consumes */
+    /* Dependencies for entry active/pending light enables (two bits).
+     * A lit NORMAL overwrites colour; an unlit NORMAL leaves it inherited. */
+    uint32_t reads[4];
     uint32_t *words;
     dl_key key;
     bool lit, texgen;
@@ -1882,20 +1942,39 @@ static void rec_command(unsigned op, const uint32_t *p)
 #define DL_READS_COORD 2u
 #define DL_READS_TEXCOORD 4u
 #define DL_READS_TEXM 8u
+#define DL_HAS_VERTEX_DATA 16u /* any COLOR/NORMAL/TEXCOORD/VTX command */
 
-static uint32_t dl_entry_reads(const uint32_t *w, size_t n)
+static uint32_t dl_entry_reads(const uint32_t *w, size_t n, unsigned lights)
 {
     uint32_t reads = 0, written = 0;
+    bool lit = (lights & 1u) != 0, pending_lit = (lights & 2u) != 0;
     size_t i = 0;
     while (i < n) {
         uint32_t cmds = w[i++];
         for (int k = 0; k < 4; ++k, cmds >>= 8) {
             const unsigned op = cmds & 0xFF;
+            const size_t params = s_param_count[op];
+            if (params > n - i) {
+                return DL_READS_COLOR | DL_READS_COORD | DL_READS_TEXCOORD |
+                       DL_READS_TEXM | DL_HAS_VERTEX_DATA;
+            }
+            if (op >= 0x20 && op <= 0x28) {
+                reads |= DL_HAS_VERTEX_DATA;
+            }
             switch (op) {
             case 0x20:
-                /* NORMAL (0x21) writes the colour only when lighting is on,
-                 * which can change inside the list: not counted as a write */
                 written |= DL_READS_COLOR;
+                break;
+            case 0x21:
+                if (lit) {
+                    written |= DL_READS_COLOR;
+                }
+                break;
+            case 0x29:
+                pending_lit = (w[i] & 0xFu) != 0;
+                break;
+            case 0x40:
+                lit = pending_lit;
                 break;
             case 0x22:
                 written |= DL_READS_TEXCOORD;
@@ -1915,10 +1994,40 @@ static uint32_t dl_entry_reads(const uint32_t *w, size_t n)
             default:
                 break;
             }
-            i += s_param_count[op];
+            i += params;
         }
     }
     return reads;
+}
+
+static void dl_set_reads(dl_entry *e, const uint32_t *words, size_t count)
+{
+    for (unsigned lights = 0; lights < 4; ++lights) {
+        e->reads[lights] = dl_entry_reads(words, count, lights);
+    }
+}
+
+/* State-only replay consumes live parameters. Validate every packed opcode
+ * word before using the retained event offsets, so changing camera/material
+ * parameters do not force a new recording. A changed command layout falls
+ * through to the ordinary full comparison/recording path. */
+static bool dl_state_layout_same(const dl_entry *e, const uint32_t *words, size_t count)
+{
+    size_t i = 0;
+    while (i < count) {
+        uint32_t commands = e->words[i];
+        if (commands != words[i++]) {
+            return false;
+        }
+        for (unsigned k = 0; k < 4; ++k, commands >>= 8) {
+            const size_t params = s_param_count[commands & 0xFFu];
+            if (params > count - i) {
+                return false;
+            }
+            i += params;
+        }
+    }
+    return true;
 }
 
 /* The unused tail is not part of the key. Most map lists consume neither
@@ -2216,7 +2325,7 @@ static bool dl_append_block(const dl_entry *e, const dl_block *b, uint32_t *v_fi
 }
 
 
-static void dl_replay_impl(dl_entry *e)
+static void dl_replay_impl(dl_entry *e, const uint32_t *words)
 {
     uint32_t list_v0 = s_buf[s_build].frame.vert_count;
     uint32_t last_block_v0 = list_v0, last_block_rel = 0;
@@ -2234,8 +2343,14 @@ static void dl_replay_impl(dl_entry *e)
             last_block_rel = b->first_vert;
         } else {
             const uint32_t off = ev & 0xFFFFFu;
-            execute(ev >> 20, e->words + off);
+            execute(ev >> 20, words + off);
         }
+    }
+    if ((e->reads[0] & DL_HAS_VERTEX_DATA) == 0) {
+        /* Every command was replayed. No vertex-data operations were baked
+         * into blocks, so retain the live command results, including colour,
+         * tests and primitive state, rather than a previous entry's exit. */
+        return;
     }
     s_color = e->exit.color;
     memcpy(s_coord, e->exit.coord, sizeof(s_coord));
@@ -2254,12 +2369,12 @@ static void dl_replay_impl(dl_entry *e)
     update_color_rgba();
 }
 
-static void dl_replay(dl_entry *e)
+static void dl_replay(dl_entry *e, const uint32_t *words)
 {
 #ifndef HGSS_PROFILE_OFF
     const u64 t = s_coarse_sample ? svcGetSystemTick() : 0;
 #endif
-    dl_replay_impl(e);
+    dl_replay_impl(e, words);
 #ifndef HGSS_PROFILE_OFF
     if (s_coarse_sample) s_coarse_replay += svcGetSystemTick() - t;
 #endif
@@ -2447,7 +2562,16 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
         e->ptr = words;
         e->count = (uint32_t)count;
         memcpy(e->words, words, count * 4u);
-        e->reads = dl_entry_reads(words, count);
+        dl_set_reads(e, words, count);
+    } else if (e->recorded && !e->never && (e->reads[0] & DL_HAS_VERTEX_DATA) == 0 &&
+               dl_state_layout_same(e, words, count)) {
+        e->last_frame = s_stats.swaps;
+        dl_replay(e, words);
+#ifndef HGSS_PROFILE_OFF
+        ++s_dl_hits;
+        s_dl_cov[DLC_HIT] += (uint32_t)count;
+#endif
+        return;
     } else if (e->never && (s_stats.swaps & DL_NEVER_RECHECK_MASK) != 0u) {
         /* An unrecordable list decodes live whatever its content, so the
          * content check only matters for noticing it became recordable;
@@ -2476,7 +2600,7 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
             dl_drop_recording(e);
             e->never = false;
             e->needs_light = false;
-            e->reads = dl_entry_reads(words, count);
+            dl_set_reads(e, words, count);
         }
     }
     e->last_frame = s_stats.swaps;
@@ -2495,8 +2619,10 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
     const bool lit = e->needs_light || ((s_attr | s_attr_pending) & 0xFu) != 0;
     dl_key key;
     bool verify = false;
-    const size_t key_bytes = dl_key_size(lit, texgen, e->reads);
-    dl_make_key(&key, lit, texgen, e->reads);
+    const unsigned entry_lights = ((s_attr & 0xFu) != 0) | (((s_attr_pending & 0xFu) != 0) << 1);
+    const uint32_t reads = e->reads[entry_lights];
+    const size_t key_bytes = dl_key_size(lit, texgen, reads);
+    dl_make_key(&key, lit, texgen, reads);
     if (e->recorded && e->lit == lit && e->texgen == texgen &&
         memcmp(&key, &e->key, key_bytes) == 0) {
         frame_buf *fb = &s_buf[s_build];
@@ -2506,7 +2632,7 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
 #ifdef KJ_DL_VERIFY
             verify = true;
 #else
-            dl_replay(e);
+            dl_replay(e, words);
 #ifndef HGSS_PROFILE_OFF
             ++s_dl_hits;
 #endif
