@@ -8,7 +8,7 @@
 /* Shared PICA state helpers with a bound-state cache: citro3d marks a
  * texture dirty on every bind, even of the same texture (GPU_2D.md 8). */
 
-typedef enum kj_program_id { KJ_PROGRAM_NONE, KJ_PROGRAM_2D, KJ_PROGRAM_3D } kj_program_id;
+typedef enum kj_program_id { KJ_PROGRAM_NONE, KJ_PROGRAM_2D, KJ_PROGRAM_3D, KJ_PROGRAM_3D_LIT } kj_program_id;
 
 bool kj_gpu_init(void);
 void kj_gpu_exit(void);
@@ -41,6 +41,12 @@ int kj_gpu_uloc_2d_xform(void);
 int kj_gpu_uloc_2d_uvscale(void);
 int kj_gpu_uloc_3d_palette(void);
 int kj_gpu_uloc_3d_texscale(void);
+
+typedef struct kj_lit_uniforms {
+    int direction, direction_low, half, half_low;
+    int ambient, diffuse, specular, emission, params, shininess;
+} kj_lit_uniforms;
+const kj_lit_uniforms *kj_gpu_lit_uniforms(void);
 
 /* TEV presets. */
 void kj_gpu_tev_texture_modulate(void); /* tex0 * vertex colour */

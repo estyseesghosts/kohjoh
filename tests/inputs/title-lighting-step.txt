@@ -1,0 +1,6 @@
+# Odd frames are captured in the deliberate alternating-skip QA build.
+dump 2301
+freeze 2301 4
+dump 2501
+freeze 2501 4
+end: 5400

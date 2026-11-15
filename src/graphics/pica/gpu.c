@@ -21,11 +21,15 @@ extern const u8 g2d_shbin[];
 extern const u32 g2d_shbin_size;
 extern const u8 g3d_shbin[];
 extern const u32 g3d_shbin_size;
+extern const u8 g3d_lit_shbin[];
+extern const u32 g3d_lit_shbin_size;
 
 #define ARENA_QUADS 16384u
 
-static DVLB_s *s_dvlb_2d, *s_dvlb_3d;
-static shaderProgram_s s_prog_2d, s_prog_3d;
+static DVLB_s *s_dvlb_2d, *s_dvlb_3d, *s_dvlb_lit;
+static shaderProgram_s s_prog_2d, s_prog_3d, s_prog_lit;
+static kj_lit_uniforms s_lit;
+static int s_lit_palette, s_lit_texscale;
 static C3D_AttrInfo s_attr_2d, s_attr_3d;
 static kj_program_id s_program;
 static C3D_Tex *s_bound[3];
@@ -40,7 +44,8 @@ bool kj_gpu_init(void)
 {
     s_dvlb_2d = DVLB_ParseFile((u32 *)g2d_shbin, g2d_shbin_size);
     s_dvlb_3d = DVLB_ParseFile((u32 *)g3d_shbin, g3d_shbin_size);
-    if (s_dvlb_2d == NULL || s_dvlb_3d == NULL) {
+    s_dvlb_lit = DVLB_ParseFile((u32 *)g3d_lit_shbin, g3d_lit_shbin_size);
+    if (s_dvlb_2d == NULL || s_dvlb_3d == NULL || s_dvlb_lit == NULL) {
         kj_log("[gpu] shader parse failed");
         return false;
     }
@@ -48,6 +53,20 @@ bool kj_gpu_init(void)
     shaderProgramSetVsh(&s_prog_2d, &s_dvlb_2d->DVLE[0]);
     shaderProgramInit(&s_prog_3d);
     shaderProgramSetVsh(&s_prog_3d, &s_dvlb_3d->DVLE[0]);
+    shaderProgramInit(&s_prog_lit);
+    shaderProgramSetVsh(&s_prog_lit, &s_dvlb_lit->DVLE[0]);
+    s_lit_palette = shaderInstanceGetUniformLocation(s_prog_lit.vertexShader, "palette");
+    s_lit_texscale = shaderInstanceGetUniformLocation(s_prog_lit.vertexShader, "texscale");
+    s_lit.direction = shaderInstanceGetUniformLocation(s_prog_lit.vertexShader, "light_dir_hi");
+    s_lit.direction_low = shaderInstanceGetUniformLocation(s_prog_lit.vertexShader, "light_dir_lo");
+    s_lit.half = shaderInstanceGetUniformLocation(s_prog_lit.vertexShader, "light_half_hi");
+    s_lit.half_low = shaderInstanceGetUniformLocation(s_prog_lit.vertexShader, "light_half_lo");
+    s_lit.ambient = shaderInstanceGetUniformLocation(s_prog_lit.vertexShader, "ambient");
+    s_lit.diffuse = shaderInstanceGetUniformLocation(s_prog_lit.vertexShader, "diffuse");
+    s_lit.specular = shaderInstanceGetUniformLocation(s_prog_lit.vertexShader, "specular");
+    s_lit.emission = shaderInstanceGetUniformLocation(s_prog_lit.vertexShader, "emission");
+    s_lit.params = shaderInstanceGetUniformLocation(s_prog_lit.vertexShader, "params");
+    s_lit.shininess = shaderInstanceGetUniformLocation(s_prog_lit.vertexShader, "shininess");
     s_uloc_xform = shaderInstanceGetUniformLocation(s_prog_2d.vertexShader, "xform");
     s_uloc_uvscale = shaderInstanceGetUniformLocation(s_prog_2d.vertexShader, "uvscale");
     s_uloc_palette = shaderInstanceGetUniformLocation(s_prog_3d.vertexShader, "palette");
@@ -87,8 +106,10 @@ void kj_gpu_exit(void)
 {
     shaderProgramFree(&s_prog_2d);
     shaderProgramFree(&s_prog_3d);
+    shaderProgramFree(&s_prog_lit);
     DVLB_Free(s_dvlb_2d);
     DVLB_Free(s_dvlb_3d);
+    DVLB_Free(s_dvlb_lit);
     linearFree(s_arena);
     linearFree(s_quad_indices);
 }
@@ -113,8 +134,8 @@ void kj_gpu_use_program(kj_program_id id)
         BufInfo_Init(bi);
         BufInfo_Add(bi, s_arena, sizeof(kj_v2d), 3, 0x210);
         s_bound_base = s_arena;
-    } else if (id == KJ_PROGRAM_3D) {
-        C3D_BindProgram(&s_prog_3d);
+    } else if (id == KJ_PROGRAM_3D || id == KJ_PROGRAM_3D_LIT) {
+        C3D_BindProgram(id == KJ_PROGRAM_3D_LIT ? &s_prog_lit : &s_prog_3d);
         C3D_SetAttrInfo(&s_attr_3d);
         /* the 3D module binds its vertex buffer */
     }
@@ -204,12 +225,17 @@ int kj_gpu_uloc_2d_uvscale(void)
 
 int kj_gpu_uloc_3d_palette(void)
 {
-    return s_uloc_palette;
+    return s_program == KJ_PROGRAM_3D_LIT ? s_lit_palette : s_uloc_palette;
 }
 
 int kj_gpu_uloc_3d_texscale(void)
 {
-    return s_uloc_texscale;
+    return s_program == KJ_PROGRAM_3D_LIT ? s_lit_texscale : s_uloc_texscale;
+}
+
+const kj_lit_uniforms *kj_gpu_lit_uniforms(void)
+{
+    return &s_lit;
 }
 
 void kj_gpu_tev_texture_modulate(void)
