@@ -64,6 +64,8 @@ static uint64_t s_refill_ticks;
 static uint64_t s_refill_max;
 static uint64_t s_render_ticks;
 static uint64_t s_render_max;
+static uint64_t s_flush_ticks;
+static uint64_t s_flush_max;
 static uint32_t s_dropped_base;
 static bool s_pmu;
 static uint64_t s_pmu_cycles;
@@ -137,13 +139,15 @@ static void report(void)
     const uint32_t dropped = ndspGetDroppedFrames();
 
     kj_log("[sndout] fills %lu wakes %lu underruns %lu low_water_frames %lu dsp_dropped %lu "
-           "refill_us avg %llu max %llu render_us avg %llu max %llu",
+           "refill_us avg %llu max %llu render_us avg %llu max %llu flush_us avg %llu max %llu",
            (unsigned long)s_fills, (unsigned long)s_wakes, (unsigned long)s_underruns,
            (unsigned long)s_low_water_frames, (unsigned long)(dropped - s_dropped_base),
            (unsigned long long)(s_refill_ticks / (s_wakes ? s_wakes : 1u) / 268u),
            (unsigned long long)(s_refill_max / 268u),
            (unsigned long long)(s_render_ticks / (s_fills ? s_fills : 1u) / 268u),
-           (unsigned long long)(s_render_max / 268u));
+           (unsigned long long)(s_render_max / 268u),
+           (unsigned long long)(s_flush_ticks / (s_fills ? s_fills : 1u) / 268u),
+           (unsigned long long)(s_flush_max / 268u));
     if (s_pmu) {
         kj_log("[sndpmu] mixer cycles %llu icache_miss %llu dcache_read_miss %llu",
                (unsigned long long)s_pmu_cycles, (unsigned long long)s_pmu_icache_miss,
@@ -154,8 +158,41 @@ static void report(void)
     s_low_water_frames = UINT32_MAX;
     s_refill_max = 0;
     s_render_max = 0;
+    s_flush_max = 0;
 }
 #endif
+
+/*
+ * Make a filled wave buffer visible to the DSP. The kernel call cleans the
+ * lines itself; DSP_FlushDataCache is an IPC request to the dsp system
+ * module. coffeepot ctr/engineering/memory-and-cache.md (Old 3DS,
+ * measured): svcFlushProcessDataCache ~22 us for 1 KiB against ~58 us for
+ * the IPC flush of the same range, and a reported 1-5 ms for
+ * DSP_FlushDataCache when core 1 is busy. Buffers are 2 KiB, 32-byte
+ * aligned (linearAlloc) and not touched again until NDSP_WBUF_DONE.
+ * --define KJ_SND_DSP_FLUSH_IPC restores the IPC flush for an A/B.
+ */
+static void flush_for_dsp(int16_t *pcm)
+{
+#ifndef HGSS_PROFILE_OFF
+    const u64 start = svcGetSystemTick();
+#endif
+#ifdef KJ_SND_DSP_FLUSH_IPC
+    DSP_FlushDataCache(pcm, BUFFER_BYTES);
+#else
+    svcFlushProcessDataCache(CUR_PROCESS_HANDLE, (u32)pcm, BUFFER_BYTES);
+#endif
+#ifndef HGSS_PROFILE_OFF
+    {
+        const u64 ticks = svcGetSystemTick() - start;
+
+        s_flush_ticks += ticks;
+        if (ticks > s_flush_max) {
+            s_flush_max = ticks;
+        }
+    }
+#endif
+}
 
 static void ndsp_frame_callback(void *arg)
 {
@@ -193,7 +230,7 @@ static void fill(ndspWaveBuf *wb)
         ++s_fills;
     }
 #endif
-    DSP_FlushDataCache(wb->data_pcm16, BUFFER_BYTES);
+    flush_for_dsp(wb->data_pcm16);
     ndspChnWaveBufAdd(0, wb);
 }
 
@@ -237,6 +274,7 @@ static void audio_thread(void *arg)
                 s_wakes = 0;
                 s_refill_ticks = 0;
                 s_render_ticks = 0;
+                s_flush_ticks = 0;
             }
         }
 #endif
