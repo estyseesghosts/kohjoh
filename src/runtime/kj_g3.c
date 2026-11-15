@@ -744,8 +744,12 @@ static const uint8_t EXPAND5[32] = {
 
 static void update_color_rgba(void)
 {
-    resolve_color();
     const unsigned a = (s_attr >> 16) & 31u;
+    if (s_color_gpu && s_color_pending) {
+        s_color_rgba = (s_color_rgba & 0x00FFFFFFu) | ((uint32_t)EXPAND5[a] << 24);
+        return;
+    }
+    resolve_color();
     s_color_rgba = (uint32_t)EXPAND5[s_color & 31u] | ((uint32_t)EXPAND5[(s_color >> 5) & 31u] << 8) |
                    ((uint32_t)EXPAND5[(s_color >> 10) & 31u] << 16) | ((uint32_t)EXPAND5[a] << 24);
 }
@@ -2305,7 +2309,9 @@ static size_t dl_key_size(bool lit, bool texgen, uint32_t reads)
 
 static void dl_make_key(dl_key *k, bool lit, bool texgen, uint32_t reads)
 {
-    resolve_color();
+    if (reads & DL_READS_COLOR) {
+        resolve_color();
+    }
     memset(k, 0, dl_key_size(lit, texgen, reads));
     k->attr_pending = s_attr_pending;
     k->attr = s_attr;
@@ -2357,7 +2363,9 @@ static void dl_make_key(dl_key *k, bool lit, bool texgen, uint32_t reads)
  * Coffeepot cpu-optimization.md: small hot data, avoid repeated copies. */
 static bool dl_key_matches(const dl_key *k, bool lit, bool texgen, uint32_t reads)
 {
-    resolve_color();
+    if (reads & DL_READS_COLOR) {
+        resolve_color();
+    }
     if (k->attr_pending != s_attr_pending || k->attr != s_attr ||
         k->tex_param != s_tex_param || k->tex_pltt != s_tex_pltt ||
         k->viewport != s_viewport || k->mtx_mode != (uint32_t)s_mtx_mode) {
@@ -3115,7 +3123,8 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
         dl_set_reads(e, words, count);
     }
 #ifdef KJ_G3_GPU_LIGHTING
-    else if ((e->reads[0] & DL_HAS_NORMAL) || s_color_gpu || e->vertex_plan) {
+    else if ((e->reads[0] & DL_HAS_NORMAL) || e->vertex_plan ||
+             (s_color_gpu && (e->reads[0] & DL_READS_COLOR))) {
         vertex_plan(e, words, count);
         return;
     }
@@ -3162,7 +3171,8 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
     }
     e->last_frame = s_stats.swaps;
 #ifdef KJ_G3_GPU_LIGHTING
-    if ((e->reads[0] & DL_HAS_NORMAL) || s_color_gpu || e->vertex_plan) {
+    if ((e->reads[0] & DL_HAS_NORMAL) || e->vertex_plan ||
+        (s_color_gpu && (e->reads[0] & DL_READS_COLOR))) {
         vertex_plan(e, words, count);
         return;
     }
@@ -3179,7 +3189,11 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
         return;
     }
     const bool texgen = (s_tex_param >> 30) != 0;
+#ifdef KJ_G3_GPU_LIGHTING
+    const bool lit = e->needs_light;
+#else
     const bool lit = e->needs_light || ((s_attr | s_attr_pending) & 0xFu) != 0;
+#endif
     bool verify = false;
     const unsigned entry_lights = ((s_attr & 0xFu) != 0) | (((s_attr_pending & 0xFu) != 0) << 1);
     const uint32_t reads = e->reads[entry_lights];

@@ -111,3 +111,5 @@ with tempfile.TemporaryDirectory(prefix='kohjoh-test-') as tmp:
     exe=tmp/'perf_test.exe'
     run([*common,'-I',root/'src',root/'tests/native/perf_test.c','-o',exe])
     print(run([exe]))
+
+print(run(['python', root/'tests/native/pica_lighting_test.py']), flush=True)
