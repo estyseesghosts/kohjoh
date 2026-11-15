@@ -81,7 +81,8 @@ function Read-NewLog {
     try { return $reader.ReadToEnd() } finally { $reader.Dispose() }
   } finally { $stream.Dispose() }
 }
-$p = Start-Process -FilePath $Emulator -ArgumentList "`"$dsx`"" -WindowStyle Hidden -PassThru
+$windowStyle = if ($Shots -ne "" -or $Holds -ne "") { "Normal" } else { "Hidden" }
+$p = Start-Process -FilePath $Emulator -ArgumentList "`"$dsx`"" -WindowStyle $windowStyle -PassThru
 try {
 $start = Get-Date
 # A fixed, large window so the two screens are readable in the shots.
