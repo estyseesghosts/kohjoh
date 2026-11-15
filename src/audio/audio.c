@@ -19,6 +19,15 @@
 #include <string.h>
 
 void NitroPort_SoundRender(int16_t *stereo, size_t frames);
+void NitroPort_SoundSetInterpolation(int enabled);
+
+/* Held samples, as the DS plays them, unless the build asks for linear
+ * interpolation (--define KJ_SND_INTERPOLATE; see port_snd.c). */
+#ifdef KJ_SND_INTERPOLATE
+#define SOUND_INTERPOLATE 1
+#else
+#define SOUND_INTERPOLATE 0
+#endif
 
 #define SAMPLE_RATE 32768.0f
 #define BUFFER_FRAMES 512u /* 15.6 ms per wave buffer */
@@ -236,6 +245,7 @@ static void audio_thread(void *arg)
 
 bool kj_audio_init(void)
 {
+    NitroPort_SoundSetInterpolation(SOUND_INTERPOLATE);
     if (R_FAILED(ndspInit())) {
         return false;
     }
@@ -279,7 +289,8 @@ bool kj_audio_init(void)
     ndspSetCallback(ndsp_frame_callback, NULL);
     LightEvent_Signal(&s_event);
     s_ready = true;
-    kj_log("[audio] NDSP 32768 Hz stereo, %u x %u frames", BUFFER_COUNT, BUFFER_FRAMES);
+    kj_log("[audio] NDSP 32768 Hz stereo, %u x %u frames, %s", BUFFER_COUNT, BUFFER_FRAMES,
+           SOUND_INTERPOLATE ? "interpolated samples" : "held samples (DS)");
     return true;
 }
 

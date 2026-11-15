@@ -96,6 +96,7 @@ The shared vendored-library trees are `build/hgss-sdk`, `build/hgss-nns`, and
 | `KJ_G3_ZERO_TRACE` | logs the first geometry commands that leave a zero position/projection matrix (`[g3zero]`) | diagnostic |
 | `KJ_DL_NO_CACHE` | turns off the display-list cache (on by default: replays recorded vertex blocks; state commands still run) | A/B and bisects |
 | `KJ_DL_VERIFY` | with the cache on: decode hits live and compare with the recording (`[dlverify] MISMATCH`), plus `[dlwhy]`/`[dlcov]` coverage lines | diagnostic |
+| `KJ_SND_INTERPOLATE` | linear interpolation between sound samples (smoother, an enhancement); default holds samples as the DS mixer does, about 6 fewer ARM11 instructions per channel and output frame | audio option |
 
 Always pass these as `--define`. An inline variable such as `FOO=1 python ...`
 works inside the `bash.exe -lc` shell but **is dropped when MSYS2 Python is

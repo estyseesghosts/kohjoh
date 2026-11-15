@@ -220,6 +220,23 @@ void NitroPort_SoundSharedUnlock(void)
     sound_unlock();
 }
 
+/*
+ * Original-DS playback holds each source sample until the next (nearest
+ * sample; GBATEK sound channels, melonDS's default, chatlog11 pass 2);
+ * linear interpolation is smoother and costs about 6 instructions per
+ * channel and output frame more on the ARM11. The runtime picks one
+ * (KJ_SND_INTERPOLATE builds interpolate) before or after the reset.
+ */
+static uint8_t sInterpolate;
+
+void NitroPort_SoundSetInterpolation(int enabled)
+{
+    sound_lock();
+    sInterpolate = enabled ? 1u : 0u;
+    sChip.interpolate = sInterpolate;
+    sound_unlock();
+}
+
 void NitroPort_ResetSoundState(void)
 {
     sound_lock();
@@ -228,9 +245,10 @@ void NitroPort_ResetSoundState(void)
     sClock = sTickPhase = 0;
     memset(sAlarms, 0, sizeof(sAlarms));
     NitroSound_Reset(&sChip, NITRO_SOUND_RATE);
-    /* Smooth sampled sounds, as the DS's own output (and emulators) give
-     * them: held samples sound harsh, with a hiss above the music. */
-    sChip.interpolate = 1;
+    /* Sample playback: held samples as the DS's mixer plays them (the
+     * default), or linear interpolation between them, an enhancement
+     * (NitroPort_SoundSetInterpolation; melonDS offers the same option). */
+    sChip.interpolate = sInterpolate;
     /* 6 dB of headroom before the mixer's 16-bit saturation. The DS's
      * 20.8-bit mixer attenuates at its output stage and clips only at the
      * final 10-bit DAC; the title's calibrated DS capture peaks around 0.42
