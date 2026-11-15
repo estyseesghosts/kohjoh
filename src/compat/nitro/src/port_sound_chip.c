@@ -730,7 +730,10 @@ static inline __attribute__((always_inline)) size_t adpcm_render_frames(
     return frames;
 }
 
-static size_t adpcm_render(Channel *c, int32_t *out, size_t frames)
+/* The frame-by-frame renderer for blocks the run renderer leaves (a sound
+ * ending, a run longer than its buffer): rare, so out of line. */
+static __attribute__((noinline, cold)) size_t adpcm_render_exact(Channel *c, int32_t *out,
+                                                                 size_t frames)
 {
     if (c->interpolate) {
         if ((c->step >> 32) == 0u) {
@@ -742,13 +745,194 @@ static size_t adpcm_render(Channel *c, int32_t *out, size_t frames)
 }
 
 /*
+ * The played stream of an ADPCM channel: the samples its cursor stands on,
+ * one after another, loop wraps included. A block of frames moves the cursor
+ * by a known number of source samples, count = (phase + frames * step) >> 32,
+ * so they can be decoded first in a loop that does nothing else, and each
+ * frame then picks its sample from that run by its phase (chatlog11 pass 3;
+ * coffeepot ctr/engineering/cpu-optimization.md: a compact loop per kind of
+ * work instead of one loop interleaving both, which spilled registers to the
+ * stack every frame).
+ *
+ * run[0] is the sample before the current one (the interpolator's "last"),
+ * run[1] the current one, run[1 + k] the one after k advances. Output and
+ * voice state are exactly adpcm_render_frames': the same nibbles decoded in
+ * the same order, wraps through adpcm_to_loop, the loop state saved at the
+ * same index. A run that would end the sound, or is longer than the buffer,
+ * is left to adpcm_render_frames.
+ */
+#define RUN_MAX (2u * MIX_BLOCK + 2u)
+
+/*
+ * Decodes count consecutive nibbles from nibble first on (nibble k makes
+ * source sample k + 1) into out, carrying the decoder state. Nothing else
+ * happens in the loop, so its state stays in registers.
+ */
+static inline __attribute__((always_inline)) void adpcm_decode_span(
+    const uint8_t *source, uint32_t first, uint32_t count, int16_t *out,
+    int32_t *predictorInOut, int32_t *stepIndexInOut)
+{
+    const uint8_t *bytes = source + 4u;
+    const uint16_t (*const delta)[8] = sAdpcmDelta;
+    const int8_t *const indexDelta = sIndexDelta;
+    int32_t predictor = *predictorInOut;
+    int32_t stepIndex = *stepIndexInOut;
+    uint32_t nibble = first;
+    int16_t *const end = out + count;
+
+    while (out != end) {
+        const uint32_t byte = bytes[nibble >> 1];
+        const uint32_t code = (nibble & 1u) ? byte >> 4 : byte & 15u;
+        const int32_t change = delta[stepIndex][code & 7u];
+
+        predictor += (code & 8u) ? -change : change;
+        predictor = sat16(predictor);
+        stepIndex += indexDelta[code & 7u];
+        stepIndex = stepIndex < 0 ? 0 : stepIndex;
+        stepIndex = stepIndex > 88 ? 88 : stepIndex;
+        *out++ = (int16_t)predictor;
+        ++nibble;
+    }
+    *predictorInOut = predictor;
+    *stepIndexInOut = stepIndex;
+}
+
+/* Decodes count advances into run[2 .. count + 1]; 0 if the sound would end
+ * in them (nothing is changed then). Spans run up to the next wrap or the
+ * loop start (where the loop state is saved, as adpcm_render_frames does). */
+static int adpcm_decode_run(Channel *c, int16_t *run, uint32_t count)
+{
+    NitroSoundVoice *v = c->v;
+    const uint32_t nSamples = c->nSamples;
+    const uint32_t loopAt = c->loopAt;
+    const int loops = c->repeat == 1u && loopAt < nSamples;
+    uint32_t index = v->sampleIndex;
+    uint32_t loopMark = v->adpcmClean ? loopAt : 0u;
+    int32_t predictor = v->predictor;
+    int32_t stepIndex = v->stepIndex;
+    uint32_t done = 0;
+
+    /* (index can be past the end if the length register shrank under a
+     * playing sound: the first advance then ends or wraps it.) */
+    if (!loops && (index >= nSamples || count >= nSamples - index)) {
+        return 0;
+    }
+    run[0] = (int16_t)v->lastSample;
+    run[1] = (int16_t)predictor;
+    while (done < count) {
+        uint32_t span;
+
+        if (index + 1u >= nSamples) {
+            /* The wrap: advance_voice's loop branch. */
+            STATS_EVENT(c->channel, NITRO_SOUND_EV_LOOP);
+            index = loopAt;
+            v->sampleIndex = index;
+            v->predictor = predictor;
+            v->stepIndex = stepIndex;
+            adpcm_to_loop(v, c);
+            predictor = v->predictor;
+            stepIndex = v->stepIndex;
+            loopMark = v->adpcmClean ? loopAt : 0u;
+            run[2u + done] = (int16_t)predictor;
+            ++done;
+            continue;
+        }
+        span = nSamples - 1u - index;
+        if (span > count - done) {
+            span = count - done;
+        }
+        if (loopMark > index && loopMark - index < span) {
+            span = loopMark - index;
+        }
+#ifndef HGSS_PROFILE_OFF
+        sProfDecoded += span;
+        sProfDecodedClean += v->adpcmClean ? span : 0u;
+#endif
+        adpcm_decode_span(c->source, index, span, run + 2u + done, &predictor, &stepIndex);
+        index += span;
+        done += span;
+        if (index == loopMark) {
+            v->loopSaved = 1;
+            v->loopSource = c->sourceAddr;
+            v->loopAt = loopAt;
+            v->loopPredictor = predictor;
+            v->loopStepIndex = stepIndex;
+        }
+    }
+    v->sampleIndex = index;
+    v->predictor = predictor;
+    v->stepIndex = stepIndex;
+    return 1;
+}
+
+/* Each frame's sample from the run by its phase. lastSample: the sample
+ * before the cursor's, as the interpolating decoder leaves it (unread
+ * without interpolation). */
+static inline __attribute__((always_inline)) void adpcm_resample(
+    Channel *c, const int16_t *run, uint32_t count, int32_t *out, size_t frames,
+    const int interpolate)
+{
+    NitroSoundVoice *v = c->v;
+    const uint32_t stepWhole = (uint32_t)(c->step >> 32);
+    const uint32_t stepFrac = (uint32_t)c->step;
+    uint32_t frac = (uint32_t)v->phase;
+    const int16_t *at = run;
+    size_t i;
+
+    for (i = 0; i < frames; ++i) {
+        const uint32_t next = frac + stepFrac;
+
+        out[i] = interpolate ? lerp(at[0], at[1], frac) : at[1];
+        at += stepWhole + (next < frac ? 1u : 0u);
+        frac = next;
+    }
+    v->phase = frac;
+    v->lastSample = run[count];
+}
+
+static size_t adpcm_render(Channel *c, int32_t *out, size_t frames)
+{
+    const uint64_t advance = (uint64_t)(uint32_t)c->v->phase + (uint64_t)frames * c->step;
+    const uint64_t count = advance >> 32;
+    int16_t run[RUN_MAX];
+
+    if (count <= RUN_MAX - 2u && adpcm_decode_run(c, run, (uint32_t)count)) {
+        if (c->interpolate) {
+            adpcm_resample(c, run, (uint32_t)count, out, frames, 1);
+        } else {
+            adpcm_resample(c, run, (uint32_t)count, out, frames, 0);
+        }
+        return frames;
+    }
+    return adpcm_render_exact(c, out, frames);
+}
+
+/*
+ * x / 127 truncated toward zero, as C's division, for |x| < 38,000,000:
+ * 33818641 is ceil(2^32 / 127), whose error (111 / 2^32 per unit) stays
+ * below 1/127 over that range; the sign term rounds negative quotients
+ * toward zero. One SMULL and one SUB instead of GCC's general four-
+ * instruction sequence (coffeepot cpu-optimization: division by a constant,
+ * inspect the generated code). Callers: a 16-bit sample (at most 32768 in
+ * size) times a 7-bit volume or pan, below 4,200,000. Exactness over the
+ * whole range is checked by tests/native/div127_test.c.
+ */
+static inline int32_t div127(int32_t x)
+{
+    return (int32_t)(((int64_t)x * 33818641) >> 32) - (x >> 31);
+}
+
+/*
  * Adds rendered samples to L and R with the channel's volume, shift and
  * pan; values (if not NULL) gets each frame's sample after volume and
  * shift. The same arithmetic as voice_mix, so the same result: a hard pan
- * adds (x * 127) / 127 = x to one side and (x * 0) / 127 = 0 to the other.
+ * adds (x * 127) / 127 = x to one side and (x * 0) / 127 = 0 to the other;
+ * full volume scales by (x * 127) / 127 = x. The volume and pan divisions
+ * stay separate: each truncates.
  */
-static void mix_scaled(Channel *c, const int32_t *samples, int32_t *L, int32_t *R,
-                       int32_t *values, size_t frames)
+static inline __attribute__((always_inline)) void mix_scaled_loop(
+    Channel *c, const int32_t *samples, int32_t *L, int32_t *R, int32_t *values, size_t frames,
+    const int withValues)
 {
     const int32_t volume = c->volume;
     const int32_t panL = 127 - c->pan;
@@ -759,7 +943,7 @@ static void mix_scaled(Channel *c, const int32_t *samples, int32_t *L, int32_t *
     if (volume == 0) {
         /* Silent: (x * 0) / 127 >> shift is 0 on both sides. */
         for (i = 0; i < frames; ++i) {
-            if (values) {
+            if (withValues) {
                 values[i] = 0;
             }
             STATS_TAP(c, i, 0);
@@ -768,9 +952,9 @@ static void mix_scaled(Channel *c, const int32_t *samples, int32_t *L, int32_t *
     }
     if (panR == 0) {
         for (i = 0; i < frames; ++i) {
-            const int32_t scaled = ((samples[i] * volume) / 127) >> shift;
+            const int32_t scaled = div127(samples[i] * volume) >> shift;
 
-            if (values) {
+            if (withValues) {
                 values[i] = scaled;
             }
             STATS_TAP(c, i, scaled);
@@ -778,25 +962,46 @@ static void mix_scaled(Channel *c, const int32_t *samples, int32_t *L, int32_t *
         }
     } else if (panL == 0) {
         for (i = 0; i < frames; ++i) {
-            const int32_t scaled = ((samples[i] * volume) / 127) >> shift;
+            const int32_t scaled = div127(samples[i] * volume) >> shift;
 
-            if (values) {
+            if (withValues) {
                 values[i] = scaled;
             }
             STATS_TAP(c, i, scaled);
             R[i] += scaled;
         }
-    } else {
+    } else if (volume == 127) {
         for (i = 0; i < frames; ++i) {
-            const int32_t scaled = ((samples[i] * volume) / 127) >> shift;
+            const int32_t scaled = samples[i] >> shift;
 
-            if (values) {
+            if (withValues) {
                 values[i] = scaled;
             }
             STATS_TAP(c, i, scaled);
-            L[i] += (scaled * panL) / 127;
-            R[i] += (scaled * panR) / 127;
+            L[i] += div127(scaled * panL);
+            R[i] += div127(scaled * panR);
         }
+    } else {
+        for (i = 0; i < frames; ++i) {
+            const int32_t scaled = div127(samples[i] * volume) >> shift;
+
+            if (withValues) {
+                values[i] = scaled;
+            }
+            STATS_TAP(c, i, scaled);
+            L[i] += div127(scaled * panL);
+            R[i] += div127(scaled * panR);
+        }
+    }
+}
+
+static void mix_scaled(Channel *c, const int32_t *samples, int32_t *L, int32_t *R,
+                       int32_t *values, size_t frames)
+{
+    if (values) {
+        mix_scaled_loop(c, samples, L, R, values, frames, 1);
+    } else {
+        mix_scaled_loop(c, samples, L, R, NULL, frames, 0);
     }
 }
 
@@ -807,7 +1012,12 @@ static void mix_scaled(Channel *c, const int32_t *samples, int32_t *L, int32_t *
  * sample. For channels that don't read what a capture writes: they don't
  * depend on the other channels within a mix.
  */
-static void mix_block(Channel *c, int32_t *L, int32_t *R, int32_t *values, size_t frames)
+/* PCM8, PCM16, PSG and noise, and ADPCM outside the block renderer's
+ * preconditions: out of line, so the ADPCM path (almost every HGSS channel)
+ * stays compact in the instruction cache (coffeepot cpu-optimization:
+ * keep cold paths out of hot functions). */
+static __attribute__((noinline)) void mix_block_other(Channel *c, int32_t *L, int32_t *R,
+                                                      int32_t *values, size_t frames)
 {
     NitroSoundVoice *v = c->v;
     const int32_t volume = c->volume, panL = 127 - c->pan, panR = c->pan;
@@ -820,19 +1030,6 @@ static void mix_block(Channel *c, int32_t *L, int32_t *R, int32_t *values, size_
     uint64_t phase = v->phase;
     size_t i;
 
-    if (c->format == 2u && c->source && c->nSamples && frames <= MIX_BLOCK &&
-        (v->phase >> 32) == 0u && (step >> 32) < 2048u) {
-        /* ADPCM: rendered, then mixed (see adpcm_render). */
-        int32_t samples[MIX_BLOCK];
-        uint64_t start = PROF_NOW();
-        const size_t played = adpcm_render(c, samples, frames);
-
-        PROF_ADD(NITRO_SOUND_STAGE_ADPCM, start);
-        start = PROF_NOW();
-        mix_scaled(c, samples, L, R, values, played);
-        PROF_ADD(NITRO_SOUND_STAGE_SCALE, start);
-        return;
-    }
     if (c->format <= 1u && c->source && c->nSamples) {
         /* PCM8 / PCM16. One loop per pan case, hoisted out of the frame
          * loop; step and shift are already block constants. */
@@ -950,6 +1147,26 @@ static void mix_block(Channel *c, int32_t *L, int32_t *R, int32_t *values, size_
  * (Bit 0, adding channel 1/3 into channel 0/2, isn't done: nothing in the
  * game uses it.)
  */
+static void mix_block(Channel *c, int32_t *L, int32_t *R, int32_t *values, size_t frames)
+{
+    const NitroSoundVoice *v = c->v;
+
+    if (c->format == 2u && c->source && c->nSamples && frames <= MIX_BLOCK &&
+        (v->phase >> 32) == 0u && (c->step >> 32) < 2048u) {
+        /* ADPCM: rendered, then mixed (see adpcm_render). */
+        int32_t samples[MIX_BLOCK];
+        uint64_t start = PROF_NOW();
+        const size_t played = adpcm_render(c, samples, frames);
+
+        PROF_ADD(NITRO_SOUND_STAGE_ADPCM, start);
+        start = PROF_NOW();
+        mix_scaled(c, samples, L, R, values, played);
+        PROF_ADD(NITRO_SOUND_STAGE_SCALE, start);
+        return;
+    }
+    mix_block_other(c, L, R, values, frames);
+}
+
 /*
  * A capture's settings for one NitroSound_Mix call. Within a call only the
  * capture itself writes its registers (a one-shot clears its enable bit),

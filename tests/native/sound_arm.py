@@ -20,6 +20,7 @@ import argparse
 import bisect
 import json
 import os
+import shutil
 from pathlib import Path
 import struct
 import subprocess
@@ -136,6 +137,16 @@ def main():
                    help='report digests without failing (deliberate output changes)')
     args = a.parse_args()
     failed = False
+    # A host compiler for the exhaustive div127 check: HOST_CC, else zig cc
+    # (MSYS2 gcc cannot find its temp directory from a Windows Python).
+    host_cc = os.environ.get('HOST_CC', '').split() or [shutil.which('zig') or 'zig', 'cc']
+    with tempfile.TemporaryDirectory(prefix='kohjoh-div-') as tmp:
+        exe = Path(tmp) / 'div127.exe'
+        subprocess.run([*host_cc, '-O2', '-fwrapv', str(ROOT / 'tests/native/div127_test.c'),
+                        '-o', str(exe)], check=True)
+        out = subprocess.run([str(exe)], capture_output=True, text=True)
+        print(out.stdout.strip(), flush=True)
+        failed |= out.returncode != 0
     with tempfile.TemporaryDirectory(prefix='kohjoh-sound-') as tmp:
         tmp = Path(tmp)
         ref = tmp / 'reference.c'
