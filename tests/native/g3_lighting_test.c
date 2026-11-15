@@ -125,6 +125,37 @@ int main(void)
         NitroPort_Gx3dSyncResults();
         digest(NitroPort_IoReg + 0x620, 0x84); /* tests/matrices, not port batch-duplicate counts */
     }
+    /* Exhaust the frame context table: the tail must retain exact colours
+     * through CPU evaluation, without losing triangles or the next latch. */
+    execute(0x10, (const uint32_t[]){2});
+    execute(0x15, NULL);
+    execute(0x29, (const uint32_t[]){0x001f00c1});
+    execute(0x2a, (const uint32_t[]){0});
+    execute(0x32, (const uint32_t[]){0x200u << 20});
+    execute(0x33, (const uint32_t[]){32767});
+    execute(0x30, (const uint32_t[]){32767});
+    for (unsigned i = 0; i < 600; ++i) {
+        execute(0x40, (const uint32_t[]){0});
+        execute(0x31, (const uint32_t[]){i << 16});
+        execute(0x21, (const uint32_t[]){0x1ffu << 20});
+        execute(0x23, (const uint32_t[]){0, 0});
+        execute(0x23, (const uint32_t[]){4096, 0});
+        execute(0x23, (const uint32_t[]){4096u << 16, 0});
+        execute(0x41, NULL);
+    }
+    execute(0x50, (const uint32_t[]){0});
+    const kj_g3_frame *overflow = kj_g3_take_frame();
+    assert(overflow->index_count == 1800);
+    assert(overflow->dropped_verts == 0 && overflow->dropped_batches == 0);
+#ifdef KJ_G3_GPU_LIGHTING
+    assert(overflow->lighting_count == KJ_G3_MAX_LIGHTING);
+#endif
+    for (unsigned b = 0; b < overflow->batch_count; ++b) {
+        const kj_g3_batch *batch = &overflow->batches[b];
+        for (unsigned i = 0; i < batch->index_count; ++i) {
+            triangle_vertex(overflow, batch, overflow->indices[batch->first_index + i]);
+        }
+    }
     printf("%016llx\n", (unsigned long long)hash);
     return 0;
 }

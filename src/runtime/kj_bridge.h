@@ -94,10 +94,10 @@ typedef struct kj_line_regs {
 
 /* One frame of decoded 3D geometry, produced by the DS-side geometry engine
  * (kj_g3.c) and consumed by the PICA backend. The geometry engine does the
- * DS's matrix work, lighting and texture-coordinate generation on the CPU
- * (exact fixed-point semantics, results the game can read back); positions
- * stay in object space and are transformed on the GPU by a palette of clip
- * matrices. */
+ * DS's matrix work, texture-coordinate generation and readable tests on the
+ * CPU with exact fixed-point semantics. NORMAL latches transformed normals
+ * and lighting inputs for the PICA; literal colours remain supported.
+ * Positions stay in object space for the GPU clip-matrix palette. */
 
 #define KJ_G3_MAX_MATRICES 4096
 #define KJ_G3_MAX_VERTS 32768

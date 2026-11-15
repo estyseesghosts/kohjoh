@@ -21,6 +21,17 @@ logic+publish median 6.0%, with unchanged triangles; Ho-Oh changes little.
 Both editions' normal/profiled artifacts are built. Hardware speedup still
 requires a matching re-test; SoulSilver runtime validation remains open.
 
+2026-11-15 geometry work, scoped PR stack #6/#7/#8: FIFO hits compare live
+inputs without temporary keys; field/title producers skip discarded scene
+traversal and generate zero FIFO words on skipped ticks; DS lighting runs
+on PICA and animated lit lists cache expanded positions. Native CPU/GPU
+semantic comparisons and shader float24 arithmetic checks pass. Held Ho-Oh
+and Goldenrod frames match the old CPU reference pixel for pixel, including
+forced alternating producer skips. Normal and diagnostic HeartGold artifacts
+are built at `f5f2e1e`. Hardware status remains **O3DS_UNTESTED**; audio-agent
+changes are excluded. See the [lighting worklog](worklog/2026-11-15-lit-plans.md)
+and [producer-gate evidence](worklog/2026-11-15-capture.md).
+
 ## Latest investigation (uncommitted, 2026-11-13)
 
 `o3ds-log-3` confirms CPU pressure from geometry and audio, with GPU queues
