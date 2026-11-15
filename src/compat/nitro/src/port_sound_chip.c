@@ -42,6 +42,71 @@ static uint32_t sFrameIndex;
 
 volatile uint8_t NitroPort_SoundRegisters[NITRO_SOUND_REG_SIZE];
 
+#ifndef HGSS_PROFILE_OFF
+/*
+ * Profile builds only (HGSS_PROFILE=on): where the mixer's time goes, for
+ * port_snd.c's [sndstage] and [sndadpcm] lines. Stage times are sampled: one
+ * NitroSound_Mix call in PROF_SAMPLE_PERIOD reads the clock around each stage
+ * (coffeepot ctr/engineering/performance.md: sample rather than time every
+ * call; each read costs a system call). The clock is the 3DS tick counter,
+ * handed in by port_snd.c (this file includes no platform headers).
+ * Counters only; no mixing arithmetic depends on them.
+ */
+#define PROF_SAMPLE_PERIOD 16u
+#define PROF_SOURCE_SLOTS 256u
+static uint64_t (*sProfClock)(void);
+static unsigned sProfCountdown;
+static int sProfTiming;
+static uint64_t sProfStage[NITRO_SOUND_STAGE_COUNT];
+static uint64_t sProfSampledChannelFrames;
+static uint64_t sProfSampledFrames;
+static uint64_t sProfSampledCalls;
+/* ADPCM reuse: nibbles decoded, of them while the decoder state came from
+ * the data alone (adpcmClean: a decoded-sample cache could serve them), key
+ * ons, and the distinct sounds started (address and length) in the window. */
+static uint64_t sProfDecoded;
+static uint64_t sProfDecodedClean;
+static uint64_t sProfKeyOns;
+static uint32_t sProfSourceAddr[PROF_SOURCE_SLOTS];
+static uint32_t sProfSourceBytes[PROF_SOURCE_SLOTS];
+static unsigned sProfSources;
+static uint64_t sProfSourceTotalBytes;
+static unsigned sProfSourceOverflow;
+#define PROF_NOW() (sProfTiming ? sProfClock() : 0u)
+#define PROF_ADD(stage, start) do { if (sProfTiming) sProfStage[(stage)] += sProfClock() - (start); } while (0)
+#define PROF_DECODE(clean) do { ++sProfDecoded; sProfDecodedClean += (clean) ? 1u : 0u; } while (0)
+
+static void prof_note_keyon(uint32_t addr, uint32_t bytes)
+{
+    unsigned slot = (addr >> 2) % PROF_SOURCE_SLOTS;
+    unsigned probe;
+
+    ++sProfKeyOns;
+    for (probe = 0; probe < PROF_SOURCE_SLOTS; ++probe) {
+        unsigned at = (slot + probe) % PROF_SOURCE_SLOTS;
+
+        if (sProfSourceAddr[at] == addr && sProfSourceBytes[at] == bytes) {
+            return;
+        }
+        if (sProfSourceAddr[at] == 0u) {
+            if (sProfSources >= PROF_SOURCE_SLOTS * 3u / 4u) {
+                ++sProfSourceOverflow;
+                return;
+            }
+            sProfSourceAddr[at] = addr;
+            sProfSourceBytes[at] = bytes;
+            ++sProfSources;
+            sProfSourceTotalBytes += bytes;
+            return;
+        }
+    }
+}
+#else
+#define PROF_NOW() 0u
+#define PROF_ADD(stage, start) ((void)(start))
+#define PROF_DECODE(clean) ((void)0)
+#endif
+
 static unsigned char reg8(unsigned offset)
 {
     return NitroPort_SoundRegisters[offset];
@@ -239,6 +304,7 @@ static int16_t adpcm_at(NitroSoundVoice *v, const uint8_t *source,
 {
     uint32_t nibble = index - 1;
     uint8_t byte = source[4u + nibble / 2u];
+    PROF_DECODE(v->adpcmClean);
     adpcm_step(v, (nibble & 1u) ? byte >> 4 : byte & 15u);
     return (int16_t)v->predictor;
 }
@@ -424,8 +490,11 @@ static int start_channel(NitroSoundChip *chip, unsigned channel, Channel *c)
         v->previousCtrl = ctrl;
         return 0;
     }
-    if (!v->running || !(v->previousCtrl & 0x80000000u))
+    int restarted = !v->running || !(v->previousCtrl & 0x80000000u);
+
+    if (restarted) {
         restart_channel(v, ctrl, base);
+    }
     v->previousCtrl = ctrl;
 
     c->v = v;
@@ -444,6 +513,13 @@ static int start_channel(NitroSoundChip *chip, unsigned channel, Channel *c)
     startByte = (uint32_t)reg16(base + REG_LOOP) * 4u;
     endByte = startByte + (reg32(base + REG_LENGTH) & 0x3fffffu) * 4u;
     c->endByte = endByte;
+#ifndef HGSS_PROFILE_OFF
+    if (restarted && c->format == 2u && c->sourceAddr != 0u) {
+        prof_note_keyon(c->sourceAddr, endByte);
+    }
+#else
+    (void)restarted;
+#endif
     c->dependent = 0;
     c->nSamples = total_samples(c->format, endByte);
     c->loopAt = loop_sample(c->format, startByte);
@@ -621,6 +697,7 @@ static inline __attribute__((always_inline)) size_t adpcm_render_frames(
                 const uint8_t byte = source[4u + nibble / 2u];
                 const unsigned code = (nibble & 1u) ? byte >> 4 : byte & 15u;
                 const int32_t change = sAdpcmDelta[stepIndex][code & 7u];
+                PROF_DECODE(v->adpcmClean);
                 last = predictor;
                 predictor += (code & 8u) ? -change : change;
                 predictor = sat16(predictor);
@@ -743,9 +820,13 @@ static void mix_block(Channel *c, int32_t *L, int32_t *R, int32_t *values, size_
         (v->phase >> 32) == 0u && (step >> 32) < 2048u) {
         /* ADPCM: rendered, then mixed (see adpcm_render). */
         int32_t samples[MIX_BLOCK];
+        uint64_t start = PROF_NOW();
         const size_t played = adpcm_render(c, samples, frames);
 
+        PROF_ADD(NITRO_SOUND_STAGE_ADPCM, start);
+        start = PROF_NOW();
         mix_scaled(c, samples, L, R, values, played);
+        PROF_ADD(NITRO_SOUND_STAGE_SCALE, start);
         return;
     }
     if (c->format <= 1u && c->source && c->nSamples) {
@@ -956,11 +1037,23 @@ void NitroSound_Mix(NitroSoundChip *chip, int16_t *stereo, size_t frames)
     int capturing, bypass1, bypass3;
     unsigned leftFrom, rightFrom;
     size_t i;
+    uint64_t stageStart = 0u;
+#ifndef HGSS_PROFILE_OFF
+    uint64_t callStart = 0u;
+#endif
 #ifdef NITRO_SOUND_STATS
     int32_t tapBuf[NITRO_SOUND_CHANNEL_COUNT][MIX_BLOCK];
 #endif
 
     if (!chip || !stereo || !chip->outputRate || frames == 0) return;
+#ifndef HGSS_PROFILE_OFF
+    if (sProfClock && sProfCountdown-- == 0u) {
+        sProfCountdown = PROF_SAMPLE_PERIOD - 1u;
+        sProfTiming = 1;
+    }
+    callStart = PROF_NOW();
+    stageStart = callStart;
+#endif
     for (channel = 0; channel < NITRO_SOUND_CHANNEL_COUNT; ++channel) {
         if (start_channel(chip, channel, &channels[count])) ++count;
     }
@@ -1014,6 +1107,7 @@ void NitroSound_Mix(NitroSoundChip *chip, int16_t *stereo, size_t frames)
             }
         }
     }
+    PROF_ADD(NITRO_SOUND_STAGE_SETUP, stageStart);
     {
         /* Channel by channel, a block of frames at a time. */
         enum { BLOCK = MIX_BLOCK };
@@ -1024,6 +1118,7 @@ void NitroSound_Mix(NitroSoundChip *chip, int16_t *stereo, size_t frames)
             int32_t value0[BLOCK], value2[BLOCK];   /* channels 0 and 2, for captures */
             size_t n = frames - at < BLOCK ? frames - at : BLOCK;
 
+            stageStart = PROF_NOW();
             memset(mixL, 0, n * sizeof(int32_t));
             memset(mixR, 0, n * sizeof(int32_t));
             memset(ch1L, 0, n * sizeof(int32_t));
@@ -1038,6 +1133,8 @@ void NitroSound_Mix(NitroSoundChip *chip, int16_t *stereo, size_t frames)
             for (channel = 0; channel < NITRO_SOUND_CHANNEL_COUNT; ++channel)
                 for (i = 0; i < MIX_BLOCK; ++i) tapBuf[channel][i] = NITRO_SOUND_TAP_OFF;
 #endif
+            PROF_ADD(NITRO_SOUND_STAGE_CLEAR, stageStart);
+            stageStart = PROF_NOW();
             for (k = 0; k < count; ++k) {
                 Channel *c = &channels[k];
 
@@ -1048,6 +1145,8 @@ void NitroSound_Mix(NitroSoundChip *chip, int16_t *stereo, size_t frames)
                                !capturing ? NULL : c->channel == 0 ? value0
                                : c->channel == 2 ? value2 : NULL, n);
             }
+            PROF_ADD(NITRO_SOUND_STAGE_CHANNELS, stageStart);
+            stageStart = PROF_NOW();
             for (i = 0; i < n; ++i) {
                 int32_t outputL = 0, outputR = 0;
 #ifdef NITRO_SOUND_STATS
@@ -1132,6 +1231,7 @@ void NitroSound_Mix(NitroSoundChip *chip, int16_t *stereo, size_t frames)
                 }
 #endif
             }
+            PROF_ADD(NITRO_SOUND_STAGE_OUTPUT, stageStart);
         }
     }
     /* Channels that ended: as reading their (now off) registers left them. */
@@ -1140,6 +1240,15 @@ void NitroSound_Mix(NitroSoundChip *chip, int16_t *stereo, size_t frames)
             channels[k].v->previousCtrl = reg32(channels[k].base);
         }
     }
+#ifndef HGSS_PROFILE_OFF
+    if (sProfTiming) {
+        PROF_ADD(NITRO_SOUND_STAGE_TOTAL, callStart);
+        sProfSampledCalls += 1u;
+        sProfSampledFrames += (uint64_t)frames;
+        sProfSampledChannelFrames += (uint64_t)frames * count;
+        sProfTiming = 0;
+    }
+#endif
 }
 
 /* Cumulative profile counters for port_snd.c's [sndprof] line (declared
@@ -1159,6 +1268,41 @@ void NitroSound_MixProfile(uint64_t *calls, uint64_t *frames,
     if (capturing) *capturing = sProfCapturing;
     if (dependentCh) *dependentCh = sProfDependentCh;
 }
+
+#ifndef HGSS_PROFILE_OFF
+void NitroSound_SetProfileClock(uint64_t (*now)(void))
+{
+    sProfClock = now;
+    sProfCountdown = 0;
+}
+
+void NitroSound_StageProfile(NitroSoundStageProfile *out)
+{
+    unsigned i;
+
+    for (i = 0; i < NITRO_SOUND_STAGE_COUNT; ++i) {
+        out->stageTicks[i] = sProfStage[i];
+    }
+    out->sampledCalls = sProfSampledCalls;
+    out->sampledFrames = sProfSampledFrames;
+    out->sampledChannelFrames = sProfSampledChannelFrames;
+    out->decoded = sProfDecoded;
+    out->decodedClean = sProfDecodedClean;
+    out->keyOns = sProfKeyOns;
+    out->sources = sProfSources;
+    out->sourceBytes = sProfSourceTotalBytes;
+    out->sourceOverflow = sProfSourceOverflow;
+}
+
+void NitroSound_ResetSourceWindow(void)
+{
+    memset(sProfSourceAddr, 0, sizeof(sProfSourceAddr));
+    memset(sProfSourceBytes, 0, sizeof(sProfSourceBytes));
+    sProfSources = 0;
+    sProfSourceTotalBytes = 0;
+    sProfSourceOverflow = 0;
+}
+#endif
 
 #ifdef NITRO_SOUND_STATS
 void NitroSound_SetFrameHook(NitroSoundFrameFn fn, void *arg)
