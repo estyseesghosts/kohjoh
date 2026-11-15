@@ -21,6 +21,7 @@
  */
 
 #include "kj_g3.h"
+#include "kj_lighting.h"
 
 #include <nitro.h>
 #include <nitro_port.h>
@@ -35,6 +36,9 @@
  * uncached decoder for A/B runs and bisects. */
 #if !defined(KJ_DL_NO_CACHE) && !defined(KJ_DL_CACHE)
 #define KJ_DL_CACHE
+#endif
+#ifndef KJ_G3_CPU_LIGHTING
+#define KJ_G3_GPU_LIGHTING
 #endif
 
 extern unsigned char NitroPort_IoReg[];
@@ -415,6 +419,14 @@ static void transform_vector(const int32_t in[3], const mtx *m, int32_t out[3])
  * (the same sites as Platinum's port_gx3d.c normal cache). */
 #define NORMAL_CACHE 64u
 static uint32_t s_normal_gen = 1;
+static uint32_t s_lighting_gen = 1;
+static bool s_color_gpu, s_color_pending;
+static uint32_t s_latched_light_gen;
+static kj_lighting s_latched_light;
+static int32_t s_latched_normal[3];
+static uint32_t s_normal_low, s_normal_high;
+static uint32_t s_checked_lighting_gen;
+static bool s_gpu_context_ok;
 static struct {
     uint32_t gen, value;
     uint16_t rgb;
@@ -423,6 +435,7 @@ static struct {
 static void normals_changed(void)
 {
     ++s_normal_gen;
+    ++s_lighting_gen;
 }
 
 /* Lighting reads only the vector matrix's 3x3 part. NNS restores a matrix
@@ -576,6 +589,9 @@ typedef struct frame_buf {
     uint32_t pool_count;
     kj_g3_batch batches[KJ_G3_MAX_BATCHES];
     uint16_t vert_gmtx[KJ_G3_MAX_VERTS]; /* global matrix id per vertex (pool < 65536) */
+    kj_lighting lighting[KJ_G3_MAX_LIGHTING];
+    uint16_t vert_light[KJ_G3_MAX_VERTS];
+    uint8_t vert_alpha[KJ_G3_MAX_VERTS];
 } frame_buf;
 
 static frame_buf s_buf[2];
@@ -585,7 +601,8 @@ static bool s_capture_requested = true;
 static bool s_capture_scene = true;
 #ifndef HGSS_PROFILE_OFF
 static uint32_t s_captured_scenes, s_discarded_scenes;
-static uint32_t s_skipped_producers, s_capture_frame_fifo;
+static uint32_t s_skipped_producers;
+static uint32_t s_capture_frame_fifo;
 static uint64_t s_skipped_producer_fifo;
 static bool s_producer_skipped;
 static uint64_t s_discarded_vertices, s_discarded_indices;
@@ -608,6 +625,8 @@ static uint32_t s_batch_key_attr, s_batch_key_tex, s_batch_key_pltt, s_batch_key
 static uint32_t s_palette_gid[KJ_G3_PALETTE]; /* global matrix id per palette slot */
 static uint32_t s_cur_gmtx;                   /* global matrix id of the current clip */
 static uint32_t s_cur_gmtx_version;
+static uint32_t s_current_light_gen, s_batch_light_gen;
+static uint16_t s_current_light_id;
 
 /* Primitive assembly: indices (into the frame) of this BEGIN's recent
  * vertices. */
@@ -616,6 +635,14 @@ static uint32_t s_prim_count;     /* vertices since BEGIN */
 static uint32_t s_strip_parity;
 
 static void update_color_rgba(void);
+
+static void resolve_color(void)
+{
+    if (s_color_pending) {
+        s_color = kj_lighting_color(s_latched_normal, &s_latched_light);
+        s_color_pending = false;
+    }
+}
 
 void kj_g3_init(const kj_g3_storage *storage)
 {
@@ -654,6 +681,9 @@ void kj_g3_set_capture(bool capture)
     }
 }
 
+/* Render-only game producers call this before traversing their scene. Game
+ * updates stay outside the gate. Refuse to suppress a producer if another
+ * producer already started this scene; its pending geometry must finish. */
 int NitroPort_SkipSceneBuild(void)
 {
     if (s_capture_requested || s_in_begin || s_buf[s_build].frame.vert_count != 0) {
@@ -714,6 +744,7 @@ static const uint8_t EXPAND5[32] = {
 
 static void update_color_rgba(void)
 {
+    resolve_color();
     const unsigned a = (s_attr >> 16) & 31u;
     s_color_rgba = (uint32_t)EXPAND5[s_color & 31u] | ((uint32_t)EXPAND5[(s_color >> 5) & 31u] << 8) |
                    ((uint32_t)EXPAND5[(s_color >> 10) & 31u] << 16) | ((uint32_t)EXPAND5[a] << 24);
@@ -722,6 +753,100 @@ static void update_color_rgba(void)
 static void material_changed(void)
 {
     s_batch_ok = false;
+}
+
+static void normal_color(uint32_t value)
+{
+#ifdef KJ_G3_GPU_LIGHTING
+    if (s_checked_lighting_gen != s_lighting_gen) {
+        s_gpu_context_ok = true;
+        for (unsigned i = 0; i < 4; ++i) {
+            if (!(s_attr & (1u << i))) {
+                continue;
+            }
+            for (unsigned c = 0; c < 3; ++c) {
+                s_gpu_context_ok = s_gpu_context_ok &&
+                    s_light_dir[i][c] >= -16384 && s_light_dir[i][c] <= 16383 &&
+                    s_light_half[i][c] >= -16384 && s_light_half[i][c] <= 16383;
+            }
+        }
+        s_checked_lighting_gen = s_lighting_gen;
+    }
+    int32_t normal[3];
+    for (unsigned i = 0; i < 3; ++i) {
+        normal[i] = sign_bits(value >> (i * 10), 10) * 8;
+    }
+    transform_vector(normal, &s_vec, s_latched_normal);
+    bool fits = s_gpu_context_ok;
+    for (unsigned i = 0; i < 3; ++i) {
+        fits = fits && s_latched_normal[i] >= -8192 && s_latched_normal[i] <= 8191;
+    }
+    if (fits) {
+#ifndef HGSS_PROFILE_OFF
+        if (s_coarse_sample) {
+            ++s_sample_normals;
+        }
+#endif
+        if (s_latched_light_gen != s_lighting_gen) {
+            memset(&s_latched_light, 0, sizeof(s_latched_light));
+            memcpy(s_latched_light.direction, s_light_dir, sizeof(s_light_dir));
+            memcpy(s_latched_light.half, s_light_half, sizeof(s_light_half));
+            memcpy(s_latched_light.shininess, s_shininess, sizeof(s_shininess));
+            s_latched_light.enabled = s_attr & 15u;
+            s_latched_light.use_shininess = s_use_shininess;
+            for (unsigned c = 0; c < 3; ++c) {
+                s_latched_light.emission[c] = s_emission >> (c * 5) & 31u;
+            }
+            for (unsigned i = 0; i < 4; ++i) {
+                if (!(s_attr & (1u << i))) {
+                    continue;
+                }
+                if (s_light_terms_dirty & (1u << i)) {
+                    update_light_terms(i);
+                }
+                memcpy(s_latched_light.ambient[i], s_light_terms[i].ambient, 3);
+                memcpy(s_latched_light.diffuse[i], s_light_terms[i].diffuse, 3);
+                memcpy(s_latched_light.specular[i], s_light_terms[i].specular, 3);
+            }
+            s_latched_light_gen = s_lighting_gen;
+            material_changed();
+        }
+        if (!s_color_gpu) {
+            material_changed();
+        }
+        uint64_t bits = 0;
+        for (unsigned i = 0; i < 3; ++i) {
+            bits |= (uint64_t)((uint32_t)s_latched_normal[i] & 16383u) << (14 * i);
+        }
+        s_normal_low = (uint32_t)bits;
+        s_normal_high = ((uint32_t)(bits >> 32) & 31u) << 19 |
+                        ((uint32_t)(bits >> 37) & 31u) << 24 | 0x80000000u;
+        s_color_gpu = s_color_pending = true;
+        return;
+    }
+#endif
+    s_color_gpu = s_color_pending = false;
+    s_color = shade(value);
+    update_color_rgba();
+}
+
+static bool current_lighting(void)
+{
+    frame_buf *fb = build();
+    if (s_current_light_gen == s_latched_light_gen && fb->frame.lighting_count != 0) {
+        return true;
+    }
+    if (fb->frame.lighting_count >= KJ_G3_MAX_LIGHTING) {
+        /* Exact CPU lighting for a context overflow, without dropping geometry. */
+        resolve_color();
+        s_color_gpu = false;
+        update_color_rgba();
+        return false;
+    }
+    s_current_light_id = (uint16_t)fb->frame.lighting_count++;
+    fb->lighting[s_current_light_id] = s_latched_light;
+    s_current_light_gen = s_latched_light_gen;
+    return true;
 }
 
 static void close_batch(void)
@@ -734,6 +859,9 @@ static void close_batch(void)
 static bool open_batch(void)
 {
     frame_buf *fb = build();
+    if (s_color_gpu) {
+        current_lighting();
+    }
 
     if (fb->frame.batch_count >= KJ_G3_MAX_BATCHES) {
         ++fb->frame.dropped_batches;
@@ -747,6 +875,10 @@ static bool open_batch(void)
     s_batch->tex_param = s_tex_param;
     s_batch->tex_pltt = s_tex_pltt;
     s_batch->viewport = s_viewport;
+    if (s_color_gpu) {
+        s_batch->flags = KJ_G3_BATCH_LIT | ((uint32_t)s_current_light_id << 16);
+    }
+    s_batch_light_gen = s_color_gpu ? s_latched_light_gen : 0;
     {
         const unsigned alpha = (s_attr >> 16) & 31u;
         const unsigned fmt = (s_tex_param >> 26) & 7u;
@@ -779,7 +911,7 @@ static int palette_slot(uint32_t gid)
             return i;
         }
     }
-    if (count >= KJ_G3_PALETTE) {
+    if (count >= ((s_batch->flags & KJ_G3_BATCH_LIT) ? KJ_G3_LIT_PALETTE : KJ_G3_PALETTE)) {
         return -1;
     }
     /* A batch's palette must be a contiguous slice of the frame's matrix
@@ -806,7 +938,9 @@ static bool batch_matches_state(void)
         return true;
     }
     s_batch_ok = s_batch != NULL && s_batch_key_attr == s_attr && s_batch_key_tex == s_tex_param &&
-                 s_batch_key_pltt == s_tex_pltt && s_batch_key_vp == s_viewport;
+                 s_batch_key_pltt == s_tex_pltt && s_batch_key_vp == s_viewport &&
+                 (!s_color_gpu || ((s_batch->flags & KJ_G3_BATCH_LIT) &&
+                                  s_batch_light_gen == s_latched_light_gen));
     return s_batch_ok;
 }
 
@@ -843,8 +977,31 @@ static bool local_vertex(uint32_t v, uint32_t *out)
     const uint32_t n = fb->frame.vert_count++;
     if (s_capture_scene) {
         fb->verts[n] = fb->verts[v];
-        fb->verts[n].mtx = (uint8_t)slot;
+        kj_g3_vertex *vertex = &fb->verts[n];
+        if (vertex->pad & 0x80u) {
+            const unsigned alpha = EXPAND5[(s_attr >> 16) & 31u];
+            if (!(s_batch->flags & KJ_G3_BATCH_LIT) ||
+                (s_batch->flags >> 16) != fb->vert_light[v] || fb->vert_alpha[v] != alpha) {
+                int32_t normal[3];
+                uint32_t rgba;
+                memcpy(&rgba, &vertex->r, 4);
+                kj_lighting_unpack_normal(rgba, vertex->mtx, vertex->pad, normal);
+                const uint16_t color = kj_lighting_color(normal, &fb->lighting[fb->vert_light[v]]);
+                vertex->r = EXPAND5[color & 31u];
+                vertex->g = EXPAND5[(color >> 5) & 31u];
+                vertex->b = EXPAND5[(color >> 10) & 31u];
+                vertex->a = fb->vert_alpha[v];
+                vertex->pad = 0;
+                vertex->mtx = (uint8_t)slot;
+            } else {
+                vertex->mtx = (uint8_t)((vertex->mtx & 0xF8u) | slot);
+            }
+        } else {
+            vertex->mtx = (uint8_t)slot;
+        }
     }
+    fb->vert_light[n] = fb->vert_light[v];
+    fb->vert_alpha[n] = fb->vert_alpha[v];
     fb->vert_gmtx[n] = fb->vert_gmtx[v];
     *out = n;
     return true;
@@ -931,11 +1088,13 @@ static void submit_vertex(void)
     uint32_t *w = (uint32_t *)&fb->verts[n];
     if (s_capture_scene) {
         w[0] = (uint16_t)s_coord[0] | ((uint32_t)(uint16_t)s_coord[1] << 16);
-        w[1] = (uint16_t)s_coord[2] | ((uint32_t)slot << 16);
-        w[2] = s_color_rgba;
+        w[1] = (uint16_t)s_coord[2] | ((uint32_t)slot << 16) | (s_color_gpu ? s_normal_high : 0);
+        w[2] = s_color_gpu ? s_normal_low : s_color_rgba;
         w[3] = (uint16_t)s_texcoord[0] | ((uint32_t)(uint16_t)s_texcoord[1] << 16);
     }
     fb->vert_gmtx[n] = (uint16_t)gid;
+    fb->vert_light[n] = s_color_gpu ? s_current_light_id : 0xFFFFu;
+    fb->vert_alpha[n] = EXPAND5[(s_attr >> 16) & 31u];
     s_slot_gid = gid;
     s_slot_idx = slot;
 
@@ -1150,6 +1309,9 @@ static void swap_buffers(uint32_t param)
     f->indices = fb->indices;
     f->matrices = fb->matrices;
     f->batches = fb->batches;
+    f->lighting = fb->lighting;
+    f->vertex_lights = fb->vert_light;
+    f->vertex_alpha = fb->vert_alpha;
     f->swap_params = param;
     f->viewport = s_viewport;
     {
@@ -1185,6 +1347,7 @@ static void swap_buffers(uint32_t param)
     fb = build();
     memset(&fb->frame, 0, sizeof(fb->frame));
     fb->pool_count = 0;
+    s_current_light_gen = 0;
     s_batch = NULL;
     s_cur_gmtx_version = 0;
     s_prim_count = 0;
@@ -1310,6 +1473,7 @@ static void execute_body(unsigned op, const uint32_t *p)
         translate_matrix(p);
         break;
     case 0x20:
+        s_color_gpu = s_color_pending = false;
         s_color = (uint16_t)(p[0] & 0x7FFF);
         update_color_rgba();
         break;
@@ -1320,8 +1484,7 @@ static void execute_body(unsigned op, const uint32_t *p)
             texgen(src, 2);
         }
         if (s_attr & 0xF) {
-            s_color = shade(p[0]);
-            update_color_rgba();
+            normal_color(p[0]);
         }
         break;
     case 0x22:
@@ -1393,6 +1556,7 @@ static void execute_body(unsigned op, const uint32_t *p)
             normals_changed();
         }
         if (p[0] & 0x8000) {
+            s_color_gpu = s_color_pending = false;
             s_color = s_diffuse;
             update_color_rgba();
         }
@@ -1592,11 +1756,13 @@ static bool fast_vertex(void)
     uint32_t *w = (uint32_t *)&fb->verts[n];
     if (s_capture_scene) {
         w[0] = (uint16_t)s_coord[0] | ((uint32_t)(uint16_t)s_coord[1] << 16);
-        w[1] = (uint16_t)s_coord[2] | ((uint32_t)s_slot_idx << 16);
-        w[2] = s_color_rgba;
+        w[1] = (uint16_t)s_coord[2] | ((uint32_t)s_slot_idx << 16) | (s_color_gpu ? s_normal_high : 0);
+        w[2] = s_color_gpu ? s_normal_low : s_color_rgba;
         w[3] = (uint16_t)s_texcoord[0] | ((uint32_t)(uint16_t)s_texcoord[1] << 16);
     }
     fb->vert_gmtx[n] = (uint16_t)s_cur_gmtx;
+    fb->vert_light[n] = s_color_gpu ? s_current_light_id : 0xFFFFu;
+    fb->vert_alpha[n] = EXPAND5[(s_attr >> 16) & 31u];
     fb->frame.vert_count = n + 1;
 
     const uint32_t k = s_prim_count++;
@@ -1759,8 +1925,7 @@ static inline __attribute__((always_inline)) void hot_command(unsigned op, const
             break;
         }
         if (s_attr & 0xF) {
-            s_color = shade(v);
-            update_color_rgba();
+            normal_color(v);
         }
         return;
     default:
@@ -1866,6 +2031,10 @@ typedef struct dl_entry {
     bool recorded;
     bool never;        /* proven unrecordable for this content */
     bool command_plan; /* events contain decoded commands, not baked vertex blocks */
+    bool vertex_plan;
+    int16_t coord_key[3];
+    int16_t (*coords)[3];
+    uint32_t ncoords, cap_coords;
     bool needs_light;  /* seen lighting its normals: key on lighting state */
 #ifndef HGSS_PROFILE_OFF
     uint32_t reject_mask; /* persistent reason for never, even in later windows */
@@ -2032,6 +2201,7 @@ static void rec_command(unsigned op, const uint32_t *p)
 #define DL_READS_TEXCOORD 4u
 #define DL_READS_TEXM 8u
 #define DL_HAS_VERTEX_DATA 16u /* any COLOR/NORMAL/TEXCOORD/VTX command */
+#define DL_HAS_NORMAL 32u
 
 static uint32_t dl_entry_reads(const uint32_t *w, size_t n, unsigned lights)
 {
@@ -2055,6 +2225,7 @@ static uint32_t dl_entry_reads(const uint32_t *w, size_t n, unsigned lights)
                 written |= DL_READS_COLOR;
                 break;
             case 0x21:
+                reads |= DL_HAS_NORMAL;
                 if (lit) {
                     written |= DL_READS_COLOR;
                 }
@@ -2134,6 +2305,7 @@ static size_t dl_key_size(bool lit, bool texgen, uint32_t reads)
 
 static void dl_make_key(dl_key *k, bool lit, bool texgen, uint32_t reads)
 {
+    resolve_color();
     memset(k, 0, dl_key_size(lit, texgen, reads));
     k->attr_pending = s_attr_pending;
     k->attr = s_attr;
@@ -2185,6 +2357,7 @@ static void dl_make_key(dl_key *k, bool lit, bool texgen, uint32_t reads)
  * Coffeepot cpu-optimization.md: small hot data, avoid repeated copies. */
 static bool dl_key_matches(const dl_key *k, bool lit, bool texgen, uint32_t reads)
 {
+    resolve_color();
     if (k->attr_pending != s_attr_pending || k->attr != s_attr ||
         k->tex_param != s_tex_param || k->tex_pltt != s_tex_pltt ||
         k->viewport != s_viewport || k->mtx_mode != (uint32_t)s_mtx_mode) {
@@ -2256,6 +2429,7 @@ static void dl_drop_recording(dl_entry *e)
     e->nevents = e->nblocks = e->nverts = e->nidx = 0;
     e->recorded = false;
     e->command_plan = false;
+    e->vertex_plan = false;
 }
 
 /* Room for need elements in *ptr: the existing storage if large enough. */
@@ -2280,6 +2454,7 @@ static void dl_free(dl_entry *e)
 
 static void dl_capture_exit(dl_exit *x, uint32_t v0)
 {
+    resolve_color();
     x->color = s_color;
     memcpy(x->coord, s_coord, sizeof(x->coord));
     x->texcoord[0] = s_texcoord[0];
@@ -2495,6 +2670,7 @@ static void dl_replay_impl(dl_entry *e, const uint32_t *words)
          * tests and primitive state, rather than a previous entry's exit. */
         return;
     }
+    s_color_gpu = s_color_pending = false;
     s_color = e->exit.color;
     memcpy(s_coord, e->exit.coord, sizeof(s_coord));
     s_texcoord[0] = e->exit.texcoord[0];
@@ -2727,6 +2903,154 @@ static void dl_decode_never(const dl_entry *e, const uint32_t *words, size_t cou
 #endif
 }
 
+/* Expand position encodings once. Matrix, colour, normal, texture and test
+ * commands remain live events, so skinned/lit strips need no lighting key
+ * and may share vertices across any number of matrix changes. */
+static void plan_coord(unsigned op, const uint32_t *p, int16_t coord[3])
+{
+    const uint32_t v = p[0];
+    switch (op) {
+    case 0x23:
+        coord[0] = (int16_t)v;
+        coord[1] = (int16_t)(v >> 16);
+        coord[2] = (int16_t)p[1];
+        break;
+    case 0x24:
+        for (unsigned c = 0; c < 3; ++c) {
+            coord[c] = (int16_t)(sign_bits(v >> (c * 10), 10) * 64);
+        }
+        break;
+    case 0x25:
+        coord[0] = (int16_t)v;
+        coord[1] = (int16_t)(v >> 16);
+        break;
+    case 0x26:
+        coord[0] = (int16_t)v;
+        coord[2] = (int16_t)(v >> 16);
+        break;
+    case 0x27:
+        coord[1] = (int16_t)v;
+        coord[2] = (int16_t)(v >> 16);
+        break;
+    case 0x28:
+        for (unsigned c = 0; c < 3; ++c) {
+            coord[c] = (int16_t)(coord[c] + sign_bits(v >> (c * 10), 10));
+        }
+        break;
+    }
+}
+
+static bool compile_vertex_plan(dl_entry *e)
+{
+    size_t off = 0;
+    uint32_t events = 0, vertices = 0;
+    while (off < e->count) {
+        uint32_t commands = e->words[off++];
+        for (unsigned k = 0; k < 4; ++k, commands >>= 8) {
+            const unsigned op = commands & 255u;
+            const size_t params = s_param_count[op];
+            if (params > e->count - off || op == 0x50) {
+                return false;
+            }
+            events += op != 0;
+            vertices += op >= 0x23 && op <= 0x28;
+            off += params;
+        }
+    }
+    if (events > DL_MAX_EVENTS ||
+        !dl_reserve((void **)&e->events, &e->cap_events, events, 4) ||
+        !dl_reserve((void **)&e->coords, &e->cap_coords, vertices + 1u, sizeof(*e->coords))) {
+        return false;
+    }
+    int16_t coord[3];
+    memcpy(coord, s_coord, sizeof(coord));
+    memcpy(e->coord_key, coord, sizeof(coord));
+    off = 0;
+    events = vertices = 0;
+    while (off < e->count) {
+        uint32_t commands = e->words[off++];
+        for (unsigned k = 0; k < 4; ++k, commands >>= 8) {
+            const unsigned op = commands & 255u;
+            if (op >= 0x23 && op <= 0x28) {
+                plan_coord(op, e->words + off, coord);
+                memcpy(e->coords[vertices], coord, sizeof(coord));
+                e->events[events++] = DL_EV_BLOCK | vertices++;
+            } else if (op != 0) {
+                e->events[events++] = (uint32_t)off | ((uint32_t)op << 20);
+            }
+            off += s_param_count[op];
+        }
+    }
+    e->nevents = events;
+    e->ncoords = vertices;
+    e->vertex_plan = true;
+    return true;
+}
+
+static void vertex_plan(dl_entry *e, const uint32_t *words, size_t count)
+{
+    bool changed = memcmp(e->words, words, count * 4u) != 0;
+    if (changed) {
+        memcpy(e->words, words, count * 4u);
+        dl_drop_recording(e);
+        dl_set_reads(e, words, count);
+    }
+    bool inherited_coord = (e->reads[0] & DL_READS_COORD) != 0;
+    bool hit = e->vertex_plan &&
+               (!inherited_coord || memcmp(e->coord_key, s_coord, sizeof(s_coord)) == 0);
+    if (!hit && !compile_vertex_plan(e)) {
+        decode_words(words, count);
+        return;
+    }
+    e->last_frame = s_stats.swaps;
+#ifndef HGSS_PROFILE_OFF
+    s_dl_hits += hit;
+    s_dl_misses += !hit;
+    s_dl_cov[hit ? DLC_HIT : DLC_NEW] += (uint32_t)count;
+    const u64 start = s_coarse_sample ? svcGetSystemTick() : 0;
+#endif
+#ifdef KJ_DL_VERIFY
+    size_t off = 0;
+    uint32_t event = 0, vertex = 0;
+    int16_t coord[3];
+    memcpy(coord, s_coord, sizeof(coord));
+    while (off < count) {
+        uint32_t commands = words[off++];
+        for (unsigned k = 0; k < 4; ++k, commands >>= 8) {
+            const unsigned op = commands & 255u;
+            if (op >= 0x23 && op <= 0x28) {
+                plan_coord(op, words + off, coord);
+                if (event >= e->nevents || vertex >= e->ncoords ||
+                    e->events[event++] != (DL_EV_BLOCK | vertex) ||
+                    memcmp(e->coords[vertex++], coord, sizeof(coord)) != 0) {
+                    NitroPort_Log("[dlverify] MISMATCH expanded vertex plan %p", (const void *)words);
+                }
+            } else if (op != 0 && (event >= e->nevents ||
+                       e->events[event++] != ((uint32_t)off | ((uint32_t)op << 20)))) {
+                NitroPort_Log("[dlverify] MISMATCH expanded state plan %p", (const void *)words);
+            }
+            off += s_param_count[op];
+        }
+    }
+#endif
+    for (uint32_t k = 0; k < e->nevents; ++k) {
+        uint32_t event = e->events[k];
+        if (event & DL_EV_BLOCK) {
+            memcpy(s_coord, e->coords[event & ~DL_EV_BLOCK], sizeof(s_coord));
+            if (!fast_vertex()) {
+                submit_vertex();
+            }
+        } else {
+            hot_command(event >> 20, words + (event & 0xFFFFFu));
+        }
+    }
+#ifndef HGSS_PROFILE_OFF
+    if (s_coarse_sample) {
+        s_coarse_replay += svcGetSystemTick() - start;
+    }
+#endif
+}
+
 static void fifo_words_impl(const uint32_t *words, size_t count)
 {
 #ifndef HGSS_PROFILE_OFF
@@ -2789,7 +3113,14 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
         e->count = (uint32_t)count;
         memcpy(e->words, words, count * 4u);
         dl_set_reads(e, words, count);
-    } else if (e->recorded && !e->never && (e->reads[0] & DL_HAS_VERTEX_DATA) == 0 &&
+    }
+#ifdef KJ_G3_GPU_LIGHTING
+    else if ((e->reads[0] & DL_HAS_NORMAL) || s_color_gpu || e->vertex_plan) {
+        vertex_plan(e, words, count);
+        return;
+    }
+#endif
+    else if (e->recorded && !e->never && (e->reads[0] & DL_HAS_VERTEX_DATA) == 0 &&
                dl_state_layout_same(e, words, count)) {
         e->last_frame = s_stats.swaps;
         dl_replay(e, words);
@@ -2830,6 +3161,12 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
         }
     }
     e->last_frame = s_stats.swaps;
+#ifdef KJ_G3_GPU_LIGHTING
+    if ((e->reads[0] & DL_HAS_NORMAL) || s_color_gpu || e->vertex_plan) {
+        vertex_plan(e, words, count);
+        return;
+    }
+#endif
     if (e->never) {
 #ifndef HGSS_PROFILE_OFF
         s_dl_cov[DLC_NEVER] += (uint32_t)count;

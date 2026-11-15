@@ -132,9 +132,12 @@ typedef struct kj_g3_batch {
 
 /* Matrices one draw can address (the vertex shader's uniform palette). */
 #define KJ_G3_PALETTE 16
+#define KJ_G3_LIT_PALETTE 6
+#define KJ_G3_MAX_LIGHTING 512
 
 #define KJ_G3_BATCH_TRANSLUCENT 0x1u   /* goes to the translucent list */
 #define KJ_G3_BATCH_SHADOW      0x2u   /* DS shadow polygon */
+#define KJ_G3_BATCH_LIT         0x4u   /* lighting context index in flags >> 16 */
 
 typedef struct kj_g3_frame {
     const kj_g3_vertex *verts;
@@ -165,6 +168,10 @@ typedef struct kj_g3_frame {
     uint32_t unsupported;
     /* BOX_TEST results this frame (culled_far: outside the far plane only) */
     uint32_t box_tests, box_culled, box_culled_far;
+    const struct kj_lighting *lighting;
+    const uint16_t *vertex_lights;
+    const uint8_t *vertex_alpha;
+    uint32_t lighting_count;
 } kj_g3_frame;
 
 /* ----------------------------------------------------------- frame flow */

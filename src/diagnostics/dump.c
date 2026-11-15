@@ -16,6 +16,7 @@
 #include "diagnostics/dump.h"
 
 #include "diagnostics/log.h"
+#include "runtime/kj_lighting.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -40,6 +41,36 @@ static bool blob(FILE *f, const void *p, uint32_t n)
             return false;
         }
         n -= k;
+    }
+    return true;
+}
+
+/* Keep KJD1's literal-colour ABI for the independent offline oracle.
+ * This conversion runs only for an explicitly requested debug dump. */
+static bool vertex_blob(FILE *file, const kj_g3_frame *frame)
+{
+    uint32_t bytes = frame->vert_count * sizeof(kj_g3_vertex);
+    if (!put(file, &bytes, sizeof(bytes))) {
+        return false;
+    }
+    for (uint32_t i = 0; i < frame->vert_count; ++i) {
+        kj_g3_vertex v = frame->verts[i];
+        if (v.pad & 0x80u) {
+            uint32_t packed;
+            int32_t n[3];
+            memcpy(&packed, &v.r, sizeof(packed));
+            kj_lighting_unpack_normal(packed, v.mtx, v.pad, n);
+            uint16_t color = kj_lighting_color(n, &frame->lighting[frame->vertex_lights[i]]);
+            v.r = ((color & 31u) << 3) | ((color & 31u) >> 2);
+            v.g = (((color >> 5) & 31u) << 3) | (((color >> 5) & 31u) >> 2);
+            v.b = (((color >> 10) & 31u) << 3) | (((color >> 10) & 31u) >> 2);
+            v.a = frame->vertex_alpha[i];
+            v.mtx &= 7u;
+            v.pad = 0;
+        }
+        if (!put(file, &v, sizeof(v))) {
+            return false;
+        }
     }
     return true;
 }
@@ -69,7 +100,7 @@ bool kj_dump_frame(const char *path, const kj_frame_input *in)
     ok = ok && put(f, &present, 4);
     if (ok && g != NULL) {
         ok = put(f, &g->swap_params, 4) && put(f, &g->viewport, 4) && put(f, &g->disp3dcnt, 4) &&
-             blob(f, g->verts, g->vert_count * (uint32_t)sizeof(kj_g3_vertex)) &&
+             vertex_blob(f, g) &&
              blob(f, g->indices, g->index_count * 2u) &&
              blob(f, g->matrices, g->matrix_count * (uint32_t)sizeof(kj_g3_matrix)) &&
              blob(f, g->batches, g->batch_count * (uint32_t)sizeof(kj_g3_batch));

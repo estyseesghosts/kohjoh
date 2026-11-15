@@ -23,6 +23,7 @@
 #include "diagnostics/perf.h"
 #include "graphics/g3d/textures.h"
 #include "graphics/pica/gpu.h"
+#include "runtime/kj_lighting.h"
 
 #include <3ds.h>
 #include <citro3d.h>
@@ -42,6 +43,9 @@ static uint32_t s_last_wrap;
 static const kj_g3_matrix *s_last_pal;
 static uint32_t s_last_pal_count;
 static uint32_t s_last_pal_vp;
+static kj_program_id s_draw_program;
+static const kj_lighting *s_last_lighting;
+static uint32_t s_last_alpha;
 
 bool kj_g3d_init(void)
 {
@@ -136,6 +140,55 @@ static void upload_palette(const kj_g3_batch *b, float fix[4][4])
     }
 }
 
+static void upload_lighting(const kj_g3_batch *b)
+{
+    const kj_lit_uniforms *u = kj_gpu_lit_uniforms();
+    const kj_lighting *light = &s_frame->lighting[b->flags >> 16];
+    const uint32_t alpha = (b->poly_attr >> 16) & 31u;
+    if (light != s_last_lighting) {
+        for (unsigned i = 0; i < 4; ++i) {
+            int32_t dir_hi[3], dir_lo[3], half_hi[3], half_lo[3];
+            for (unsigned c = 0; c < 3; ++c) {
+                int32_t d = (light->enabled & (1u << i)) ? -light->direction[i][c] : 0;
+                int32_t h = (light->enabled & (1u << i)) ? -light->half[i][c] : 0;
+                dir_hi[c] = d >> 7;
+                dir_lo[c] = d - dir_hi[c] * 128;
+                half_hi[c] = h >> 7;
+                half_lo[c] = h - half_hi[c] * 128;
+            }
+            C3D_FVUnifSet(GPU_VERTEX_SHADER, u->direction + i,
+                          dir_hi[0], dir_hi[1], dir_hi[2], 0);
+            C3D_FVUnifSet(GPU_VERTEX_SHADER, u->direction_low + i,
+                          dir_lo[0], dir_lo[1], dir_lo[2], 0);
+            C3D_FVUnifSet(GPU_VERTEX_SHADER, u->half + i,
+                          half_hi[0], half_hi[1], half_hi[2], 0);
+            C3D_FVUnifSet(GPU_VERTEX_SHADER, u->half_low + i,
+                          half_lo[0], half_lo[1], half_lo[2], 0);
+            C3D_FVUnifSet(GPU_VERTEX_SHADER, u->ambient + i,
+                          light->ambient[i][0], light->ambient[i][1], light->ambient[i][2], 0);
+            C3D_FVUnifSet(GPU_VERTEX_SHADER, u->diffuse + i,
+                          light->diffuse[i][0], light->diffuse[i][1], light->diffuse[i][2], 0);
+            C3D_FVUnifSet(GPU_VERTEX_SHADER, u->specular + i,
+                          light->specular[i][0], light->specular[i][1], light->specular[i][2], 0);
+        }
+        C3D_FVUnifSet(GPU_VERTEX_SHADER, u->emission,
+                      light->emission[0], light->emission[1], light->emission[2], 0);
+        if (light->use_shininess) {
+            for (unsigned i = 0; i < 32; ++i) {
+                const uint32_t word = light->shininess[i];
+                C3D_FVUnifSet(GPU_VERTEX_SHADER, u->shininess + i,
+                              word & 255u, word >> 8 & 255u, word >> 16 & 255u, word >> 24);
+            }
+        }
+    }
+    if (light != s_last_lighting || alpha != s_last_alpha) {
+        C3D_FVUnifSet(GPU_VERTEX_SHADER, u->params,
+                      (alpha << 3) | (alpha >> 2), light->use_shininess, 0, 0);
+    }
+    s_last_lighting = light;
+    s_last_alpha = alpha;
+}
+
 static void tev_for(uint32_t attr, bool textured)
 {
     C3D_TexEnv *env = C3D_GetTexEnv(0);
@@ -192,6 +245,18 @@ static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t d
 #endif
                 continue;
             }
+        }
+        const kj_program_id program = (b->flags & KJ_G3_BATCH_LIT)
+                                          ? KJ_PROGRAM_3D_LIT : KJ_PROGRAM_3D;
+        if (program != s_draw_program) {
+            kj_gpu_use_program(program);
+            s_draw_program = program;
+            s_last_pal = NULL;
+            s_last_tex = NULL;
+            s_last_lighting = NULL;
+        }
+        if (program == KJ_PROGRAM_3D_LIT) {
+            upload_lighting(b);
         }
         if (b->viewport != last_vp) {
             make_fixup(target, b->viewport, wbuffer, fix);
@@ -305,6 +370,8 @@ void kj_g3d_draw(const kj_target *target, bool wide, uint8_t stencil_flags)
      * 3D program once; binding before the invalidate bound it twice. */
     kj_gpu_invalidate();
     kj_gpu_use_program(KJ_PROGRAM_3D);
+    s_draw_program = KJ_PROGRAM_3D;
+    s_last_lighting = NULL;
     s_last_tev = -1;
     s_last_tex = NULL;
     s_last_pal = NULL;
