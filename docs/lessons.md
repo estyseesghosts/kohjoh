@@ -108,6 +108,32 @@ What went wrong, and the fix:
   emulator profile. Make sure every thread the device runs also runs under
   test (`dspfirm.cdc` is now in Azahar's sdmc).
 
+## Session 4 (audio cost, 2026-11-15)
+
+What went right:
+- **A full-chip differential harness first.** `tests/native/sound_arm.py`
+  runs the reference and working mixer under Unicorn on the same random
+  register programs; every later change was checked bit for bit in a
+  minute, and mutation tests showed which scenarios it could not see.
+- **Measuring reuse before building the cache.** `[sndadpcm]` showed >95%
+  repeated decoding and the working set; the arena size came from that
+  data (256 KiB thrashed), not from the plan's first guess.
+- **A line-level instruction profile** (Unicorn per-address counts mapped
+  with addr2line) located the spills the stage timers could only hint at.
+
+What went wrong, and the fix:
+- **A digest that hashed raw addresses** reported a block-size change as a
+  behaviour change: code size moved the test data. Hash addresses relative
+  to the buffer they point into.
+- **A harness `memset` compiled into a call to itself** (GCC loop-pattern
+  distribution): a hang that looked like a slow emulator. Freestanding
+  harness helpers need `no-tree-loop-distribute-patterns`.
+- **Synthetic workloads mislead caches.** The first bench's instruments
+  were too large to repeat, and showed the cache as a loss. Size synthetic
+  data from logs of the real workload.
+- **Editing files from Windows Python** turned LF into CRLF (a 900-line
+  diff); write with `newline=''`.
+
 ## Rules
 
 1. Commit each verified step; keep `master` building and verified.
@@ -119,3 +145,5 @@ What went wrong, and the fix:
 6. After any build-system change, rerun intro, Goldenrod (with save) and input.
 7. After touching a hot loop, check its size with `nm -S` (16 KiB I-cache).
 8. One Azahar harness at a time.
+9. After touching the sound mixer, run `tests/native/sound_arm.py`
+   (bit-exact against `HEAD`) before building.

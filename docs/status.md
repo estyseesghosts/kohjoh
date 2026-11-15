@@ -1,6 +1,6 @@
 # Project status
 
-As of 2026-11-13. Evidence levels: **built** (compiles and links), **run**
+As of 2026-11-13; audio updated 2026-11-15 ([audio worklog](worklog/2026-11-15-audio.md)). Evidence levels: **built** (compiles and links), **run**
 (boots in Azahar), **verified** (checked in Azahar against an expectation),
 **O3DS** (measured on an Old 3DS). Hardware logs below supply O3DS observations; sustained deadline certification remains open.
 
@@ -55,6 +55,7 @@ See [today's worklog](worklog/2026-11-13.md#o3ds-log-3-repair-measurements-and-c
 | Saves | run | interim raw file `saves/<edition>.sav` ([`save_raw.c`](../src/storage/save_raw.c)) |
 | Audio | run | user heard music; Azahar now has DSP firmware, NDSP runs |
 | Sound mixer ADPCM render pass (`da6b36c`, `dacb07d`) | verified | host differential test bit-exact (100k programs); Azahar title 125 → 102 instructions per channel-sample |
+| Audio cost plan (chatlog11, `4756c78`..`52f78b6`) | verified (Azahar) | Unicorn full-chip differential bit-exact; Azahar Goldenrod mixer 107.6 → 48.0 ticks per channel-sample, 14.8% → 6.6% of the core; decoded-ADPCM cache verify build 0 mismatches; held samples (DS) by default. O3DS unmeasured. [worklog](worklog/2026-11-15-audio.md) |
 | CIA, RomFS pack, title save archive | not implemented | path lookup only ([`paths.c`](../src/storage/paths.c)) |
 
 ### Performance
@@ -105,6 +106,10 @@ window, ~170 cycles per channel-sample, almost all channels ADPCM. Cut by
 also spilled to the stack every frame, which Azahar does not charge).
 
 ## Next
+
+0. O3DS run of the 2026-11-15 audio builds (normal and profile): compare
+   `[sndprof]`, `[sndpmu]`, `[sndout]` and `[gamecpu]` with `docs/logs/1`,
+   and listen to held against interpolated samples (`KJ_SND_INTERPOLATE`).
 
 1. Find the save-detection regression on `wip/savestore`; finish SaveStore.
 2. Battle crashes (user-reported): reproduce with `route34-battle.txt`; `logs/crash.txt`.
