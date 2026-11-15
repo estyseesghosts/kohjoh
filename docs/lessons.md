@@ -145,6 +145,17 @@ What went wrong, and the fix:
   breaking cache invalidation still passed. Mutate each safety check once
   and confirm the harness fails before trusting it.
 
+- **State that is only valid after a reset.** The ADPCM cache's bucket
+  table meant "empty" as -1, set by the reset; a test that skipped the
+  reset hung. Make the zeroed state valid instead.
+- **Killing a test that was working.** A host check looked idle (Python
+  at 1.7 s CPU, no children) but its test binary ran under another parent.
+  List every process created since the start, with CPU time, before
+  calling something hung.
+- **Two harnesses for one module.** `sound_arm.py` resets the chip;
+  `check_hotpaths.py`'s `sound_diff.c` does not. Run both after mixer
+  changes.
+
 ## Rules
 
 1. Commit each verified step; keep `master` building and verified.
@@ -157,4 +168,5 @@ What went wrong, and the fix:
 7. After touching a hot loop, check its size with `nm -S` (16 KiB I-cache).
 8. One Azahar harness at a time.
 9. After touching the sound mixer, run `tests/native/sound_arm.py`
-   (bit-exact against `HEAD`) before building.
+   (bit-exact against `HEAD`) and `tests/native/check_hotpaths.py` before
+   building.
