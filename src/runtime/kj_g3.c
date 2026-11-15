@@ -449,6 +449,27 @@ static void vec_changed(void)
 
 static uint16_t shade_uncached(uint32_t value);
 
+/* Material x light-colour products change per material, not per normal.
+ * Keep the exact DS 5-bit product table and rounding; animation changes
+ * the vector matrix without invalidating these colour-only terms. */
+static bool s_light_terms_dirty = true;
+static struct {
+    uint8_t ambient[3], diffuse[3], specular[3];
+} s_light_terms[4];
+
+static void update_light_terms(void)
+{
+    for (unsigned i = 0; i < 4; ++i) {
+        for (unsigned c = 0; c < 3; ++c) {
+            const unsigned l = (s_light_color[i] >> (5 * c)) & 31u;
+            s_light_terms[i].ambient[c] = s_product[(s_ambient >> (5 * c)) & 31u][l];
+            s_light_terms[i].diffuse[c] = s_product[(s_diffuse >> (5 * c)) & 31u][l];
+            s_light_terms[i].specular[c] = s_product[(s_specular >> (5 * c)) & 31u][l];
+        }
+    }
+    s_light_terms_dirty = false;
+}
+
 static uint16_t shade(uint32_t value)
 {
 #ifndef HGSS_PROFILE_OFF
@@ -477,6 +498,10 @@ static uint16_t shade_uncached(uint32_t value)
     int32_t normal[3], n[3];
     unsigned r = s_emission & 31u, g = (s_emission >> 5) & 31u, b = (s_emission >> 10) & 31u;
 
+    if (s_light_terms_dirty) {
+        update_light_terms();
+    }
+
     for (int j = 0; j < 3; ++j) {
         normal[j] = sign_bits(value >> (j * 10), 10) * 8;
     }
@@ -503,12 +528,10 @@ static uint16_t shade_uncached(uint32_t value)
             const unsigned entry = (s_shininess[index >> 2] >> ((index & 3u) * 8u)) & 255u;
             spec = entry * 4096u / 255u;
         }
-        const uint16_t lc = s_light_color[i];
         for (int c = 0; c < 3; ++c) {
-            const unsigned l = (lc >> (5 * c)) & 31u;
-            const unsigned amb = s_product[(s_ambient >> (5 * c)) & 31u][l];
-            const unsigned dif = s_product[(s_diffuse >> (5 * c)) & 31u][l];
-            const unsigned spc = s_product[(s_specular >> (5 * c)) & 31u][l];
+            const unsigned amb = s_light_terms[i].ambient[c];
+            const unsigned dif = s_light_terms[i].diffuse[c];
+            const unsigned spc = s_light_terms[i].specular[c];
             const unsigned add = amb + ((dif * diffuse + 2048u) >> 12) + ((spc * spec + 2048u) >> 12);
             if (c == 0) {
                 r += add;
@@ -1369,6 +1392,7 @@ static void execute_body(unsigned op, const uint32_t *p)
         if (dif != s_diffuse || amb != s_ambient) {
             s_diffuse = dif;
             s_ambient = amb;
+            s_light_terms_dirty = true;
             normals_changed();
         }
         if (p[0] & 0x8000) {
@@ -1384,6 +1408,7 @@ static void execute_body(unsigned op, const uint32_t *p)
             s_specular = spe;
             s_emission = emi;
             s_use_shininess = shin;
+            s_light_terms_dirty = true;
             normals_changed();
         }
         break;
@@ -1411,6 +1436,7 @@ static void execute_body(unsigned op, const uint32_t *p)
         const uint16_t c = (uint16_t)(p[0] & 0x7FFF);
         if (s_light_color[(p[0] >> 30) & 3] != c) {
             s_light_color[(p[0] >> 30) & 3] = c;
+            s_light_terms_dirty = true;
             normals_changed();
         }
         break;
@@ -1692,7 +1718,8 @@ done:
  * each opcode and both decode branches this function was 14.6 KiB. */
 static inline __attribute__((always_inline)) void hot_command(unsigned op, const uint32_t *p)
 {
-    uint32_t v = p[0];
+    /* Zero-parameter commands may point one past the end of a FIFO list. */
+    const uint32_t v = op >= 0x20 && op <= 0x28 ? p[0] : 0;
     switch (op) {
     case 0x22:
         if ((s_tex_param >> 30) != 0) {
@@ -1839,6 +1866,7 @@ typedef struct dl_entry {
     uint32_t count;
     bool recorded;
     bool never;        /* proven unrecordable for this content */
+    bool command_plan; /* events contain decoded commands, not baked vertex blocks */
     bool needs_light;  /* seen lighting its normals: key on lighting state */
 #ifndef HGSS_PROFILE_OFF
     uint32_t reject_mask; /* persistent reason for never, even in later windows */
@@ -1912,6 +1940,9 @@ static void dl_flush_all(void)
 static dl_rec s_rec;
 static uint32_t s_dl_bytes;
 static uint32_t s_dl_hits, s_dl_misses, s_dl_uncacheable;
+#ifndef HGSS_PROFILE_OFF
+static uint32_t s_dl_plan_calls, s_dl_plan_words;
+#endif
 /* Word coverage of the cache: short lists, a new slot, changed contents,
  * proven uncacheable, replayed, recorded but missed on the entry key. */
 enum { DLC_SHORT, DLC_SMALL, DLC_BEGIN, DLC_BEGIN_FIRST, DLC_SPLIT, DLC_NEW, DLC_CHANGED, DLC_NEVER, DLC_HIT, DLC_KEY, DLC_COUNT };
@@ -2225,6 +2256,7 @@ static void dl_drop_recording(dl_entry *e)
 {
     e->nevents = e->nblocks = e->nverts = e->nidx = 0;
     e->recorded = false;
+    e->command_plan = false;
 }
 
 /* Room for need elements in *ptr: the existing storage if large enough. */
@@ -2613,6 +2645,89 @@ static void decode_words(const uint32_t *words, size_t count)
 #endif
 }
 
+/* Matrix-dependent lighting and shared strip vertices prevent baking a
+ * mesh, not retaining its command layout. Compile a bounded plan once and
+ * execute every command against live DS state. No entry-state key applies.
+ * Keep exact content validation: a never-list may change between rechecks.
+ * Coffeepot renderer-architecture.md: compact specialized render commands. */
+static void dl_compile_commands(dl_entry *e)
+{
+    size_t i = 0;
+    uint32_t events = 0;
+    while (i < e->count) {
+        uint32_t commands = e->words[i++];
+        for (unsigned k = 0; k < 4; ++k, commands >>= 8) {
+            const unsigned op = commands & 0xFFu;
+            const size_t params = s_param_count[op];
+            if (params > e->count - i || op == 0x50 || events >= DL_MAX_EVENTS) {
+                return;
+            }
+            if (op != 0) {
+                s_rec.events[events++] = (uint32_t)i | ((uint32_t)op << 20);
+            }
+            i += params;
+        }
+    }
+    if (events == 0 || !dl_reserve((void **)&e->events, &e->cap_events, events, 4u)) {
+        return;
+    }
+    memcpy(e->events, s_rec.events, events * 4u);
+    e->nevents = events;
+    e->command_plan = true;
+}
+
+static void dl_decode_never(const dl_entry *e, const uint32_t *words, size_t count)
+{
+    if (!e->command_plan || memcmp(e->words, words, count * 4u) != 0) {
+        decode_words(words, count);
+        return;
+    }
+#ifdef KJ_DL_VERIFY
+    /* Independently walk the packed source before executing retained
+     * offsets. Matching operations/parameter addresses imply identical
+     * live execution, including matrix, lighting and primitive effects. */
+    size_t off = 0;
+    uint32_t event = 0;
+    bool valid = true;
+    while (off < count && valid) {
+        uint32_t commands = words[off++];
+        for (unsigned k = 0; k < 4; ++k, commands >>= 8) {
+            const unsigned op = commands & 0xFFu;
+            const size_t params = s_param_count[op];
+            if (params > count - off) {
+                valid = false;
+                break;
+            }
+            if (op != 0 && (event >= e->nevents ||
+                e->events[event++] != ((uint32_t)off | ((uint32_t)op << 20)))) {
+                valid = false;
+                break;
+            }
+            off += params;
+        }
+    }
+    if (!valid || event != e->nevents) {
+        NitroPort_Log("[dlverify] MISMATCH command plan %p", (const void *)words);
+        decode_words(words, count);
+        return;
+    }
+#endif
+#ifndef HGSS_PROFILE_OFF
+    const u64 start = s_coarse_sample ? svcGetSystemTick() : 0;
+    ++s_dl_plan_calls;
+    s_dl_plan_words += (uint32_t)count;
+#endif
+    for (uint32_t k = 0; k < e->nevents; ++k) {
+        const uint32_t ev = e->events[k];
+        hot_command(ev >> 20, words + (ev & 0xFFFFFu));
+    }
+#ifndef HGSS_PROFILE_OFF
+    if (s_coarse_sample) {
+        s_coarse_decode += svcGetSystemTick() - start;
+    }
+#endif
+}
+
 static void fifo_words_impl(const uint32_t *words, size_t count)
 {
 #ifndef HGSS_PROFILE_OFF
@@ -2696,7 +2811,7 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
         ++s_dl_uncacheable;
         s_sample_reject |= e->reject_mask;
 #endif
-        decode_words(words, count);
+        dl_decode_never(e, words, count);
         return;
     } else {
 #ifndef HGSS_PROFILE_OFF
@@ -2724,7 +2839,7 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
         ++s_dl_uncacheable;
         s_sample_reject |= e->reject_mask;
 #endif
-        decode_words(words, count);
+        dl_decode_never(e, words, count);
         return;
     }
     const bool texgen = (s_tex_param >> 30) != 0;
@@ -2856,6 +2971,7 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
         }
         s_sample_reject |= e->reject_mask;
 #endif
+        dl_compile_commands(e);
         return;
     }
     const uint32_t nv = fb->frame.vert_count - s_rec.v0, ni = fb->frame.index_count - s_rec.i0;
@@ -2957,6 +3073,10 @@ void kj_g3_dl_stats(uint32_t *hits, uint32_t *misses, uint32_t *uncacheable, uin
     s_coarse_n = 0;
     s_coarse_total = s_coarse_decode = s_coarse_replay = s_coarse_copy = 0;
     dl_profile_report();
+    NitroPort_Log("[dlplan] live command plans calls %lu words %lu "
+                  "(decode work, not retained vertex hits)",
+                  (unsigned long)s_dl_plan_calls, (unsigned long)s_dl_plan_words);
+    s_dl_plan_calls = s_dl_plan_words = 0;
     NitroPort_Log("[g3capture] producer skips %lu (FIFO words %llu); swapped scenes captured %lu discarded %lu; "
                   "discarded vertices %llu indices %llu (DS state/tests/counts still executed)",
                   (unsigned long)s_skipped_producers,

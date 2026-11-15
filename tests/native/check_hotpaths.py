@@ -78,6 +78,20 @@ with tempfile.TemporaryDirectory(prefix='kohjoh-test-') as tmp:
             assert capture_hash == dry, ('cache mode changed capture', mode, capture_hash, dry)
         capture_hash = dry
     print(f'PASS capture: {capture_hash}, unchanged DS tests/counts and following pictures; no discarded vertex writes', flush=True)
+    plan_hash = None
+    for variant, source, mode in [
+        ('before', tmp/'g3_before.c', []),
+        ('cached', root/'src/runtime/kj_g3.c', ['-DTEST_COMMAND_PLAN']),
+        ('uncached', root/'src/runtime/kj_g3.c', ['-DKJ_DL_NO_CACHE']),
+        ('verify', root/'src/runtime/kj_g3.c', ['-DKJ_DL_VERIFY', '-DTEST_COMMAND_PLAN']),
+    ]:
+        exe=tmp/'dl_plan_test.exe'
+        run([*common,'-DHGSS_PROFILE_OFF',*mode,f'-DSOURCE="{source.as_posix()}"',root/'tests/native/dl_plan_test.c','-o',exe])
+        value = run([exe])
+        if plan_hash is not None:
+            assert plan_hash == value, ('lit plan/shading changed output', variant, plan_hash, value)
+        plan_hash = value
+    print(f'PASS lit plans: {plan_hash}, changing matrices/materials/shininess/content/layout against original and uncached', flush=True)
     exe=tmp/'perf_test.exe'
     run([*common,'-I',root/'src',root/'tests/native/perf_test.c','-o',exe])
     print(run([exe]))
