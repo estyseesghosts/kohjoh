@@ -39,6 +39,10 @@ with tempfile.TemporaryDirectory(prefix='kohjoh-test-') as tmp:
     run([*common,'-DHGSS_PROFILE_OFF','-DKJ_DL_VERIFY',f'-DSOURCE="{source.as_posix()}"',root/'tests/native/g3_diff.c','-o',exe])
     assert run([exe])==results[1], 'cached/live geometry mismatch'
     print('PASS g3: live decode verification',flush=True)
+    exe=tmp/'g3_profile.exe'
+    run([*common,f'-DSOURCE="{source.as_posix()}"',root/'tests/native/g3_diff.c','-o',exe])
+    assert run([exe])==results[1], 'profiled geometry changed output'
+    print('PASS g3: sampled attribution, nested totals, table overflow/reset, unchanged output',flush=True)
     exe=tmp/'perf_test.exe'
     run([*common,'-I',root/'src',root/'tests/native/perf_test.c','-o',exe])
     print(run([exe]))

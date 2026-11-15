@@ -5,6 +5,10 @@
 #include <string.h>
 #include SOURCE
 unsigned char NitroPort_IoReg[0x1000];
+#ifndef HGSS_PROFILE_OFF
+static uint64_t mock_tick;
+uint64_t svcGetSystemTick(void) { return ++mock_tick; }
+#endif
 void NitroPort_Log(const char *fmt,...) { assert(strstr(fmt,"MISMATCH")==NULL); }
 static uint32_t rng=76543;
 static uint32_t next(void) { rng^=rng<<13; rng^=rng>>17; rng^=rng<<5; return rng; }
@@ -37,5 +41,51 @@ int main(void) {
         digest(g->matrices,g->matrix_count*sizeof(*g->matrices)); digest(g->batches,g->batch_count*sizeof(*g->batches));
         digest(NitroPort_IoReg,sizeof(NitroPort_IoReg));
     }
+#ifndef HGSS_PROFILE_OFF
+    uint64_t total = 0, copied = 0;
+    uint32_t samples = 0, normals = 0;
+    for (unsigned i = 0; i < DL_PROFILE_SLOTS; ++i) {
+        const dl_profile *p = &s_dl_profile[i];
+        total += p->total;
+        samples += p->samples;
+        copied += p->copy_bytes;
+        normals += p->normals;
+        assert(p->copy <= p->replay && p->replay <= p->total);
+        assert(p->decode <= p->total && p->shade_misses <= p->normals);
+    }
+    assert(samples + s_dl_profile_overflow == s_coarse_n);
+    assert(total + s_dl_profile_omitted_ticks == s_coarse_total);
+    assert(copied != 0 && normals != 0);
+    dl_profile_report();
+    for (unsigned i = 0; i < DL_PROFILE_SLOTS; ++i) {
+        assert(s_dl_profile[i].samples == 0);
+    }
+    /* Full tables report omission explicitly and never replace a tracked key. */
+    for (unsigned i = 0; i < DL_PROFILE_SLOTS; ++i) {
+        s_dl_profile[i].samples = 1;
+        s_dl_profile[i].source = NULL;
+    }
+    dl_profile_add(lists[0], sizes[0], 0, 1, 0, 0, 0);
+    assert(s_dl_profile_overflow == 1);
+    dl_profile_report();
+    /* A known rejection must survive report resets and fast never bypasses. */
+    s_in_begin = false;
+    s_fifo_need = 0;
+    dl_entry *entry = dl_slot(lists[1], (uint32_t)sizes[1]);
+    assert(entry != NULL);
+    dl_free(entry);
+    entry->ptr = entry->words = lists[1];
+    entry->count = (uint32_t)sizes[1];
+    entry->never = true;
+    entry->reject_mask = 8;
+    s_stats.swaps = 1;
+    s_sample_reject = s_sample_rechecks = 0;
+    fifo_words_impl(lists[1], sizes[1]);
+    assert(s_sample_reject == 8 && s_sample_rechecks == 0);
+    s_in_begin = false;
+    s_stats.swaps = 64;
+    fifo_words_impl(lists[1], sizes[1]);
+    assert(s_sample_reject == 8 && s_sample_rechecks == 1);
+#endif
     printf("%016llx\n",(unsigned long long)hash);
 }

@@ -33,7 +33,8 @@ extern uint32_t kj_perf_counts[KJ_COUNT_COUNT];
 
 void kj_perf_vblank_begin(void);
 void kj_perf_vblank_end(void);
-void kj_perf_publish_begin(void);
+/* Scene serial is the DS SWAP_BUFFERS identity, not proof of a changed pose. */
+void kj_perf_publish_begin(uint32_t scene_serial);
 /* game_frame: the published game frame (for locating hitches); call after
  * the frame is submitted. */
 void kj_perf_publish_end(uint32_t game_frame);
@@ -46,7 +47,7 @@ void kj_perf_add(enum kj_perf_stage stage, uint64_t ticks);
 #define kj_perf_count(c, n) ((void)0)
 #define kj_perf_vblank_begin() ((void)0)
 #define kj_perf_vblank_end() ((void)0)
-#define kj_perf_publish_begin() ((void)0)
+#define kj_perf_publish_begin(scene_serial) ((void)0)
 #define kj_perf_publish_end(frame) ((void)0)
 #define kj_perf_present_skipped(frame) ((void)0)
 #define kj_perf_now() (0ull)

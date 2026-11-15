@@ -4,6 +4,13 @@ As of 2026-11-13. Evidence levels: **built** (compiles and links), **run**
 (boots in Azahar), **verified** (checked in Azahar against an expectation),
 **O3DS** (measured on an Old 3DS). Hardware logs below supply O3DS observations; sustained deadline certification remains open.
 
+2026-11-14: scene profiler audit adds sampled per-list attribution, persistent
+cache rejection reasons, renderer-inclusive game-frame budgets and properly
+associated completed-queue timings. Submission intervals are now explicitly
+distinct from unobserved LCD presentation. An offline visibility census
+reproduces 72 wholly offscreen Goldenrod batches. See the
+[investigation and hardware run plan](worklog/2026-11-14.md).
+
 ## Latest investigation (uncommitted, 2026-11-13)
 
 `o3ds-log-3` confirms CPU pressure from geometry and audio, with GPU queues

@@ -69,7 +69,7 @@ ROM. `tools/melonds/shots.ps1` saves timed screenshots to
 - `9600-11400 DOWN B`: hold keys over a V-blank range.
 - `debug: 0x1|0x2|0x4|0x8|0x10`: 3D draw without cull / depth test / alpha
   test / blending / texture (`KJ_DEBUG_*` in `src/app/script.h`).
-- `[frame]` lines report real refresh intervals (0/1/2/3/4+) and hitches with
+- `[frame]` lines report submission refresh intervals (0/1/2/3/4+) and hitches with
   per-stage times and counters. Azahar's "App FPS" is not a stutter measure
   (unchanged screens are not presented).
 - A crash writes `logs/crash.txt` (pc, lr, registers) before the system
@@ -94,7 +94,42 @@ frame producing each displayed picture. Older logs accumulated skipped
 frames into the next picture: **80 ms per picture could cover two game
 frames**, and is not an 80 ms game update. Display intervals still cover
 all intervening skipped pictures. Skips have their own count and no longer
-inflate the display hitch count; hitch g2d is exclusive of g3d.
+inflate the submission hitch count; hitch g2d is exclusive of g3d.
+
+`[gamecpu] active logic+publish` additionally reports per-game-frame wall
+work including rendering/queue wait (or the skipped-publish path), excluding
+V-blank waits. Compare this with the roughly 33.4 ms budget. Publish is a
+parent of renderer stages; do not add it to g2d/g3d/submit again. Profiling
+and preemption perturb these numbers; use the normal build for smoothness.
+
+`[frame]` is **submission cadence**, not verified LCD presentation. `[scene]`
+gives submission IDs, the game-frame range, latest DS scene serial, repeated
+scene submissions, empty submissions, and the last GPU-complete game/scene.
+Scene serial increments at DS SWAP_BUFFERS; a new serial does not prove an
+animation pose changed. GPU completion is observed at the next successful
+FrameBegin, not at its exact interrupt time. Actual scanout/presentation is
+unobserved; use hardware video/reference captures to establish visual cadence.
+No GSP callbacks are replaced (Citro3D owns those callbacks).
+
+`[dltop]` emits the 20 largest **sampled total** FIFO costs in each existing
+600-submission geometry reporting window. Keys are source pointer, word
+count and immediate caller return address; resolve callers against that
+build's ELF. Short calls (<16 words) use `src NULL`, grouped by size/caller,
+to avoid filling the table with transient interior pointers. Addresses are
+run-local allocations, not stable model IDs or content hashes. Reused memory
+may aggregate different contents. Table capacity is 512 keys; omitted sample
+count/ticks are explicit. A window with omissions is an incomplete ranking.
+
+Each row reports sample count, replay hits, first/last DS swap, raw total /
+decode / replay / nested copy / maximum ticks, copied vertex+index bytes,
+lighting requests/normal-cache misses, cache rejection mask, and sampled
+64-swap never-list rechecks. Copy bytes exclude the auxiliary matrix-ID
+array. Rejection bits match `[dlwhy]` and persist for never-lists across
+reporting windows. The timing remainder includes key lookup/comparison,
+recording, allocation and probes; it is not pure comparison time. Lighting
+counts measure workload, not isolated shade time. Do not sum nested timings
+or extrapolate one rare sample into an exact per-model cost. PC sampling can
+still distinguish shading from other live-decoder work.
 
 `[g3sample]` randomly samples FIFO calls with probability 1/64 using a
 reproducible xorshift sequence, avoiding correlation with repeated model
@@ -108,7 +143,7 @@ marked `baseline/unavailable`; failed reads invalidate its baseline. Deltas
 exceeding elapsed wall time for an operation engine are rejected and
 rebaselined (two engines for the summed fill counters).
 
-- **Counters**: every 600 *presented* frames the log gets `[perf]` (stage p50/p95/p99/max),
+- **Counters**: every 600 *submitted* frames the log gets `[perf]` (stage p50/p95/p99/max),
   `[pace]` (late V-blanks, resyncs, skipped presents), `[gpu]` (layers
   reused/rebuilt, screens skipped, unsupported counts) and `[ds]` (geometry
   words, H-blank cost, display-list cache). The legacy `cmds` counter counts
@@ -123,8 +158,10 @@ rebaselined (two engines for the summed fill counters).
   `[gpu] ... char KiB compared` is the retained layers' character check.
   `[gputime]`: GSP perf-log microseconds per picture (P3D command lists, PPF
   display transfers, PSC fills; 0 in Azahar, which does not implement the
-  log), `C3D_GetDrawingTime` average/max (the latest completed queue, so not
-  tied to one picture) and the peak command-buffer use.
+  log), `C3D_GetDrawingTime` average/max and completed-queue count (sampled
+  after the next FrameBegin queue wait, attributed to the preceding non-empty
+  submission), and peak command-buffer use. Empty submissions do not reuse
+  a stale drawing-time value. GSP deltas remain window aggregates.
   `[sndprof]` (every ~9.4 s of audio, on the audio thread): cumulative mixer
   ticks, frames and active channels; cycles per channel-sample is
   Δmix_ticks / (Δactive_ch / Δmix_calls) / Δmix_frames. Needs
@@ -165,5 +202,16 @@ It compiles the current sound/geometry code and the `HEAD` versions with
 host GCC, compares output/state hashes for 100,000 randomized ADPCM programs
 and 2,000 synthetic geometry frames (split FIFO, cache hits, all primitives,
 lighting and texgen modes), and checks skipped-frame CPU and hitch accounting
-with a mocked clock. `--reference REV` selects another baseline. No game
+with a mocked clock. The profiled geometry variant also verifies unchanged
+output, sampled parent/child accounting, attribution overflow/reset, and
+persistent cache rejection/recheck reasons. `--reference REV` selects another baseline. No game
 assets are needed. This is differential coverage, not a complete DS oracle.
+
+Run `python tests/native/visibility_test.py` for the offline clip-plane checks.
+`python tools/capture/g3_visibility.py dump.kjd --csv batches.csv` classifies
+offscreen triangles and whole batches without adding CPU culling to the game.
+Default is widened top-screen visibility; `--ds-width` uses the bottom/DS
+width. It uses per-batch viewports, per-vertex palette slots, and W-buffer
+semantics. Counts are conservative clip rejection, not occlusion or measured
+GPU time. Scripted dumps perform synchronous SD I/O: capture separately from
+timing runs. See [scene investigation](worklog/2026-11-14.md) for the hardware run plan.

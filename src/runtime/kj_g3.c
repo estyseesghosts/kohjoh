@@ -39,6 +39,11 @@
 
 extern unsigned char NitroPort_IoReg[];
 
+#ifndef HGSS_PROFILE_OFF
+static bool s_coarse_sample;
+static uint32_t s_sample_normals, s_sample_shade_misses;
+#endif
+
 /* ------------------------------------------------------------- matrices */
 
 typedef struct mtx {
@@ -388,11 +393,21 @@ static uint16_t shade_uncached(uint32_t value);
 
 static uint16_t shade(uint32_t value)
 {
+#ifndef HGSS_PROFILE_OFF
+    if (s_coarse_sample) {
+        ++s_sample_normals;
+    }
+#endif
     const unsigned slot = (unsigned)((value * 2654435761u) >> 26) & (NORMAL_CACHE - 1u);
     if (s_normal_cache[slot].gen == s_normal_gen && s_normal_cache[slot].value == value) {
         return s_normal_cache[slot].rgb;
     }
     const uint16_t rgb = shade_uncached(value);
+#ifndef HGSS_PROFILE_OFF
+    if (s_coarse_sample) {
+        ++s_sample_shade_misses;
+    }
+#endif
     s_normal_cache[slot].gen = s_normal_gen;
     s_normal_cache[slot].value = value;
     s_normal_cache[slot].rgb = rgb;
@@ -1708,6 +1723,9 @@ typedef struct dl_entry {
     bool recorded;
     bool never;        /* proven unrecordable for this content */
     bool needs_light;  /* seen lighting its normals: key on lighting state */
+#ifndef HGSS_PROFILE_OFF
+    uint32_t reject_mask; /* persistent reason for never, even in later windows */
+#endif
     uint32_t reads;    /* DL_READS_*: entry inputs the list consumes */
     uint32_t *words;
     dl_key key;
@@ -2039,8 +2057,105 @@ static void decode_words_impl(const uint32_t *words, size_t count);
  * overhead. Wall time includes preemption. */
 static u32 s_coarse_seq = 0x6d2b79f5u;
 static u32 s_coarse_n, s_coarse_depth;
-static bool s_coarse_sample;
 static u64 s_coarse_total, s_coarse_decode, s_coarse_replay, s_coarse_copy;
+static u64 s_sample_copy_bytes;
+static uint32_t s_sample_reject, s_sample_rechecks;
+
+/* Bounded attribution of sampled calls, independent of the evicting DL cache.
+ * Pointers identify a source allocation within this run, not a model asset ID.
+ * No allocation, clock read or table lookup for unsampled calls. */
+#define DL_PROFILE_SLOTS 512u
+typedef struct dl_profile {
+    const uint32_t *source;
+    uintptr_t caller;
+    size_t words;
+    uint32_t samples, hits, rejects, rechecks, normals, shade_misses;
+    uint32_t first_swap, last_swap;
+    uint64_t total, decode, replay, copy, copy_bytes, max_ticks;
+} dl_profile;
+static dl_profile s_dl_profile[DL_PROFILE_SLOTS];
+static uint32_t s_dl_profile_overflow;
+static uint64_t s_dl_profile_omitted_ticks;
+
+static void dl_profile_add(const uint32_t *words, size_t count, uintptr_t caller,
+                           uint64_t ticks, uint64_t decode, uint64_t replay, uint64_t copy)
+{
+    /* Short/split traffic has many transient interior pointers. Group short
+     * calls by length/caller so they cannot crowd model lists out of the table. */
+    if (count < DL_MIN_WORDS) {
+        words = NULL;
+    }
+    const unsigned start = (unsigned)(((uintptr_t)words >> 2) ^ count ^ (caller >> 2));
+    for (unsigned i = 0; i < DL_PROFILE_SLOTS; ++i) {
+        dl_profile *p = &s_dl_profile[(start + i) & (DL_PROFILE_SLOTS - 1u)];
+        if (p->samples != 0 &&
+            (p->source != words || p->words != count || p->caller != caller)) {
+            continue;
+        }
+        if (p->samples == 0) {
+            p->source = words;
+            p->words = count;
+            p->caller = caller;
+            p->first_swap = s_stats.swaps;
+        }
+        ++p->samples;
+        p->hits += replay != 0;
+        p->rejects |= s_sample_reject;
+        p->rechecks += s_sample_rechecks;
+        p->last_swap = s_stats.swaps;
+        p->normals += s_sample_normals;
+        p->shade_misses += s_sample_shade_misses;
+        p->total += ticks;
+        p->decode += decode;
+        p->replay += replay;
+        p->copy += copy;
+        p->copy_bytes += s_sample_copy_bytes;
+        if (ticks > p->max_ticks) {
+            p->max_ticks = ticks;
+        }
+        return;
+    }
+    ++s_dl_profile_overflow;
+    s_dl_profile_omitted_ticks += ticks;
+}
+
+static void dl_profile_report(void)
+{
+    NitroPort_Log("[dltop] top 20 by sampled total ticks; random 1/64; omitted samples %lu ticks %llu; "
+                  "src NULL groups short calls; copy is inside replay; "
+                  "reject bits: batch=1 shared=2 drops/split=4 "
+                  "lit+matrix=8 swap=16 open-prim=32",
+                  (unsigned long)s_dl_profile_overflow,
+                  (unsigned long long)s_dl_profile_omitted_ticks);
+    for (unsigned rank = 0; rank < 20; ++rank) {
+        dl_profile *best = NULL;
+        for (unsigned i = 0; i < DL_PROFILE_SLOTS; ++i) {
+            dl_profile *p = &s_dl_profile[i];
+            if (p->samples != 0 && (best == NULL || p->total > best->total)) {
+                best = p;
+            }
+        }
+        if (best == NULL) {
+            break;
+        }
+        NitroPort_Log("[dltop] src %p caller %p words %lu n %lu hits %lu swaps %lu-%lu "
+                      "ticks total/decode/replay/copy/max %llu/%llu/%llu/%llu/%llu "
+                      "copy_bytes %llu normals/misses %lu/%lu reject %lx rechecks %lu",
+                      (const void *)best->source, (void *)best->caller,
+                      (unsigned long)best->words, (unsigned long)best->samples,
+                      (unsigned long)best->hits, (unsigned long)best->first_swap,
+                      (unsigned long)best->last_swap, (unsigned long long)best->total,
+                      (unsigned long long)best->decode, (unsigned long long)best->replay,
+                      (unsigned long long)best->copy, (unsigned long long)best->max_ticks,
+                      (unsigned long long)best->copy_bytes, (unsigned long)best->normals,
+                      (unsigned long)best->shade_misses, (unsigned long)best->rejects,
+                      (unsigned long)best->rechecks);
+        best->samples = 0;
+    }
+    memset(s_dl_profile, 0, sizeof(s_dl_profile));
+    s_dl_profile_overflow = 0;
+    s_dl_profile_omitted_ticks = 0;
+}
 #endif
 
 
@@ -2092,7 +2207,10 @@ static bool dl_append_block(const dl_entry *e, const dl_block *b, uint32_t *v_fi
     s_batch->index_count += b->nidx;
     *v_first_out = v0;
 #ifndef HGSS_PROFILE_OFF
-    if (s_coarse_sample) s_coarse_copy += svcGetSystemTick() - copy_start;
+    if (s_coarse_sample) {
+        s_coarse_copy += svcGetSystemTick() - copy_start;
+        s_sample_copy_bytes += (uint64_t)b->nverts * sizeof(kj_g3_vertex) + b->nidx * 2u;
+    }
 #endif
     return true;
 }
@@ -2340,18 +2458,26 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
 #endif
 #ifndef HGSS_PROFILE_OFF
         ++s_dl_uncacheable;
+        s_sample_reject |= e->reject_mask;
 #endif
         decode_words(words, count);
         return;
-    } else if (memcmp(e->words, words, count * 4u) != 0) {
+    } else {
 #ifndef HGSS_PROFILE_OFF
-        s_dl_cov[DLC_CHANGED] += (uint32_t)count;
+        if (e->never) {
+            ++s_sample_rechecks;
+        }
 #endif
-        memcpy(e->words, words, count * 4u);
-        dl_drop_recording(e);
-        e->never = false;
-        e->needs_light = false;
-        e->reads = dl_entry_reads(words, count);
+        if (memcmp(e->words, words, count * 4u) != 0) {
+#ifndef HGSS_PROFILE_OFF
+            s_dl_cov[DLC_CHANGED] += (uint32_t)count;
+#endif
+            memcpy(e->words, words, count * 4u);
+            dl_drop_recording(e);
+            e->never = false;
+            e->needs_light = false;
+            e->reads = dl_entry_reads(words, count);
+        }
     }
     e->last_frame = s_stats.swaps;
     if (e->never) {
@@ -2360,6 +2486,7 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
 #endif
 #ifndef HGSS_PROFILE_OFF
         ++s_dl_uncacheable;
+        s_sample_reject |= e->reject_mask;
 #endif
         decode_words(words, count);
         return;
@@ -2436,6 +2563,10 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
     s_rec.i0 = fb->frame.index_count;
     rec_open_block();
     const uint32_t drops0 = fb->frame.dropped_verts + fb->frame.dropped_batches + fb->frame.unsupported;
+#ifndef HGSS_PROFILE_OFF
+    uint32_t why_before[6];
+    memcpy(why_before, s_dl_why, sizeof(why_before));
+#endif
     decode_words(words, count);
     rec_close_block();
     s_rec.active = false;
@@ -2467,6 +2598,15 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
 #endif
     if (s_rec.bad) {
         e->never = true;
+#ifndef HGSS_PROFILE_OFF
+        e->reject_mask = 0;
+        for (unsigned i = 0; i < 6; ++i) {
+            if (s_dl_why[i] != why_before[i]) {
+                e->reject_mask |= 1u << i;
+            }
+        }
+        s_sample_reject |= e->reject_mask;
+#endif
         return;
     }
     const uint32_t nv = fb->frame.vert_count - s_rec.v0, ni = fb->frame.index_count - s_rec.i0;
@@ -2508,6 +2648,8 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
         if (!e->exit.prim_valid) {
 #ifndef HGSS_PROFILE_OFF
             ++s_dl_why[5];
+            e->reject_mask = 1u << 5;
+            s_sample_reject |= e->reject_mask;
 #endif
             dl_drop_recording(e);
             e->never = true;
@@ -2523,6 +2665,7 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
 #ifndef HGSS_PROFILE_OFF
     const bool outer = s_coarse_depth++ == 0;
     u64 start = 0;
+    u64 decode = 0, replay = 0, copy = 0;
     if (outer) {
         /* Deterministic PRNG avoids locking the stride to a model's calls. */
         s_coarse_seq ^= s_coarse_seq << 13;
@@ -2531,13 +2674,24 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
         s_coarse_sample = (s_coarse_seq & 63u) == 0;
         if (s_coarse_sample) {
             ++s_coarse_n;
+            s_sample_normals = s_sample_shade_misses = 0;
+            s_sample_reject = s_sample_rechecks = 0;
+            s_sample_copy_bytes = 0;
+            decode = s_coarse_decode;
+            replay = s_coarse_replay;
+            copy = s_coarse_copy;
             start = svcGetSystemTick();
         }
     }
 #endif
     fifo_words_impl(words, count);
 #ifndef HGSS_PROFILE_OFF
-    if (outer && s_coarse_sample) s_coarse_total += svcGetSystemTick() - start;
+    if (outer && s_coarse_sample) {
+        const u64 elapsed = svcGetSystemTick() - start;
+        s_coarse_total += elapsed;
+        dl_profile_add(words, count, (uintptr_t)__builtin_return_address(0), elapsed,
+                       s_coarse_decode - decode, s_coarse_replay - replay, s_coarse_copy - copy);
+    }
     --s_coarse_depth;
     if (outer) s_coarse_sample = false;
 #endif
@@ -2552,6 +2706,7 @@ void kj_g3_dl_stats(uint32_t *hits, uint32_t *misses, uint32_t *uncacheable, uin
                   (unsigned long long)s_coarse_copy);
     s_coarse_n = 0;
     s_coarse_total = s_coarse_decode = s_coarse_replay = s_coarse_copy = 0;
+    dl_profile_report();
 #endif
     *hits = s_dl_hits;
     *misses = s_dl_misses;
