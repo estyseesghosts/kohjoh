@@ -1,0 +1,2655 @@
+ ▐▛███▛█   Claude Code v2.1.317
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~\workdir
+
+
+❯ you're working on kohjoh. you should start by reading the commit history and  
+  project documentation to familiarize yourself - as well as the coffeepot wiki 
+  ctr section. then, read chatlog12.md in kohjoh/docs. your task is to carry    
+  this optimization slog to the end - no more lazy software tricks, we have to  
+  cheat in hardware as much as possible, we have to reduce the work that the    
+  hardware is doing as much as we are able to. things like geometry cache and   
+  gpu lighting keep getting missed because in azahar the game still hits 30     
+  frames - real hardware does not deliver such results, and the newest runlogs  
+  continue to prove it. not only are we not using the hardware as effectively   
+  as we could be, but we're also doing unnecessary wasted offscreen work. your  
+  job is to fix that. commit your work as you go along.                         
+
+  Read 3 files, listed 1 directory, ran 2 shell commands (ctrl+o to expand)
+
+● Reading project docs and the newest hardware logs before touching code.
+
+  Searched for 1 pattern, listed 1 directory, ran 3 shell commands (ctrl+o to expand)
+
+● The newest run (2524e88-prof, with PRs #6–#8) is the one to read.
+
+  Ran 6 shell commands (ctrl+o to expand)
+
+● Reading the coffeepot PICA200 rendering/optimisation articles and the HGSS
+  case study.
+
+  Searched for 1 pattern, read 2 files, ran 2 shell commands (ctrl+o to expand)
+
+● Still reading the geometry engine (kj_g3.c) — need the display-list
+  cache/replay path before designing changes.
+
+  Read 1 file, ran 3 shell commands (ctrl+o to expand)
+
+● Reading shaders and the bridge ABI next.
+
+  Searched for 1 pattern, listed 1 directory, ran 4 shell commands (ctrl+o to expand)
+
+● Build environment is ready. Next: baseline build + Azahar Goldenrod profile on
+  HEAD so changes can be compared.
+
+  Ran 6 shell commands (ctrl+o to expand)
+
+● I'm baking stable lit lists once for step 1, keeping the per-vertex GPU-lit
+  plan only for lists whose lighting key churns or that relight under internal
+  matrices.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Now the edits.
+
+● Update(kohjoh\src\runtime\kj_g3.c)
+  ⎿  Added 10 lines
+      759      s_batch_ok = false;
+      760  }
+      761  
+      762 +/* Set while a display list is recorded for baked replay: its 
+          +NORMALs are                                                   
+      763 + * lit once on the CPU (the exact oracle) and the retained blo
+          +ck carries                                                    
+      764 + * literal colours. Static scenery then costs neither per-vert
+          +ex CPU replay                                                 
+      765 + * nor per-vertex PICA lighting on every later frame. Coffeepo
+          +t                                                             
+      766 + * 3d-scene-optimisation.md, "Baked lighting": baked work cost
+          +s no                                                          
+      767 + * per-frame time; the O3DS log at 2524e88 measured 11.3 ms of
+          + P3D per                                                      
+      768 + * picture with every Goldenrod map vertex lit in the shader. 
+          +*/                                                            
+      769 +static bool s_bake_lighting;                                  
+      770 +                                                              
+      771  static void normal_color(uint32_t value)
+      772  {
+      773  #ifdef KJ_G3_GPU_LIGHTING
+      774 +    if (!s_bake_lighting) {                                   
+      775      if (s_checked_lighting_gen != s_lighting_gen) {
+      776          s_gpu_context_ok = true;
+      777          for (unsigned i = 0; i < 4; ++i) {
+
+● Update(kohjoh\src\runtime\kj_g3.c)
+  ⎿  Added 1 line
+      838          s_color_gpu = s_color_pending = true;
+      839          return;
+      840      }
+      841 +    }                                                         
+      842  #endif
+      843      s_color_gpu = s_color_pending = false;
+      844      s_color = shade(value);
+
+● Update(kohjoh\src\runtime\kj_g3.c)
+  ⎿  Added 6 lines
+      2051      int16_t (*coords)[3];
+      2052      uint32_t ncoords, cap_coords;
+      2053      bool needs_light;  /* seen lighting its normals: key on l
+            ighting state */
+      2054 +    /* GPU lighting: a lit list that cannot bake (it relights
+           + under its own                                               
+      2055 +     * matrix changes or shares strip vertices) or whose ligh
+           +ting key keeps                                               
+      2056 +     * changing (animated vector matrix) runs as a live verte
+           +x plan lit on                                                
+      2057 +     * the PICA. Churned lists retry baking every 64 pictures
+           +. */                                                         
+      2058 +    bool gpu_lit, gpu_churn;                                 
+      2059 +    uint8_t key_misses;                                      
+      2060  #ifndef HGSS_PROFILE_OFF
+      2061      uint32_t reject_mask; /* persistent reason for never, eve
+            n in later windows */
+      2062  #endif
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I'll rewrite this section with a Python script (exact-match replacements, LF
+  preserved).
+
+● Bash(mkdir -p "$TMPDIR" 2>/dev/null; S=/c/Users/terezi/AppData/Local/Temp/clau
+      de/596f382ffeba1215/811cbe33-74da-4cb9-9639-c52c4ad1339a/scratchpad; cat >
+      $S/edit1.py…)
+  ⎿   src/runtime/kj_g3.c | 80 ++++++++++++++++++++++++++++++++++++++++++++
+     ---------
+      1 file changed, 67 insertions(+), 13 deletions(-)
+  ⎿  Updated kohjoh\src\runtime\kj_g3.c (+50 -13)
+      3140          dl_set_reads(e, words, count);
+      3141      }
+      3142  #ifdef KJ_G3_GPU_LIGHTING
+      3143 -    else if ((e->reads[0] & DL_HAS_NORMAL) || e->vertex_plan 
+           -||                                                           
+      3144 -             (s_color_gpu && (e->reads[0] & DL_READS_COLOR)))
+           - {                                                           
+      3143 +    else if (e->gpu_lit && !(e->gpu_churn && (s_stats.swaps &
+           + DL_NEVER_RECHECK_MASK) == 0u &&                             
+      3144 +                             e->last_frame != s_stats.swaps))
+           + {                                                           
+      3145          vertex_plan(e, words, count);
+      3146          return;
+      3147      }
+     ...
+      3174          if (e->never) {
+      3175              ++s_sample_rechecks;
+      3176          }
+      3177 +#endif                                                       
+      3178 +#ifdef KJ_G3_GPU_LIGHTING                                    
+      3179 +        if (e->gpu_lit) {                                    
+      3180 +            /* Churned GPU-lit list, 64-picture retry: bake a
+           +gain; one more                                               
+      3181 +             * key miss returns it to the plan. */           
+      3182 +            dl_drop_recording(e);                            
+      3183 +            e->gpu_lit = e->gpu_churn = false;               
+      3184 +            e->key_misses = 1;                               
+      3185 +        }                                                    
+      3186  #endif
+      3187          if (memcmp(e->words, words, count * 4u) != 0) {
+      3188  #ifndef HGSS_PROFILE_OFF
+     ...
+      3192              dl_drop_recording(e);
+      3193              e->never = false;
+      3194              e->needs_light = false;
+      3195 +            e->key_misses = 0;                               
+      3196              dl_set_reads(e, words, count);
+      3197          }
+      3198      }
+      3199      e->last_frame = s_stats.swaps;
+      3190 -#ifdef KJ_G3_GPU_LIGHTING                                    
+      3191 -    if ((e->reads[0] & DL_HAS_NORMAL) || e->vertex_plan ||   
+      3192 -        (s_color_gpu && (e->reads[0] & DL_READS_COLOR))) {   
+      3193 -        vertex_plan(e, words, count);                        
+      3194 -        return;                                              
+      3195 -    }                                                        
+      3196 -#endif                                                       
+     … 81 more lines (ctrl+o to expand)
+
+● Bash(python - <<'EOF'
+      from pathlib import Path…)
+  ⎿  PASS sound: e8bfdd766ba03a03
+     PASS g3: d511eb58d36aceeb
+     PASS g3: live decode verification
+     … +17 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\src\runtime\kj_g3.c (+7 -0)
+      3421              s_sample_reject |= e->reject_mask;
+      3422  #endif
+      3423              dl_drop_recording(e);
+      3424 +#ifdef KJ_G3_GPU_LIGHTING                                    
+      3425 +            if (reads & DL_HAS_NORMAL) {                     
+      3426 +                e->gpu_lit = true;                           
+      3427 +                e->gpu_churn = false;                        
+      3428 +                return;                                      
+      3429 +            }                                                
+      3430 +#endif                                                       
+      3431              e->never = true;
+      3432              return;
+      3433          }
+
+● Background command "Build profiled baseline of HEAD" completed (exit code 1:
+No matches found)
+
+● Host checks pass with identical hashes. Checking the baseline build, then
+  building the candidate.
+
+  Listed 1 directory, ran 4 shell commands (ctrl+o to expand)
+
+● Baseline (Azahar, all frames captured): logic p50 14.04 ms, g3d 3.56 ms,
+  publish 4.49 ms, 80k draws/600 frames. Waiting on the candidate build.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● While it builds, writing step 2 (per-block frustum culling at replay).
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Background command "Build profiled bake candidate" completed (exit code -1)
+
+  Listed 1 directory, ran 4 shell commands (ctrl+o to expand)
+● Both builds turned out to contain the change (the edit landed while the
+  "baseline" was compiling). Rebuilding a true HEAD baseline from a stash.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Azahar Goldenrod, all frames captured: logic p50 25.35 → 14.06 ms (−45%), FIFO
+  replay ticks 44.4M → 24.2M. Now verifying pixels against the baseline (held
+  Goldenrod and Ho-Oh frames).
+
+  Read 1 file, listed 2 directories, ran 3 shell commands (ctrl+o to expand)
+
+● Baseline held frames captured; capturing the candidate's now.
+
+  Read 2 files, ran 5 shell commands (ctrl+o to expand)
+
+● All four held frames match pixel for pixel in the client area, so only the
+  window chrome differs. I'm adding a host test for the bake, churn and retry
+  path, then committing.
+
+● Update(kohjoh\tests\native\g3_lighting_test.c)
+  ⎿  Added 53 lines
+      125          NitroPort_Gx3dSyncResults();
+      126          digest(NitroPort_IoReg + 0x620, 0x84); /* tests/matric
+           es, not port batch-duplicate counts */
+      127      }
+      128 +    /* Static lit scenery: no matrix change inside the list. S
+          +table lighting                                                
+      129 +     * bakes once; a vector matrix that changes every call chu
+          +rns to the                                                    
+      130 +     * PICA plan; the 64-picture retry bakes again. Colours st
+          +ay exact. */                                                  
+      131 +    {                                                         
+      132 +        uint32_t scenery[256];                                
+      133 +        size_t n = 0;                                         
+      134 +        scenery[n++] = 0x40;                                  
+      135 +        scenery[n++] = 1;                                     
+      136 +        for (unsigned v = 0; v < 16; ++v) {                   
+      137 +            scenery[n++] = 0x21;                              
+      138 +            scenery[n++] = next() & 0x3fffffffu;              
+      139 +            scenery[n++] = 0x22;                              
+      140 +            scenery[n++] = next();                            
+      141 +            scenery[n++] = 0x23;                              
+      142 +            scenery[n++] = next();                            
+      143 +            scenery[n++] = next();                            
+      144 +        }                                                     
+      145 +        scenery[n++] = 0x41;                                  
+      146 +        execute(0x29, (const uint32_t[]){0x001f00c3});        
+      147 +        execute(0x2a, (const uint32_t[]){0});                 
+      148 +        for (unsigned frame = 0; frame < 200; ++frame) {      
+      149 +            execute(0x10, (const uint32_t[]){2});             
+      150 +            const unsigned phase = frame / 50u;               
+      151 +            uint32_t m[12] = {4096, 0, 0, 0, 4096, 0, 0, 0, 40
+          +96, frame * 5u, 0, 0};                                        
+      152 +            if (phase == 1u) {                                
+      153 +                m[1] = frame * 37u; /* animated rotation: key 
+          +churn */                                                      
+      154 +            }                                                 
+      155 +            execute(0x17, m);                                 
+      156 +            execute(0x32, (const uint32_t[]){(0u << 30) | 0x0f
+          +f003ffu});                                                    
+      157 +            execute(0x32, (const uint32_t[]){(1u << 30) | (pha
+          +se == 3u ? frame : 0x1003fcu)});                              
+      158 +            execute(0x33, (const uint32_t[]){(0u << 30) | 0x7f
+          +ffu});                                                        
+      159 +            execute(0x33, (const uint32_t[]){(1u << 30) | 0x03
+          +e0u});                                                        
+      160 +            execute(0x30, (const uint32_t[]){0x7fff3def});    
+      161 +            execute(0x31, (const uint32_t[]){0x10421084});    
+      162 +            for (unsigned copy = 0; copy < 3; ++copy) {       
+      163 +                if (copy == 2u) {                             
+      164 +                    execute(0x1c, (const uint32_t[]){4096, 0, 
+          +0}); /* translated copy */                                    
+      165 +                }                                             
+      166 +                NitroPort_GxFifoWords(scenery, n);            
+      167 +            }                                                 
+      168 +            execute(0x50, (const uint32_t[]){0});             
+      169 +            const kj_g3_frame *f = kj_g3_take_frame();        
+      170 +            for (unsigned b = 0; b < f->batch_count; ++b) {   
+      171 +                const kj_g3_batch *batch = &f->batches[b];    
+      172 +                for (unsigned i = 0; i < batch->index_count; i
+          + += 3) {                                                      
+      173 +                    digest(&batch->poly_attr, 16);            
+      174 +                    for (unsigned v = 0; v < 3; ++v) {        
+      175 +                        triangle_vertex(f, batch, f->indices[b
+          +atch->first_index + i + v]);                                  
+      176 +                    }                                         
+      177 +                }                                             
+      178 +            }                                                 
+      179 +        }                                                     
+      180 +    }                                                         
+      181      /* Exhaust the frame context table: the tail must retain e
+           xact colours
+      182       * through CPU evaluation, without losing triangles or the
+            next latch. */
+      183      execute(0x10, (const uint32_t[]){2});
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Mutation check: make the bake key ignore the vector matrix; the test must
+  fail.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● The test's rotation only touched the normal's y, which the light ignores.
+  Fixing the test to rotate into z.
+
+● Bash(sed -i 's|                m\[1\] = frame \* 37u; /\* animated rotation:
+      key churn \*/|                m[2] = frame * 37u; /* animated rotation:
+      key churn */|' t…)
+  ⎿  153:                m[2] = frame * 37u; /* animated rotation: key chur
+     n */
+     mode[] 04e370fd88f8675e
+     … +7 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\tests\native\g3_lighting_test.c (+1 -1)
+      150              const unsigned phase = frame / 50u;
+      151              uint32_t m[12] = {4096, 0, 0, 0, 4096, 0, 0, 0, 40
+           96, frame * 5u, 0, 0};
+      152              if (phase == 1u) {
+      153 -                m[1] = frame * 37u; /* animated rotation: key 
+          -churn */                                                      
+      153 +                m[2] = frame * 37u; /* animated rotation: key 
+          +churn */                                                      
+      154              }
+      155              execute(0x17, m);
+      156              execute(0x32, (const uint32_t[]){(0u << 30) | 0x0f
+           f003ffu});
+  ⎿  (timeout 10m)
+
+● Mutation still not detected; probing whether the scenery list bakes at all.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Churn detection resets on the second call within a frame, so each frame
+  rebakes once, which is acceptable. The mutation went unnoticed because the
+  per-frame rotation was too small to change 5-bit colours, so I'm strengthening
+  it.
+
+● Bash(sed -i 's|                m\[2\] = frame \* 37u; /\* animated rotation:
+      key churn \*/|                m[2] = (frame * 1237u) % 4096u - 2048u; /*
+      animated rotati…)
+  ⎿  153:                m[2] = (frame * 1237u) % 4096u - 2048u; /* animate
+     d rotation: key churn */
+     mode[] 699e4ab91bd7d466
+     … +7 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\tests\native\g3_lighting_test.c (+1 -1)
+      150              const unsigned phase = frame / 50u;
+      151              uint32_t m[12] = {4096, 0, 0, 0, 4096, 0, 0, 0, 40
+           96, frame * 5u, 0, 0};
+      152              if (phase == 1u) {
+      153 -                m[2] = frame * 37u; /* animated rotation: key 
+          -churn */                                                      
+      153 +                m[2] = (frame * 1237u) % 4096u - 2048u; /* ani
+          +mated rotation: key churn */                                  
+      154              }
+      155              execute(0x17, m);
+      156              execute(0x32, (const uint32_t[]){(0u << 30) | 0x0f
+           f003ffu});
+  ⎿  (timeout 10m)
+
+● Light directions are also in the key (they're transformed by the vector
+  matrix), which masks a vec-only mutation. Using a stronger mutation: lit keys
+  always match.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The material's ambient term saturated every colour to white. Fixing the
+  material so lighting is visible.
+
+● Bash(grep -n "0x7fff3def" tests/native/g3_lighting_test.c && sed -i
+      's/execute(0x30, (const uint32_t\[\]){0x7fff3def});/execute(0x30, (const
+      uint32_t[]){0x04217fff})…)
+  ⎿  160:            execute(0x30, (const uint32_t[]){0x7fff3def});
+     160:            execute(0x30, (const uint32_t[]){0x04217fff}); /* whit
+     e diffuse, dim ambient */
+     … +11 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\tests\native\g3_lighting_test.c (+1 -1)
+      157              execute(0x32, (const uint32_t[]){(1u << 30) | (pha
+           se == 3u ? frame : 0x1003fcu)});
+      158              execute(0x33, (const uint32_t[]){(0u << 30) | 0x7f
+           ffu});
+      159              execute(0x33, (const uint32_t[]){(1u << 30) | 0x03
+           e0u});
+      160 -            execute(0x30, (const uint32_t[]){0x7fff3def});    
+      160 +            execute(0x30, (const uint32_t[]){0x04217fff}); /* 
+          +white diffuse, dim ambient */                                 
+      161              execute(0x31, (const uint32_t[]){0x10421084});
+      162              for (unsigned copy = 0; copy < 3; ++copy) {
+      163                  if (copy == 2u) {
+  ⎿  (timeout 10m)
+
+● Mutation now caught (cached ≠ uncached, verify mismatch); real code matches in
+  all four modes. Full host suite, then commit.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Step 1 committed (84d46dc). Step 2: per-block frustum culling in replay, so
+  offscreen retained geometry is neither copied nor sent to the PICA.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(python - <<'EOF'
+      from pathlib import Path…)
+  ⎿  2174:            b->lo[c] = INT16_MAX;
+  ⎿  Updated kohjoh\src\runtime\kj_g3.c (+93 -0)
+      2035  typedef struct dl_block {
+      2036      uint32_t first_vert, nverts; /* into the entry's vertex a
+            rray */
+      2037      uint32_t first_idx, nidx;    /* relative to the block's f
+            irst vertex */
+      2038 +    int16_t lo[3], hi[3];        /* object-space bounds of it
+           +s vertices */                                                
+      2039  } dl_block;
+      2040  
+      2041  /* Unrecordable lists recheck their content once per this man
+            y pictures */
+     ...
+      2170          b->nverts = v1 - s_rec.block_v0;
+      2171          b->first_idx = s_rec.block_i0 - s_rec.i0;
+      2172          b->nidx = i1 - s_rec.block_i0;
+      2173 +        for (unsigned c = 0; c < 3; ++c) {                   
+      2174 +            b->lo[c] = INT16_MAX;                            
+      2175 +            b->hi[c] = INT16_MIN;                            
+      2176 +        }                                                    
+      2177 +        for (uint32_t v = s_rec.block_v0; v < v1; ++v) {     
+      2178 +            const int16_t *pos = &fb->verts[v].x;            
+      2179 +            for (unsigned c = 0; c < 3; ++c) {               
+      2180 +                if (pos[c] < b->lo[c]) {                     
+      2181 +                    b->lo[c] = pos[c];                       
+      2182 +                }                                            
+      2183 +                if (pos[c] > b->hi[c]) {                     
+      2184 +                    b->hi[c] = pos[c];                       
+      2185 +                }                                            
+      2186 +            }                                                
+      2187 +        }                                                    
+      2188          s_rec.events[s_rec.nevents++] = DL_EV_BLOCK | s_rec.n
+            blocks++;
+      2189      }
+      2190  }
+     ...
+      2684  }
+      2685  
+      2686  
+      2687 +#if !defined(KJ_G3_NO_CULL)                                  
+      2688 +#define KJ_G3_CULL                                           
+      2689 +#endif                                                       
+      2690 +                                                             
+      2691 +#ifdef KJ_G3_CULL                                            
+      2692 +#ifndef HGSS_PROFILE_OFF                                     
+      2693 +static uint32_t s_cull_tests, s_cull_blocks, s_cull_verts, s_
+           +cull_tris;                                                   
+      2694 +#endif                                                       
+      2695 +                                                             
+     … 83 more lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\tests\native\check_hotpaths.py (+1 -1)
+      23      (tmp/'nitro.h').write_text('#include <stdint.h>\ntypedef ui
+          nt64_t u64; typedef uint32_t u32;\n')
+      24      (tmp/'nitro_port.h').write_text('#include <stddef.h>\n#incl
+          ude <stdint.h>\nvoid NitroPort_Log(const char *, ...);\n')
+      25      shutil.copy(root/'src/compat/nitro/include/nitro_port_gx3d.
+          h',tmp)
+      26 -    common=[a.cc,'-O2','-fwrapv','-fno-strict-aliasing','-DKJ_G
+         -3_CPU_LIGHTING','-I',tmp,'-I',root/'src/runtime','-I',root/'src
+         -/compat/nitro/include']                                        
+      26 +    common=[a.cc,'-O2','-fwrapv','-fno-strict-aliasing','-DKJ_G
+         +3_CPU_LIGHTING','-DKJ_G3_NO_CULL','-I',tmp,'-I',root/'src/runti
+         +me','-I',root/'src/compat/nitro/include']                      
+      27      for name,path in [('sound','src/compat/nitro/src/port_sound
+          _chip.c'),('g3','src/runtime/kj_g3.c')]:
+      28          before=tmp/(name+'_before.c')
+      29          before.write_text(run(['git','show',f'{a.reference}:{pa
+          th}'])+'\n')
+
+● Bash(sed -i 's|#include <stdlib.h>\n#include <stddef.h>|&|'
+      src/runtime/kj_g3.c && python - <<'EOF'
+      from pathlib import Path…)
+  ⎿  ok
+  ⎿  Updated kohjoh\src\runtime\kj_g3.c (+1 -0)
+      28  #include <nitro_port_gx3d.h>
+      29  #include <stdlib.h>
+      30  #include <stddef.h>
+      31 +#include <stdint.h>                                            
+      32  #include <string.h>
+      33  
+      34  /* The display-list cache is on by default: KJ_DL_VERIFY found 
+          0 mismatches
+  ⎿  Created kohjoh\tests\native\g3_cull_test.c (+141 -0)
+        1 +/* Whole-block culling: replayed retained lists must draw exac
+          +tly the                                                       
+        2 + * triangles of the uncached decoder that are not wholly outsi
+          +de a side                                                     
+        3 + * plane, and must drop some blocks that are. Run against KJ_D
+          +L_NO_CACHE                                                    
+        4 + * (no retained blocks, no culling) and compare the printed ha
+          +shes. */                                                      
+        5 +#include <assert.h>                                           
+        6 +#include <stdarg.h>                                           
+        7 +#include <stdio.h>                                            
+        8 +#include <stdlib.h>                                           
+        9 +#include <string.h>                                           
+       10 +#include SOURCE                                               
+       11 +                                                              
+       12 +unsigned char NitroPort_IoReg[0x1000];                        
+       13 +void NitroPort_Log(const char *fmt, ...) { assert(strstr(fmt, 
+          +"MISMATCH") == NULL); }                                       
+       14 +static uint32_t rng = 0x5eed1234u;                            
+       15 +                                                              
+       16 +static uint32_t next(void)                                    
+       17 +{                                                             
+       18 +    rng ^= rng << 13;                                         
+       19 +    rng ^= rng >> 17;                                         
+       20 +    rng ^= rng << 5;                                          
+       21 +    return rng;                                               
+       22 +}                                                             
+       23 +                                                              
+       24 +static uint64_t tri_hash(const kj_g3_frame *f, const kj_g3_bat
+          +ch *b, unsigned first, bool *outside)                         
+       25 +{                                                             
+       26 +    uint64_t h = 1469598103934665603ull;                      
+       27 +    unsigned out_all = 0xFu;                                  
+       28 +    for (unsigned k = 0; k < 3; ++k) {                        
+       29 +        const kj_g3_vertex *v = &f->verts[f->indices[b->first_
+          +index + first + k]];                                          
+       30 +        const kj_g3_matrix *m = &f->matrices[b->first_matrix +
+          + (v->mtx & 15u)];                                             
+       31 +        float o[4];                                           
+       32 +        for (unsigned j = 0; j < 4; ++j) {                    
+       33 +            o[j] = v->x / 4096.0f * m->m[0][j] + v->y / 4096.0
+          +f * m->m[1][j] +                                              
+       34 +                   v->z / 4096.0f * m->m[2][j] + m->m[3][j];  
+       35 +        }                                                     
+       36 +        unsigned out = 0;                                     
+       37 +        out |= o[0] < -1.25f * o[3] ? 1u : 0u;                
+       38 +        out |= o[0] > 1.25f * o[3] ? 2u : 0u;                 
+       39 +        out |= o[1] < -o[3] ? 4u : 0u;                        
+       40 +        out |= o[1] > o[3] ? 8u : 0u;                         
+     … 101 more lines (ctrl+o to expand)
+
+● Bash(python - <<'EOF'
+      from pathlib import Path…)
+  ⎿  [-DHGSS_PROFILE_OFF] triangles 105802 visible 88084 visible f88f16d21d
+     934509
+     [-DHGSS_PROFILE_OFF -DKJ_DL_NO_CACHE] triangles 118800 visible 88084 v
+     … +7 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\tests\native\g3_cull_test.c (+1 -3)
+      106          execute(0x15, NULL);
+      107          execute(0x29, (const uint32_t[]){0x001f00c0});
+      108          for (unsigned l = 0; l < 12; ++l) {
+      109 -            execute(0x12, (const uint32_t[]){0}); /* keep the 
+          -stack level */                                                
+      110 -            execute(0x11, NULL);                              
+      109 +            execute(0x15, NULL);                              
+      110              /* Slide along x: some lists in view, some wholly 
+           outside. */
+      111              const int32_t tx = ((int32_t)(l * 9u + frame) % 90
+            - 45) * 4096 / 4;
+      112              const int32_t ty = ((int32_t)(l * 5u) % 30 - 15) *
+            4096 / 4;
+      113              execute(0x1c, (const uint32_t[]){(uint32_t)tx, (ui
+           nt32_t)ty, (uint32_t)(-6 * 4096)});
+      114              NitroPort_GxFifoWords(lists[l], sizes[l]);
+      116 -            execute(0x12, (const uint32_t[]){1});             
+      115          }
+      116          execute(0x50, (const uint32_t[]){0});
+      117          const kj_g3_frame *f = kj_g3_take_frame();
+  ⎿  (timeout 10m)
+
+● Visible triangle set identical across modes; 13k of 119k triangles culled.
+  Mutation check, then wire into the suite.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Mutation caught. Adding the test to check_hotpaths.py.
+
+● Bash(python - <<'EOF'
+      from pathlib import Path…)
+  ⎿  PASS sound: e8bfdd766ba03a03
+     PASS g3: d511eb58d36aceeb
+     PASS g3: live decode verification
+     … +16 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\tests\native\check_hotpaths.py (+10 -0)
+      108              assert lighting_hash == value, ('NORMAL-time light
+           ing context changed output', variant, lighting_hash, value)
+      109          lighting_hash = value
+      110      print(f'PASS GPU lighting inputs: {lighting_hash}, canonic
+           al triangles/colours/texgen match original CPU oracle', flush=
+           True)
+      111 +    cull = {}                                                 
+      112 +    for variant, mode in [('cull', []), ('cull verify', ['-DKJ
+          +_DL_VERIFY']),                                                
+      113 +                          ('uncached', ['-DKJ_DL_NO_CACHE']), 
+          +('no cull', ['-DKJ_G3_NO_CULL'])]:                            
+      114 +        exe=tmp/'g3_cull_test.exe'                            
+      115 +        flags = [x for x in common if x not in ('-DKJ_G3_NO_CU
+          +LL', '-DKJ_G3_CPU_LIGHTING')]                                 
+      116 +        run([*flags,'-DHGSS_PROFILE_OFF',*mode,f'-DSOURCE="{so
+          +urce.as_posix()}"',root/'tests/native/g3_cull_test.c','-o',exe
+          +])                                                            
+      117 +        cull[variant] = subprocess.run([str(exe)], cwd=root, t
+          +ext=True, capture_output=True, check=True)                    
+      118 +    assert len({r.stdout for r in cull.values()}) == 1, ('cull
+          +ing changed visible triangles', cull)                         
+      119 +    assert cull['cull'].stderr != cull['uncached'].stderr, 'no
+          + retained block was culled'                                   
+      120 +    print(f"PASS cull: {cull['cull'].stdout.strip()}; {cull['c
+          +ull'].stderr.strip()} against uncached {cull['uncached'].stder
+          +r.strip()}", flush=True)                                      
+      121      exe=tmp/'perf_test.exe'
+      122      run([*common,'-I',root/'src',root/'tests/native/perf_test.
+           c','-o',exe])
+      123      print(run([exe]))
+  ⎿  (timeout 10m)
+● Host suite passes. Building the cull candidate (profiled) for Azahar.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Culling cut triangles from 5.02M to 1.94M, but its 8-corner int64 test costs
+  about 18 ms per frame, so I'm swapping in cached plane vectors and a
+  whole-list test.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Bash(python - <<'EOF'
+      from pathlib import Path…)
+  ⎿  2225:        s_rec.has_matrix = true;
+             }
+             return;
+     … +10 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\src\runtime\kj_g3.c (+71 -35)
+      2046      const uint32_t *ptr;
+      2047      uint32_t count;
+      2048      bool recorded;
+      2049 +    bool fixed_clip;   /* no matrix command inside: one clip 
+           +matrix for all blocks */                                     
+      2050 +    int16_t lo[3], hi[3]; /* bounds of every retained block *
+           +/                                                            
+      2051      bool never;        /* proven unrecordable for this conten
+            t */
+      2052      bool command_plan; /* events contain decoded commands, no
+            t baked vertex blocks */
+      2053      bool vertex_plan;
+     ...
+      2696  static uint32_t s_cull_tests, s_cull_blocks, s_cull_verts, s_
+            cull_tris;
+      2697  #endif
+      2698  
+      2697 -/* Is a retained block wholly outside one side plane of the p
+           -icture under                                                 
+      2698 - * the current clip matrix? The DS rejects such polygons in i
+           -ts geometry                                                  
+      2699 - * engine before they reach polygon RAM; replaying them here 
+           -would copy                                                   
+      2700 - * their vertices and send them through the PICA's vertex sha
+           -ders only to                                                 
+      2701 - * be clipped. Planes: |x| <= 1.25 w (the widescreen extensio
+           -n, always,                                                   
+      2702 - * conservatively), |y| <= w, each with a 1/16 margin for flo
+           -at rounding                                                  
+      2703 - * on the GPU. Near/far are not used: W-buffered scenes do no
+           -t clip z.                                                    
+      2704 - * All eight corners of the object-space box outside one homo
+           -geneous                                                      
+      2705 - * half-space puts every enclosed vertex there, whatever the 
+           -sign of w.                                                   
+      2699 +/* Side planes of the picture under the current clip matrix, 
+           +as object-                                                   
+      2700 + * space plane vectors. The DS rejects polygons wholly outsid
+           +e the view in                                                
+      2701 + * its geometry engine before they reach polygon RAM; replayi
+           +ng them here                                                 
+      2702 + * would copy their vertices and send them through the PICA's
+           + vertex                                                      
+      2703 + * shaders only to be clipped. Planes: |x| <= 1.3125 w (the w
+           +idescreen                                                    
+      2704 + * 1.25 extension, always, conservatively, plus 1/16) and |y|
+           + <= 1.0625 w:                                                
+      2705 + * 16 x + 21 w >= 0 etc. In DS row-vector form clip_j = sum_i
+           + v_i m[i][j],                                                
+      2706 + * so plane p has coefficients a_i = s * 16 m[i][x|y] + k * m
+           +[i][w].                                                      
+      2707 + * Near/far are not used: W-buffered scenes do not clip z.   
+      2708   * Coffeepot 3d-scene-optimisation.md: cull per object or mes
+            h, never per
+      2709   * triangle; the Goldenrod census found 72 of 124 batches who
+            lly outside one
+      2710   * plane. Box/position/vector tests and every state command s
+            till execute,
+      2711   * so the game sees nothing different. */
+      2710 -static bool block_offscreen(const dl_block *b)               
+      2712 +static uint32_t s_plane_version;                             
+      2713 +static int64_t s_plane[4][4];                                
+      2714 +                                                             
+      2715 +static void cull_planes(void)                                
+      2716  {
+      2717 +    if (s_plane_version == s_clip_version) {                 
+     … 108 more lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Exactly the same culled set as the 8-corner version; mutation caught. Building
+  and measuring.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Logic 14.06 → 13.67 ms, publish 4.49 → 3.75 ms, triangles −61%. Checking held
+  frames.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Held frames identical. Also checking a walking scene (camera moving) for edge
+  popping.
+
+  Read 1 file (ctrl+o to expand)
+
+● Bash(cat > tests/inputs/goldenrod-walk-step.txt <<'EOF'
+      # Benchmark save: continue in Goldenrod, run left then down, holding
+      frames…)
+  ⎿  log copied
+     log copied
+     build/azahar/hb-walk:
+     … +12 lines (ctrl+o to expand)
+  ⎿  Created kohjoh\tests\inputs\goldenrod-walk-step.txt (+28 -0)
+       1 +# Benchmark save: continue in Goldenrod, run left then down, ho
+         +lding frames                                                   
+       2 +# while the camera moves (culling and retained-geometry edge ch
+         +ecks).                                                         
+       3 +every: 10                                                      
+       4 +0 -                                                            
+       5 +300 START                                                      
+       6 +310 START                                                      
+       7 +320 START                                                      
+       8 +330 START                                                      
+       9 +340 START                                                      
+      10 +350 START                                                      
+      11 +400 START                                                      
+      12 +410 START                                                      
+      13 +420 START                                                      
+      14 +430 START                                                      
+      15 +440 START                                                      
+      16 +450 START                                                      
+      17 +1800 A                                                         
+      18 +1820 A                                                         
+      19 +1840 A                                                         
+      20 +2400-2560 LEFT B                                               
+      21 +2600-2900 DOWN B                                               
+      22 +dump 1240                                                      
+      23 +freeze 1240 3                                                  
+      24 +dump 1300                                                      
+      25 +freeze 1300 3                                                  
+      26 +dump 1400                                                      
+      27 +freeze 1400 3                                                  
+      28 +end: 3400                                                      
+  ⎿  (timeout 10m)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Walking frames (camera moved) are also pixel-identical. Committing step 2.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Step 2 committed (413d0cc). Next target: what's left in the captured frame.
+  Reading the profile of the new build.
+
+  Searched for 1 pattern, ran 2 shell commands (ctrl+o to expand)
+
+● The top hotspot is NNS_G3dGlbFlushP, a 63-word global-state replay running
+  about 105 times per frame; I'm checking its layout next.
+
+  Searched for 2 patterns, ran 1 shell command (ctrl+o to expand)
+
+● Each of the 15 commands sets a value outright, so the list's result depends
+  only on its 63 words. I'm adding a snapshot that runs the list once, records
+  the state it writes, and restores that state when the content matches.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● Shell quoting broke; writing the edit script with the file tool instead.
+
+● Write(kohjoh\build\opt-tools\edit_pure.py)
+  ⎿  Wrote 279 lines to kohjoh\build\opt-tools\edit_pure.py
+      1 from pathlib import Path
+      2 p = Path('src/runtime/kj_g3.c')
+      3 s = p.read_text(newline='')
+      4 
+      5 
+      6 def rep(old, new):
+      7     global s
+      8     assert s.count(old) == 1, old[:70]
+      9     s = s.replace(old, new)
+     … +270 lines (ctrl+o to expand)
+
+● Bash(python build/opt-tools/edit_pure.py && python - <<'EOF'
+      from pathlib import Path…)
+  ⎿  ok
+     ok2
+     PASS sound: e8bfdd766ba03a03
+     … +6 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\src\runtime\kj_g3.c (+291 -1)
+      2082      uint32_t cap_events, cap_blocks, cap_verts, cap_idx; /* s
+            torage kept across re-recordings */
+      2083      uint32_t bytes;
+      2084      uint32_t last_frame;
+      2085 +    struct dl_state *snap; /* pure state list: its final stat
+           +e (arena) */                                                 
+      2086  } dl_entry;
+      2087  
+      2088  /* Recording state (one list at a time; lists do not nest). *
+            /
+     ...
+      2471   * frame (Goldenrod: 29.6 ms logic against 13.7, twice per 60
+            0 frames). */
+      2472  static void dl_drop_recording(dl_entry *e)
+      2473  {
+      2474 +    if (e->snap != NULL) {                                   
+      2475 +        e->snap->mask = 0;                                   
+      2476 +    }                                                        
+      2477      e->nevents = e->nblocks = e->nverts = e->nidx = 0;
+      2478      e->recorded = false;
+      2479      e->command_plan = false;
+     ...
+      2839  #endif
+      2840  }
+      2841  
+      2842 +/*                                                           
+      2843 + * Pure state lists. NNS_G3dGlbFlushP sends the same 63 words
+           + before every                                                
+      2844 + * model (Goldenrod: ~105 times per picture): projection and 
+           +camera loads,                                                
+      2845 + * four light vectors (transformed by the camera it has just 
+           +loaded),                                                     
+      2846 + * material, polygon attribute, viewport, light colours, base
+           + rotation and                                                
+      2847 + * scale, texture parameters. Every command is an absolute se
+           +tter or reads                                                
+      2848 + * only state the list itself wrote first, so the DS state af
+           +ter it is a                                                  
+      2849 + * function of its words alone. Executed once, the written st
+           +ate groups are                                               
+      2850 + * kept; an identical list restores them with the invalidatio
+           +ns their                                                     
+      2851 + * commands would have made (clip/vector matrix changes, ligh
+           +ting and                                                     
+      2852 + * material generations). O3DS 2524e88: the replay cost ~5k t
+           +icks a call.                                                 
+      2853 + */                                                          
+      2854 +enum {                                                       
+      2855 +    PS_MODE = 1u << 0, PS_PROJ = 1u << 1, PS_POS = 1u << 2, P
+           +S_VEC = 1u << 3, PS_TEX = 1u << 4,                           
+      2856 +    PS_LDIR = 1u << 5,   /* four bits, one per light */      
+      2857 +    PS_LCOL = 1u << 9,   /* four bits */                     
+      2858 +    PS_DIFAMB = 1u << 13, PS_SPEEMI = 1u << 14, PS_SHIN = 1u 
+           +<< 15, PS_ATTR = 1u << 16,                                   
+      2859 +    PS_TEXP = 1u << 17, PS_PLTT = 1u << 18, PS_VP = 1u << 19,
+           + PS_COLOR = 1u << 20,                                        
+      2860 +};                                                           
+      2861 +                                                             
+      2862 +typedef struct dl_state {                                    
+     … 276 more lines (ctrl+o to expand)
+  ⎿  (timeout 10m)
+
+● Bash(cat > build/opt-tools/move_struct.py <<'EOF'
+      from pathlib import Path…)
+  ⎿  moved
+     PASS sound: e8bfdd766ba03a03
+     PASS g3: d511eb58d36aceeb
+     … +17 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\src\runtime\kj_g3.c (+22 -20)
+      2039      int16_t lo[3], hi[3];        /* object-space bounds of it
+            s vertices */
+      2040  } dl_block;
+      2041  
+      2042 +/* Pure state-list snapshot groups (see dl_state_replay). */ 
+      2043 +enum {                                                       
+      2044 +    PS_MODE = 1u << 0, PS_PROJ = 1u << 1, PS_POS = 1u << 2, P
+           +S_VEC = 1u << 3, PS_TEX = 1u << 4,                           
+      2045 +    PS_LDIR = 1u << 5,   /* four bits, one per light */      
+      2046 +    PS_LCOL = 1u << 9,   /* four bits */                     
+      2047 +    PS_DIFAMB = 1u << 13, PS_SPEEMI = 1u << 14, PS_SHIN = 1u 
+           +<< 15, PS_ATTR = 1u << 16,                                   
+      2048 +    PS_TEXP = 1u << 17, PS_PLTT = 1u << 18, PS_VP = 1u << 19,
+           + PS_COLOR = 1u << 20,                                        
+      2049 +};                                                           
+      2050 +                                                             
+      2051 +typedef struct dl_state {                                    
+      2052 +    uint32_t mask, commands;                                 
+      2053 +    int mode;                                                
+      2054 +    mtx proj, pos, vec, tex;                                 
+      2055 +    int32_t light_dir[4][3], light_half[4][3];               
+      2056 +    uint16_t light_color[4];                                 
+      2057 +    uint16_t diffuse, ambient, specular, emission, color;    
+      2058 +    bool use_shininess;                                      
+      2059 +    uint32_t shininess[32];                                  
+      2060 +    uint32_t attr_pending, tex_param, tex_pltt, viewport;    
+      2061 +} dl_state;                                                  
+      2062 +                                                             
+      2063  /* Unrecordable lists recheck their content once per this man
+            y pictures */
+      2064  #define DL_NEVER_RECHECK_MASK 63u
+      2065  
+     ...
+      2103      uint32_t cap_events, cap_blocks, cap_verts, cap_idx; /* s
+            torage kept across re-recordings */
+      2104      uint32_t bytes;
+      2105      uint32_t last_frame;
+      2085 -    struct dl_state *snap; /* pure state list: its final stat
+           -e (arena) */                                                 
+      2106 +    dl_state *snap;    /* pure state list: its final state (a
+           +rena) */                                                     
+      2107  } dl_entry;
+      2108  
+      2109  /* Recording state (one list at a time; lists do not nest). *
+            /
+     ...
+      2872   * commands would have made (clip/vector matrix changes, ligh
+            ting and
+      2873   * material generations). O3DS 2524e88: the replay cost ~5k t
+            icks a call.
+      2874   */
+      2854 -enum {                                                       
+      2855 -    PS_MODE = 1u << 0, PS_PROJ = 1u << 1, PS_POS = 1u << 2, P
+           -S_VEC = 1u << 3, PS_TEX = 1u << 4,                           
+     … 20 more lines (ctrl+o to expand)
+  ⎿  (timeout 10m)
+
+● Host suite passes, but nothing exercises the new path yet. Writing a
+  GLB-shaped state-list test (camera/light changes, material changes between
+  calls, game-visible test registers).
+
+● Write(kohjoh\tests\native\g3_state_test.c)
+  ⎿  Wrote 156 lines to kohjoh\tests\native\g3_state_test.c
+       1 /* Pure state lists (NNS_G3dGlbFlushP): a restored snapshot must
+          leave the
+       2  * same DS state, the same game-visible test results and the sam
+         e pictures
+       3  * as executing the list, while models change matrices and mater
+         ials
+       4  * between calls and the camera and lights move. Compare the pri
+         nted hash
+       5  * across cached, uncached and live-verification builds. */
+       6 #include <assert.h>
+     … +150 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(python - <<'EOF'
+      from pathlib import Path…)
+  ⎿  [-DHGSS_PROFILE_OFF] 8c9f1694ba47d9d3
+     [-DHGSS_PROFILE_OFF -DKJ_DL_NO_CACHE] 8c9f1694ba47d9d3
+     [-DHGSS_PROFILE_OFF -DKJ_G3_NO_CULL] 8c9f1694ba47d9d3
+     … +2 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\tests\native\g3_state_test.c (+5 -2)
+      54  }
+      55  
+      56  /* The GLB layout: MTX_MODE, LOAD_4x4, MTX_MODE, LOAD_4x3; LIGH
+          T_VECTOR x4;
+      57 - * DIF_AMB, SPE_EMI, POLYGON_ATTR, VIEWPORT; LIGHT_COLOR x4; MU
+         -LT_3x3,                                                        
+      57 + * DIF_AMB, SPE_EMI, POLYGON_ATTR, VIEWPORT; LIGHT_COLOR x4; MU
+         +LT_4x3,                                                        
+      58   * SCALE, TEXIMAGE_PARAM. 63 words. */
+      59  static size_t make_glb(uint32_t *g, unsigned camera, unsigned l
+          ights)
+      60  {
+     ...
+      85          g[n++] = (i << 30) | ((0x7fffu >> i) ^ (lights & 7u));
+      86      }
+      87      g[n++] = 0x002a1b19u;
+      88 -    for (unsigned i = 0; i < 9; ++i) {                         
+      88 +    for (unsigned i = 0; i < 9; ++i) { /* MULT_4x3: base rotati
+         +on, translation */                                             
+      89          g[n++] = i % 4u == 0 ? 4096u : 0u;
+      90      }
+      91 +    g[n++] = 0;                                                
+      92 +    g[n++] = 0;                                                
+      93 +    g[n++] = 0;                                                
+      94      g[n++] = 4096;
+      95      g[n++] = 4096;
+      96      g[n++] = 4096;
+  ⎿  (timeout 10m)
+
+● Consistent across modes, and the snapshot path is asserted active. Mutations:
+  drop the light-direction invalidation, and drop the vector-matrix restore.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Mutations survived because the test's models never disturb what the snapshot
+  restores. Making models rotate, relight and change texture/viewport state
+  between GLB calls.
+● Bash(python - <<'EOF'
+      from pathlib import Path…)
+  ⎿  [-DHGSS_PROFILE_OFF] 5ed3bf8678a34f90
+     [-DHGSS_PROFILE_OFF -DKJ_DL_NO_CACHE] 20013b291c635208
+     [-DHGSS_PROFILE_OFF -DKJ_G3_NO_CULL] 5ed3bf8678a34f90
+     … +10 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\tests\native\g3_state_test.c (+10 -1)
+      126              assert(n == 63);
+      127              NitroPort_GxFifoWords(glb, n);
+      128              /* The model's own transform and material on top. 
+           */
+      129 -            execute(0x19, (const uint32_t[]){4096, 0, 0, 0, 40
+          -96, 0, 0, 0, 4096,                                            
+      129 +            execute(0x19, (const uint32_t[]){4096, model * 300
+          +u, 0, 0, 4096, model * 200u, 0, 0, 4096,                      
+      130                                               model * 8192u, 0,
+            (uint32_t)-(int32_t)(model * 4096u)});
+      131              if (model & 1u) {
+      132                  execute(0x30, (const uint32_t[]){0x7fff0421u ^
+            model});
+      133              }
+      134 +            if (model == 2u) {                                
+      135 +                /* Disturb what the next GLB restores. */     
+      136 +                execute(0x32, (const uint32_t[]){0x1ff003ffu})
+          +;                                                             
+      137 +                execute(0x33, (const uint32_t[]){(1u << 30) | 
+          +0x001fu});                                                    
+      138 +                execute(0x31, (const uint32_t[]){0x0000ffffu})
+          +;                                                             
+      139 +                execute(0x2a, (const uint32_t[]){0x12345678u})
+          +;                                                             
+      140 +                execute(0x60, (const uint32_t[]){0x7f7f0000u})
+          +;                                                             
+      141 +                execute(0x29, (const uint32_t[]){0x001f0081u})
+          +;                                                             
+      142 +            }                                                 
+      143              execute(0x71, (const uint32_t[]){0x10001000u, 0x10
+           00u}); /* POS_TEST */
+      144              execute(0x72, (const uint32_t[]){next() & 0x3fffff
+           ffu}); /* VEC_TEST */
+      145              NitroPort_GxFifoWords(mesh, m);
+  ⎿  (timeout 10m)
+
+● The strengthened test exposes a real divergence (verify reports an end-state
+  mismatch). Finding which state group differs.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● The light vector only recomputes the half vector on a direction change, and
+  the half vectors start at 0, so a (0,0,0) light vector leaves half stale. I'm
+  fixing the initial state so half always matches the direction.
+
+● Bash(python - <<'EOF'
+      from pathlib import Path…)
+  ⎿  [-DHGSS_PROFILE_OFF] 1881adfa5577cb60
+     [-DHGSS_PROFILE_OFF -DKJ_DL_NO_CACHE] 1881adfa5577cb60
+     [-DHGSS_PROFILE_OFF -DKJ_G3_NO_CULL] 1881adfa5577cb60
+     … +2 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\src\runtime\kj_g3.c (+6 -0)
+      656      mtx_identity(&s_vec);
+      657      mtx_identity(&s_tex);
+      658      clip_changed();
+      659 +    /* LIGHT_VECTOR derives the half vector only when the dire
+          +ction changes:                                                
+      660 +     * start from the half of the zero direction so half = f(d
+          +irection)                                                     
+      661 +     * always holds, whichever path (execution or snapshot) se
+          +t it. */                                                      
+      662 +    for (unsigned i = 0; i < 4; ++i) {                        
+      663 +        s_light_half[i][2] = -FX_ONE / 2;                     
+      664 +    }                                                         
+      665      if (!s_products_made) {
+      666          make_products();
+      667      }
+  ⎿  (timeout 10m)
+
+● All modes agree. Re-running the two mutations against the fixed code.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● mut_b is caught; mut_a and mut_c are masked by other invalidations in the same
+  restore. Separating the disturbances per model.
+
+● Bash(python - <<'EOF'
+      from pathlib import Path…)
+  ⎿  [-DHGSS_PROFILE_OFF] c5cb9ca9d0cbf36c
+     [-DHGSS_PROFILE_OFF -DKJ_DL_NO_CACHE] c5cb9ca9d0cbf36c
+     [-DHGSS_PROFILE_OFF -DKJ_G3_NO_CULL] c5cb9ca9d0cbf36c
+     … +10 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\tests\native\g3_state_test.c (+17 -6)
+      128              /* The model's own transform and material on top. 
+           */
+      129              execute(0x19, (const uint32_t[]){4096, model * 300
+           u, 0, 0, 4096, model * 200u, 0, 0, 4096,
+      130                                               model * 8192u, 0,
+            (uint32_t)-(int32_t)(model * 4096u)});
+      131 -            if (model & 1u) {                                 
+      132 -                execute(0x30, (const uint32_t[]){0x7fff0421u ^
+          - model});                                                     
+      133 -            }                                                 
+      134 -            if (model == 2u) {                                
+      135 -                /* Disturb what the next GLB restores. */     
+      131 +            /* One disturbance per model, so each restore inva
+          +lidation is                                                   
+      132 +             * observable on its own (the next GLB must undo i
+          +t). */                                                        
+      133 +            switch (model) {                                  
+      134 +            case 1:                                           
+      135 +                execute(0x30, (const uint32_t[]){0x7fff0421u})
+          +;                                                             
+      136 +                break;                                        
+      137 +            case 2:                                           
+      138                  execute(0x32, (const uint32_t[]){0x1ff003ffu})
+           ;
+      139 +                break;                                        
+      140 +            case 3:                                           
+      141                  execute(0x33, (const uint32_t[]){(1u << 30) | 
+           0x001fu});
+      142 +                break;                                        
+      143 +            case 4:                                           
+      144                  execute(0x31, (const uint32_t[]){0x0000ffffu})
+           ;
+      145 +                execute(0x29, (const uint32_t[]){0x001f0081u})
+          +;                                                             
+      146 +                break;                                        
+      147 +            case 5:                                           
+      148                  execute(0x2a, (const uint32_t[]){0x12345678u})
+           ;
+      149 +                break;                                        
+      150 +            default:                                          
+      151                  execute(0x60, (const uint32_t[]){0x7f7f0000u})
+           ;
+      141 -                execute(0x29, (const uint32_t[]){0x001f0081u})
+          -;                                                             
+      152 +                break;                                        
+      153              }
+      154              execute(0x71, (const uint32_t[]){0x10001000u, 0x10
+           00u}); /* POS_TEST */
+      155              execute(0x72, (const uint32_t[]){next() & 0x3fffff
+           ffu}); /* VEC_TEST */
+  ⎿  (timeout 10m)
+
+● Baked lists key on light values directly, so stale generations only affect
+  live-decoded normals. I'm adding a direct NORMAL/vertex triangle per model and
+  giving models 2–3 an identity rotation so nothing masks the invalidation.
+
+● Bash(python - <<'EOF'
+      from pathlib import Path…)
+  ⎿  [-DHGSS_PROFILE_OFF] cd76747ea4838801
+     [-DHGSS_PROFILE_OFF -DKJ_DL_NO_CACHE] cd76747ea4838801
+     [-DHGSS_PROFILE_OFF -DKJ_G3_NO_CULL] cd76747ea4838801
+     … +10 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\tests\native\g3_state_test.c (+10 -1)
+      126              assert(n == 63);
+      127              NitroPort_GxFifoWords(glb, n);
+      128              /* The model's own transform and material on top. 
+           */
+      129 -            execute(0x19, (const uint32_t[]){4096, model * 300
+          -u, 0, 0, 4096, model * 200u, 0, 0, 4096,                      
+      129 +            const uint32_t turn = model == 2u || model == 3u ?
+          + 0u : model; /* 2, 3: no rotation */                          
+      130 +            execute(0x19, (const uint32_t[]){4096, turn * 300u
+          +, 0, 0, 4096, turn * 200u, 0, 0, 4096,                        
+      131                                               model * 8192u, 0,
+            (uint32_t)-(int32_t)(model * 4096u)});
+      132              /* One disturbance per model, so each restore inva
+           lidation is
+      133               * observable on its own (the next GLB must undo i
+           t). */
+     ...
+      155              execute(0x71, (const uint32_t[]){0x10001000u, 0x10
+           00u}); /* POS_TEST */
+      156              execute(0x72, (const uint32_t[]){next() & 0x3fffff
+           ffu}); /* VEC_TEST */
+      157              NitroPort_GxFifoWords(mesh, m);
+      158 +            /* Live (uncached) lit vertices: the normal cache 
+          +and the PICA                                                  
+      159 +             * lighting latch see only the generations a resto
+          +re bumps. */                                                  
+      160 +            execute(0x40, (const uint32_t[]){0});             
+      161 +            execute(0x21, (const uint32_t[]){0x0ff3fc01u});   
+      162 +            execute(0x23, (const uint32_t[]){0x00000000u, 0});
+      163 +            execute(0x23, (const uint32_t[]){0x00001000u, 0});
+      164 +            execute(0x23, (const uint32_t[]){0x10000000u, 0});
+      165 +            execute(0x41, NULL);                              
+      166              digest(NitroPort_IoReg + 0x620, 0x20);
+      167          }
+      168          execute(0x50, (const uint32_t[]){0});
+  ⎿  (timeout 10m)
+
+● Still masked: the chosen normal faces away from the disturbed light, so its
+  colour doesn't change. Flipping the normal toward it.
+
+● Bash(sed -i 's/execute(0x21, (const uint32_t\[\]){0x0ff3fc01u});/execute(0x21,
+      (const uint32_t[]){0x20100000u}); \/* z = -511\/512, facing the disturbed
+      light *\//'…)
+  ⎿  1
+     [-DHGSS_PROFILE_OFF] bbc00112a2194671
+     [-DHGSS_PROFILE_OFF -DKJ_DL_NO_CACHE] bbc00112a2194671
+     … +11 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\tests\native\g3_state_test.c (+1 -1)
+      158              /* Live (uncached) lit vertices: the normal cache 
+           and the PICA
+      159               * lighting latch see only the generations a resto
+           re bumps. */
+      160              execute(0x40, (const uint32_t[]){0});
+      161 -            execute(0x21, (const uint32_t[]){0x0ff3fc01u});   
+      161 +            execute(0x21, (const uint32_t[]){0x20100000u}); /*
+          + z = -511/512, facing the disturbed light */                  
+      162              execute(0x23, (const uint32_t[]){0x00000000u, 0});
+      163              execute(0x23, (const uint32_t[]){0x00001000u, 0});
+      164              execute(0x23, (const uint32_t[]){0x10000000u, 0});
+  ⎿  (timeout 10m)
+
+● Probing the colours directly instead of guessing.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Model 3's own light-colour change masked it. Reordering so a quiet model
+  follows each disturbance.
+
+● Bash(python - <<'EOF'
+      from pathlib import Path…)
+  ⎿  1
+     [-DHGSS_PROFILE_OFF] 8e6780f557909b56
+     [-DHGSS_PROFILE_OFF -DKJ_DL_NO_CACHE] 8e6780f557909b56
+     … +15 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\tests\native\g3_state_test.c (+8 -8)
+      120      }
+      121      mesh[m++] = 0x41;
+      122      for (unsigned frame = 0; frame < 300; ++frame) {
+      123 -        for (unsigned model = 0; model < 6; ++model) {        
+      123 +        for (unsigned model = 0; model < 8; ++model) {        
+      124              /* The camera moves every 4 pictures, the lights e
+           very 50. */
+      125              const size_t n = make_glb(glb, frame / 4u, frame /
+            50u);
+      126              assert(n == 63);
+     ...
+      138              case 2:
+      139                  execute(0x32, (const uint32_t[]){0x1ff003ffu})
+           ;
+      140                  break;
+      141 -            case 3:                                           
+      141 +            case 4:                                           
+      142 +                execute(0x2a, (const uint32_t[]){0x12345678u})
+          +;                                                             
+      143 +                break;                                        
+      144 +            case 6:                                           
+      145                  execute(0x33, (const uint32_t[]){(1u << 30) | 
+           0x001fu});
+      146 +                execute(0x60, (const uint32_t[]){0x7f7f0000u})
+          +;                                                             
+      147                  break;
+      144 -            case 4:                                           
+      148 +            case 7:                                           
+      149                  execute(0x31, (const uint32_t[]){0x0000ffffu})
+           ;
+      150                  execute(0x29, (const uint32_t[]){0x001f0081u})
+           ;
+      151                  break;
+      148 -            case 5:                                           
+      149 -                execute(0x2a, (const uint32_t[]){0x12345678u})
+          -;                                                             
+      150 -                break;                                        
+      151 -            default:                                          
+      152 -                execute(0x60, (const uint32_t[]){0x7f7f0000u})
+          -;                                                             
+      152 +            default: /* 0, 3, 5: quiet, so the previous restor
+          +e shows */                                                    
+      153                  break;
+      154              }
+      155              execute(0x71, (const uint32_t[]){0x10001000u, 0x10
+           00u}); /* POS_TEST */
+  ⎿  (timeout 10m)
+
+● All three mutations caught in both lighting modes. Wiring the test into the
+  suite, then measuring.
+
+● Bash(cat > build/opt-tools/add_state.py <<'EOF'
+      from pathlib import Path…)
+  ⎿  PASS sound: e8bfdd766ba03a03
+     PASS g3: d511eb58d36aceeb
+     PASS g3: live decode verification
+     … +16 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\tests\native\check_hotpaths.py (+9 -0)
+      118      assert len({r.stdout for r in cull.values()}) == 1, ('cull
+           ing changed visible triangles', cull)
+      119      assert cull['cull'].stderr != cull['uncached'].stderr, 'no
+            retained block was culled'
+      120      print(f"PASS cull: {cull['cull'].stdout.strip()}; {cull['c
+           ull'].stderr.strip()} against uncached {cull['uncached'].stder
+           r.strip()}", flush=True)
+      121 +    state = {}                                                
+      122 +    for variant, mode in [('cached', []), ('CPU lighting', ['-
+          +DKJ_G3_CPU_LIGHTING']),                                       
+      123 +                          ('verify', ['-DKJ_DL_VERIFY']), ('un
+          +cached', ['-DKJ_DL_NO_CACHE'])]:                              
+      124 +        exe=tmp/'g3_state_test.exe'                           
+      125 +        flags = [x for x in common if x != '-DKJ_G3_CPU_LIGHTI
+          +NG']                                                          
+      126 +        run([*flags,'-DHGSS_PROFILE_OFF',*mode,f'-DSOURCE="{so
+          +urce.as_posix()}"',root/'tests/native/g3_state_test.c','-o',ex
+          +e])                                                           
+      127 +        state[variant] = run([exe])                           
+      128 +    assert len(set(state.values())) == 1, ('pure state-list sn
+          +apshot changed DS state or pictures', state)                  
+      129 +    print(f"PASS pure state lists: {state['cached']}, snapshot
+          + restores match execution (cached/CPU/verify/uncached)", flush
+          +=True)                                                        
+      130      exe=tmp/'perf_test.exe'
+      131      run([*common,'-I',root/'src',root/'tests/native/perf_test.
+           c','-o',exe])
+      132      print(run([exe]))
+  ⎿  (timeout 10m)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Two problems: logic got slightly worse (13.67 → 14.30 ms) and two field frames
+  differ (3,284 / 4,080 pixels). Investigating once the run finishes.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● The snapshot rarely hits because NNS rewrites each GLB's base transform, so
+  the full compare misses and the extra capture makes it slower. I'm waiting on
+  the pixel results, then switching to a prefix snapshot that restores the
+  stable part and runs the varying tail live.
+
+  Read 1 file (ctrl+o to expand)
+
+● Background command "Build, measure and pixel-check snapshot change" completed
+(exit code 0)
+
+  Read 2 files, ran 1 shell command (ctrl+o to expand)
+
+● The difference is an NPC's pose/facing (game-logic state), not geometry —
+  likely run-to-run timing nondeterminism in when scripted input lands.
+  Verifying by re-running the same build.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● While that runs (one harness at a time), rewriting the snapshot as a prefix
+  snapshot.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Write(kohjoh\build\opt-tools\edit_prefix.py)
+  ⎿  Wrote 114 lines to kohjoh\build\opt-tools\edit_prefix.py
+       1 from pathlib import Path
+       2 p = Path('src/runtime/kj_g3.c')
+       3 s = p.read_text(newline='')
+       4 start = s.index('/* State-only list hit: restore an identical pu
+         re list')
+       5 end = s.index('static uint32_t dl_vertex_bound(const dl_entry *e
+         )')
+       6 new = '''/* The last packed command word of a list: NNS rewrites
+          the GLB's base
+       7  * rotation, translation, scale and texture parameters (its last
+     … +108 lines (~5 KB) (ctrl+o to expand)
+
+  Ran 2 shell commands (ctrl+o to expand)
+● Background command "Apply prefix snapshot and run state test" completed (exit
+code 0)
+
+● Background command "Check run-to-run determinism" completed (exit code 0)
+
+● Run-to-run builds are deterministic but differ from baseline only in an NPC's
+  state, which fits script input landing on a different frame. I'm confirming
+  with an Azahar KJ_DL_VERIFY run, and next I'm varying the GLB base transform
+  per model in the host test.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+❯ /compact make sure to note everything you've learned this session, what       
+you've done right, what you've done wrong and how you fixed it (if applicable). 
+  ⎿  Compacted (ctrl+o to see full summary)
+  ⎿  Read build\opt-tools\edit_prefix.py (115 lines)
+  ⎿  Read tests\native\g3_state_test.c (189 lines)
+  ⎿  Read build\opt-tools\edit_pure.py (280 lines)
+  ⎿  Read tests\native\g3_lighting_test.c (215 lines)
+  ⎿  Referenced file src\runtime\kj_g3.c
+
+● Background command "Vary GLB base transform in test and run" completed (exit
+code 0)
+
+  Read 1 file (ctrl+o to expand)
+
+● All five modes match. Checking that mutations are still caught.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Only printed the first mode; rerunning c/d/e with all modes.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Three invalidations go unobserved. Checking what they guard.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● The GLB tail and neighbouring disturbances mask these invalidations. Reworking
+  the test so each disturbance is followed by a quiet model (12 models).
+
+● Bash(python - <<'EOF'
+      from pathlib import Path…)
+  ⎿  ==
+     [-DHGSS_PROFILE_OFF] dffafa0256256687
+     [-DHGSS_PROFILE_OFF -DKJ_DL_NO_CACHE] dffafa0256256687
+     … +33 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\tests\native\g3_state_test.c (+9 -6)
+      120      }
+      121      mesh[m++] = 0x41;
+      122      for (unsigned frame = 0; frame < 300; ++frame) {
+      123 -        for (unsigned model = 0; model < 8; ++model) {        
+      123 +        for (unsigned model = 0; model < 12; ++model) {       
+      124              /* The camera moves every 4 pictures, the lights e
+           very 50. */
+      125              const size_t n = make_glb(glb, frame / 4u, frame /
+            50u, model % 3u);
+      126              assert(n == 63);
+     ...
+      129              const uint32_t turn = model == 2u || model == 3u ?
+            0u : model; /* 2, 3: no rotation */
+      130              execute(0x19, (const uint32_t[]){4096, turn * 300u
+           , 0, 0, 4096, turn * 200u, 0, 0, 4096,
+      131                                               model * 8192u, 0,
+            (uint32_t)-(int32_t)(model * 4096u)});
+      132 -            /* One disturbance per model, so each restore inva
+          -lidation is                                                   
+      133 -             * observable on its own (the next GLB must undo i
+          -t). */                                                        
+      132 +            /* One disturbance per even model, and a quiet mod
+          +el after it,                                                  
+      133 +             * so each restore invalidation is observable on i
+          +ts own (the                                                   
+      134 +             * next GLB must undo it, and nothing else invalid
+          +ates). */                                                     
+      135              switch (model) {
+      135 -            case 1:                                           
+      136 +            case 0:                                           
+      137                  execute(0x30, (const uint32_t[]){0x7fff0421u})
+           ;
+      138                  break;
+      139              case 2:
+     ...
+      144                  break;
+      145              case 6:
+      146                  execute(0x33, (const uint32_t[]){(1u << 30) | 
+           0x001fu});
+      147 +                break;                                        
+      148 +            case 8:                                           
+      149                  execute(0x60, (const uint32_t[]){0x7f7f0000u})
+           ;
+      150                  break;
+      148 -            case 7:                                           
+      151 +            case 10:                                          
+      152                  execute(0x31, (const uint32_t[]){0x0000ffffu})
+           ;
+      153                  execute(0x29, (const uint32_t[]){0x001f0081u})
+           ;
+      154                  break;
+      152 -            default: /* 0, 3, 5: quiet, so the previous restor
+          -e shows */                                                    
+      155 +            default:                                          
+      156                  break;
+      157              }
+      158              execute(0x71, (const uint32_t[]){0x10001000u, 0x10
+           00u}); /* POS_TEST */
+  ⎿  (timeout 10m)
+
+● c is caught now. Checking whether viewport reaches the digest at all.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Line 963's batch key already compares the viewport, so material_changed there
+  is redundant but harmless. The digest doesn't include batch->viewport, so I'm
+  adding it for robustness.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● Both d and e are redundant with existing masks and digest coverage, so I'm
+  keeping them as defensive invalidations. Running the full hot-path check next.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Wrong Python was picked up; rerunning under the devkitPro shell.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All checks pass. Next: build and measure in Azahar with pixel diffs.
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● While that runs, I'm looking at the lit shader for specialization.
+
+  Read 1 file, listed 1 directory (ctrl+o to expand)
+
+● The shader runs all 4 lights unconditionally, about 95 instructions each.
+  Checking how gpu.c uploads lighting contexts.
+
+  Searched for 2 patterns, ran 1 shell command (ctrl+o to expand)
+
+● I'm adding bool uniforms so the shader can skip disabled lights and
+  zero-specular lights, saving roughly 70–95 instructions per light. First I'm
+  checking how the CPU oracle handles disabled lights.
+  Listed 1 directory (ctrl+o to expand)
+
+● Skipping disabled lights and the half-vector path in the shader is exact,
+  since the oracle ignores disabled lights and a zero specular colour zeroes
+  that term. Next I'm checking the test's PICA interpreter to confirm it handles
+  jmpu.
+
+  Read 1 file (ctrl+o to expand)
+
+● Checking picasso's .bool and jmpu support and how bool registers are numbered.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Picasso allocates .bool uniforms from b0 in declaration order (0x78, 0x79).
+  Checking whether the cycle's build step has finished before I touch sources.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The build is still running. I'll stage the shader edit script without applying
+  it.
+
+● Write(kohjoh\build\opt-tools\edit_shader.py)
+  ⎿  Wrote 89 lines to kohjoh\build\opt-tools\edit_shader.py
+       1 from pathlib import Path
+       2 import re
+       3 p = Path('src/graphics/pica/shaders/g3d_lit.v.pica')
+       4 s = p.read_text(newline='')
+       5 
+       6 
+       7 def rep(old, new, count=1):
+       8     global s
+       9     assert s.count(old) == count, (s.count(old), old[:70])
+      10     s = s.replace(old, new)
+     … +79 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Libctru's uniform location is startReg - 0x10, so bool bn comes back as
+  0x68+n. Writing the C-side edit script.
+
+● Write(kohjoh\build\opt-tools\edit_shader_c.py)
+  ⎿  Wrote 43 lines to kohjoh\build\opt-tools\edit_shader_c.py
+       1 from pathlib import Path
+       2 
+       3 
+       4 def edit(path, pairs):
+       5     p = Path(path)
+       6     s = p.read_text(newline='')
+       7     for old, new in pairs:
+       8         assert s.count(old) == 1, (path, old[:70])
+       9         s = s.replace(old, new)
+      10     p.write_text(s, newline='')
+     … +33 lines (ctrl+o to expand)
+
+● Now the interpreter test update.
+
+● Write(kohjoh\build\opt-tools\edit_shader_test.py)
+  ⎿  Wrote 74 lines to kohjoh\build\opt-tools\edit_shader_test.py
+      1 from pathlib import Path
+      2 p = Path('tests/native/pica_lighting_test.py')
+      3 s = p.read_text(newline='')
+      4 
+      5 
+      6 def rep(old, new):
+      7     global s
+      8     assert s.count(old) == 1, old[:70]
+      9     s = s.replace(old, new)
+     … +65 lines (ctrl+o to expand)
+
+● Scripts are staged; waiting for the measurement cycle to finish before
+  applying them.
+
+  Read 1 file (ctrl+o to expand)
+
+● The build is still linking. I'll resume when the cycle reports back.
+
+✻ Churned for 7m 3s · done 9:18 PM
+
+※ recap: Goal: sustained 30 FPS in Goldenrod on Old 3DS. The prefix state-snapshot step is measuring in Azahar now, and its tests pass. Next, once the run finishes, I'll check timing and pixel diffs, commit, then apply the staged per-light shader skips. (disable recaps in /config)
+
+● Background command "Build, run Azahar perf and pixel diffs" completed (exit
+code 0)
+
+  Read 1 file (ctrl+o to expand)
+
+● Logic is now 13.38 ms (cull build: 13.67 ms). The same field/walk diffs as the
+  full snapshot remain, so I'm running a KJ_DL_VERIFY build to tell timing
+  apart from a restore bug.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● While that builds, I'm looking at the differing field frame.
+
+  Read 2 files, ran 1 shell command (ctrl+o to expand)
+
+● Only the wandering NPC differs (pose or position), which is consistent with
+  timing. The verify run will settle it.
+
+✻ Crunched for 34s · done 9:26 PM
+
+※ recap: Goal: cut Goldenrod's O3DS frame below 33 ms. The new display-list snapshot passes every test and brings Azahar logic to 13.4 ms, but one wandering NPC differs. Next, I'll check the running verify build to see whether that's timing or a real bug, then commit. (disable recaps in /config)
+
+● Background command "Build verify variant and compare frames" completed (exit
+code 0)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Full verify mode gives the same diffs, so the snapshot restore isn't the
+  cause. I'm checking the s_light_half init change and timing next by comparing
+  the crops directly.
+
+  Read 1 file, ran 2 shell commands (ctrl+o to expand)
+
+● The NPC is at a different walk position or frame, so this is game state, not
+  shading. Bisecting the one remaining non-snapshot change: building with the
+  s_light_half init reverted.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Not the init change either. Checking the project docs for known determinism
+  notes.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Testing timing sensitivity directly: committed HEAD with KJ_G3_NO_CULL draws
+  identical pictures with different timing.
+  Ran 1 shell command (ctrl+o to expand)
+
+● The same diff appears on HEAD with only timing changed. Suspecting a
+  time-of-day/RTC input instead: rerunning the already-built cull artifact that
+  matched earlier.
+
+  Listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● Confirmed: the old cull binary that matched earlier now shows the same NPC
+  diff, so the cause is the environment (the emulated clock moved on), not the
+  code. Regenerating the baseline references.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● While that runs (no build is involved), I'm applying the shader specialization
+  and running the interpreter test.
+
+● Bash(python build/opt-tools/edit_shader.py && python
+      build/opt-tools/edit_shader_c.py && python
+      build/opt-tools/edit_shader_test.py && python tests/native/pica_light…)
+  ⎿  ok
+     ok
+     ok
+     … +7 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\src\graphics\g3d\g3d.c (+8 -0)
+      170                            light->diffuse[i][0], light->diffuse
+           [i][1], light->diffuse[i][2], 0);
+      171              C3D_FVUnifSet(GPU_VERTEX_SHADER, u->specular + i,
+      172                            light->specular[i][0], light->specul
+           ar[i][1], light->specular[i][2], 0);
+      173 +            /* Disabled lights and zero specular colours contr
+          +ibute exactly                                                 
+      174 +             * nothing: the shader skips their dot products. *
+          +/                                                             
+      175 +            const bool on = (light->enabled & (1u << i)) != 0;
+      176 +            C3D_BoolUnifSet(GPU_VERTEX_SHADER, u->bools + (int
+          +)i, on);                                                      
+      177 +            C3D_BoolUnifSet(GPU_VERTEX_SHADER, u->bools + 4 + 
+          +(int)i,                                                       
+      178 +                            on && (light->specular[i][0] | lig
+          +ht->specular[i][1] |                                          
+      179 +                                   light->specular[i][2]) != 0
+          +);                                                            
+      180          }
+      181 +        C3D_BoolUnifSet(GPU_VERTEX_SHADER, u->bools + 8, light
+          +->use_shininess != 0);                                        
+      182          C3D_FVUnifSet(GPU_VERTEX_SHADER, u->emission,
+      183                        light->emission[0], light->emission[1], 
+           light->emission[2], 0);
+      184          if (light->use_shininess) {
+  ⎿  Updated kohjoh\src\graphics\pica\gpu.c (+2 -0)
+      67      s_lit.emission = shaderInstanceGetUniformLocation(s_prog_li
+          t.vertexShader, "emission");
+      68      s_lit.params = shaderInstanceGetUniformLocation(s_prog_lit.
+          vertexShader, "params");
+      69      s_lit.shininess = shaderInstanceGetUniformLocation(s_prog_l
+          it.vertexShader, "shininess");
+      70 +    /* Uniform locations are DVLE registers minus 0x10; bools s
+         +tart at 0x78. */                                               
+      71 +    s_lit.bools = shaderInstanceGetUniformLocation(s_prog_lit.v
+         +ertexShader, "light_on0") - 0x68;                              
+      72      s_uloc_xform = shaderInstanceGetUniformLocation(s_prog_2d.v
+          ertexShader, "xform");
+      73      s_uloc_uvscale = shaderInstanceGetUniformLocation(s_prog_2d
+          .vertexShader, "uvscale");
+      74      s_uloc_palette = shaderInstanceGetUniformLocation(s_prog_3d
+          .vertexShader, "palette");
+  ⎿  Updated kohjoh\src\graphics\pica\gpu.h (+1 -0)
+      45  typedef struct kj_lit_uniforms {
+      46      int direction, direction_low, half, half_low;
+      47      int ambient, diffuse, specular, emission, params, shininess
+          ;
+      48 +    int bools; /* first bool register: light_on[4], light_spec[
+         +4], use_shininess */                                           
+      49  } kj_lit_uniforms;
+      50  const kj_lit_uniforms *kj_gpu_lit_uniforms(void);
+      51  
+  ⎿  Updated kohjoh\src\graphics\pica\shaders\g3d_lit.v.pica (+70 -36)
+       1  ; DS diffuse/specular lighting. NORMAL-time transformed normals
+           are packed
+       2  ; into the existing 16-byte vertex; lighting contexts are immut
+          able per draw.
+       3  ; Six clip matrices leave space for all four lights and the 128
+          -byte LUT.
+       4 +; Per-draw bool uniforms skip disabled lights and the half-vect
+         +or work of                                                     
+       5 +; lights with no specular colour (their term is exactly zero): 
+         +a field                                                        
+       6 +; vertex with one diffuse light runs ~120 instructions instead 
+         +of ~409.                                                       
+       7 +; Coffeepot 3d-scene-optimisation.md: reduce the vertex work, n
+         +ot the                                                         
+       8 +; vertices' cost estimate. Picasso numbers the bools b0.. in th
+         +is order.                                                      
+       9  .fvec palette[24]
+      10  .fvec texscale
+      11  .fvec light_dir_hi[4], light_dir_lo[4]
+     ...
+      13  .fvec ambient[4], diffuse[4], specular[4]
+      14  .fvec emission, params
+      15  .fvec shininess[32]
+      16 +.bool light_on0                                                
+      17 +.bool light_on1                                                
+      18 +.bool light_on2                                                
+      19 +.bool light_on3                                                
+      20 +.bool light_spec0                                              
+      21 +.bool light_spec1                                              
+      22 +.bool light_spec2                                              
+      23 +.bool light_spec3                                              
+      24 +.bool use_shininess                                            
+      25  .constf base(0.000244140625, 1.0, 4.0, 0.0)
+      26  .constf colscale(0.00392156862745, 0.00392156862745, 0.00392156
+          862745, 255.0)
+      27  .constf unpack(0.015625, 0.0625, 256.0, 1024.0)
+     ...
+       99      mov r0.x, rates.xxxx
+      100      mul r15.z, limits.wwww, r0.xxxx
+      101  
+      102 +    jmpu !light_on0, skip_light_0                             
+      103      dp3 r1.x, light_dir_hi[0], r12
+      104      dp3 r1.y, light_dir_lo[0], r12
+      105      dp3 r1.z, light_dir_hi[0], r13
+     ...
+      117      add r1.x, r1.xxxx, r2.xxxx
+      118      add r8.x, r1.xxxx, r2.yyyy
+      119  
+      120 +    max r8.x, base.wwww, r8.xxxx                              
+      121 +    min r8.x, limits.yyyy, r8.xxxx                            
+      122 +    jmpu !light_spec0, diffuse_0                              
+      123      dp3 r1.x, light_half_hi[0], r12
+     … 207 more lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\tests\native\pica_lighting_test.py (+34 -4)
+       96              assert steps <= 600
+       97              if op == 'end':
+       98                  break
+       99 +            if op == 'jmpu':                                  
+      100 +                condition = uniforms['bools'][args[0].lstrip('
+          +!')]                                                          
+      101 +                if args[0].startswith('!'):                   
+      102 +                    condition = not condition                 
+      103 +                if condition:                                 
+      104 +                    pc = self.labels[args[1]]                 
+      105 +                continue                                      
+      106              if op == 'jmpc':
+      107                  condition = compare[0 if args[0].endswith('x')
+            else 1]
+      108                  if args[0].startswith('!'):
+     ...
+      135                               'min': min, 'max': max, 'sge': la
+           mbda a, b: float(a >= b)}[op]
+      136                  result = [operation(x, y) for x, y in zip(a, b
+           )]
+      137              put(args[0], result)
+      138 +        self.steps = steps                                    
+      139          return registers['outclr'], registers.get('r6', [0.0] 
+           * 4)[:3], specular
+      140  
+      141  
+      142  def scenario(shader, normal, directions, halves, ambient, diff
+           use, specular, emission,
+      135 -             table=None, alpha=255):                          
+      143 +             table=None, alpha=255, enabled=15):              
+      144      def split(vectors, low):
+      145          return [[(-x - ((-x >> 7) << 7)) if low else (-x >> 7)
+            for x in v] + [0]
+      146                  for v in vectors]
+     ...
+      152                      specular=[v + [0] for v in specular], emis
+           sion=emission + [0],
+      153                      params=[alpha, int(table is not None), 0, 
+           0],
+      154                      shininess=[(table or [0] * 128)[i:i + 4] f
+           or i in range(0, 128, 4)])
+      155 +    on = [bool(enabled >> i & 1) for i in range(4)]           
+      156 +    bools = {'use_shininess': table is not None}              
+      157 +    for i in range(4):                                        
+      158 +        bools[f'light_on{i}'] = on[i]                         
+      159 +        bools[f'light_spec{i}'] = on[i] and any(specular[i])  
+      160 +    uniforms['bools'] = bools                                 
+      161      bits = sum((x & 16383) << (14 * i) for i, x in enumerate(n
+           ormal))
+      162      inputs = {'v0': [0, 0, 0, 0], 'v1': [bits >> (8 * i) & 255
+            for i in range(4)],
+      163                'v2': [0, 0, 0, 0], 'v3': [(bits >> 32 & 31) << 
+           3, 128 | (bits >> 37 & 31), 0, 0]}
+     ...
+      165      assert decoded == list(normal), (normal, decoded)
+      166      rgb = list(emission)
+     … 51 more lines (ctrl+o to expand)
+  ⎿  (timeout 10m)
+
+● The "four with specular" figure is wrong because zeroed-specular trials
+  overwrite it. Replacing it with a dedicated worst-case scenario.
+
+● Bash(python - <<'EOF'
+      from pathlib import Path…)
+  ⎿  PASS PICA source: 1200 random NORMAL contexts, 421 instructions, float
+     24 intermediates
+     PASS PICA source: per-draw light skips; one diffuse light runs 96 inst
+     ructions, four specular lights with shininess 419
+  ⎿  Updated kohjoh\tests\native\pica_lighting_test.py (+5 -7)
+      204          scenario(shader, [4096, 0, 0], zero, half, zero, zero,
+            spec, [0, 0, 0], [entry] * 128)
+      205      print('PASS PICA source: all 256 shininess values', flush=
+           True)
+      206      rng = random.Random(19271)
+      207 -    steps = {}                                                
+      207      for trial in range(1200):
+      208          maximum = 16384 if trial & 1 else 4096
+      209          n = [rng.randrange(-8192, 8192) for _ in range(3)]
+     ...
+      218                  products[2][i] = [0, 0, 0]
+      219          scenario(shader, n, directions, halves, *products, [rn
+           g.randrange(8) for _ in range(3)],
+      220                   table, alpha=rng.randrange(256), enabled=enab
+           led)
+      222 -        if table is None:                                     
+      223 -            steps[enabled] = shader.steps                     
+      221      print(f'PASS PICA source: 1200 random NORMAL contexts, {le
+           n(shader.code)} instructions, float24 intermediates', flush=Tr
+           ue)
+      225 -    zero_spec = [[0, 0, 0]] * 4                               
+      226 -    scenario(shader, [0, 0, 4096], zero, zero, zero, [[31, 31,
+          - 31]] + zero[1:], zero_spec, [0, 0, 0],                       
+      227 -             enabled=1)                                       
+      222 +    full = [[31, 31, 31]] * 4                                 
+      223 +    scenario(shader, [0, 0, 4096], half, half, zero, full, ful
+          +l, [0, 0, 0], [255] * 128)                                    
+      224 +    worst = shader.steps                                      
+      225 +    scenario(shader, [0, 0, 4096], zero, zero, zero, full[:1] 
+          ++ zero[1:], zero, [0, 0, 0], enabled=1)                       
+      226      print(f'PASS PICA source: per-draw light skips; one diffus
+           e light runs {shader.steps} instructions, '
+      229 -          f'four with specular {max(steps.values())}', flush=T
+          -rue)                                                          
+      227 +          f'four specular lights with shininess {worst}', flus
+          +h=True)                                                       
+      228  
+      229  
+      230  if __name__ == '__main__':
+  ⎿  (timeout 10m)
+
+● 96 instructions for one diffuse light versus 419 worst case. Fixing the
+  comment figure.
+
+● Bash(sed -i 's/; vertex with one diffuse light runs ~120 instructions instead
+      of ~409./; vertex with one diffuse light runs 96 instructions instead of
+      419./' src/gra…)
+  ⎿  6:; vertex with one diffuse light runs 96 instructions instead of 419.
+     134:print(run(['python', root/'tests/native/pica_lighting_test.py']),
+     flush=True)
+  ⎿  Updated kohjoh\src\graphics\pica\shaders\g3d_lit.v.pica (+1 -1)
+      3  ; Six clip matrices leave space for all four lights and the 128-
+         byte LUT.
+      4  ; Per-draw bool uniforms skip disabled lights and the half-vecto
+         r work of
+      5  ; lights with no specular colour (their term is exactly zero): a
+          field
+      6 -; vertex with one diffuse light runs ~120 instructions instead o
+        -f ~409.                                                         
+      6 +; vertex with one diffuse light runs 96 instructions instead of 
+        +419.                                                            
+      7  ; Coffeepot 3d-scene-optimisation.md: reduce the vertex work, no
+         t the
+      8  ; vertices' cost estimate. Picasso numbers the bools b0.. in thi
+         s order.
+      9  .fvec palette[24]
+
+● Waiting on the baseline re-capture before committing the prefix snapshot.
+
+✻ Baked for 24m 29s · done 9:59 PM
+
+● Background command "New baseline refs and compare prefix builds" completed
+(exit code 0)
+
+  Read 1 file (ctrl+o to expand)
+
+● The prefix snapshot is pixel-identical to a fresh baseline on all 7 held
+  frames. Committing step 3 and pointing cycle.sh at the new references.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Running the shader step through the full checks and the measurement cycle.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● While that runs, I'm reading the per-batch draw loop for CPU cost (read-only).
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Each draw makes unconditional calls to C3D_CullFace, C3D_DepthTest and
+  C3D_AlphaBlend, which dirties citro3d's effect state on every draw. I'm
+  checking coffeepot's guidance on state-change cost next.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Per-coffeepot, depth and blend calls are cheap, so batching (about 1 ms per
+  frame at 102 draws) is the big win, while the FIFO emulation in logic is still
+  the main cost. I'm waiting on the shader cycle next.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● The GLB call has dropped to about 4K ticks, so the remaining cost sits in the
+  short game calls, with the 3-word caller at 0x404538 and MAT_InternalDefault
+  next. I'm reading the box test now.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● The box test is down to 16 products, and the two ~1050-word lit lists are now
+  the main cost, at roughly 2 ms of Azahar logic per frame. I'm reading their
+  replay path next.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● These lists are emulated per vertex (about 640 ticks per vertex). I need to
+  know why they fell to the GPU-lit plan instead of baked blocks: churn or a bad
+  recording.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● These lists are probably being recorded as bad because their normals rely on
+  matrices restored inside the list. I'm checking whether the key accounts for
+  the matrix stack, since including it could let static multi-node models bake.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● I'll add a temporary diagnostic to see why these lists go GPU-lit and which
+  matrix commands they contain. It gets applied after the current cycle
+  finishes.
+
+● Write(kohjoh\build\opt-tools\diag_gpulit.py)
+  ⎿  Wrote 38 lines to kohjoh\build\opt-tools\diag_gpulit.py
+       1 from pathlib import Path
+       2 p = Path('src/runtime/kj_g3.c')
+       3 s = p.read_text(newline='')
+       4 old = '''    if (s_rec.bad) {
+       5 #ifdef KJ_G3_GPU_LIGHTING
+       6         if (reads & DL_HAS_NORMAL) {
+       7             /* Lit under its own matrix changes, or shared strip
+          vertices:
+       8              * keep the live plan with PICA lighting. */'''
+       9 new = '''    if (s_rec.bad) {
+     … +29 lines (ctrl+o to expand)
+
+● Waiting for the shader cycle.
+✻ Cogitated for 1m 51s · done 10:02 PM
+
+※ recap: Goal: hold Goldenrod at 30 FPS on Old 3DS. I committed the GLB prefix snapshot, and the lit-shader light-skip build is now being measured in Azahar. Next, once that passes I'll commit it and find out why two big lit lists are still emulated per vertex. (disable recaps in /config)
+
+● Background command "Hot-path checks then build/measure shader skips" completed
+(exit code 0)
+
+  Read 1 file (ctrl+o to expand)
+
+● The shader change breaks the pictures. Inspecting a frame.
+
+  Read 1 file (ctrl+o to expand)
+
+● Sprites render darker, so lights are being skipped. The bool register id is
+  suspect. Disassembling libctru's uniform lookup.
+
+  Ran 6 shell commands (ctrl+o to expand)
+
+● Background command "Find object defining DVLE_GetUniformRegister" completed
+(exit code 0)
+
+● Committed the GLB prefix snapshot (e587d4c). The lit-shader light-skip build
+  renders lit sprites too dark, so I'm checking how libctru numbers bool
+  uniforms.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● libctru returns startReg - 0x10, so the id math is right. Checking citro3d's
+  bool uniform path.
+
+  Searched for 1 pattern, ran 3 shell commands (ctrl+o to expand)
+
+● citro3d looks fine. Checking how kj_g3 fills kj_lighting for disabled lights.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Lighting latch semantics are fine. Checking the uniform table in the built lit
+  shbin.
+
+  Searched for 1 pattern, ran 2 shell commands (ctrl+o to expand)
+
+● The uniform layout is correct. Looking at where the title frame differs.
+
+  Read 2 files, ran 1 shell command (ctrl+o to expand)
+
+● Ho-Oh renders black: every light is being skipped, so the bools reach the GPU
+  as zero. Checking citro3d's upload.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● citro3d does upload the bools. Checking picasso's encoding of jmpu !b against
+  Azahar's JMPU semantics.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Encoding matches Azahar (num=1 jumps when false). Checking libctru's
+  shaderInstanceInit defaults for bool uniforms.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● libctru only presets constant bools, so citro3d should hold our values.
+  Searching kohjoh for anything else that writes bool uniforms.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Nothing else writes bools. Decoding the JMPU instructions in the built lit
+  shader.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The bool flags look correct but the lights still act as if they're all false,
+  and the cause isn't visible in citro3d or libctru. I'm switching to
+  float-uniform flags checked with cmp and jmpc, as the shininess check already
+  does.
+
+● Bash(git checkout src/graphics/pica/shaders/g3d_lit.v.pica
+      src/graphics/pica/gpu.c src/graphics/pica/gpu.h src/graphics/g3d/g3d.c
+      tests/native/pica_lighting_test.py…)
+  ⎿  Updated 5 paths from the index
+     ok
+     ok
+     … +8 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\src\graphics\g3d\g3d.c (+3 -5)
+  ⎿  Updated kohjoh\src\graphics\pica\gpu.c (+1 -2)
+  ⎿  Updated kohjoh\src\graphics\pica\gpu.h (+1 -1)
+  ⎿  Updated kohjoh\src\graphics\pica\shaders\g3d_lit.v.pica (+25 -26)
+  ⎿  Updated kohjoh\tests\native\pica_lighting_test.py (+11 -19)
+  ⎿  (a git step in this command can move the working tree, so these may be
+     its changes, not edits) (ctrl+o to expand)
+  ⎿  (timeout 10m)
+
+● Applying the corrected instruction-count report again and fixing the comment
+  to 100 instructions.
+
+● Bash(python - <<'EOF'
+      from pathlib import Path…)
+  ⎿  PASS PICA source: per-draw light skips; one diffuse light runs 100 ins
+     tructions, four specular lights with shininess 427
+      src/graphics/g3d/g3d.c                   |  6 +++
+     … +6 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\src\graphics\pica\shaders\g3d_lit.v.pica (+1 -1)
+      3  ; Six clip matrices leave space for all four lights and the 128-
+         byte LUT.
+      4  ; Per-draw light flags skip disabled lights and the half-vector 
+         work of
+      5  ; lights with no specular colour (their term is exactly zero): a
+          vertex
+      6 -; with one diffuse light runs 96 instructions instead of 419.   
+      6 +; with one diffuse light runs 100 instructions instead of 419.  
+      7  ; Coffeepot 3d-scene-optimisation.md: reduce the per-vertex work
+         .
+      8  .fvec palette[24]
+      9  .fvec texscale
+  ⎿  Updated kohjoh\tests\native\pica_lighting_test.py (+5 -7)
+      194          scenario(shader, [4096, 0, 0], zero, half, zero, zero,
+            spec, [0, 0, 0], [entry] * 128)
+      195      print('PASS PICA source: all 256 shininess values', flush=
+           True)
+      196      rng = random.Random(19271)
+      197 -    steps = {}                                                
+      197      for trial in range(1200):
+      198          maximum = 16384 if trial & 1 else 4096
+      199          n = [rng.randrange(-8192, 8192) for _ in range(3)]
+     ...
+      208                  products[2][i] = [0, 0, 0]
+      209          scenario(shader, n, directions, halves, *products, [rn
+           g.randrange(8) for _ in range(3)],
+      210                   table, alpha=rng.randrange(256), enabled=enab
+           led)
+      212 -        if table is None:                                     
+      213 -            steps[enabled] = shader.steps                     
+      211      print(f'PASS PICA source: 1200 random NORMAL contexts, {le
+           n(shader.code)} instructions, float24 intermediates', flush=Tr
+           ue)
+      215 -    zero_spec = [[0, 0, 0]] * 4                               
+      216 -    scenario(shader, [0, 0, 4096], zero, zero, zero, [[31, 31,
+          - 31]] + zero[1:], zero_spec, [0, 0, 0],                       
+      217 -             enabled=1)                                       
+      212 +    full = [[31, 31, 31]] * 4                                 
+      213 +    scenario(shader, [0, 0, 4096], half, half, zero, full, ful
+          +l, [0, 0, 0], [255] * 128)                                    
+      214 +    worst = shader.steps                                      
+      215 +    scenario(shader, [0, 0, 4096], zero, zero, zero, full[:1] 
+          ++ zero[1:], zero, [0, 0, 0], enabled=1)                       
+      216      print(f'PASS PICA source: per-draw light skips; one diffus
+           e light runs {shader.steps} instructions, '
+      219 -          f'four with specular {max(steps.values())}', flush=T
+          -rue)                                                          
+      217 +          f'four specular lights with shininess {worst}', flus
+          +h=True)                                                       
+      218  
+      219  
+      220  if __name__ == '__main__':
+  ⎿  (timeout 10m)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The float-flag variant is building and measuring now.
+
+✻ Churned for 4m 33s · done 10:17 PM
+
+※ recap: The goal is a sustained 30 FPS in Goldenrod on Old 3DS; the GLB prefix snapshot is committed, and I'm now making the lit shader skip disabled lights. A float-flag build is running in Azahar, and next I'll check its pixel diffs before committing.
+
+● Background command "Build and measure float-flag shader" completed (exit code
+0)
+  Searched for 1 pattern (ctrl+o to expand)
+
+● The PICA ran out of float uniform space (96 registers). I'll put the flags in
+  the unused .w of light_dir_hi[i] and light_half_hi[i] instead, which dp3 never
+  reads.
+
+● Bash(python - <<'EOF'
+      from pathlib import Path…)
+  ⎿  PASS PICA source: 1200 random NORMAL contexts, 433 instructions, float
+     24 intermediates
+     PASS PICA source: per-draw light skips; one diffuse light runs 101 ins
+     … +24 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\src\graphics\g3d\g3d.c (+7 -8)
+      156                  half_hi[c] = h >> 7;
+      157                  half_lo[c] = h - half_hi[c] * 128;
+      158              }
+      159 +            /* w flags: the shader skips a disabled light, and
+          + the half                                                     
+      160 +             * vector of a light with no specular colour (exac
+          +tly zero). */                                                 
+      161 +            const bool on = (light->enabled & (1u << i)) != 0;
+      162 +            const bool spec = on && (light->specular[i][0] | l
+          +ight->specular[i][1] |                                        
+      163 +                                     light->specular[i][2]) !=
+          + 0;                                                           
+      164              C3D_FVUnifSet(GPU_VERTEX_SHADER, u->direction + i,
+      160 -                          dir_hi[0], dir_hi[1], dir_hi[2], 0);
+      165 +                          dir_hi[0], dir_hi[1], dir_hi[2], on)
+          +;                                                             
+      166              C3D_FVUnifSet(GPU_VERTEX_SHADER, u->direction_low 
+           + i,
+      167                            dir_lo[0], dir_lo[1], dir_lo[2], 0);
+      168              C3D_FVUnifSet(GPU_VERTEX_SHADER, u->half + i,
+      164 -                          half_hi[0], half_hi[1], half_hi[2], 
+          -0);                                                           
+      169 +                          half_hi[0], half_hi[1], half_hi[2], 
+          +spec);                                                        
+      170              C3D_FVUnifSet(GPU_VERTEX_SHADER, u->half_low + i,
+      171                            half_lo[0], half_lo[1], half_lo[2], 
+           0);
+      172              C3D_FVUnifSet(GPU_VERTEX_SHADER, u->ambient + i,
+     ...
+      175                            light->diffuse[i][0], light->diffuse
+           [i][1], light->diffuse[i][2], 0);
+      176              C3D_FVUnifSet(GPU_VERTEX_SHADER, u->specular + i,
+      177                            light->specular[i][0], light->specul
+           ar[i][1], light->specular[i][2], 0);
+      173 -            /* Disabled lights and zero specular colours contr
+          -ibute exactly                                                 
+      174 -             * nothing: the shader skips their dot products. *
+          -/                                                             
+      175 -            const bool on = (light->enabled & (1u << i)) != 0;
+      176 -            const bool spec = on && (light->specular[i][0] | l
+          -ight->specular[i][1] |                                        
+      177 -                                     light->specular[i][2]) !=
+          - 0;                                                           
+      178 -            C3D_FVUnifSet(GPU_VERTEX_SHADER, u->flags + (int)i
+          -, on, spec, 0, 0);                                            
+      178          }
+      179          C3D_FVUnifSet(GPU_VERTEX_SHADER, u->emission,
+      180                        light->emission[0], light->emission[1], 
+           light->emission[2], 0);
+  ⎿  Updated kohjoh\src\graphics\pica\gpu.c (+0 -1)
+      67      s_lit.emission = shaderInstanceGetUniformLocation(s_prog_li
+          t.vertexShader, "emission");
+      68      s_lit.params = shaderInstanceGetUniformLocation(s_prog_lit.
+          vertexShader, "params");
+      69      s_lit.shininess = shaderInstanceGetUniformLocation(s_prog_l
+          it.vertexShader, "shininess");
+      70 -    s_lit.flags = shaderInstanceGetUniformLocation(s_prog_lit.v
+         -ertexShader, "light_flags");                                   
+      70      s_uloc_xform = shaderInstanceGetUniformLocation(s_prog_2d.v
+          ertexShader, "xform");
+      71      s_uloc_uvscale = shaderInstanceGetUniformLocation(s_prog_2d
+          .vertexShader, "uvscale");
+      72      s_uloc_palette = shaderInstanceGetUniformLocation(s_prog_3d
+          .vertexShader, "palette");
+  ⎿  Updated kohjoh\src\graphics\pica\gpu.h (+0 -1)
+      45  typedef struct kj_lit_uniforms {
+      46      int direction, direction_low, half, half_low;
+      47      int ambient, diffuse, specular, emission, params, shininess
+          ;
+      48 -    int flags; /* light_flags[4]: enabled, specular colour non-
+         -zero */                                                        
+      48  } kj_lit_uniforms;
+      49  const kj_lit_uniforms *kj_gpu_lit_uniforms(void);
+      50  
+  ⎿  Updated kohjoh\src\graphics\pica\shaders\g3d_lit.v.pica (+15 -11)
+       1  ; DS diffuse/specular lighting. NORMAL-time transformed normals
+           are packed
+       2  ; into the existing 16-byte vertex; lighting contexts are immut
+          able per draw.
+       3  ; Six clip matrices leave space for all four lights and the 128
+          -byte LUT.
+       4 -; Per-draw light flags skip disabled lights and the half-vector
+         - work of                                                       
+       4 +; Per-draw light flags (light_dir_hi.w: enabled, light_half_hi.
+         +w: specular                                                    
+       5 +; colour non-zero; dp3 ignores w) skip disabled lights and the 
+         +half-vector work of                                            
+       6  ; lights with no specular colour (their term is exactly zero): 
+          a vertex
+       6 -; with one diffuse light runs 100 instructions instead of 409. 
+       7 +; with one diffuse light runs 104 instructions instead of 409. 
+       8  ; Coffeepot 3d-scene-optimisation.md: reduce the per-vertex wor
+          k.
+       9  .fvec palette[24]
+      10  .fvec texscale
+     ...
+      13  .fvec ambient[4], diffuse[4], specular[4]
+      14  .fvec emission, params
+      15  .fvec shininess[32]
+      15 -.fvec light_flags[4]                                           
+      16  .constf base(0.000244140625, 1.0, 4.0, 0.0)
+      17  .constf colscale(0.00392156862745, 0.00392156862745, 0.00392156
+          862745, 255.0)
+      18  .constf unpack(0.015625, 0.0625, 256.0, 1024.0)
+     ...
+      90      mov r0.x, rates.xxxx
+      91      mul r15.z, limits.wwww, r0.xxxx
+      92  
+      93 -    cmp light_flags[0], gt, gt, r15.xxxx                       
+      93 +    cmp light_dir_hi[0].wwww, gt, gt, r15.xxxx                 
+      94      jmpc !cmp.x, skip_light_0
+      95      dp3 r1.x, light_dir_hi[0], r12
+      96      dp3 r1.y, light_dir_lo[0], r12
+     ...
+      111  
+      112      max r8.x, base.wwww, r8.xxxx
+      113      min r8.x, limits.yyyy, r8.xxxx
+      114 -    jmpc !cmp.y, diffuse_0                                    
+      114 +    cmp light_half_hi[0].wwww, gt, gt, r15.xxxx               
+      115 +    jmpc !cmp.x, diffuse_0                                    
+      116      dp3 r1.x, light_half_hi[0], r12
+      117      dp3 r1.y, light_half_lo[0], r12
+      118      dp3 r1.z, light_half_hi[0], r13
+     ...
+      189      add r3.xyz, r3, r9
+      190  skip_light_0:
+      191  
+      191 -    cmp light_flags[1], gt, gt, r15.xxxx                      
+     … 47 more lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\tests\native\pica_lighting_test.py (+3 -1)
+      147                      shininess=[(table or [0] * 128)[i:i + 4] f
+           or i in range(0, 128, 4)])
+      148      on = [bool(enabled >> i & 1) for i in range(4)]
+      149      spec_on = [on[i] and any(specular[i]) for i in range(4)]
+      150 -    uniforms['light_flags'] = [[float(on[i]), float(spec_on[i]
+          -), 0, 0] for i in range(4)]                                   
+      150 +    for i in range(4):                                        
+      151 +        uniforms['light_dir_hi'][i][3] = float(on[i])         
+      152 +        uniforms['light_half_hi'][i][3] = float(spec_on[i])   
+      153      bits = sum((x & 16383) << (14 * i) for i, x in enumerate(n
+           ormal))
+      154      inputs = {'v0': [0, 0, 0, 0], 'v1': [bits >> (8 * i) & 255
+            for i in range(4)],
+      155                'v2': [0, 0, 0, 0], 'v3': [(bits >> 32 & 31) << 
+           3, 128 | (bits >> 37 & 31), 0, 0]}
+  ⎿  (timeout 10m)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Waiting for the w-flag shader cycle.
+
+✻ Sautéed for 43s · done 10:23 PM
+
+※ recap: Goal: sustained 30 FPS in Goldenrod on Old 3DS by cutting hardware work. I'm building a lit-shader change that skips disabled lights and zero-specular math; next, I'll check its Azahar pixel diffs are zero, then commit.
+
+● Background command "Build and measure w-flag shader" completed (exit code 0)
+
+  Read 1 file (ctrl+o to expand)
+
+● The title (Ho-Oh) is now exact. The field diffs could be clock drift again, so
+  I'm looking at them.
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Only the wandering NPC again, which points to clock drift. Re-capturing the
+  baseline to confirm.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Meanwhile, running the hot-path checks.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Checks pass. Waiting on the baseline re-capture.
+
+✻ Baked for 1m 44s · done 10:35 PM
+
+❯ while you sit and wait, you should go ahead and update the docs. what have    
+  you done this session? what went well? what went wrong, and how did you fix   
+  it?                                                                           
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+● Writing the worklog, status and lessons updates.
+
+● Write(kohjoh\docs\worklog\2026-11-15-hardware-cuts.md)
+  ⎿  Wrote 89 lines to kohjoh\docs\worklog\2026-11-15-hardware-cuts.md
+       1 # Cutting hardware work in Goldenrod (chatlog12 follow-up)
+       2 
+       3 Goal: a sustained 30 FPS in Goldenrod on an Old 3DS, with every 
+         captured
+       4 game frame (logic + publish) under 33.4 ms. The O3DS run at `252
+         4e88`
+       5 measured ~57 ms captured frames, up from ~36 ms. Azahar kept hit
+         ting 30 FPS
+       6 throughout, because it charges about one tick per instruction an
+         d does not
+     … +83 lines (ctrl+o to expand)
+
+● Update(kohjoh\docs\status.md)
+  ⎿  Added 9 lines
+      32  changes are excluded. See the [lighting worklog](worklog/2026-1
+          1-15-lit-plans.md)
+      33  and [producer-gate evidence](worklog/2026-11-15-capture.md).
+      34  
+      35 +2026-11-15 hardware cuts (chatlog12 follow-up): stable lit list
+         +s bake to                                                      
+      36 +literal colours (`84d46dc`), retained blocks outside the pictur
+         +e are culled                                                   
+      37 +before copying (`413d0cc`), and the NNS GLB state list restores
+         + from a                                                        
+      38 +prefix snapshot (`e587d4c`). The lit shader skips disabled and 
+      39 +non-specular lights (101 instead of 409 instructions per one-li
+         +ght vertex).                                                   
+      40 +Azahar Goldenrod: logic p50 25.35 → 13.38 ms, triangles 5.02M →
+         + 1.94M,                                                        
+      41 +draws 80.3k → 61.7k per 600 pictures. Held frames are pixel-ide
+         +ntical.                                                        
+      42 +**O3DS_UNTESTED.** See the [worklog](worklog/2026-11-15-hardwar
+         +e-cuts.md).                                                    
+      43 +                                                               
+      44  ## Latest investigation (uncommitted, 2026-11-13)
+      45  
+      46  `o3ds-log-3` confirms CPU pressure from geometry and audio, wit
+          h GPU queues
+
+● Update(kohjoh\docs\lessons.md)
+  ⎿  Added 17 lines
+      192  - **A stray `cat >` with no input** stalled a command for a mi
+           nute and
+      193    left its scripts unwritten.
+      194  
+      195 +- **Azahar hid the regression.** PR #8 doubled the O3DS captur
+          +ed frame                                                      
+      196 +  (36 → 57 ms) while Azahar still showed 30 FPS: it charges on
+          +e tick per                                                    
+      197 +  instruction and does not cost PICA vertex work. Compare work
+          + counts                                                       
+      198 +  (instructions, triangles, draws, shader instructions per ver
+          +tex), not                                                     
+      199 +  Azahar FPS.                                                 
+      200 +- **Reference images go stale.** A wandering NPC moves with th
+          +e emulated                                                    
+      201 +  clock, so an unchanged binary stopped matching references ca
+          +ptured hours                                                  
+      202 +  earlier. Three bisection builds chased it before an old bina
+          +ry was rerun.                                                 
+      203 +  Rerun the baseline binary first when only character position
+          +s differ.                                                     
+      204 +- **Snapshot what repeats, not what nearly repeats.** A full G
+          +LB snapshot                                                   
+      205 +  never hit because its last word changes per model. Splitting
+          + at the last                                                  
+      206 +  command word made the rest a constant prefix.               
+      207 +- **PICA bool uniforms read as false in Azahar** although the 
+          +shbin, libctru                                                
+      208 +  and citro3d all looked correct. Unused `.w` components of fl
+          +oat uniforms                                                  
+      209 +  plus `cmp`/`jmpc` work. The lit shader has no float uniform 
+          +space left                                                    
+      210 +  for new arrays (91 + 7 constants of 96).                    
+      211 +                                                              
+      212  ## Rules
+      213  
+      214  1. Commit each verified step; keep `master` building and verif
+           ied.
+
+● Adding what went well to lessons too.
+
+● Update(kohjoh\docs\lessons.md)
+  ⎿  Added 11 lines
+      23    tick per instruction, so its timings are instruction counts, 
+          not O3DS time.
+      24  - **Verify modes.** `KJ_DL_VERIFY` (decode live, compare with r
+          eplay) found the
+      25    display-list bug in one run.
+      26 +- **Doing less instead of doing it faster.** Baking stable lit 
+         +lists,                                                         
+      27 +  culling offscreen retained blocks and restoring the GLB prefi
+         +x removed                                                      
+      28 +  work outright: Azahar Goldenrod logic 25.35 → 13.38 ms and tr
+         +iangles                                                        
+      29 +  5.02M → 1.94M per 600 pictures, with pixel-identical held fra
+         +mes                                                            
+      30 +  (2026-11-15).                                                
+      31 +- **Mutation before trust.** Each new cache got a host test, an
+         +d the test                                                     
+      32 +  was broken on purpose (dropped invalidations, a wrong plane) 
+         +until it                                                       
+      33 +  failed. That exposed four weak test designs before they could
+         + pass bad                                                      
+      34 +  code.                                                        
+      35 +- **Verify mode as a bisector.** A `KJ_DL_VERIFY` build that sh
+         +owed the                                                       
+      36 +  same image diff proved a diff did not come from the snapshot 
+         +restore.                                                       
+      37  
+      38  ## What went wrong
+      39  
+
+  Read 1 file (ctrl+o to expand)
+
+● Background command "Recapture baseline and compare" completed (exit code 0)
+
+● The shader skip is pixel-identical against the fresh baseline on all 7 frames.
+  Committing it with the docs, and updating memory.
+
+● Bash(sed -i 's/| pending | Lit shader skips/| (this commit) | Lit shader
+      skips/' docs/worklog/2026-11-15-hardware-cuts.md && git add
+      src/graphics/pica/shaders/g3d_li…)
+  ⎿  fb0440a docs: hardware-cut session worklog, status and lessons
+     eeb4b37 PICA lighting: skip disabled lights and zero-specular half vec
+     tors
+     … +5 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\docs\worklog\2026-11-15-hardware-cuts.md (+1 -1)
+      25  | `84d46dc` | Bake stable lit lists once with exact CPU lightin
+          g; replay as literal-colour blocks drawn with the unlit shader.
+           Only lists whose lighting key misses on consecutive calls stay
+           PICA-lit (retry every 64 pictures). | logic p50 25.35 → 14.06 
+          ms |
+      26  | `413d0cc` | Cull retained blocks wholly outside the side plan
+          es of the clip volume before copying them (cached plane vectors
+          , exact centre/extent test, list-level test for matrix-free lis
+          ts). | triangles 5.02M → 1.94M, draws 80.3k → 61.7k, logic 14.0
+          6 → 13.67 ms, publish 4.49 → 3.75 ms |
+      27  | `e587d4c` | NNS GLB state list (63 words, ~105 calls per pict
+          ure): restore the pure-setter prefix from a snapshot and execut
+          e only the last packed word (base matrix, scale, texture). | lo
+          gic 13.67 → 13.38 ms |
+      28 -| pending | Lit shader skips disabled lights and the half-vecto
+         -r path of lights with no specular colour. The flags sit in the 
+         -unused `.w` of `light_dir_hi` / `light_half_hi`. | 101 shader i
+         -nstructions per one-light vertex instead of 409 (GPU only; Azah
+         -ar CPU unchanged) |                                            
+      28 +| `eeb4b37` | Lit shader skips disabled lights and the half-vec
+         +tor path of lights with no specular colour. The flags sit in th
+         +e unused `.w` of `light_dir_hi` / `light_half_hi`. | 101 shader
+         + instructions per one-light vertex instead of 409 (GPU only; Az
+         +ahar CPU unchanged) |                                          
+      29  
+      30  Every step's held title, Goldenrod and walking frames match the
+           baseline
+      31  pixel for pixel. Each step has a host test that fails when its 
+          key
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● I've updated the docs and committed them, together with the lit-shader change,
+  which matches a fresh baseline pixel for pixel. Nothing has been measured on
+  an Old 3DS yet. All numbers below are from Azahar, which doesn't model PICA
+  vertex time, so the shader saving can only be confirmed on hardware.
+
+  Done this session (all committed)
+
+  Commit: 84d46dc
+  Change: Stable lit display lists are lit once on the CPU and replayed as plain
+
+  coloured geometry. Only lists whose lighting changes every call stay lit on
+  the GPU.
+  Azahar Goldenrod: logic 25.35 → 14.06 ms
+  ────────────────────────────────────────
+  Commit: 413d0cc
+  Change: Retained geometry wholly outside the screen is skipped before it is
+  copied or drawn.
+  Azahar Goldenrod: triangles 5.02M → 1.94M per 600 frames, draws 80.3k → 61.7k,
+
+  publish 4.49 → 3.75 ms
+  ────────────────────────────────────────
+  Commit: e587d4c
+  Change: The 63-word state list NNS sends before each model (~105 times per
+  frame): the unchanging part is restored from a saved copy and only the last
+  word runs.
+  Azahar Goldenrod: logic 13.67 → 13.38 ms
+  ────────────────────────────────────────
+  Commit: eeb4b37
+  Change: The lit vertex shader skips lights that are off and the specular work
+  of lights with no specular colour.
+  Azahar Goldenrod: 101 instead of 409 shader instructions per vertex lit by one
+
+  diffuse light
+  ────────────────────────────────────────
+  Commit: fb0440a
+  Change: Docs: new worklog docs/worklog/2026-11-15-hardware-cuts.md, plus
+  status.md and lessons.md.
+  Azahar Goldenrod: —
+
+  Every step's held title, Goldenrod and walking frames match the baseline pixel
+  for pixel. Each new cache has a host test, and I checked each test by
+  deliberately breaking the code until the test failed.
+
+  What went well
+  - Removing work outright paid far more than making it faster. It also explains
+    the 36 → 57 ms regression on hardware: since PR #8 every lit vertex was
+    re-processed on the CPU and lit by the long shader on the GPU every frame,
+    and Azahar showed neither cost.
+  - Breaking each test on purpose before trusting it exposed several weak test
+    designs.
+  - A KJ_DL_VERIFY build showed the same image differences, which proved they
+    didn't come from the saved-state restore.
+
+  What went wrong, and the fix
+  - Contaminated baseline: the first "baseline" was built after my edits
+    (identical binary). I rebuilt it from a git stash.
+  - Stale reference images: a wandering NPC moves with the emulated clock, so
+    even an unchanged binary stopped matching references captured hours earlier.
+    I spent three rebuilds bisecting before rerunning the old binary showed
+    this. build/opt-tools/rebase.sh now recaptures the baseline first.
+  - Weak tests: several mutations passed at first because other code masked them
+    (for example, a neighbouring change made the same invalidation). I
+    redesigned the state test so each disturbance is followed by a quiet model.
+  - A full saved copy of the state list never matched, because its last word
+    changes per model. Saving only the part before that word fixed it.
+  - Shader on/off switches failed: the PICA's dedicated boolean switches read as
+    "off" in Azahar and rendered Ho-Oh black. I couldn't find the cause in
+    picasso, libctru or citro3d. Storing the flags in unused components of
+    existing uniforms works; a separate flag array didn't fit because the
+    shader's uniform space is full.
+  - Too-slow cull test: testing all 8 box corners cost more than it saved. I
+    replaced it with a cheaper exact test.
+
+  Next
+  1. Two ~1,050-word lit lists still cost about 2 ms of logic per frame because
+     they never get the cached treatment. A diagnostic to show why is ready in
+     build/opt-tools/diag_gpulit.py.
+  2. Build normal and profiled hardware test artifacts so you can measure on the
+     Old 3DS.
+
+✻ Churned for 1m 21s · done 10:38 PM
+
+❯ /compact                                                                        ⎿  Compacted (ctrl+o to see full summary)
+  ⎿  Read kohjoh\docs\worklog\2026-11-15-hardware-cuts.md (90 lines)
+  ⎿  Referenced file kohjoh\docs\lessons.md
+  ⎿  Read kohjoh\docs\status.md (149 lines)
+  ⎿  Read ..\AppData\Local\Temp\claude\596f382ffeba1215\da3968c2-1517-4d92-986b-
+     fdcebc38b521\tasks\b4501x28t.output (14 lines)
+  ⎿  Read kohjoh\build\opt-tools\edit_shader_c.py (41 lines)
+
+❯ can you explain to me the 1050-word lit lists?                                
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● The two lit lists are probably the most expensive draws left in Goldenrod that
+  the display-list cache can't replay. That they stay on the slow path because
+  of matrix commands inside them is a suspicion I haven't confirmed yet.
+
+  What they are
+  - Each is a ~1,050-word display list: 32-bit commands and parameters that the
+    game sends to the DS geometry engine in one call. At that size it is a few
+    hundred vertices with normals.
+  - The profiler only knows the address of the code that sends them (0x5846f4).
+    I haven't yet identified which model they are.
+
+  How a list normally gets cheap
+  On first sight, kj_g3.c decodes a list while recording it. If the recording
+  comes out clean, the list is cached. Lit lists whose lighting doesn't change
+  are lit once on the CPU and from then on replayed as plain coloured geometry.
+  That is the main saving from this session.
+
+  Why these two don't
+  The recording is marked bad, so the list falls back to the live path
+  (kj_g3.c:3805-3813): it is decoded word by word on every call, each vertex
+  goes through the per-vertex path, and the GPU lights it with the lit shader.
+  That costs about 128K Azahar ticks per call.
+
+  A recording can be marked bad for these reasons:
+  1. Dropped or unsupported geometry (:3780).
+  2. Blocks sharing vertices with an earlier block (:2192).
+  3. Command 0x50 inside the list (:2248).
+  4. The list's colours depend on its normals and it also contains matrix 
+     commands (0x10-0x1C) (:3787). This is the one I suspect.
+
+  Why reason 4 blocks caching: a lit vertex's colour depends on its normal times
+  the current direction matrix. A list that restores or loads matrices partway
+  through (one matrix per bone or part, for example) lights its later vertices
+  with matrices that weren't in place when the list was called. The cache key
+  only describes the state at the start of the list. A baked copy could
+  therefore show stale lighting whenever those stored matrices change, so the
+  code refuses to bake.
+
+  What it costs
+  Two lists at about 128K ticks each come to roughly 1 ms per picture in Azahar.
+  The worklog's ~2 ms per picture is the O3DS estimate, since hardware runs
+  about 2.3× slower than Azahar. That is about 6% of the 33.4 ms budget. The GPU
+  also lights every one of those vertices, which Azahar doesn't time.
+
+  The planned fix, if reason 4 is confirmed
+  Add the rotation part (3×3) of the matrices the list restores to the cache
+  key. If those matrices don't change from frame to frame, the key matches and
+  the list bakes like the static scenery. If they do change every frame (an
+  animated model), it correctly stays on the live path, and the remaining option
+  is to make that path cheaper.
+
+  build/opt-tools/diag_gpulit.py adds a temporary log that prints which reason
+  fired, the list's command mix, and whether the matrices it uses change between
+  calls. One Azahar run of that build will settle it.
+
+✻ Cogitated for 31s · done 10:43 PM
+
+※ recap: Goal: 30 FPS in Goldenrod on Old 3DS; I explained why two ~1,050-word lit lists still skip the cache. Next, I'll run the `diag_gpulit.py` diagnostic in Azahar to confirm the cause before making them bakeable.

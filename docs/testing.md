@@ -1,7 +1,16 @@
 # Testing and profiling
 
-All tools here target Azahar. Azahar is for correctness and instruction-count
-profiling; it is not an O3DS timing authority.
+These tools target Azahar, with [LOTUS](lotus.md) as a second, frame-exact
+integration debugger. Both are for correctness and instruction-count
+profiling; neither is an O3DS timing authority.
+
+## LOTUS
+
+`tools/lotus/run.py` boots the same `.3dsx` and data pack in LOTUS's native
+worker and captures native top/bottom screens at chosen frame numbers, without
+a window and without wall-clock timing. See [lotus.md](lotus.md) for the session
+and private-SD rules, the MCP surface OpenCode uses, and what LOTUS cannot show
+(no audio, no profiler, slow software rendering).
 
 ## Harness: `tools/azahar/run.ps1`
 

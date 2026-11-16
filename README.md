@@ -11,7 +11,7 @@ for soulsilver, f8dc38ea20c17541a43b58c5...
 
 - Build: [docs/building-windows.md](docs/building-windows.md)
 - How it works: [docs/architecture.md](docs/architecture.md)
-- Testing and profiling: [docs/testing.md](docs/testing.md)
+- Testing and profiling: [docs/testing.md](docs/testing.md), [docs/lotus.md](docs/lotus.md)
 - Lessons and pitfalls: [docs/lessons.md](docs/lessons.md), [docs/troubleshooting.md](docs/troubleshooting.md)
 - Design brief: [kohjoh.md](kohjoh.md); imports and licences: [PROVENANCE.md](PROVENANCE.md)
 - Complain about this project: [on discord](https://discord.gg/wJNprjYCun)
