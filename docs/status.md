@@ -32,6 +32,15 @@ are built at `f5f2e1e`. Hardware status remains **O3DS_UNTESTED**; audio-agent
 changes are excluded. See the [lighting worklog](worklog/2026-11-15-lit-plans.md)
 and [producer-gate evidence](worklog/2026-11-15-capture.md).
 
+2026-11-15 hardware cuts (chatlog12 follow-up): stable lit lists bake to
+literal colours (`84d46dc`), retained blocks outside the picture are culled
+before copying (`413d0cc`), and the NNS GLB state list restores from a
+prefix snapshot (`e587d4c`). The lit shader skips disabled and
+non-specular lights (101 instead of 409 instructions per one-light vertex).
+Azahar Goldenrod: logic p50 25.35 → 13.38 ms, triangles 5.02M → 1.94M,
+draws 80.3k → 61.7k per 600 pictures. Held frames are pixel-identical.
+**O3DS_UNTESTED.** See the [worklog](worklog/2026-11-15-hardware-cuts.md).
+
 ## Latest investigation (uncommitted, 2026-11-13)
 
 `o3ds-log-3` confirms CPU pressure from geometry and audio, with GPU queues

@@ -23,6 +23,17 @@ What helped, what cost time, and the rules that follow.
   tick per instruction, so its timings are instruction counts, not O3DS time.
 - **Verify modes.** `KJ_DL_VERIFY` (decode live, compare with replay) found the
   display-list bug in one run.
+- **Doing less instead of doing it faster.** Baking stable lit lists,
+  culling offscreen retained blocks and restoring the GLB prefix removed
+  work outright: Azahar Goldenrod logic 25.35 → 13.38 ms and triangles
+  5.02M → 1.94M per 600 pictures, with pixel-identical held frames
+  (2026-11-15).
+- **Mutation before trust.** Each new cache got a host test, and the test
+  was broken on purpose (dropped invalidations, a wrong plane) until it
+  failed. That exposed four weak test designs before they could pass bad
+  code.
+- **Verify mode as a bisector.** A `KJ_DL_VERIFY` build that showed the
+  same image diff proved a diff did not come from the snapshot restore.
 
 ## What went wrong
 
@@ -191,6 +202,23 @@ What went wrong, and the fix:
   function in one run.
 - **A stray `cat >` with no input** stalled a command for a minute and
   left its scripts unwritten.
+
+- **Azahar hid the regression.** PR #8 doubled the O3DS captured frame
+  (36 → 57 ms) while Azahar still showed 30 FPS: it charges one tick per
+  instruction and does not cost PICA vertex work. Compare work counts
+  (instructions, triangles, draws, shader instructions per vertex), not
+  Azahar FPS.
+- **Reference images go stale.** A wandering NPC moves with the emulated
+  clock, so an unchanged binary stopped matching references captured hours
+  earlier. Three bisection builds chased it before an old binary was rerun.
+  Rerun the baseline binary first when only character positions differ.
+- **Snapshot what repeats, not what nearly repeats.** A full GLB snapshot
+  never hit because its last word changes per model. Splitting at the last
+  command word made the rest a constant prefix.
+- **PICA bool uniforms read as false in Azahar** although the shbin, libctru
+  and citro3d all looked correct. Unused `.w` components of float uniforms
+  plus `cmp`/`jmpc` work. The lit shader has no float uniform space left
+  for new arrays (91 + 7 constants of 96).
 
 ## Rules
 
