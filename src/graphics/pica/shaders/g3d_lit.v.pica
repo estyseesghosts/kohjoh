@@ -1,6 +1,11 @@
 ; DS diffuse/specular lighting. NORMAL-time transformed normals are packed
 ; into the existing 16-byte vertex; lighting contexts are immutable per draw.
 ; Six clip matrices leave space for all four lights and the 128-byte LUT.
+; Per-draw light flags (light_dir_hi.w: enabled, light_half_hi.w: specular
+; colour non-zero; dp3 ignores w) skip disabled lights and the half-vector work of
+; lights with no specular colour (their term is exactly zero): a vertex
+; with one diffuse light runs 101 instructions instead of 409.
+; Coffeepot 3d-scene-optimisation.md: reduce the per-vertex work.
 .fvec palette[24]
 .fvec texscale
 .fvec light_dir_hi[4], light_dir_lo[4]
@@ -85,6 +90,8 @@
     mov r0.x, rates.xxxx
     mul r15.z, limits.wwww, r0.xxxx
 
+    cmp light_dir_hi[0].wwww, gt, gt, r15.xxxx
+    jmpc !cmp.x, skip_light_0
     dp3 r1.x, light_dir_hi[0], r12
     dp3 r1.y, light_dir_lo[0], r12
     dp3 r1.z, light_dir_hi[0], r13
@@ -102,6 +109,10 @@
     add r1.x, r1.xxxx, r2.xxxx
     add r8.x, r1.xxxx, r2.yyyy
 
+    max r8.x, base.wwww, r8.xxxx
+    min r8.x, limits.yyyy, r8.xxxx
+    cmp light_half_hi[0].wwww, gt, gt, r15.xxxx
+    jmpc !cmp.x, diffuse_0
     dp3 r1.x, light_half_hi[0], r12
     dp3 r1.y, light_half_lo[0], r12
     dp3 r1.z, light_half_hi[0], r13
@@ -119,8 +130,8 @@
     add r1.x, r1.xxxx, r2.xxxx
     add r8.y, r1.xxxx, r2.yyyy
 
-    max r8.xy, base.wwww, r8
-    min r8.xy, limits.yyyy, r8
+    max r8.y, base.wwww, r8.yyyy
+    min r8.y, limits.yyyy, r8.yyyy
     ; Exact floor(h*h/4096), without a lossy 24-bit product.
     mul r9.x, unpack.xxxx, r8.yyyy
     flr r9.x, r9.xxxx
@@ -164,18 +175,22 @@
     add r8.y, r8.yyyy, r9.xxxx
     add r8.y, r8.yyyy, r10.xxxx
 no_shininess_0:
-    mul r9.xyz, diffuse[0], r8.xxxx
-    add r9.xyz, limits.zzzz, r9
-    mul r9.xyz, base.xxxx, r9
-    flr r9.xyz, r9
     mul r10.xyz, specular[0], r8.yyyy
     add r10.xyz, limits.zzzz, r10
     mul r10.xyz, base.xxxx, r10
     flr r10.xyz, r10
+    add r3.xyz, r3, r10
+diffuse_0:
+    mul r9.xyz, diffuse[0], r8.xxxx
+    add r9.xyz, limits.zzzz, r9
+    mul r9.xyz, base.xxxx, r9
+    flr r9.xyz, r9
     add r9.xyz, ambient[0], r9
-    add r9.xyz, r9, r10
     add r3.xyz, r3, r9
+skip_light_0:
 
+    cmp light_dir_hi[1].wwww, gt, gt, r15.xxxx
+    jmpc !cmp.x, skip_light_1
     dp3 r1.x, light_dir_hi[1], r12
     dp3 r1.y, light_dir_lo[1], r12
     dp3 r1.z, light_dir_hi[1], r13
@@ -193,6 +208,10 @@ no_shininess_0:
     add r1.x, r1.xxxx, r2.xxxx
     add r8.x, r1.xxxx, r2.yyyy
 
+    max r8.x, base.wwww, r8.xxxx
+    min r8.x, limits.yyyy, r8.xxxx
+    cmp light_half_hi[1].wwww, gt, gt, r15.xxxx
+    jmpc !cmp.x, diffuse_1
     dp3 r1.x, light_half_hi[1], r12
     dp3 r1.y, light_half_lo[1], r12
     dp3 r1.z, light_half_hi[1], r13
@@ -210,8 +229,8 @@ no_shininess_0:
     add r1.x, r1.xxxx, r2.xxxx
     add r8.y, r1.xxxx, r2.yyyy
 
-    max r8.xy, base.wwww, r8
-    min r8.xy, limits.yyyy, r8
+    max r8.y, base.wwww, r8.yyyy
+    min r8.y, limits.yyyy, r8.yyyy
     ; Exact floor(h*h/4096), without a lossy 24-bit product.
     mul r9.x, unpack.xxxx, r8.yyyy
     flr r9.x, r9.xxxx
@@ -255,18 +274,22 @@ no_shininess_0:
     add r8.y, r8.yyyy, r9.xxxx
     add r8.y, r8.yyyy, r10.xxxx
 no_shininess_1:
-    mul r9.xyz, diffuse[1], r8.xxxx
-    add r9.xyz, limits.zzzz, r9
-    mul r9.xyz, base.xxxx, r9
-    flr r9.xyz, r9
     mul r10.xyz, specular[1], r8.yyyy
     add r10.xyz, limits.zzzz, r10
     mul r10.xyz, base.xxxx, r10
     flr r10.xyz, r10
+    add r3.xyz, r3, r10
+diffuse_1:
+    mul r9.xyz, diffuse[1], r8.xxxx
+    add r9.xyz, limits.zzzz, r9
+    mul r9.xyz, base.xxxx, r9
+    flr r9.xyz, r9
     add r9.xyz, ambient[1], r9
-    add r9.xyz, r9, r10
     add r3.xyz, r3, r9
+skip_light_1:
 
+    cmp light_dir_hi[2].wwww, gt, gt, r15.xxxx
+    jmpc !cmp.x, skip_light_2
     dp3 r1.x, light_dir_hi[2], r12
     dp3 r1.y, light_dir_lo[2], r12
     dp3 r1.z, light_dir_hi[2], r13
@@ -284,6 +307,10 @@ no_shininess_1:
     add r1.x, r1.xxxx, r2.xxxx
     add r8.x, r1.xxxx, r2.yyyy
 
+    max r8.x, base.wwww, r8.xxxx
+    min r8.x, limits.yyyy, r8.xxxx
+    cmp light_half_hi[2].wwww, gt, gt, r15.xxxx
+    jmpc !cmp.x, diffuse_2
     dp3 r1.x, light_half_hi[2], r12
     dp3 r1.y, light_half_lo[2], r12
     dp3 r1.z, light_half_hi[2], r13
@@ -301,8 +328,8 @@ no_shininess_1:
     add r1.x, r1.xxxx, r2.xxxx
     add r8.y, r1.xxxx, r2.yyyy
 
-    max r8.xy, base.wwww, r8
-    min r8.xy, limits.yyyy, r8
+    max r8.y, base.wwww, r8.yyyy
+    min r8.y, limits.yyyy, r8.yyyy
     ; Exact floor(h*h/4096), without a lossy 24-bit product.
     mul r9.x, unpack.xxxx, r8.yyyy
     flr r9.x, r9.xxxx
@@ -346,18 +373,22 @@ no_shininess_1:
     add r8.y, r8.yyyy, r9.xxxx
     add r8.y, r8.yyyy, r10.xxxx
 no_shininess_2:
-    mul r9.xyz, diffuse[2], r8.xxxx
-    add r9.xyz, limits.zzzz, r9
-    mul r9.xyz, base.xxxx, r9
-    flr r9.xyz, r9
     mul r10.xyz, specular[2], r8.yyyy
     add r10.xyz, limits.zzzz, r10
     mul r10.xyz, base.xxxx, r10
     flr r10.xyz, r10
+    add r3.xyz, r3, r10
+diffuse_2:
+    mul r9.xyz, diffuse[2], r8.xxxx
+    add r9.xyz, limits.zzzz, r9
+    mul r9.xyz, base.xxxx, r9
+    flr r9.xyz, r9
     add r9.xyz, ambient[2], r9
-    add r9.xyz, r9, r10
     add r3.xyz, r3, r9
+skip_light_2:
 
+    cmp light_dir_hi[3].wwww, gt, gt, r15.xxxx
+    jmpc !cmp.x, skip_light_3
     dp3 r1.x, light_dir_hi[3], r12
     dp3 r1.y, light_dir_lo[3], r12
     dp3 r1.z, light_dir_hi[3], r13
@@ -375,6 +406,10 @@ no_shininess_2:
     add r1.x, r1.xxxx, r2.xxxx
     add r8.x, r1.xxxx, r2.yyyy
 
+    max r8.x, base.wwww, r8.xxxx
+    min r8.x, limits.yyyy, r8.xxxx
+    cmp light_half_hi[3].wwww, gt, gt, r15.xxxx
+    jmpc !cmp.x, diffuse_3
     dp3 r1.x, light_half_hi[3], r12
     dp3 r1.y, light_half_lo[3], r12
     dp3 r1.z, light_half_hi[3], r13
@@ -392,8 +427,8 @@ no_shininess_2:
     add r1.x, r1.xxxx, r2.xxxx
     add r8.y, r1.xxxx, r2.yyyy
 
-    max r8.xy, base.wwww, r8
-    min r8.xy, limits.yyyy, r8
+    max r8.y, base.wwww, r8.yyyy
+    min r8.y, limits.yyyy, r8.yyyy
     ; Exact floor(h*h/4096), without a lossy 24-bit product.
     mul r9.x, unpack.xxxx, r8.yyyy
     flr r9.x, r9.xxxx
@@ -437,17 +472,19 @@ no_shininess_2:
     add r8.y, r8.yyyy, r9.xxxx
     add r8.y, r8.yyyy, r10.xxxx
 no_shininess_3:
-    mul r9.xyz, diffuse[3], r8.xxxx
-    add r9.xyz, limits.zzzz, r9
-    mul r9.xyz, base.xxxx, r9
-    flr r9.xyz, r9
     mul r10.xyz, specular[3], r8.yyyy
     add r10.xyz, limits.zzzz, r10
     mul r10.xyz, base.xxxx, r10
     flr r10.xyz, r10
+    add r3.xyz, r3, r10
+diffuse_3:
+    mul r9.xyz, diffuse[3], r8.xxxx
+    add r9.xyz, limits.zzzz, r9
+    mul r9.xyz, base.xxxx, r9
+    flr r9.xyz, r9
     add r9.xyz, ambient[3], r9
-    add r9.xyz, r9, r10
     add r3.xyz, r3, r9
+skip_light_3:
 
     mul r15.y, rates.xxxx, r15.wwww
     flr r15.y, r15.yyyy

@@ -156,12 +156,17 @@ static void upload_lighting(const kj_g3_batch *b)
                 half_hi[c] = h >> 7;
                 half_lo[c] = h - half_hi[c] * 128;
             }
+            /* w flags: the shader skips a disabled light, and the half
+             * vector of a light with no specular colour (exactly zero). */
+            const bool on = (light->enabled & (1u << i)) != 0;
+            const bool spec = on && (light->specular[i][0] | light->specular[i][1] |
+                                     light->specular[i][2]) != 0;
             C3D_FVUnifSet(GPU_VERTEX_SHADER, u->direction + i,
-                          dir_hi[0], dir_hi[1], dir_hi[2], 0);
+                          dir_hi[0], dir_hi[1], dir_hi[2], on);
             C3D_FVUnifSet(GPU_VERTEX_SHADER, u->direction_low + i,
                           dir_lo[0], dir_lo[1], dir_lo[2], 0);
             C3D_FVUnifSet(GPU_VERTEX_SHADER, u->half + i,
-                          half_hi[0], half_hi[1], half_hi[2], 0);
+                          half_hi[0], half_hi[1], half_hi[2], spec);
             C3D_FVUnifSet(GPU_VERTEX_SHADER, u->half_low + i,
                           half_lo[0], half_lo[1], half_lo[2], 0);
             C3D_FVUnifSet(GPU_VERTEX_SHADER, u->ambient + i,

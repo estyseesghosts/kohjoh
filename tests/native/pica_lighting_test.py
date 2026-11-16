@@ -128,11 +128,12 @@ class Shader:
                              'min': min, 'max': max, 'sge': lambda a, b: float(a >= b)}[op]
                 result = [operation(x, y) for x, y in zip(a, b)]
             put(args[0], result)
+        self.steps = steps
         return registers['outclr'], registers.get('r6', [0.0] * 4)[:3], specular
 
 
 def scenario(shader, normal, directions, halves, ambient, diffuse, specular, emission,
-             table=None, alpha=255):
+             table=None, alpha=255, enabled=15):
     def split(vectors, low):
         return [[(-x - ((-x >> 7) << 7)) if low else (-x >> 7) for x in v] + [0]
                 for v in vectors]
@@ -144,6 +145,11 @@ def scenario(shader, normal, directions, halves, ambient, diffuse, specular, emi
                     specular=[v + [0] for v in specular], emission=emission + [0],
                     params=[alpha, int(table is not None), 0, 0],
                     shininess=[(table or [0] * 128)[i:i + 4] for i in range(0, 128, 4)])
+    on = [bool(enabled >> i & 1) for i in range(4)]
+    spec_on = [on[i] and any(specular[i]) for i in range(4)]
+    for i in range(4):
+        uniforms['light_dir_hi'][i][3] = float(on[i])
+        uniforms['light_half_hi'][i][3] = float(spec_on[i])
     bits = sum((x & 16383) << (14 * i) for i, x in enumerate(normal))
     inputs = {'v0': [0, 0, 0, 0], 'v1': [bits >> (8 * i) & 255 for i in range(4)],
               'v2': [0, 0, 0, 0], 'v3': [(bits >> 32 & 31) << 3, 128 | (bits >> 37 & 31), 0, 0]}
@@ -151,12 +157,15 @@ def scenario(shader, normal, directions, halves, ambient, diffuse, specular, emi
     assert decoded == list(normal), (normal, decoded)
     rgb = list(emission)
     for i in range(4):
+        if not on[i]:
+            continue
         d = max(0, min(4096, -sum(a * b for a, b in zip(normal, directions[i])) >> 12))
         h = max(0, min(4096, -sum(a * b for a, b in zip(normal, halves[i])) >> 12))
         spec = h * h >> 12
         if table is not None:
             spec = table[min(127, spec >> 5)] * 4096 // 255
-        assert specs[i] == spec, (i, normal, halves[i], specs[i], spec)
+        assert (i in specs) == spec_on[i], (i, specs)
+        assert i not in specs or specs[i] == spec, (i, normal, halves[i], specs[i], spec)
         for c in range(3):
             rgb[c] += ambient[i][c] + ((diffuse[i][c] * d + 2048) >> 12) + ((specular[i][c] * spec + 2048) >> 12)
     expanded = [min(31, x) * 8 + (min(31, x) >> 2) for x in rgb] + [alpha]
@@ -194,9 +203,20 @@ def main():
         halves = [[rng.randrange(-maximum, maximum) for _ in range(3)] for _ in range(4)]
         products = [[[rng.randrange(0, 10) for _ in range(3)] for _ in range(4)] for _ in range(3)]
         table = [rng.randrange(256) for _ in range(128)] if trial & 2 else None
+        # Every enable mask; lights without specular colour skip the half vector.
+        enabled = trial % 16
+        for i in range(4):
+            if trial >> 4 & (1 << i):
+                products[2][i] = [0, 0, 0]
         scenario(shader, n, directions, halves, *products, [rng.randrange(8) for _ in range(3)],
-                 table, alpha=rng.randrange(256))
+                 table, alpha=rng.randrange(256), enabled=enabled)
     print(f'PASS PICA source: 1200 random NORMAL contexts, {len(shader.code)} instructions, float24 intermediates', flush=True)
+    full = [[31, 31, 31]] * 4
+    scenario(shader, [0, 0, 4096], half, half, zero, full, full, [0, 0, 0], [255] * 128)
+    worst = shader.steps
+    scenario(shader, [0, 0, 4096], zero, zero, zero, full[:1] + zero[1:], zero, [0, 0, 0], enabled=1)
+    print(f'PASS PICA source: per-draw light skips; one diffuse light runs {shader.steps} instructions, '
+          f'four specular lights with shininess {worst}', flush=True)
 
 
 if __name__ == '__main__':
