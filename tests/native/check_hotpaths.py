@@ -23,7 +23,7 @@ with tempfile.TemporaryDirectory(prefix='kohjoh-test-') as tmp:
     (tmp/'nitro.h').write_text('#include <stdint.h>\ntypedef uint64_t u64; typedef uint32_t u32;\n')
     (tmp/'nitro_port.h').write_text('#include <stddef.h>\n#include <stdint.h>\nvoid NitroPort_Log(const char *, ...);\n')
     shutil.copy(root/'src/compat/nitro/include/nitro_port_gx3d.h',tmp)
-    common=[a.cc,'-O2','-fwrapv','-fno-strict-aliasing','-DKJ_G3_CPU_LIGHTING','-I',tmp,'-I',root/'src/runtime','-I',root/'src/compat/nitro/include']
+    common=[a.cc,'-O2','-fwrapv','-fno-strict-aliasing','-DKJ_G3_CPU_LIGHTING','-DKJ_G3_NO_CULL','-I',tmp,'-I',root/'src/runtime','-I',root/'src/compat/nitro/include']
     for name,path in [('sound','src/compat/nitro/src/port_sound_chip.c'),('g3','src/runtime/kj_g3.c')]:
         before=tmp/(name+'_before.c')
         before.write_text(run(['git','show',f'{a.reference}:{path}'])+'\n')
@@ -108,6 +108,16 @@ with tempfile.TemporaryDirectory(prefix='kohjoh-test-') as tmp:
             assert lighting_hash == value, ('NORMAL-time lighting context changed output', variant, lighting_hash, value)
         lighting_hash = value
     print(f'PASS GPU lighting inputs: {lighting_hash}, canonical triangles/colours/texgen match original CPU oracle', flush=True)
+    cull = {}
+    for variant, mode in [('cull', []), ('cull verify', ['-DKJ_DL_VERIFY']),
+                          ('uncached', ['-DKJ_DL_NO_CACHE']), ('no cull', ['-DKJ_G3_NO_CULL'])]:
+        exe=tmp/'g3_cull_test.exe'
+        flags = [x for x in common if x not in ('-DKJ_G3_NO_CULL', '-DKJ_G3_CPU_LIGHTING')]
+        run([*flags,'-DHGSS_PROFILE_OFF',*mode,f'-DSOURCE="{source.as_posix()}"',root/'tests/native/g3_cull_test.c','-o',exe])
+        cull[variant] = subprocess.run([str(exe)], cwd=root, text=True, capture_output=True, check=True)
+    assert len({r.stdout for r in cull.values()}) == 1, ('culling changed visible triangles', cull)
+    assert cull['cull'].stderr != cull['uncached'].stderr, 'no retained block was culled'
+    print(f"PASS cull: {cull['cull'].stdout.strip()}; {cull['cull'].stderr.strip()} against uncached {cull['uncached'].stderr.strip()}", flush=True)
     exe=tmp/'perf_test.exe'
     run([*common,'-I',root/'src',root/'tests/native/perf_test.c','-o',exe])
     print(run([exe]))

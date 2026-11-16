@@ -1,0 +1,28 @@
+# Benchmark save: continue in Goldenrod, run left then down, holding frames
+# while the camera moves (culling and retained-geometry edge checks).
+every: 10
+0 -
+300 START
+310 START
+320 START
+330 START
+340 START
+350 START
+400 START
+410 START
+420 START
+430 START
+440 START
+450 START
+1800 A
+1820 A
+1840 A
+2400-2560 LEFT B
+2600-2900 DOWN B
+dump 1240
+freeze 1240 3
+dump 1300
+freeze 1300 3
+dump 1400
+freeze 1400 3
+end: 3400

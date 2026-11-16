@@ -28,6 +28,7 @@
 #include <nitro_port_gx3d.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
 /* The display-list cache is on by default: KJ_DL_VERIFY found 0 mismatches
@@ -2035,6 +2036,7 @@ typedef struct dl_exit {
 typedef struct dl_block {
     uint32_t first_vert, nverts; /* into the entry's vertex array */
     uint32_t first_idx, nidx;    /* relative to the block's first vertex */
+    int16_t lo[3], hi[3];        /* object-space bounds of its vertices */
 } dl_block;
 
 /* Unrecordable lists recheck their content once per this many pictures */
@@ -2044,6 +2046,8 @@ typedef struct dl_entry {
     const uint32_t *ptr;
     uint32_t count;
     bool recorded;
+    bool fixed_clip;   /* no matrix command inside: one clip matrix for all blocks */
+    int16_t lo[3], hi[3]; /* bounds of every retained block */
     bool never;        /* proven unrecordable for this content */
     bool command_plan; /* events contain decoded commands, not baked vertex blocks */
     bool vertex_plan;
@@ -2169,6 +2173,21 @@ static void rec_close_block(void)
         b->nverts = v1 - s_rec.block_v0;
         b->first_idx = s_rec.block_i0 - s_rec.i0;
         b->nidx = i1 - s_rec.block_i0;
+        for (unsigned c = 0; c < 3; ++c) {
+            b->lo[c] = INT16_MAX;
+            b->hi[c] = INT16_MIN;
+        }
+        for (uint32_t v = s_rec.block_v0; v < v1; ++v) {
+            const int16_t *pos = &fb->verts[v].x;
+            for (unsigned c = 0; c < 3; ++c) {
+                if (pos[c] < b->lo[c]) {
+                    b->lo[c] = pos[c];
+                }
+                if (pos[c] > b->hi[c]) {
+                    b->hi[c] = pos[c];
+                }
+            }
+        }
         s_rec.events[s_rec.nevents++] = DL_EV_BLOCK | s_rec.nblocks++;
     }
 }
@@ -2668,16 +2687,108 @@ static bool dl_append_block(const dl_entry *e, const dl_block *b, uint32_t *v_fi
 }
 
 
+#if !defined(KJ_G3_NO_CULL)
+#define KJ_G3_CULL
+#endif
+
+#ifdef KJ_G3_CULL
+#ifndef HGSS_PROFILE_OFF
+static uint32_t s_cull_tests, s_cull_blocks, s_cull_verts, s_cull_tris;
+#endif
+
+/* Side planes of the picture under the current clip matrix, as object-
+ * space plane vectors. The DS rejects polygons wholly outside the view in
+ * its geometry engine before they reach polygon RAM; replaying them here
+ * would copy their vertices and send them through the PICA's vertex
+ * shaders only to be clipped. Planes: |x| <= 1.3125 w (the widescreen
+ * 1.25 extension, always, conservatively, plus 1/16) and |y| <= 1.0625 w:
+ * 16 x + 21 w >= 0 etc. In DS row-vector form clip_j = sum_i v_i m[i][j],
+ * so plane p has coefficients a_i = s * 16 m[i][x|y] + k * m[i][w].
+ * Near/far are not used: W-buffered scenes do not clip z.
+ * Coffeepot 3d-scene-optimisation.md: cull per object or mesh, never per
+ * triangle; the Goldenrod census found 72 of 124 batches wholly outside one
+ * plane. Box/position/vector tests and every state command still execute,
+ * so the game sees nothing different. */
+static uint32_t s_plane_version;
+static int64_t s_plane[4][4];
+
+static void cull_planes(void)
+{
+    if (s_plane_version == s_clip_version) {
+        return;
+    }
+    const mtx *c = clip_matrix();
+    for (unsigned i = 0; i < 4; ++i) {
+        const int64_t x = (int64_t)c->m[i][0] * 16, y = (int64_t)c->m[i][1] * 16;
+        const int64_t wx = (int64_t)c->m[i][3] * 21, wy = (int64_t)c->m[i][3] * 17;
+        s_plane[0][i] = wx + x;
+        s_plane[1][i] = wx - x;
+        s_plane[2][i] = wy + y;
+        s_plane[3][i] = wy - y;
+    }
+    s_plane_version = s_clip_version;
+}
+
+/* -1: the box is wholly outside one plane; 1: wholly inside all four;
+ * 0: it straddles. Exact integer maxima/minima over the box's corners
+ * (centre value plus or minus the absolute extent), doubled to stay
+ * integral: the same answer as testing all eight corners. */
+static int box_visibility(const int16_t lo[3], const int16_t hi[3])
+{
+    cull_planes();
+#ifndef HGSS_PROFILE_OFF
+    ++s_cull_tests;
+#endif
+    const int32_t c0 = lo[0] + hi[0], c1 = lo[1] + hi[1], c2 = lo[2] + hi[2];
+    const int32_t e0 = hi[0] - lo[0], e1 = hi[1] - lo[1], e2 = hi[2] - lo[2];
+    bool inside = true;
+    for (unsigned p = 0; p < 4; ++p) {
+        const int64_t *a = s_plane[p];
+        const int64_t centre = a[0] * c0 + a[1] * c1 + a[2] * c2 + a[3] * (2 * FX_ONE);
+        const int64_t extent = (a[0] < 0 ? -a[0] : a[0]) * e0 + (a[1] < 0 ? -a[1] : a[1]) * e1 +
+                               (a[2] < 0 ? -a[2] : a[2]) * e2;
+        if (centre + extent < 0) {
+            return -1;
+        }
+        inside = inside && centre - extent >= 0;
+    }
+    return inside ? 1 : 0;
+}
+#endif
+
 static void dl_replay_impl(dl_entry *e, const uint32_t *words)
 {
     uint32_t list_v0 = s_buf[s_build].frame.vert_count;
     uint32_t last_block_v0 = list_v0, last_block_rel = 0;
+#ifdef KJ_G3_CULL
+    /* Discarded scenes keep their unculled counts (nothing is drawn). A
+     * list without matrix commands is classified once: wholly outside
+     * skips every block, wholly inside tests none. */
+    int list_vis = 1;
+    if (s_capture_scene && e->nblocks != 0) {
+        list_vis = e->fixed_clip ? box_visibility(e->lo, e->hi) : 0;
+    }
+#endif
 
     for (uint32_t k = 0; k < e->nevents; ++k) {
         const uint32_t ev = e->events[k];
         if (ev & DL_EV_BLOCK) {
             const dl_block *b = &e->blocks[ev & ~DL_EV_BLOCK];
             uint32_t v0;
+#ifdef KJ_G3_CULL
+            /* An open primitive at the list's end continues from the last
+             * block's vertices: that block always appends. Discarded
+             * scenes keep their uncull counts (nothing is drawn). */
+            if (list_vis != 1 && !(e->exit.in_begin && (ev & ~DL_EV_BLOCK) + 1u == e->nblocks) &&
+                (list_vis < 0 || box_visibility(b->lo, b->hi) < 0)) {
+#ifndef HGSS_PROFILE_OFF
+                ++s_cull_blocks;
+                s_cull_verts += b->nverts;
+                s_cull_tris += b->nidx / 3u;
+#endif
+                continue;
+            }
+#endif
             if (!dl_append_block(e, b, &v0)) {
                 ++s_buf[s_build].frame.dropped_verts;
                 continue;
@@ -3390,6 +3501,19 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
     memcpy(e->blocks, s_rec.blocks, s_rec.nblocks * sizeof(dl_block));
     e->nevents = s_rec.nevents;
     e->nblocks = s_rec.nblocks;
+    e->fixed_clip = !s_rec.has_matrix;
+    for (unsigned c = 0; c < 3; ++c) {
+        e->lo[c] = INT16_MAX;
+        e->hi[c] = INT16_MIN;
+        for (uint32_t b = 0; b < s_rec.nblocks; ++b) {
+            if (s_rec.blocks[b].lo[c] < e->lo[c]) {
+                e->lo[c] = s_rec.blocks[b].lo[c];
+            }
+            if (s_rec.blocks[b].hi[c] > e->hi[c]) {
+                e->hi[c] = s_rec.blocks[b].hi[c];
+            }
+        }
+    }
     if (nv) {
         memcpy(e->verts, &fb->verts[s_rec.v0], nv * sizeof(kj_g3_vertex));
     }
@@ -3488,6 +3612,12 @@ void kj_g3_dl_stats(uint32_t *hits, uint32_t *misses, uint32_t *uncacheable, uin
                   "(decode work, not retained vertex hits)",
                   (unsigned long)s_dl_plan_calls, (unsigned long)s_dl_plan_words);
     s_dl_plan_calls = s_dl_plan_words = 0;
+#ifdef KJ_G3_CULL
+    NitroPort_Log("[g3cull] retained blocks tested %lu culled %lu (vertices %lu triangles %lu not copied or drawn)",
+                  (unsigned long)s_cull_tests, (unsigned long)s_cull_blocks,
+                  (unsigned long)s_cull_verts, (unsigned long)s_cull_tris);
+    s_cull_tests = s_cull_blocks = s_cull_verts = s_cull_tris = 0;
+#endif
     NitroPort_Log("[g3capture] producer skips %lu (FIFO words %llu); swapped scenes captured %lu discarded %lu; "
                   "discarded vertices %llu indices %llu (DS state/tests/counts still executed)",
                   (unsigned long)s_skipped_producers,
