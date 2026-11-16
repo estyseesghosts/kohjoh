@@ -20,7 +20,14 @@ GPL-3.0 (see [LICENSE](LICENSE)).
 
 ## Installation
 
-1. Download the matching `kohjoh-gold.3dsx` or `kohjoh-silver.3dsx` into `/3ds/` on your SD card.
-2. Prepare your game data from your own unmodified USA dump (needs Python 3.10+): on Windows, drag the `.nds` onto `tools/rompack/prepare.bat`; elsewhere run `python tools/rompack/prepare.py your-game.nds --sd /path/to/sd`. Without `--sd` it writes `kohjoh-data/`; copy its files into `/3ds/kohjoh/data/`. Takes a few seconds; the ROM is only read.
+You need a 3DS with custom firmware (Luma3DS), the Homebrew Launcher, and your own unmodified USA dump of the game (`.nds`). Python 3.10+ is needed on your PC for one step.
+
+1. Download from the [latest release](https://github.com/estyseesghosts/kohjoh/releases/latest): `kohjoh-gold.3dsx` (HeartGold) and/or `kohjoh-silver.3dsx` (SoulSilver), and `kohjoh-asset-tools.zip`.
+2. Copy the `.3dsx` into the `/3ds/` folder on your SD card, keeping its name: `/3ds/kohjoh-gold.3dsx`.
+3. Unzip `kohjoh-asset-tools.zip`. On Windows, drag your `.nds` onto `prepare.bat`. Elsewhere run `python prepare.py your-game.nds`. It checks the dump, then writes a `kohjoh-data/` folder (a few seconds; the ROM is only read, and nothing is uploaded). Add `--sd E:\` (your SD card's drive or mount point) to write straight to `3ds/kohjoh/data/` on the card instead.
+4. Copy the contents of `kohjoh-data/` (`heartgold.pak` and `heartgold.manifest.json`, or the `soulsilver` pair) into `/3ds/kohjoh/data/` on the SD card. Create the folders if they don't exist.
+5. Launch kohjoh from the Homebrew Launcher.
+
+Never share the `.pak` files: they contain your game's data. Saves are kept on the SD card.
 
 The optional CIA is a Luma3DS HOME Menu shortcut; it launches the 3DSX from that exact path and keeps saves on SD. The forwarder requires Luma3DS and has not yet been tested on hardware.
