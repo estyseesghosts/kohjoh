@@ -118,6 +118,15 @@ with tempfile.TemporaryDirectory(prefix='kohjoh-test-') as tmp:
     assert len({r.stdout for r in cull.values()}) == 1, ('culling changed visible triangles', cull)
     assert cull['cull'].stderr != cull['uncached'].stderr, 'no retained block was culled'
     print(f"PASS cull: {cull['cull'].stdout.strip()}; {cull['cull'].stderr.strip()} against uncached {cull['uncached'].stderr.strip()}", flush=True)
+    state = {}
+    for variant, mode in [('cached', []), ('CPU lighting', ['-DKJ_G3_CPU_LIGHTING']),
+                          ('verify', ['-DKJ_DL_VERIFY']), ('uncached', ['-DKJ_DL_NO_CACHE'])]:
+        exe=tmp/'g3_state_test.exe'
+        flags = [x for x in common if x != '-DKJ_G3_CPU_LIGHTING']
+        run([*flags,'-DHGSS_PROFILE_OFF',*mode,f'-DSOURCE="{source.as_posix()}"',root/'tests/native/g3_state_test.c','-o',exe])
+        state[variant] = run([exe])
+    assert len(set(state.values())) == 1, ('pure state-list snapshot changed DS state or pictures', state)
+    print(f"PASS pure state lists: {state['cached']}, snapshot restores match execution (cached/CPU/verify/uncached)", flush=True)
     exe=tmp/'perf_test.exe'
     run([*common,'-I',root/'src',root/'tests/native/perf_test.c','-o',exe])
     print(run([exe]))

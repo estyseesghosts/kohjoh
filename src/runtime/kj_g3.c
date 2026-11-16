@@ -656,6 +656,12 @@ void kj_g3_init(const kj_g3_storage *storage)
     mtx_identity(&s_vec);
     mtx_identity(&s_tex);
     clip_changed();
+    /* LIGHT_VECTOR derives the half vector only when the direction changes:
+     * start from the half of the zero direction so half = f(direction)
+     * always holds, whichever path (execution or snapshot) set it. */
+    for (unsigned i = 0; i < 4; ++i) {
+        s_light_half[i][2] = -FX_ONE / 2;
+    }
     if (!s_products_made) {
         make_products();
     }
@@ -2039,6 +2045,29 @@ typedef struct dl_block {
     int16_t lo[3], hi[3];        /* object-space bounds of its vertices */
 } dl_block;
 
+/* Pure state-list snapshot groups (see dl_state_replay). */
+enum {
+    PS_MODE = 1u << 0, PS_PROJ = 1u << 1, PS_POS = 1u << 2, PS_VEC = 1u << 3, PS_TEX = 1u << 4,
+    PS_LDIR = 1u << 5,   /* four bits, one per light */
+    PS_LCOL = 1u << 9,   /* four bits */
+    PS_DIFAMB = 1u << 13, PS_SPEEMI = 1u << 14, PS_SHIN = 1u << 15, PS_ATTR = 1u << 16,
+    PS_TEXP = 1u << 17, PS_PLTT = 1u << 18, PS_VP = 1u << 19, PS_COLOR = 1u << 20,
+};
+
+typedef struct dl_state {
+    uint32_t mask, commands;
+    uint32_t split;      /* words covered: up to the last packed command word */
+    uint32_t first_tail; /* first event after the split */
+    int mode;
+    mtx proj, pos, vec, tex;
+    int32_t light_dir[4][3], light_half[4][3];
+    uint16_t light_color[4];
+    uint16_t diffuse, ambient, specular, emission, color;
+    bool use_shininess;
+    uint32_t shininess[32];
+    uint32_t attr_pending, tex_param, tex_pltt, viewport;
+} dl_state;
+
 /* Unrecordable lists recheck their content once per this many pictures */
 #define DL_NEVER_RECHECK_MASK 63u
 
@@ -2082,6 +2111,7 @@ typedef struct dl_entry {
     uint32_t cap_events, cap_blocks, cap_verts, cap_idx; /* storage kept across re-recordings */
     uint32_t bytes;
     uint32_t last_frame;
+    dl_state *snap;    /* pure state list: its final state (arena) */
 } dl_entry;
 
 /* Recording state (one list at a time; lists do not nest). */
@@ -2470,6 +2500,9 @@ static dl_entry *dl_slot(const uint32_t *ptr, uint32_t count)
  * frame (Goldenrod: 29.6 ms logic against 13.7, twice per 600 frames). */
 static void dl_drop_recording(dl_entry *e)
 {
+    if (e->snap != NULL) {
+        e->snap->mask = 0;
+    }
     e->nevents = e->nblocks = e->nverts = e->nidx = 0;
     e->recorded = false;
     e->command_plan = false;
@@ -2830,6 +2863,309 @@ static void dl_replay(dl_entry *e, const uint32_t *words)
     const u64 t = s_coarse_sample ? svcGetSystemTick() : 0;
 #endif
     dl_replay_impl(e, words);
+#ifndef HGSS_PROFILE_OFF
+    if (s_coarse_sample) s_coarse_replay += svcGetSystemTick() - t;
+#endif
+}
+
+/*
+ * Pure state lists. NNS_G3dGlbFlushP sends the same 63 words before every
+ * model (Goldenrod: ~105 times per picture): projection and camera loads,
+ * four light vectors (transformed by the camera it has just loaded),
+ * material, polygon attribute, viewport, light colours, base rotation and
+ * scale, texture parameters. Every command is an absolute setter or reads
+ * only state the list itself wrote first, so the DS state after it is a
+ * function of its words alone. Executed once, the written state groups are
+ * kept; an identical list restores them with the invalidations their
+ * commands would have made (clip/vector matrix changes, lighting and
+ * material generations). O3DS 2524e88: the replay cost ~5k ticks a call.
+ */
+
+/* The state groups a list writes, or 0 if any command reads DS state the
+ * list has not written first (or is not a setter at all). */
+static uint32_t dl_pure_mask(const uint32_t *w, size_t n, uint32_t *commands)
+{
+    static const uint32_t target[4] = {PS_PROJ, PS_POS, PS_POS | PS_VEC, PS_TEX};
+    uint32_t mask = 0, cmds = 0;
+    int mode = -1;
+    size_t i = 0;
+    while (i < n) {
+        uint32_t ops = w[i++];
+        for (unsigned k = 0; k < 4; ++k, ops >>= 8) {
+            const unsigned op = ops & 0xFFu;
+            const size_t params = s_param_count[op];
+            if (params > n - i) {
+                return 0;
+            }
+            const uint32_t v = params != 0 ? w[i] : 0;
+            cmds += op != 0;
+            switch (op) {
+            case 0x00:
+                break;
+            case 0x10:
+                mode = (int)(v & 3u);
+                mask |= PS_MODE;
+                break;
+            case 0x15: case 0x16: case 0x17:
+                if (mode < 0) {
+                    return 0;
+                }
+                mask |= target[mode];
+                break;
+            case 0x18: case 0x19: case 0x1A: case 0x1C:
+                if (mode < 0 || (mask & target[mode]) != target[mode]) {
+                    return 0;
+                }
+                break;
+            case 0x1B: /* scale: the position matrix only in mode 2 */
+                if (mode < 0 || (mask & target[mode == 2 ? 1 : mode]) == 0) {
+                    return 0;
+                }
+                break;
+            case 0x32:
+                if (!(mask & PS_VEC)) {
+                    return 0;
+                }
+                mask |= PS_LDIR << (v >> 30);
+                break;
+            case 0x33:
+                mask |= PS_LCOL << (v >> 30);
+                break;
+            case 0x30:
+                mask |= PS_DIFAMB | ((v & 0x8000u) ? PS_COLOR : 0u);
+                break;
+            case 0x20:
+                mask |= PS_COLOR;
+                break;
+            case 0x31:
+                mask |= PS_SPEEMI;
+                break;
+            case 0x34:
+                mask |= PS_SHIN;
+                break;
+            case 0x29:
+                mask |= PS_ATTR;
+                break;
+            case 0x2A:
+                mask |= PS_TEXP;
+                break;
+            case 0x2B:
+                mask |= PS_PLTT;
+                break;
+            case 0x60:
+                mask |= PS_VP;
+                break;
+            default:
+                return 0;
+            }
+            i += params;
+        }
+    }
+    *commands = cmds;
+    return mask;
+}
+
+static void dl_state_capture(dl_state *st, uint32_t mask, uint32_t commands)
+{
+    st->mask = mask;
+    st->commands = commands;
+    st->mode = s_mtx_mode;
+    st->proj = s_proj;
+    st->pos = s_pos;
+    st->vec = s_vec;
+    st->tex = s_tex;
+    memcpy(st->light_dir, s_light_dir, sizeof(st->light_dir));
+    memcpy(st->light_half, s_light_half, sizeof(st->light_half));
+    memcpy(st->light_color, s_light_color, sizeof(st->light_color));
+    st->diffuse = s_diffuse;
+    st->ambient = s_ambient;
+    st->specular = s_specular;
+    st->emission = s_emission;
+    st->use_shininess = s_use_shininess;
+    if (mask & PS_SHIN) {
+        memcpy(st->shininess, s_shininess, sizeof(st->shininess));
+    }
+    st->color = s_color;
+    st->attr_pending = s_attr_pending;
+    st->tex_param = s_tex_param;
+    st->tex_pltt = s_tex_pltt;
+    st->viewport = s_viewport;
+}
+
+/* The same end state and the same invalidations as executing the list. */
+static void dl_state_apply(const dl_state *st)
+{
+    const uint32_t m = st->mask;
+#ifndef HGSS_PROFILE_OFF
+    s_stats.commands += st->commands;
+#endif
+    if (m & PS_MODE) {
+        s_mtx_mode = st->mode;
+    }
+    if (m & PS_PROJ) {
+        s_proj = st->proj;
+    }
+    if (m & PS_POS) {
+        s_pos = st->pos;
+    }
+    if (m & (PS_PROJ | PS_POS)) {
+        clip_changed();
+    }
+    if (m & PS_VEC) {
+        s_vec = st->vec;
+        vec_changed();
+    }
+    if (m & PS_TEX) {
+        s_tex = st->tex;
+    }
+    for (unsigned i = 0; i < 4; ++i) {
+        if ((m & (PS_LDIR << i)) &&
+            memcmp(s_light_dir[i], st->light_dir[i], sizeof(s_light_dir[i])) != 0) {
+            memcpy(s_light_dir[i], st->light_dir[i], sizeof(s_light_dir[i]));
+            memcpy(s_light_half[i], st->light_half[i], sizeof(s_light_half[i]));
+            normals_changed();
+        }
+        if ((m & (PS_LCOL << i)) && s_light_color[i] != st->light_color[i]) {
+            s_light_color[i] = st->light_color[i];
+            s_light_terms_dirty |= 1u << i;
+            normals_changed();
+        }
+    }
+    if ((m & PS_DIFAMB) && (s_diffuse != st->diffuse || s_ambient != st->ambient)) {
+        s_diffuse = st->diffuse;
+        s_ambient = st->ambient;
+        s_light_terms_dirty = 0xFu;
+        normals_changed();
+    }
+    if ((m & PS_SPEEMI) && (s_specular != st->specular || s_emission != st->emission ||
+                            s_use_shininess != st->use_shininess)) {
+        if (s_specular != st->specular) {
+            s_light_terms_dirty = 0xFu;
+        }
+        s_specular = st->specular;
+        s_emission = st->emission;
+        s_use_shininess = st->use_shininess;
+        normals_changed();
+    }
+    if ((m & PS_SHIN) && memcmp(s_shininess, st->shininess, sizeof(s_shininess)) != 0) {
+        memcpy(s_shininess, st->shininess, sizeof(s_shininess));
+        normals_changed();
+    }
+    if (m & PS_COLOR) {
+        s_color_gpu = s_color_pending = false;
+        s_color = st->color;
+        update_color_rgba();
+    }
+    if (m & PS_ATTR) {
+        s_attr_pending = st->attr_pending;
+    }
+    if ((m & PS_TEXP) && s_tex_param != st->tex_param) {
+        s_tex_param = st->tex_param;
+        material_changed();
+    }
+    if ((m & PS_PLTT) && s_tex_pltt != st->tex_pltt) {
+        s_tex_pltt = st->tex_pltt;
+        material_changed();
+    }
+    if ((m & PS_VP) && s_viewport != st->viewport) {
+        s_viewport = st->viewport;
+        material_changed();
+    }
+}
+
+/* The last packed command word of a list: NNS rewrites the GLB's base
+ * rotation, translation, scale and texture parameters (its last word's
+ * commands) for every model, while the camera, lights and material before
+ * it stay fixed for a picture. The snapshot covers the words before it. */
+static size_t dl_last_command_word(const uint32_t *w, size_t n)
+{
+    size_t i = 0, last = 0;
+    while (i < n) {
+        uint32_t ops = w[i];
+        last = i++;
+        for (unsigned k = 0; k < 4; ++k, ops >>= 8) {
+            i += s_param_count[ops & 0xFFu];
+        }
+    }
+    return last;
+}
+
+#ifdef KJ_DL_VERIFY
+static void dl_state_verify(const dl_state *st, const uint32_t *words)
+{
+    dl_state live;
+    dl_state_capture(&live, st->mask, st->commands);
+    const uint32_t m = st->mask;
+    bool same = (!(m & PS_MODE) || live.mode == st->mode) &&
+                (!(m & PS_PROJ) || memcmp(&live.proj, &st->proj, sizeof(mtx)) == 0) &&
+                (!(m & PS_POS) || memcmp(&live.pos, &st->pos, sizeof(mtx)) == 0) &&
+                (!(m & PS_VEC) || memcmp(&live.vec, &st->vec, sizeof(mtx)) == 0) &&
+                (!(m & PS_TEX) || memcmp(&live.tex, &st->tex, sizeof(mtx)) == 0) &&
+                (!(m & PS_DIFAMB) || (live.diffuse == st->diffuse && live.ambient == st->ambient)) &&
+                (!(m & PS_SPEEMI) || (live.specular == st->specular && live.emission == st->emission &&
+                                      live.use_shininess == st->use_shininess)) &&
+                (!(m & PS_SHIN) || memcmp(live.shininess, st->shininess, sizeof(st->shininess)) == 0) &&
+                (!(m & PS_COLOR) || live.color == st->color) &&
+                (!(m & PS_ATTR) || live.attr_pending == st->attr_pending) &&
+                (!(m & PS_TEXP) || live.tex_param == st->tex_param) &&
+                (!(m & PS_PLTT) || live.tex_pltt == st->tex_pltt) &&
+                (!(m & PS_VP) || live.viewport == st->viewport);
+    for (unsigned i = 0; i < 4; ++i) {
+        same = same && (!(m & (PS_LDIR << i)) ||
+                        (memcmp(live.light_dir[i], st->light_dir[i], sizeof(st->light_dir[i])) == 0 &&
+                         memcmp(live.light_half[i], st->light_half[i], sizeof(st->light_half[i])) == 0));
+        same = same && (!(m & (PS_LCOL << i)) || live.light_color[i] == st->light_color[i]);
+    }
+    if (!same) {
+        NitroPort_Log("[dlverify] MISMATCH pure state list %p", (const void *)words);
+    }
+}
+#endif
+
+/* State-only list hit. With an identical pure prefix, restore its end state
+ * and execute only the commands of the last packed word; otherwise execute
+ * every command and keep the prefix's result for the next call. */
+static void dl_state_replay(dl_entry *e, const uint32_t *words, size_t count)
+{
+#ifndef HGSS_PROFILE_OFF
+    const u64 t = s_coarse_sample ? svcGetSystemTick() : 0;
+#endif
+    dl_state *st = e->snap;
+    const bool hit = st != NULL && st->mask != 0 && memcmp(e->words, words, st->split * 4u) == 0;
+    uint32_t k = 0;
+    if (hit) {
+#ifdef KJ_DL_VERIFY
+        for (; k < e->nevents && (e->events[k] & 0xFFFFFu) <= st->split; ++k) {
+            execute(e->events[k] >> 20, words + (e->events[k] & 0xFFFFFu));
+        }
+        dl_state_verify(st, words);
+#else
+        dl_state_apply(st);
+        k = st->first_tail;
+#endif
+    } else {
+        const size_t split = dl_last_command_word(words, count);
+        uint32_t commands = 0;
+        const uint32_t mask = split != 0 ? dl_pure_mask(words, split, &commands) : 0;
+        if (mask != 0 && st == NULL) {
+            st = e->snap = dl_alloc(sizeof(dl_state));
+        }
+        for (; k < e->nevents && (e->events[k] & 0xFFFFFu) <= split; ++k) {
+            execute(e->events[k] >> 20, words + (e->events[k] & 0xFFFFFu));
+        }
+        if (st != NULL) {
+            st->mask = 0;
+            if (mask != 0) {
+                memcpy(e->words, words, split * 4u);
+                dl_state_capture(st, mask, commands);
+                st->split = (uint32_t)split;
+                st->first_tail = k;
+            }
+        }
+    }
+    for (; k < e->nevents; ++k) {
+        execute(e->events[k] >> 20, words + (e->events[k] & 0xFFFFFu));
+    }
 #ifndef HGSS_PROFILE_OFF
     if (s_coarse_sample) s_coarse_replay += svcGetSystemTick() - t;
 #endif
@@ -3260,7 +3596,7 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
     else if (e->recorded && !e->never && (e->reads[0] & DL_HAS_VERTEX_DATA) == 0 &&
                dl_state_layout_same(e, words, count)) {
         e->last_frame = s_stats.swaps;
-        dl_replay(e, words);
+        dl_state_replay(e, words, count);
 #ifndef HGSS_PROFILE_OFF
         ++s_dl_hits;
         s_dl_cov[DLC_HIT] += (uint32_t)count;
