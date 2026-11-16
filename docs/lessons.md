@@ -51,6 +51,12 @@ What helped, what cost time, and the rules that follow.
 - **An unverified build-system change regressed saves.** Switching the SDK shim
   from copies to junctions changed what compiled; it went untested past a save
   check. Run the save scenario after any build-system change.
+- **A path compare that ignored MSYS2's mount spellings.** `Path.resolve()`
+  spells one directory `/c/...` or `/home/<user>/...` depending on which side
+  of a junction it starts from, so `link_points_to()` reported a correct
+  junction as missing and `_link()` re-ran `mklink /J` on a path that existed.
+  Four variants in parallel made three of them lose the race. Compare through
+  `cygpath -w`, and serialize the variants (`tools/game/build_variants.py`).
 - **Fragile command lines.** Multi-line heredocs with nested quotes were
   mangled by the shell wrapper; complex edits belong in script files.
 - **Contaminated tests.** Live input reached scripted runs. Tests must own

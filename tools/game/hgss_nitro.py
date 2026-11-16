@@ -145,6 +145,60 @@ def msys(path) -> str:
     return f"/{match.group(1).lower()}/{match.group(2)}" if match else text
 
 
+def _is_msys() -> bool:
+    """True under MSYS2/Cygwin, whose Python is a POSIX build.
+
+    Its path handling is why this module is careful: it cannot be asked for a
+    real Windows symlink (``symlink_to`` silently copies), and it spells one
+    directory two ways (``/c/...`` and ``/home/<user>/...``).
+    """
+    return bool(sys.platform in ("msys", "cygwin") or os.environ.get("MSYSTEM"))
+
+
+def _win(path) -> str:
+    """Windows spelling of `path` (``C:\\...``), for comparisons and native tools.
+
+    MSYS2 mounts the same directory at ``/c/...`` and ``/home/<user>/...``, and
+    ``Path.resolve`` returns whichever spelling it started from, so two paths
+    that reach the same place can compare unequal. ``cygpath -w`` maps both to
+    one form.
+    """
+    text = str(path)
+    if _is_msys():
+        out = subprocess.run(["cygpath", "-w", text], capture_output=True, text=True)
+        if out.returncode == 0 and out.stdout.strip():
+            return out.stdout.strip()
+    return Path(text).as_posix()
+
+
+def _same_path(a, b) -> bool:
+    """True when `a` and `b` resolve to the same file or directory."""
+    try:
+        ra, rb = Path(a).resolve(), Path(b).resolve()
+    except OSError:
+        return False
+    if ra == rb:
+        return True
+    return _is_msys() and _win(ra).lower() == _win(rb).lower()
+
+
+def _is_under(path, directory) -> bool:
+    """True when `path` is `directory` or lies inside it."""
+    try:
+        p, d = Path(path).resolve(), Path(directory).resolve()
+    except OSError:
+        return False
+    if _is_msys():
+        a = _win(p).lower().replace("/", "\\")
+        b = _win(d).lower().replace("/", "\\")
+        return a == b or a.startswith(b.rstrip("\\") + "\\")
+    try:
+        p.relative_to(d)
+        return True
+    except ValueError:
+        return False
+
+
 def link_points_to(link, target) -> bool:
     """True when `link` already reaches `target`.
 
@@ -152,7 +206,7 @@ def link_points_to(link, target) -> bool:
     with the junction fallback below still counts as up to date.
     """
     try:
-        return Path(link).resolve() == _abspath(link, target).resolve()
+        return _same_path(link, _abspath(link, target))
     except OSError:
         return False
 
@@ -162,11 +216,14 @@ def create_link(link, target):
 
     Plain symlinks first; on Windows without the symlink privilege this falls
     back to a directory junction (for directories, removable with unlink) or
-    a hard link / copy (for files).
+    a hard link / copy (for files). Idempotent: a link that already reaches
+    `target` is left alone.
     """
     link, target = Path(link), Path(target)
+    if link_points_to(link, target):
+        return
     # MSYS2 Python "symlinks" by copying: never let it, use a junction/hard link.
-    if not (sys.platform in ("msys", "cygwin") or os.environ.get("MSYSTEM")):
+    if not _is_msys():
         try:
             link.symlink_to(target)
             return
@@ -174,12 +231,10 @@ def create_link(link, target):
             pass
     real = _abspath(link, target)
     if real.is_dir():
-        def win(path):
-            out = subprocess.run(["cygpath", "-w", str(path)], capture_output=True, text=True)
-            return out.stdout.strip() if out.returncode == 0 and out.stdout.strip() else str(path)
         # MSYS converts a leading "/x" argument into a path; "//x" passes "/x".
-        if sys.platform in ("msys", "cygwin") or os.environ.get("MSYSTEM"):
-            cmd = ["/c/Windows/System32/cmd.exe", "//c", "mklink", "//J", win(link), win(real)]
+        if _is_msys():
+            cmd = ["/c/Windows/System32/cmd.exe", "//c", "mklink", "//J",
+                   _win(link), _win(real)]
         else:
             cmd = ["cmd", "/c", "mklink", "/J", str(link), str(real)]
         proc = subprocess.run(cmd, capture_output=True, text=True)
@@ -201,24 +256,22 @@ def _link(link, target):
     if link_points_to(link, target):
         return
     if link.is_symlink():
+        # A junction reports is_symlink() True under MSYS2 Python; unlink
+        # removes the link itself, never the tree it points at.
         link.unlink()
     elif link.exists():
         try:
-            # A stale Windows junction (is_symlink() is False for junctions).
             os.readlink(link)
         except OSError:
-            # kohjoh: under MSYS2, symlink_to() silently *copies*, so a real
-            # directory inside build/ is a stale copy made by an earlier run:
-            # replace it (outside build/, keep it as before).
-            try:
-                link.resolve().relative_to(BUILD.resolve())
-            except ValueError:
-                return
-            if link.is_dir():
-                shutil.rmtree(link)
-            else:
-                link.unlink()
-            create_link(link, target)
+            # Not a link: under MSYS2, symlink_to() silently *copies*, so a
+            # real directory inside build/ is a stale copy made by an earlier
+            # run. Replace it; outside build/, keep it as before.
+            if _is_under(link, BUILD):
+                if link.is_dir():
+                    shutil.rmtree(link)
+                else:
+                    link.unlink()
+                create_link(link, target)
             return
         link.unlink()
     if not link.exists():

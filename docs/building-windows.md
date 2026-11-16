@@ -72,6 +72,32 @@ The shared vendored-library trees are `build/hgss-sdk`, `build/hgss-nns`, and
 - Build each variant into its own `--out` (e.g. `--out $K/build/kjz
   --define KJ_G3_ZERO_TRACE`) so variants never mix objects.
 
+### Four variants (gold/silver x normal/prof)
+
+`tools/game/build_variants.py` builds the four shipping configurations in
+sequence and prints the `.3dsx` paths:
+
+```sh
+python tools/game/build_variants.py            # all four
+python tools/game/build_variants.py --only gold-prof
+python tools/game/build_variants.py --list
+```
+
+| Variant | `--game` | `HGSS_PROFILE` | `--out` |
+| --- | --- | --- | --- |
+| `gold-normal` | heartgold | unset | `build/kj-gold-normal` |
+| `gold-prof` | heartgold | `on` | `build/kj-gold-prof` |
+| `silver-normal` | soulsilver | unset | `build/kj-silver-normal` |
+| `silver-prof` | soulsilver | `on` | `build/kj-silver-prof` |
+
+Run them **one at a time**. The variants share `build/hgss-sdk`,
+`build/hgss-nns` and the headers generated under `build/upstream`, so
+concurrent variants race on the shim junctions and on header generation; the
+driver serialises them. As with a single build, a variant counts only if its
+log ends with `packaged ... .3dsx` and has no `error:` or
+`vendored library build failed` line. Per-variant logs are
+`build/kj-<variant>-build.log`.
+
 ## Build options
 
 ### `hgss_game.py` arguments
@@ -183,6 +209,7 @@ See [testing](testing.md) for scripts, held frames, dumps and profiling.
 | `.3dsx` built but an SDK/NNS change has no effect | vendored library compile failed; link used the stale prebuilt libraries | grep the log for `error:` / `vendored library build failed` |
 | `mv`/`rm` of `build/upstream`: "Device or resource busy" | a shell's working directory is inside it | `cd` out first |
 | `build-info.txt` says `dirty: yes` with no source changes | untracked files in the repository count as dirty | harmless; commit or ignore them |
+| Four variants at once: three fail with `mklink /J ... Cannot create a file when that file already exists` | The variants share the SDK/NNS shim; the first creates its junctions, the others mis-detect them as missing and try to recreate them. | `python tools/game/build_variants.py` (sequential). |
 
 More, with causes, in [troubleshooting](troubleshooting.md#windows-build-chain).
 The build tools already handle each case listed there.
