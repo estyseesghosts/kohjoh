@@ -1,0 +1,45 @@
+From 2a3bf4b19cf57a9687e28254d4ad7061815bc4ff Mon Sep 17 00:00:00 2001
+From: terezi <jules@foxtails.me>
+Date: Mon, 16 Nov 2026 01:25:21 -0500
+Subject: [PATCH] g3d: skip BTP texture and palette lookups that find nothing
+ (SDK_PORT_3DS)
+
+SetTexParamaters_ and SetPlttParamaters_ dereference the result of
+NNS_G3dGetResDataByName without a check. A null result reads address 0,
+which is mapped on the DS and aborts on the 3DS (issue #9: data abort,
+FAR 0, R0 0, in SetTexParamaters_ during the Whirl Islands event).
+---
+ lib/NitroSystem/src/g3d_anm_btp.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/lib/NitroSystem/src/g3d_anm_btp.c b/lib/NitroSystem/src/g3d_anm_btp.c
+index c2aff96..bc0f3f1 100644
+--- a/lib/NitroSystem/src/g3d_anm_btp.c
++++ b/lib/NitroSystem/src/g3d_anm_btp.c
+@@ -16,6 +16,11 @@ void SetTexParamaters_(const NNSG3dResTex *pTex, const NNSG3dResName *pTexName,
+     G3dResTexData *pTexData = pTex ? NNS_G3dGetResDataByName(&pTex->dict, pTexName) : NULL;
+     u32 width, height;
+     u32 addr;
++#if defined(SDK_PORT_3DS)
++    if (pTexData == NULL) {
++        return; // DS reads the mirror of address 0 here; the 3DS aborts
++    }
++#endif
+     addr = GetTexAddr_(pTex, pTexData);
+     pResult->prmTexImage &= G3D_RESMATDATA_TEXIMAGEPARAM_KEEP_MASK;
+     pResult->prmTexImage |= pTexData->texImageParam + addr;
+@@ -30,6 +35,11 @@ void SetTexParamaters_(const NNSG3dResTex *pTex, const NNSG3dResName *pTexName,
+ // palette base of the palette pPlttName
+ void SetPlttParamaters_(const NNSG3dResTex *pTex, const NNSG3dResName *pPlttName, G3dMatAnmResult *pResult) {
+     G3dResPlttData *pPlttData = pTex && pTex->plttInfo.ofsDict ? NNS_G3dGetResDataByName((NNSG3dResDict *)((u8 *)pTex + pTex->plttInfo.ofsDict), pPlttName) : NULL;
++#if defined(SDK_PORT_3DS)
++    if (pPlttData == NULL) {
++        return; // DS reads the mirror of address 0 here; the 3DS aborts
++    }
++#endif
+     u16 vramOffset = (u16)((u16)pTex->plttInfo.vramKey & 0x1FFFFFFF);
+     u16 offset = pPlttData->offset;
+     if (!(pPlttData->flag & G3D_RESPLTTDATA_4COLOR)) {
+-- 
+2.56.0.windows.4
+
