@@ -759,9 +759,19 @@ static void material_changed(void)
     s_batch_ok = false;
 }
 
+/* Set while a display list is recorded for baked replay: its NORMALs are
+ * lit once on the CPU (the exact oracle) and the retained block carries
+ * literal colours. Static scenery then costs neither per-vertex CPU replay
+ * nor per-vertex PICA lighting on every later frame. Coffeepot
+ * 3d-scene-optimisation.md, "Baked lighting": baked work costs no
+ * per-frame time; the O3DS log at 2524e88 measured 11.3 ms of P3D per
+ * picture with every Goldenrod map vertex lit in the shader. */
+static bool s_bake_lighting;
+
 static void normal_color(uint32_t value)
 {
 #ifdef KJ_G3_GPU_LIGHTING
+    if (!s_bake_lighting) {
     if (s_checked_lighting_gen != s_lighting_gen) {
         s_gpu_context_ok = true;
         for (unsigned i = 0; i < 4; ++i) {
@@ -827,6 +837,7 @@ static void normal_color(uint32_t value)
                         ((uint32_t)(bits >> 37) & 31u) << 24 | 0x80000000u;
         s_color_gpu = s_color_pending = true;
         return;
+    }
     }
 #endif
     s_color_gpu = s_color_pending = false;
@@ -2040,6 +2051,12 @@ typedef struct dl_entry {
     int16_t (*coords)[3];
     uint32_t ncoords, cap_coords;
     bool needs_light;  /* seen lighting its normals: key on lighting state */
+    /* GPU lighting: a lit list that cannot bake (it relights under its own
+     * matrix changes or shares strip vertices) or whose lighting key keeps
+     * changing (animated vector matrix) runs as a live vertex plan lit on
+     * the PICA. Churned lists retry baking every 64 pictures. */
+    bool gpu_lit, gpu_churn;
+    uint8_t key_misses;
 #ifndef HGSS_PROFILE_OFF
     uint32_t reject_mask; /* persistent reason for never, even in later windows */
 #endif
@@ -3123,8 +3140,8 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
         dl_set_reads(e, words, count);
     }
 #ifdef KJ_G3_GPU_LIGHTING
-    else if ((e->reads[0] & DL_HAS_NORMAL) || e->vertex_plan ||
-             (s_color_gpu && (e->reads[0] & DL_READS_COLOR))) {
+    else if (e->gpu_lit && !(e->gpu_churn && (s_stats.swaps & DL_NEVER_RECHECK_MASK) == 0u &&
+                             e->last_frame != s_stats.swaps)) {
         vertex_plan(e, words, count);
         return;
     }
@@ -3158,6 +3175,15 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
             ++s_sample_rechecks;
         }
 #endif
+#ifdef KJ_G3_GPU_LIGHTING
+        if (e->gpu_lit) {
+            /* Churned GPU-lit list, 64-picture retry: bake again; one more
+             * key miss returns it to the plan. */
+            dl_drop_recording(e);
+            e->gpu_lit = e->gpu_churn = false;
+            e->key_misses = 1;
+        }
+#endif
         if (memcmp(e->words, words, count * 4u) != 0) {
 #ifndef HGSS_PROFILE_OFF
             s_dl_cov[DLC_CHANGED] += (uint32_t)count;
@@ -3166,17 +3192,11 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
             dl_drop_recording(e);
             e->never = false;
             e->needs_light = false;
+            e->key_misses = 0;
             dl_set_reads(e, words, count);
         }
     }
     e->last_frame = s_stats.swaps;
-#ifdef KJ_G3_GPU_LIGHTING
-    if ((e->reads[0] & DL_HAS_NORMAL) || e->vertex_plan ||
-        (s_color_gpu && (e->reads[0] & DL_READS_COLOR))) {
-        vertex_plan(e, words, count);
-        return;
-    }
-#endif
     if (e->never) {
 #ifndef HGSS_PROFILE_OFF
         s_dl_cov[DLC_NEVER] += (uint32_t)count;
@@ -3189,14 +3209,23 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
         return;
     }
     const bool texgen = (s_tex_param >> 30) != 0;
-#ifdef KJ_G3_GPU_LIGHTING
-    const bool lit = e->needs_light;
-#else
-    const bool lit = e->needs_light || ((s_attr | s_attr_pending) & 0xFu) != 0;
-#endif
     bool verify = false;
     const unsigned entry_lights = ((s_attr & 0xFu) != 0) | (((s_attr_pending & 0xFu) != 0) << 1);
     const uint32_t reads = e->reads[entry_lights];
+#ifdef KJ_G3_GPU_LIGHTING
+    /* Baked entries start from a literal colour: an inherited PICA-lit
+     * colour resolves exactly here, so recording and replay both append
+     * literal vertices to unlit batches. */
+    if (s_color_gpu) {
+        resolve_color();
+        s_color_gpu = false;
+        update_color_rgba();
+    }
+    const bool lit = e->needs_light ||
+                     ((reads & DL_HAS_NORMAL) && ((s_attr | s_attr_pending) & 0xFu) != 0);
+#else
+    const bool lit = e->needs_light || ((s_attr | s_attr_pending) & 0xFu) != 0;
+#endif
     const size_t key_bytes = dl_key_size(lit, texgen, reads);
     if (e->recorded && e->lit == lit && e->texgen == texgen &&
         dl_key_matches(&e->key, lit, texgen, reads)) {
@@ -3212,6 +3241,7 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
                 return;
             }
 #else
+            e->key_misses = 0;
             dl_replay(e, words);
 #ifndef HGSS_PROFILE_OFF
             ++s_dl_hits;
@@ -3264,6 +3294,15 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
 #endif
     if (e->recorded && !verify) {
         dl_drop_recording(e);
+#ifdef KJ_G3_GPU_LIGHTING
+        if (lit && ++e->key_misses >= 2u) {
+            /* The lighting key changes from call to call: rebaking would
+             * light every vertex on the CPU each time. Light it on the PICA. */
+            e->gpu_lit = e->gpu_churn = true;
+            vertex_plan(e, words, count);
+            return;
+        }
+#endif
     }
     frame_buf *fb = &s_buf[s_build];
     /* reset every scalar field (the arrays need no clearing; nevents and
@@ -3281,7 +3320,13 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
     uint32_t why_before[6];
     memcpy(why_before, s_dl_why, sizeof(why_before));
 #endif
+#ifdef KJ_G3_GPU_LIGHTING
+    s_bake_lighting = true;
+#endif
     decode_words(words, count);
+#ifdef KJ_G3_GPU_LIGHTING
+    s_bake_lighting = false;
+#endif
     rec_close_block();
     s_rec.active = false;
 
@@ -3311,6 +3356,15 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
     }
 #endif
     if (s_rec.bad) {
+#ifdef KJ_G3_GPU_LIGHTING
+        if (reads & DL_HAS_NORMAL) {
+            /* Lit under its own matrix changes, or shared strip vertices:
+             * keep the live plan with PICA lighting. */
+            e->gpu_lit = true;
+            e->gpu_churn = false;
+            return;
+        }
+#endif
         e->never = true;
 #ifndef HGSS_PROFILE_OFF
         e->reject_mask = 0;
@@ -3367,6 +3421,13 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
             s_sample_reject |= e->reject_mask;
 #endif
             dl_drop_recording(e);
+#ifdef KJ_G3_GPU_LIGHTING
+            if (reads & DL_HAS_NORMAL) {
+                e->gpu_lit = true;
+                e->gpu_churn = false;
+                return;
+            }
+#endif
             e->never = true;
             return;
         }

@@ -125,6 +125,59 @@ int main(void)
         NitroPort_Gx3dSyncResults();
         digest(NitroPort_IoReg + 0x620, 0x84); /* tests/matrices, not port batch-duplicate counts */
     }
+    /* Static lit scenery: no matrix change inside the list. Stable lighting
+     * bakes once; a vector matrix that changes every call churns to the
+     * PICA plan; the 64-picture retry bakes again. Colours stay exact. */
+    {
+        uint32_t scenery[256];
+        size_t n = 0;
+        scenery[n++] = 0x40;
+        scenery[n++] = 1;
+        for (unsigned v = 0; v < 16; ++v) {
+            scenery[n++] = 0x21;
+            scenery[n++] = next() & 0x3fffffffu;
+            scenery[n++] = 0x22;
+            scenery[n++] = next();
+            scenery[n++] = 0x23;
+            scenery[n++] = next();
+            scenery[n++] = next();
+        }
+        scenery[n++] = 0x41;
+        execute(0x29, (const uint32_t[]){0x001f00c3});
+        execute(0x2a, (const uint32_t[]){0});
+        for (unsigned frame = 0; frame < 200; ++frame) {
+            execute(0x10, (const uint32_t[]){2});
+            const unsigned phase = frame / 50u;
+            uint32_t m[12] = {4096, 0, 0, 0, 4096, 0, 0, 0, 4096, frame * 5u, 0, 0};
+            if (phase == 1u) {
+                m[2] = (frame * 1237u) % 4096u - 2048u; /* animated rotation: key churn */
+            }
+            execute(0x17, m);
+            execute(0x32, (const uint32_t[]){(0u << 30) | 0x0ff003ffu});
+            execute(0x32, (const uint32_t[]){(1u << 30) | (phase == 3u ? frame : 0x1003fcu)});
+            execute(0x33, (const uint32_t[]){(0u << 30) | 0x7fffu});
+            execute(0x33, (const uint32_t[]){(1u << 30) | 0x03e0u});
+            execute(0x30, (const uint32_t[]){0x04217fff}); /* white diffuse, dim ambient */
+            execute(0x31, (const uint32_t[]){0x10421084});
+            for (unsigned copy = 0; copy < 3; ++copy) {
+                if (copy == 2u) {
+                    execute(0x1c, (const uint32_t[]){4096, 0, 0}); /* translated copy */
+                }
+                NitroPort_GxFifoWords(scenery, n);
+            }
+            execute(0x50, (const uint32_t[]){0});
+            const kj_g3_frame *f = kj_g3_take_frame();
+            for (unsigned b = 0; b < f->batch_count; ++b) {
+                const kj_g3_batch *batch = &f->batches[b];
+                for (unsigned i = 0; i < batch->index_count; i += 3) {
+                    digest(&batch->poly_attr, 16);
+                    for (unsigned v = 0; v < 3; ++v) {
+                        triangle_vertex(f, batch, f->indices[batch->first_index + i + v]);
+                    }
+                }
+            }
+        }
+    }
     /* Exhaust the frame context table: the tail must retain exact colours
      * through CPU evaluation, without losing triangles or the next latch. */
     execute(0x10, (const uint32_t[]){2});
