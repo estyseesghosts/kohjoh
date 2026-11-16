@@ -1,0 +1,763 @@
+
+--- new run ---
+     0.077 [app] kohjoh fecd9ce-dirty (heartgold), homebrew (SD pack), Old 3DS
+     1.664 [gpu] renderer ready (linear free 15213 KiB, VRAM free 4794 KiB)
+     1.708 [audio] NDSP 32768 Hz stereo, 4 x 512 frames
+     1.708 [save] raw save file sdmc:/3ds/kohjoh/saves/heartgold.sav
+     1.708 [app] starting the game
+     1.710 [kj] starting heartgold
+     1.965 [nitro] overlay OVY_0 loaded
+     1.966 [nitro] overlay OVY_38 loaded
+     1.966 [nitro] not implemented: DWC_Init
+     1.966 [nitro] overlay intro_title loaded
+    29.596 [nitro] overlay intro_title loaded
+    34.090 [nitro] overlay OVY_74 loaded
+    34.274 [nitro] not implemented: WVR_StartUpAsync
+    34.282 [nitro] not implemented: WM_InitializeForListening
+    34.282 [nitro] not implemented: WM_GetNextTgid
+    34.283 [nitro] not implemented: WM_GetLinkLevel
+    34.312 [nitro] not implemented: WM_SetPortCallback
+    34.747 [nitro] not implemented: WM_Reset
+    35.043 [nitro] overlay OVY_36 loaded
+    35.144 [nitro] overlay OVY_124 loaded
+    35.144 [nitro] overlay ds_protect loaded
+    35.245 [nitro] overlay field loaded
+    35.245 [nitro] overlay ds_protect loaded
+    35.245 [nitro] overlay OVY_2 loaded
+    35.245 [nitro] overlay OVY_3 loaded
+    35.666 [nitro] overlay OVY_27 loaded
+    55.767 [kj] close requested at V-blank 2802
+    55.767 [app] terminating after 2801 V-blanks (close requested)
+    55.767 [audio] stopped, 1 underruns
+
+--- new run ---
+     0.094 [app] kohjoh fc16401-dirty-prof (heartgold), homebrew (SD pack), Old 3DS
+     1.675 [gpu] renderer ready (linear free 15165 KiB, VRAM free 4794 KiB)
+     1.719 [audio] NDSP 32768 Hz stereo, 4 x 512 frames
+     1.720 [save] raw save file sdmc:/3ds/kohjoh/saves/heartgold.sav
+     1.731 [calib] 1M-iteration loop: 3084062 ticks (3.08 ticks/iteration)
+     1.731 [app] starting the game
+     1.733 [kj] starting heartgold
+     1.991 [nitro] overlay OVY_0 loaded
+     1.992 [nitro] overlay OVY_38 loaded
+     1.992 [nitro] not implemented: DWC_Init
+     1.992 [nitro] overlay intro_title loaded
+    11.106 [sndprof] render_calls 600 render_frames 307200 stretches 2399 sndticks 1799 mix_ticks 291495664 tick_ticks 26904756 mix_calls 2399 mix_frames 307200 active_ch 18151 pcm8_ch 0 pcm16_ch 0 adpcm_ch 18151 psg_ch 0 cap_inst 0 dep_ch 0
+    20.482 [sndprof] render_calls 1200 render_frames 614400 stretches 4799 sndticks 3599 mix_ticks 755387632 tick_ticks 62599676 mix_calls 4799 mix_frames 614400 active_ch 46942 pcm8_ch 0 pcm16_ch 0 adpcm_ch 46942 psg_ch 0 cap_inst 0 dep_ch 0
+    21.767 [gamecpu] 600 game frames, logic us p50 682 p95 2871 p99 4160 max 41023 (includes preemption; excludes V-blank wait)
+    21.768 [gamecpu] active logic+publish us p50 2300 p95 6395 p99 7796 max 41281 (includes skipped pictures and GPU wait; excludes V-blank wait; stages overlap)
+    21.930 [perf] logic    us p50   684 p95  2694 p99  4116 max 40923
+    21.935 [perf] vbl_wait us p50 31109 p95 33125 p99 33953 max 34423
+    21.936 [perf] g2d      us p50  1229 p95  4617 p99  5577 max 10446
+    21.936 [perf] g3d      us p50     0 p95     0 p99     0 max     0
+    21.937 [perf] gpu_wait us p50     6 p95     7 p99     8 max    74
+    21.938 [perf] submit   us p50   115 p95   229 p99   342 max  3601
+    21.939 [perf] publish  us p50  1610 p95  4985 p99  5996 max 10699
+    21.939 [perf] window 1: 600 publishes, emulated interval (vblanks) p50 2 max 4, misses 4
+    21.940 [frame] submission interval (refreshes; LCD unobserved) 0:3 1:2 2:595 3:0 4+:0; hitches 5, presents skipped 5; frame time us p50 33444 p99 37866 max 45653
+    21.940 [frame] hitches, game frame(refreshes logic/g2d/g3d ms): 6(0 0/0/0) 8(1 0/0/0) 10(0 0/0/0) 11(0 0/0/0) 12(1 0/0/0)
+    21.940 [frame]   6 scene 0: tile conv 0, spans 0, quads 312, tex uploads 0, tex bytes compared 0
+    21.940 [frame]   8 scene 0: tile conv 0, spans 0, quads 312, tex uploads 0, tex bytes compared 0
+    21.940 [frame]   10 scene 0: tile conv 0, spans 0, quads 312, tex uploads 0, tex bytes compared 0
+    21.940 [frame]   11 scene 0: tile conv 0, spans 0, quads 312, tex uploads 0, tex bytes compared 0
+    21.941 [frame]   12 scene 0: tile conv 0, spans 0, quads 312, tex uploads 0, tex bytes compared 0
+    21.941 [scene] submissions 1-600 game 2-605 latest scene 0; same scene 599; empty submissions 391; GPU queue complete game 603 scene 0; LCD presentation unobserved (submission intervals are a proxy)
+    21.941 [gpu] 600 frames: 2D screens skipped 913, layers reused 3144 rebuilt 177, bg quads 704406 obj quads 33456 draws 1352 spans 285 unsupported 0 dropped 0, char KiB compared 9911
+    21.941 [g3sample] random 1/64 FIFO calls: samples 0 total_ticks 0 decode_ticks 0 replay_ticks 0 (block_copy_ticks 0 nested); remainder includes lookup/recording and probe overhead
+    21.941 [dltop] top 20 by sampled total ticks; random 1/64; omitted samples 0 ticks 0; src NULL groups short calls; copy is inside replay; reject bits: batch=1 shared=2 drops/split=4 lit+matrix=8 swap=16 open-prim=32
+    21.942 [dlwhy] batch-in-block 0 shared-verts 0 straddle/drops 0 lit+matrix 0 swap 0 open-prim 0 flushes 0
+    21.942 [dlcov] bypass: small 0 split 0 open-begin 0 (begin first 0)
+    21.942 [dlcov] words: short 0 new 0 changed 0 never 0 hit 0 keymiss 0
+    21.942 [ds] per game frame (605 game frames / 600 pictures): g3 fifo calls 0 (0 fifo words, 2 direct words, 2 cmds), timer sync 78 us (4 calls), sound pump 5 us, hblank 10 us
+    21.942 [ds] display lists: 0 replayed, 0 decoded, 0 uncacheable, 0 KiB retained
+    21.942 [pace] 600 frames: late V-blanks 22, resyncs 0, presents skipped 5
+    21.942 [gpu] 600 frames: atlas lookups 62592 conversions 979 evictions 0 full 0; 3D batches 0 draws 0 tris 0 tex uploads 0 tex bytes compared 0 tex full 0 unsupported 0; box tests 0 culled 0 (far only 0)
+    21.943 [gputime] 600 pictures: GSP us/picture P3D 0 PPF 0 PSC 0 (log baseline/unavailable); C3D completed queues 208 drawing ms avg 2.24 max 5.99; cmdbuf use max 1%
+    29.859 [sndprof] render_calls 1800 render_frames 921600 stretches 7190 sndticks 5398 mix_ticks 1217388900 tick_ticks 99471688 mix_calls 7190 mix_frames 921600 active_ch 75479 pcm8_ch 0 pcm16_ch 0 adpcm_ch 75479 psg_ch 0 cap_inst 0 dep_ch 0
+    39.230 [sndprof] render_calls 2400 render_frames 1228800 stretches 9590 sndticks 7198 mix_ticks 1676657718 tick_ticks 136749422 mix_calls 9590 mix_frames 1228800 active_ch 103961 pcm8_ch 0 pcm16_ch 0 adpcm_ch 103961 psg_ch 0 cap_inst 0 dep_ch 0
+    40.486 [nitro] overlay intro_title loaded
+    42.129 [gamecpu] 600 game frames, logic us p50 1364 p95 29055 p99 31808 max 113179 (includes preemption; excludes V-blank wait)
+    42.130 [gamecpu] active logic+publish us p50 11346 p95 44235 p99 70657 max 113183 (includes skipped pictures and GPU wait; excludes V-blank wait; stages overlap)
+    44.681 [perf] logic    us p50  1380 p95 29267 p99 29882 max 45442
+    44.682 [perf] vbl_wait us p50 21692 p95 28557 p99 30813 max 32721
+    44.682 [perf] g2d      us p50  4574 p95 14508 p99 22311 max 65092
+    44.683 [perf] g3d      us p50  1680 p95  6142 p99  8947 max 27330
+    44.688 [perf] gpu_wait us p50     6 p95   827 p99 19104 max 37216
+    44.689 [perf] submit   us p50   190 p95   311 p99  3496 max  4191
+    44.690 [perf] publish  us p50  6405 p95 23745 p99 45017 max 81662
+    44.690 [perf] window 2: 600 publishes, emulated interval (vblanks) p50 2 max 4, misses 57
+    44.691 [frame] submission interval (refreshes; LCD unobserved) 0:1 1:13 2:515 3:14 4+:57; hitches 85, presents skipped 58; frame time us p50 33478 p99 83165 max 149730
+    44.691 [frame] hitches, game frame(refreshes logic/g2d/g3d ms): 632(3 45/8/0) 633(1 0/4/0) 872(4 1/29/0) 873(5 4/65/0) 875(3 1/7/0) 877(4 5/65/0) 879(1 1/1/0) 880(1 4/1/0) 882(7 13/6/14) 885(3 6/13/1) 887(1 7/14/1) 889(1 9/0/1)
+    44.692 [frame]   632 scene 0: tile conv 144, spans 2, quads 1536, tex uploads 0, tex bytes compared 0
+    44.692 [frame]   633 scene 0: tile conv 0, spans 2, quads 1536, tex uploads 0, tex bytes compared 0
+    44.692 [frame]   872 scene 0: tile conv 0, spans 56, quads 5399, tex uploads 0, tex bytes compared 0
+    44.692 [frame]   873 scene 0: tile conv 0, spans 130, quads 9495, tex uploads 0, tex bytes compared 0
+    44.692 [frame]   875 scene 0: tile conv 0, spans 2, quads 2327, tex uploads 0, tex bytes compared 0
+    44.692 [frame]   877 scene 0: tile conv 0, spans 129, quads 9431, tex uploads 0, tex bytes compared 0
+    44.692 [frame]   879 scene 0: tile conv 0, spans 2, quads 2327, tex uploads 0, tex bytes compared 0
+    44.692 [frame]   880 scene 0: tile conv 0, spans 0, quads 2327, tex uploads 0, tex bytes compared 0
+    44.692 [frame]   882 scene 2: tile conv 456, spans 3, quads 1632, tex uploads 33, tex bytes compared 0
+    44.692 [frame]   885 scene 5: tile conv 0, spans 80, quads 1632, tex uploads 0, tex bytes compared 23680
+    44.693 [frame]   887 scene 7: tile conv 0, spans 80, quads 1632, tex uploads 0, tex bytes compared 23680
+    44.693 [frame]   889 scene 9: tile conv 0, spans 2, quads 1632, tex uploads 0, tex bytes compared 23680
+    44.693 [scene] submissions 601-1200 game 606-1263 latest scene 314; same scene 338; empty submissions 7; GPU queue complete game 1261 scene 312; LCD presentation unobserved (submission intervals are a proxy)
+    44.693 [gpu] 600 frames: 2D screens skipped 252, layers reused 1594 rebuilt 3188, bg quads 1106142 obj quads 60850 draws 3908 spans 4261 unsupported 0 dropped 0, char KiB compared 8080
+    44.693 [g3sample] random 1/64 FIFO calls: samples 1093 total_ticks 20579550 decode_ticks 10142420 replay_ticks 3443822 (block_copy_ticks 2427530 nested); remainder includes lookup/recording and probe overhead
+    44.693 [dltop] top 20 by sampled total ticks; random 1/64; omitted samples 0 ticks 0; src NULL groups short calls; copy is inside replay; reject bits: batch=1 shared=2 drops/split=4 lit+matrix=8 swap=16 open-prim=32
+    44.694 [dltop] src 0x9d7400 caller 0x57ff5c words 1432 n 3 hits 0 swaps 214-307 ticks total/decode/replay/copy/max 3153226/2049262/0/0/1831430 copy_bytes 0 normals/misses 750/735 reject a rechecks 0
+    44.694 [dltop] src 0x9d43dc caller 0x57ff5c words 3081 n 1 hits 0 swaps 289-289 ticks total/decode/replay/copy/max 2357414/2355356/0/0/2357414 copy_bytes 0 normals/misses 518/465 reject a rechecks 0
+    44.694 [dltop] src 0x0 caller 0x5646a4 words 6 n 255 hits 0 swaps 1-313 ticks total/decode/replay/copy/max 1738062/522952/0/0/936570 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+    44.695 [dltop] src 0x0 caller 0x564ce0 words 1 n 91 hits 0 swaps 13-313 ticks total/decode/replay/copy/max 1252800/1161052/0/0/1063234 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+    44.695 [dltop] src 0x9f4dcc caller 0x57ff5c words 64 n 1 hits 1 swaps 91-91 ticks total/decode/replay/copy/max 980138/0/962194/950028/980138 copy_bytes 456 normals/misses 0/0 reject 0 rechecks 0
+    44.695 [dltop] src 0xa07704 caller 0x57ff5c words 724 n 2 hits 2 swaps 132-192 ticks total/decode/replay/copy/max 977706/0/50270/40704/933314 copy_bytes 10944 normals/misses 0/0 reject 0 rechecks 0
+    44.695 [dltop] src 0x9e209c caller 0x57ff5c words 196 n 1 hits 0 swaps 25-25 ticks total/decode/replay/copy/max 965710/52060/0/0/965710 copy_bytes 0 normals/misses 1/0 reject 0 rechecks 0
+    44.696 [dltop] src 0x9d8fcc caller 0x57ff5c words 459 n 3 hits 0 swaps 235-284 ticks total/decode/replay/copy/max 506578/418972/0/0/170944 copy_bytes 0 normals/misses 339/186 reject 0 rechecks 0
+    44.696 [dltop] src 0xa09764 caller 0x57ff5c words 137 n 5 hits 0 swaps 121-207 ticks total/decode/replay/copy/max 484820/378160/0/0/159730 copy_bytes 0 normals/misses 5/0 reject 0 rechecks 0
+    44.696 [dltop] src 0x0 caller 0x565b98 words 3 n 202 hits 0 swaps 2-313 ticks total/decode/replay/copy/max 442184/234392/0/0/14164 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+    44.697 [dltop] src 0x9d38b8 caller 0x57ff5c words 297 n 3 hits 0 swaps 215-267 ticks total/decode/replay/copy/max 384228/377966/0/0/147232 copy_bytes 0 normals/misses 216/147 reject 8 rechecks 0
+    44.697 [dltop] src 0x6351f4 caller 0x565050 words 18 n 50 hits 0 swaps 67-312 ticks total/decode/replay/copy/max 374172/142132/0/0/16028 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+    44.697 [dltop] src 0x9f0390 caller 0x57ff5c words 3979 n 1 hits 1 swaps 96-96 ticks total/decode/replay/copy/max 342532/0/251380/154560/342532 copy_bytes 24300 normals/misses 0/0 reject 0 rechecks 0
+    44.697 [dltop] src 0xa0bda0 caller 0x57ff5c words 738 n 4 hits 4 swaps 181-209 ticks total/decode/replay/copy/max 258950/0/171884/116160/67310 copy_bytes 23680 normals/misses 0/0 reject 0 rechecks 0
+    44.702 [dltop] src 0x0 caller 0x5600f8 words 12 n 43 hits 0 swaps 214-313 ticks total/decode/replay/copy/max 227624/180738/0/0/15256 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+    44.702 [dltop] src 0xa044dc caller 0x57ff5c words 1243 n 2 hits 2 swaps 173-187 ticks total/decode/replay/copy/max 215312/0/150654/85112/110674 copy_bytes 12428 normals/misses 0/0 reject 0 rechecks 0
+    44.702 [dltop] src 0x9db0a8 caller 0x57ff5c words 390 n 1 hits 0 swaps 304-304 ticks total/decode/replay/copy/max 194768/192374/0/0/194768 copy_bytes 0 normals/misses 74/64 reject a rechecks 0
+    44.703 [dltop] src 0xa0ebb0 caller 0x57ff5c words 352 n 5 hits 5 swaps 107-196 ticks total/decode/replay/copy/max 171876/0/105536/57958/36144 copy_bytes 9120 normals/misses 0/0 reject 0 rechecks 0
+    44.703 [dltop] src 0x64a2cc caller 0x561a4c words 62 n 11 hits 0 swaps 7-275 ticks total/decode/replay/copy/max 169216/153674/0/0/46992 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+    44.703 [dltop] src 0x0 caller 0x56492c words 13 n 14 hits 0 swaps 61-185 ticks total/decode/replay/copy/max 154174/134700/0/0/21130 copy_bytes 0 normals/misses 14/8 reject 0 rechecks 0
+    44.704 [dlwhy] batch-in-block 0 shared-verts 6 straddle/drops 0 lit+matrix 8 swap 0 open-prim 0 flushes 0
+    44.704 [dlcov] bypass: small 222027 split 199410 open-begin 0 (begin first 0)
+    44.704 [dlcov] words: short 421437 new 40343 changed 63414 never 757944 hit 2164813 keymiss 269045
+    44.704 [ds] per game frame (658 game frames / 600 pictures): g3 fifo calls 105 (5648 fifo words, 66 direct words, 718 cmds), timer sync 70 us (4 calls), sound pump 6 us, hblank 81 us
+    44.704 [ds] display lists: 6477 replayed, 4972 decoded, 792 uncacheable, 393 KiB retained
+    44.704 [pace] 600 frames: late V-blanks 313, resyncs 1, presents skipped 58
+    44.704 [gpu] 600 frames: atlas lookups 772032 conversions 52239 evictions 0 full 0; 3D batches 16728 draws 16728 tris 680796 tex uploads 142 tex bytes compared 13526752 tex full 0 unsupported 275; box tests 0 culled 0 (far only 0)
+    44.705 [gputime] 600 pictures: GSP us/picture P3D 3262 PPF 592 PSC 583 (log valid); C3D completed queues 593 drawing ms avg 5.02 max 41.02; cmdbuf use max 48%
+    47.934 [nitro] overlay OVY_74 loaded
+    48.119 [nitro] not implemented: WVR_StartUpAsync
+    48.127 [nitro] not implemented: WM_InitializeForListening
+    48.127 [nitro] not implemented: WM_GetNextTgid
+    48.128 [nitro] not implemented: WM_GetLinkLevel
+    48.156 [nitro] not implemented: WM_SetPortCallback
+    48.604 [sndprof] render_calls 3000 render_frames 1536000 stretches 11980 sndticks 8997 mix_ticks 2167860692 tick_ticks 174122026 mix_calls 11980 mix_frames 1536000 active_ch 134758 pcm8_ch 273 pcm16_ch 0 adpcm_ch 134485 psg_ch 0 cap_inst 0 dep_ch 0
+    48.691 [nitro] not implemented: WM_Reset
+    48.988 [nitro] overlay OVY_36 loaded
+    49.090 [nitro] overlay OVY_124 loaded
+    49.091 [nitro] overlay ds_protect loaded
+    49.189 [nitro] overlay field loaded
+    49.189 [nitro] overlay ds_protect loaded
+    49.189 [nitro] overlay OVY_2 loaded
+    49.189 [nitro] overlay OVY_3 loaded
+    49.613 [nitro] overlay OVY_27 loaded
+    57.983 [sndprof] render_calls 3600 render_frames 1843200 stretches 14380 sndticks 10797 mix_ticks 2523922098 tick_ticks 204626300 mix_calls 14380 mix_frames 1843200 active_ch 155680 pcm8_ch 273 pcm16_ch 0 adpcm_ch 155407 psg_ch 0 cap_inst 0 dep_ch 0
+    66.937 [gamecpu] 600 game frames, logic us p50 36472 p95 40655 p99 41759 max 387767 (includes preemption; excludes V-blank wait)
+    66.938 [gamecpu] active logic+publish us p50 40670 p95 49458 p99 53357 max 387772 (includes skipped pictures and GPU wait; excludes V-blank wait; stages overlap)
+    67.355 [sndprof] render_calls 4200 render_frames 2150400 stretches 16780 sndticks 12597 mix_ticks 2982900638 tick_ticks 241317276 mix_calls 16780 mix_frames 2150400 active_ch 184369 pcm8_ch 273 pcm16_ch 0 adpcm_ch 184096 psg_ch 0 cap_inst 0 dep_ch 0
+    76.732 [sndprof] render_calls 4800 render_frames 2457600 stretches 19171 sndticks 14396 mix_ticks 3430451836 tick_ticks 277001138 mix_calls 19171 mix_frames 2457600 active_ch 211937 pcm8_ch 273 pcm16_ch 0 adpcm_ch 211664 psg_ch 0 cap_inst 0 dep_ch 0
+    86.107 [sndprof] render_calls 5400 render_frames 2764800 stretches 21571 sndticks 16196 mix_ticks 3870462282 tick_ticks 312328594 mix_calls 21571 mix_frames 2764800 active_ch 239373 pcm8_ch 273 pcm16_ch 0 adpcm_ch 239100 psg_ch 0 cap_inst 0 dep_ch 0
+    90.847 [perf] logic    us p50 36546 p95 40316 p99 40858 max 79168
+    90.848 [perf] vbl_wait us p50    24 p95 27193 p99 31710 max 32693
+    90.849 [perf] g2d      us p50  1173 p95  6300 p99 14634 max 18646
+    90.850 [perf] g3d      us p50  5305 p95  8753 p99  9107 max 30532
+    90.851 [perf] gpu_wait us p50     6 p95     8 p99   124 max  4941
+    90.852 [perf] submit   us p50   182 p95   313 p99  3426 max  3550
+    90.854 [perf] publish  us p50  9496 p95 12063 p99 23843 max 36462
+    90.854 [perf] window 3: 600 publishes, emulated interval (vblanks) p50 4 max 4, misses 496
+    90.855 [frame] submission interval (refreshes; LCD unobserved) 0:1 1:6 2:47 3:49 4+:497; hitches 553, presents skipped 497; frame time us p50 83925 p99 97107 max 459983
+    90.855 [frame] hitches, game frame(refreshes logic/g2d/g3d ms): 1265(6 25/14/8) 1267(5 25/14/8) 1269(5 29/14/4) 1271(4 29/14/4) 1273(5 29/14/4) 1275(5 29/14/4) 1277(5 28/14/4) 1279(4 25/18/4) 1281(5 29/2/9) 1283(4 29/2/4) 1285(5 29/2/9) 1287(4 29/2/4)
+    90.855 [frame]   1265 scene 316: tile conv 1085, spans 2, quads 1147, tex uploads 0, tex bytes compared 67936
+    90.856 [frame]   1267 scene 318: tile conv 1085, spans 2, quads 1147, tex uploads 0, tex bytes compared 67936
+    90.856 [frame]   1269 scene 320: tile conv 1085, spans 2, quads 1147, tex uploads 0, tex bytes compared 67936
+    90.856 [frame]   1271 scene 322: tile conv 1085, spans 2, quads 1147, tex uploads 0, tex bytes compared 67936
+    90.856 [frame]   1273 scene 324: tile conv 1085, spans 2, quads 1147, tex uploads 0, tex bytes compared 67936
+    90.856 [frame]   1275 scene 326: tile conv 1085, spans 2, quads 1147, tex uploads 0, tex bytes compared 67936
+    90.856 [frame]   1277 scene 328: tile conv 1085, spans 2, quads 1147, tex uploads 0, tex bytes compared 69984
+    90.856 [frame]   1279 scene 330: tile conv 1085, spans 2, quads 1147, tex uploads 0, tex bytes compared 67936
+    90.856 [frame]   1281 scene 332: tile conv 0, spans 2, quads 1123, tex uploads 0, tex bytes compared 67936
+    90.856 [frame]   1283 scene 334: tile conv 0, spans 2, quads 1123, tex uploads 0, tex bytes compared 67936
+    90.857 [frame]   1285 scene 336: tile conv 0, spans 2, quads 1123, tex uploads 0, tex bytes compared 67936
+    90.857 [frame]   1287 scene 338: tile conv 0, spans 2, quads 1123, tex uploads 0, tex bytes compared 67936
+    90.857 [scene] submissions 1201-1800 game 1265-2360 latest scene 1357; same scene 50; empty submissions 11; GPU queue complete game 2358 scene 1355; LCD presentation unobserved (submission intervals are a proxy)
+    90.857 [gpu] 600 frames: 2D screens skipped 555, layers reused 3768 rebuilt 177, bg quads 507352 obj quads 180156 draws 367 spans 645 unsupported 0 dropped 0, char KiB compared 13167
+    90.857 [g3sample] random 1/64 FIFO calls: samples 15175 total_ticks 171909834 decode_ticks 77524700 replay_ticks 49115318 (block_copy_ticks 27257628 nested); remainder includes lookup/recording and probe overhead
+    90.858 [dltop] top 20 by sampled total ticks; random 1/64; omitted samples 0 ticks 0; src NULL groups short calls; copy is inside replay; reject bits: batch=1 shared=2 drops/split=4 lit+matrix=8 swap=16 open-prim=32
+    90.858 [dltop] src 0x64a2cc caller 0x561a4c words 62 n 1581 hits 0 swaps 316-1355 ticks total/decode/replay/copy/max 19767976/18169034/0/0/941038 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+    90.858 [dltop] src 0x16d0878 caller 0x57ff5c words 5204 n 18 hits 18 swaps 403-1232 ticks total/decode/replay/copy/max 10323376/0/7022862/3746468/1374168 copy_bytes 561024 normals/misses 0/0 reject 0 rechecks 0
+    90.858 [dltop] src 0x16c32fc caller 0x57ff5c words 5201 n 17 hits 17 swaps 454-1338 ticks total/decode/replay/copy/max 10290890/0/8078686/5709354/1282096 copy_bytes 529856 normals/misses 0/0 reject 0 rechecks 0
+    90.859 [dltop] src 0x16a1604 caller 0x57ff5c words 1065 n 19 hits 0 swaps 410-1330 ticks total/decode/replay/copy/max 7960244/6280408/0/0/1313484 copy_bytes 0 normals/misses 19/19 reject 0 rechecks 0
+    90.859 [dltop] src 0x16c0d34 caller 0x57ff5c words 1046 n 14 hits 0 swaps 414-1338 ticks total/decode/replay/copy/max 7196962/5344894/0/0/1255376 copy_bytes 0 normals/misses 14/14 reject 0 rechecks 0
+    90.859 [dltop] src 0x16bf094 caller 0x57ff5c words 1832 n 28 hits 28 swaps 460-1353 ticks total/decode/replay/copy/max 6578492/0/4543266/2223964/1079146 copy_bytes 338856 normals/misses 0/0 reject 0 rechecks 0
+    90.860 [dltop] src 0x0 caller 0x3ffe30 words 3 n 1014 hits 0 swaps 393-1356 ticks total/decode/replay/copy/max 6117804/5173150/0/0/907484 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+    90.860 [dltop] src 0x0 caller 0x5646a4 words 6 n 1709 hits 0 swaps 314-1356 ticks total/decode/replay/copy/max 5492238/3586710/0/0/37958 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+    90.860 [dltop] src 0x9d43dc caller 0x57ff5c words 3081 n 4 hits 0 swaps 348-378 ticks total/decode/replay/copy/max 5094258/5087066/0/0/1296470 copy_bytes 0 normals/misses 2072/1860 reject a rechecks 0
+    90.861 [dltop] src 0x9d7400 caller 0x57ff5c words 1432 n 4 hits 0 swaps 344-390 ticks total/decode/replay/copy/max 3642984/3635132/0/0/1658184 copy_bytes 0 normals/misses 1000/980 reject a rechecks 0
+    90.861 [dltop] src 0x0 caller 0x56492c words 13 n 241 hits 0 swaps 393-1351 ticks total/decode/replay/copy/max 3247242/2985146/0/0/873966 copy_bytes 0 normals/misses 202/202 reject 0 rechecks 0
+    90.861 [dltop] src 0xa677b4 caller 0x56492c words 35 n 176 hits 0 swaps 394-1353 ticks total/decode/replay/copy/max 2997552/2813106/0/0/880070 copy_bytes 0 normals/misses 176/176 reject 0 rechecks 0
+    90.861 [dltop] src 0xa1bbd0 caller 0x57ff5c words 1727 n 16 hits 16 swaps 395-1210 ticks total/decode/replay/copy/max 2967572/0/2237588/872820/933218 copy_bytes 149920 normals/misses 0/0 reject 0 rechecks 0
+    90.862 [dltop] src 0x0 caller 0x3ffef0 words 3 n 997 hits 0 swaps 394-1355 ticks total/decode/replay/copy/max 2751706/1842552/0/0/869558 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+    90.862 [dltop] src 0x16a4fd0 caller 0x57ff5c words 481 n 18 hits 18 swaps 474-1122 ticks total/decode/replay/copy/max 2715258/0/1532082/370454/966194 copy_bytes 59220 normals/misses 0/0 reject 0 rechecks 0
+    90.862 [dltop] src 0x16cf1a8 caller 0x57ff5c words 694 n 20 hits 20 swaps 477-1326 ticks total/decode/replay/copy/max 2456006/0/2052432/1534808/959364 copy_bytes 101960 normals/misses 0/0 reject 0 rechecks 0
+    90.863 [dltop] src 0xa17b98 caller 0x57ff5c words 1542 n 21 hits 21 swaps 402-1333 ticks total/decode/replay/copy/max 2384098/0/1606156/1109382/145768 copy_bytes 212604 normals/misses 0/0 reject 0 rechecks 0
+    90.863 [dltop] src 0x0 caller 0x565b98 words 3 n 1018 hits 0 swaps 314-1356 ticks total/decode/replay/copy/max 2254426/1094680/0/0/148582 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+    90.863 [dltop] src 0x0 caller 0x55d0f8 words 3 n 336 hits 0 swaps 393-1350 ticks total/decode/replay/copy/max 2185248/1276790/0/0/924952 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+    90.864 [dltop] src 0xa08e70 caller 0x57ff5c words 913 n 15 hits 15 swaps 452-1314 ticks total/decode/replay/copy/max 2179508/0/1804850/570928/985084 copy_bytes 92880 normals/misses 0/0 reject 0 rechecks 0
+    90.864 [dlwhy] batch-in-block 0 shared-verts 0 straddle/drops 0 lit+matrix 0 swap 0 open-prim 0 flushes 0
+    90.864 [dlcov] bypass: small 1996506 split 8070746 open-begin 0 (begin first 0)
+    90.864 [dlcov] words: short 10067252 new 40281 changed 233838 never 589512 hit 36875874 keymiss 2624050
+    90.864 [ds] per game frame (1097 game frames / 600 pictures): g3 fifo calls 886 (45971 fifo words, 69 direct words, 6077 cmds), timer sync 39 us (4 calls), sound pump 5 us, hblank 924 us
+    90.865 [ds] display lists: 67603 replayed, 20309 decoded, 616 uncacheable, 835 KiB retained
+    90.865 [pace] 600 frames: late V-blanks 2087, resyncs 19, presents skipped 497
+    90.865 [gpu] 600 frames: atlas lookups 133120 conversions 22866 evictions 0 full 0; 3D batches 65441 draws 65441 tris 4324182 tex uploads 357 tex bytes compared 26512192 tex full 0 unsupported 507; box tests 33969 culled 28392 (far only 0)
+    90.865 [gputime] 600 pictures: GSP us/picture P3D 2543 PPF 454 PSC 325 (log valid); C3D completed queues 589 drawing ms avg 4.01 max 8.64; cmdbuf use max 10%
+    92.528 [gamecpu] 600 game frames, logic us p50 37373 p95 40665 p99 41022 max 41284 (includes preemption; excludes V-blank wait)
+    92.529 [gamecpu] active logic+publish us p50 42014 p95 47767 p99 50837 max 51208 (includes skipped pictures and GPU wait; excludes V-blank wait; stages overlap)
+    95.480 [sndprof] render_calls 6000 render_frames 3072000 stretches 23961 sndticks 17995 mix_ticks 4279286794 tick_ticks 346287860 mix_calls 23961 mix_frames 3072000 active_ch 264490 pcm8_ch 273 pcm16_ch 0 adpcm_ch 264217 psg_ch 0 cap_inst 0 dep_ch 0
+   104.857 [sndprof] render_calls 6600 render_frames 3379200 stretches 26361 sndticks 19795 mix_ticks 4737792618 tick_ticks 383182936 mix_calls 26361 mix_frames 3379200 active_ch 293157 pcm8_ch 273 pcm16_ch 0 adpcm_ch 292884 psg_ch 0 cap_inst 0 dep_ch 0
+   114.233 [sndprof] render_calls 7200 render_frames 3686400 stretches 28761 sndticks 21595 mix_ticks 5183393020 tick_ticks 418344574 mix_calls 28761 mix_frames 3686400 active_ch 320706 pcm8_ch 273 pcm16_ch 0 adpcm_ch 320433 psg_ch 0 cap_inst 0 dep_ch 0
+   118.429 [gamecpu] 600 game frames, logic us p50 37510 p95 40816 p99 41057 max 41335 (includes preemption; excludes V-blank wait)
+   118.433 [gamecpu] active logic+publish us p50 43404 p95 49745 p99 50651 max 51319 (includes skipped pictures and GPU wait; excludes V-blank wait; stages overlap)
+   123.605 [sndprof] render_calls 7800 render_frames 3993600 stretches 31152 sndticks 23394 mix_ticks 5613861304 tick_ticks 453498780 mix_calls 31152 mix_frames 3993600 active_ch 347321 pcm8_ch 273 pcm16_ch 0 adpcm_ch 347048 psg_ch 0 cap_inst 0 dep_ch 0
+   132.981 [sndprof] render_calls 8400 render_frames 4300800 stretches 33552 sndticks 25194 mix_ticks 6033783492 tick_ticks 488236128 mix_calls 33552 mix_frames 4300800 active_ch 373400 pcm8_ch 273 pcm16_ch 0 adpcm_ch 373127 psg_ch 0 cap_inst 0 dep_ch 0
+   139.655 [perf] logic    us p50 36877 p95 40340 p99 40670 max 41128
+   139.656 [perf] vbl_wait us p50    24 p95    35 p99 13206 max 16009
+   139.657 [perf] g2d      us p50  1159 p95  4420 p99  4538 max  4778
+   139.658 [perf] g3d      us p50  5426 p95  8726 p99  8901 max  9075
+   139.659 [perf] gpu_wait us p50     6 p95     8 p99    10 max   124
+   139.660 [perf] submit   us p50   180 p95   318 p99  3387 max  3589
+   139.661 [perf] publish  us p50  9960 p95 10559 p99 10812 max 10905
+   139.661 [perf] window 4: 600 publishes, emulated interval (vblanks) p50 4 max 4, misses 537
+   139.662 [frame] submission interval (refreshes; LCD unobserved) 0:0 1:0 2:1 3:59 4+:540; hitches 599, presents skipped 537; frame time us p50 84461 p99 89147 max 102912
+   139.662 [frame] hitches, game frame(refreshes logic/g2d/g3d ms): 2362(5 31/1/5) 2364(5 31/1/5) 2366(4 30/1/5) 2368(4 34/1/5) 2370(5 34/1/5) 2372(5 35/1/8) 2374(5 35/1/5) 2376(5 38/1/5) 2378(5 35/1/8) 2380(5 39/1/5) 2382(5 40/1/8) 2384(5 39/1/5)
+   139.662 [frame]   2362 scene 1359: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   139.663 [frame]   2364 scene 1361: tile conv 0, spans 1, quads 1211, tex uploads 1, tex bytes compared 46592
+   139.663 [frame]   2366 scene 1363: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   139.663 [frame]   2368 scene 1365: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   139.663 [frame]   2370 scene 1367: tile conv 0, spans 1, quads 1211, tex uploads 3, tex bytes compared 46592
+   139.663 [frame]   2372 scene 1369: tile conv 0, spans 1, quads 1211, tex uploads 1, tex bytes compared 46592
+   139.663 [frame]   2374 scene 1371: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   139.663 [frame]   2376 scene 1373: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   139.663 [frame]   2378 scene 1375: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   139.664 [frame]   2380 scene 1377: tile conv 0, spans 1, quads 1211, tex uploads 1, tex bytes compared 46592
+   139.664 [frame]   2382 scene 1379: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   139.664 [frame]   2384 scene 1381: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   139.664 [scene] submissions 1801-2400 game 2362-3497 latest scene 2494; same scene 0; empty submissions 0; GPU queue complete game 3495 scene 2492; LCD presentation unobserved (submission intervals are a proxy)
+   139.664 [gpu] 600 frames: 2D screens skipped 600, layers reused 4200 rebuilt 0, bg quads 514800 obj quads 211800 draws 0 spans 600 unsupported 0 dropped 0, char KiB compared 13012
+   139.664 [g3sample] random 1/64 FIFO calls: samples 17578 total_ticks 168902794 decode_ticks 67054828 replay_ticks 55359378 (block_copy_ticks 32295432 nested); remainder includes lookup/recording and probe overhead
+   139.664 [dltop] top 20 by sampled total ticks; random 1/64; omitted samples 0 ticks 0; src NULL groups short calls; copy is inside replay; reject bits: batch=1 shared=2 drops/split=4 lit+matrix=8 swap=16 open-prim=32
+   139.665 [dltop] src 0x64a2cc caller 0x561a4c words 62 n 1895 hits 0 swaps 1357-2492 ticks total/decode/replay/copy/max 20140538/18177188/0/0/902680 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   139.665 [dltop] src 0x16d0878 caller 0x57ff5c words 5204 n 19 hits 19 swaps 1364-2492 ticks total/decode/replay/copy/max 10622366/0/7140840/4613348/1344396 copy_bytes 592192 normals/misses 0/0 reject 0 rechecks 0
+   139.665 [dltop] src 0x16c32fc caller 0x57ff5c words 5201 n 17 hits 17 swaps 1435-2463 ticks total/decode/replay/copy/max 9702410/0/7500440/4366330/1331504 copy_bytes 529856 normals/misses 0/0 reject 0 rechecks 0
+   139.666 [dltop] src 0x0 caller 0x5646a4 words 6 n 2056 hits 0 swaps 1357-2493 ticks total/decode/replay/copy/max 9150820/6905826/0/0/888886 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   139.669 [dltop] src 0x16c0d34 caller 0x57ff5c words 1046 n 17 hits 1 swaps 1471-2471 ticks total/decode/replay/copy/max 7903172/6594294/87994/49792/1218236 copy_bytes 6876 normals/misses 16/16 reject 0 rechecks 0
+   139.670 [dltop] src 0x0 caller 0x3ffe30 words 3 n 1237 hits 0 swaps 1357-2493 ticks total/decode/replay/copy/max 6424418/5241812/0/0/40372 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   139.670 [dltop] src 0x16bf094 caller 0x57ff5c words 1832 n 22 hits 22 swaps 1374-2455 ticks total/decode/replay/copy/max 6266330/0/5377490/3258288/1072398 copy_bytes 266244 normals/misses 0/0 reject 0 rechecks 0
+   139.670 [dltop] src 0x16a1604 caller 0x57ff5c words 1065 n 11 hits 0 swaps 1418-2470 ticks total/decode/replay/copy/max 5554282/4663878/0/0/1234046 copy_bytes 0 normals/misses 11/11 reject 0 rechecks 0
+   139.671 [dltop] src 0x16a79f4 caller 0x57ff5c words 1367 n 20 hits 20 swaps 1367-2490 ticks total/decode/replay/copy/max 3975286/0/3259888/2743572/981498 copy_bytes 187200 normals/misses 0/0 reject 0 rechecks 0
+   139.671 [dltop] src 0x16a26a8 caller 0x57ff5c words 1610 n 13 hits 13 swaps 1376-2396 ticks total/decode/replay/copy/max 2996600/0/1566482/966466/1054462 copy_bytes 138190 normals/misses 0/0 reject 0 rechecks 0
+   139.671 [dltop] src 0xa1bbd0 caller 0x57ff5c words 1727 n 16 hits 16 swaps 1483-2451 ticks total/decode/replay/copy/max 2977088/0/2275802/853898/1038042 copy_bytes 149920 normals/misses 0/0 reject 0 rechecks 0
+   139.672 [dltop] src 0x16c92a4 caller 0x57ff5c words 560 n 27 hits 27 swaps 1396-2480 ticks total/decode/replay/copy/max 2879610/0/2389386/487290/872850 copy_bytes 92988 normals/misses 0/0 reject 0 rechecks 0
+   139.672 [dltop] src 0x0 caller 0x3ffe10 words 1 n 1214 hits 0 swaps 1359-2493 ticks total/decode/replay/copy/max 2796308/863174/0/0/870122 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   139.672 [dltop] src 0x16b46f4 caller 0x57ff5c words 1417 n 21 hits 21 swaps 1481-2442 ticks total/decode/replay/copy/max 2756270/0/1889284/1245958/158800 copy_bytes 208656 normals/misses 0/0 reject 0 rechecks 0
+   139.673 [dltop] src 0x0 caller 0x565b98 words 3 n 1139 hits 0 swaps 1357-2490 ticks total/decode/replay/copy/max 2349730/1213816/0/0/14802 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   139.673 [dltop] src 0x0 caller 0x3ffef0 words 3 n 1249 hits 0 swaps 1358-2493 ticks total/decode/replay/copy/max 2306672/1213246/0/0/35140 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   139.673 [dltop] src 0x0 caller 0x56492c words 13 n 234 hits 0 swaps 1358-2479 ticks total/decode/replay/copy/max 2306472/2046856/0/0/46928 copy_bytes 0 normals/misses 196/196 reject 0 rechecks 0
+   139.673 [dltop] src 0x0 caller 0x3ffed0 words 0 n 1135 hits 0 swaps 1357-2492 ticks total/decode/replay/copy/max 2296964/385732/0/0/875076 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   139.674 [dltop] src 0xa677b4 caller 0x56492c words 35 n 197 hits 0 swaps 1358-2482 ticks total/decode/replay/copy/max 2275640/2069122/0/0/22046 copy_bytes 0 normals/misses 197/197 reject 0 rechecks 0
+   139.674 [dltop] src 0x0 caller 0x3fff10 words 1 n 1222 hits 0 swaps 1357-2493 ticks total/decode/replay/copy/max 2252762/1167860/0/0/34566 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   139.674 [dlwhy] batch-in-block 0 shared-verts 0 straddle/drops 0 lit+matrix 0 swap 0 open-prim 0 flushes 0
+   139.674 [dlcov] bypass: small 2255808 split 9448470 open-begin 0 (begin first 0)
+   139.674 [dlcov] words: short 11704278 new 0 changed 225126 never 0 hit 43470746 keymiss 2939320
+   139.675 [ds] per game frame (1137 game frames / 600 pictures): g3 fifo calls 979 (51310 fifo words, 55 direct words, 6725 cmds), timer sync 35 us (4 calls), sound pump 5 us, hblank 1101 us
+   139.675 [ds] display lists: 79634 replayed, 20422 decoded, 0 uncacheable, 835 KiB retained
+   139.675 [pace] 600 frames: late V-blanks 2252, resyncs 22, presents skipped 537
+   139.675 [gpu] 600 frames: atlas lookups 0 conversions 0 evictions 0 full 0; 3D batches 74262 draws 74262 tris 5022000 tex uploads 316 tex bytes compared 27729408 tex full 0 unsupported 600; box tests 40200 culled 33600 (far only 0)
+   139.675 [gputime] 600 pictures: GSP us/picture P3D 2620 PPF 439 PSC 310 (log valid); C3D completed queues 600 drawing ms avg 3.96 max 6.76; cmdbuf use max 8%
+   142.358 [sndprof] render_calls 9000 render_frames 4608000 stretches 35942 sndticks 26993 mix_ticks 6496650804 tick_ticks 524926038 mix_calls 35942 mix_frames 4608000 active_ch 401989 pcm8_ch 273 pcm16_ch 0 adpcm_ch 401716 psg_ch 0 cap_inst 0 dep_ch 0
+   144.142 [gamecpu] 600 game frames, logic us p50 37334 p95 40861 p99 41293 max 48638 (includes preemption; excludes V-blank wait)
+   144.143 [gamecpu] active logic+publish us p50 42370 p95 47953 p99 50681 max 52121 (includes skipped pictures and GPU wait; excludes V-blank wait; stages overlap)
+   151.730 [sndprof] render_calls 9600 render_frames 4915200 stretches 38342 sndticks 28793 mix_ticks 6937684826 tick_ticks 560045014 mix_calls 38342 mix_frames 4915200 active_ch 429417 pcm8_ch 273 pcm16_ch 0 adpcm_ch 429144 psg_ch 0 cap_inst 0 dep_ch 0
+   161.105 [sndprof] render_calls 10200 render_frames 5222400 stretches 40733 sndticks 30592 mix_ticks 7352395590 tick_ticks 594045656 mix_calls 40733 mix_frames 5222400 active_ch 455094 pcm8_ch 273 pcm16_ch 0 adpcm_ch 454821 psg_ch 0 cap_inst 0 dep_ch 0
+   169.744 [gamecpu] 600 game frames, logic us p50 37261 p95 40600 p99 40994 max 41171 (includes preemption; excludes V-blank wait)
+   169.745 [gamecpu] active logic+publish us p50 42590 p95 48149 p99 50634 max 51229 (includes skipped pictures and GPU wait; excludes V-blank wait; stages overlap)
+   170.483 [sndprof] render_calls 10800 render_frames 5529600 stretches 43133 sndticks 32392 mix_ticks 7790230416 tick_ticks 629830910 mix_calls 43133 mix_frames 5529600 active_ch 482247 pcm8_ch 273 pcm16_ch 0 adpcm_ch 481974 psg_ch 0 cap_inst 0 dep_ch 0
+   179.859 [sndprof] render_calls 11400 render_frames 5836800 stretches 45533 sndticks 34192 mix_ticks 8246549236 tick_ticks 665897398 mix_calls 45533 mix_frames 5836800 active_ch 510613 pcm8_ch 273 pcm16_ch 0 adpcm_ch 510340 psg_ch 0 cap_inst 0 dep_ch 0
+   188.782 [perf] logic    us p50 36861 p95 40345 p99 40893 max 43072
+   188.783 [perf] vbl_wait us p50    24 p95    42 p99 14965 max 16529
+   188.784 [perf] g2d      us p50  1159 p95  4428 p99  4532 max  4702
+   188.785 [perf] g3d      us p50  5369 p95  8710 p99  8874 max  9237
+   188.785 [perf] gpu_wait us p50     6 p95     8 p99     9 max   126
+   188.786 [perf] submit   us p50   180 p95   302 p99  3023 max  3604
+   188.787 [perf] publish  us p50  9949 p95 10560 p99 10713 max 11195
+   188.787 [perf] window 5: 600 publishes, emulated interval (vblanks) p50 4 max 4, misses 545
+   188.788 [frame] submission interval (refreshes; LCD unobserved) 0:0 1:0 2:1 3:49 4+:550; hitches 599, presents skipped 545; frame time us p50 84445 p99 98910 max 112151
+   188.789 [frame] hitches, game frame(refreshes logic/g2d/g3d ms): 3499(7 39/4/5) 3501(5 36/4/5) 3503(5 39/1/8) 3505(5 36/1/5) 3507(5 40/1/5) 3509(5 36/1/8) 3511(6 36/1/5) 3513(5 36/1/8) 3515(5 36/1/8) 3517(5 40/1/5) 3519(5 36/1/8) 3521(6 40/1/9)
+   188.789 [frame]   3499 scene 2496: tile conv 0, spans 1, quads 1211, tex uploads 1, tex bytes compared 46080
+   188.789 [frame]   3501 scene 2498: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46080
+   188.789 [frame]   3503 scene 2500: tile conv 0, spans 1, quads 1211, tex uploads 3, tex bytes compared 46080
+   188.789 [frame]   3505 scene 2502: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46080
+   188.790 [frame]   3507 scene 2504: tile conv 0, spans 1, quads 1211, tex uploads 1, tex bytes compared 46080
+   188.790 [frame]   3509 scene 2506: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46080
+   188.790 [frame]   3511 scene 2508: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46080
+   188.790 [frame]   3513 scene 2510: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46080
+   188.790 [frame]   3515 scene 2512: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46080
+   188.790 [frame]   3517 scene 2514: tile conv 0, spans 1, quads 1211, tex uploads 1, tex bytes compared 46080
+   188.790 [frame]   3519 scene 2516: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46080
+   188.790 [frame]   3521 scene 2518: tile conv 0, spans 1, quads 1211, tex uploads 3, tex bytes compared 46080
+   188.790 [scene] submissions 2401-3000 game 3499-4642 latest scene 3639; same scene 0; empty submissions 0; GPU queue complete game 4640 scene 3637; LCD presentation unobserved (submission intervals are a proxy)
+   188.791 [gpu] 600 frames: 2D screens skipped 600, layers reused 4200 rebuilt 0, bg quads 514800 obj quads 211800 draws 0 spans 600 unsupported 0 dropped 0, char KiB compared 13012
+   188.791 [g3sample] random 1/64 FIFO calls: samples 17623 total_ticks 180648804 decode_ticks 74029804 replay_ticks 52093314 (block_copy_ticks 30530606 nested); remainder includes lookup/recording and probe overhead
+   188.791 [dltop] top 20 by sampled total ticks; random 1/64; omitted samples 0 ticks 0; src NULL groups short calls; copy is inside replay; reject bits: batch=1 shared=2 drops/split=4 lit+matrix=8 swap=16 open-prim=32
+   188.791 [dltop] src 0x64a2cc caller 0x561a4c words 62 n 1879 hits 0 swaps 2494-3638 ticks total/decode/replay/copy/max 22126982/20165346/0/0/892688 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   188.792 [dltop] src 0x16d0878 caller 0x57ff5c words 5204 n 15 hits 15 swaps 2546-3500 ticks total/decode/replay/copy/max 11176470/0/7609320/3898902/1362792 copy_bytes 467520 normals/misses 0/0 reject 0 rechecks 0
+   188.792 [dltop] src 0x16a1604 caller 0x57ff5c words 1065 n 20 hits 0 swaps 2500-3621 ticks total/decode/replay/copy/max 9900672/8203530/0/0/1264358 copy_bytes 0 normals/misses 20/20 reject 0 rechecks 0
+   188.792 [dltop] src 0x16c32fc caller 0x57ff5c words 5201 n 19 hits 19 swaps 2546-3638 ticks total/decode/replay/copy/max 9575604/0/7168694/4609512/1218360 copy_bytes 592192 normals/misses 0/0 reject 0 rechecks 0
+   188.793 [dltop] src 0x0 caller 0x3ffe30 words 3 n 1212 hits 0 swaps 2496-3638 ticks total/decode/replay/copy/max 7265148/5291304/0/0/884606 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   188.796 [dltop] src 0x0 caller 0x5646a4 words 6 n 2023 hits 0 swaps 2494-3638 ticks total/decode/replay/copy/max 7022948/4778698/0/0/688728 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   188.796 [dltop] src 0x16c0d34 caller 0x57ff5c words 1046 n 13 hits 0 swaps 2863-3590 ticks total/decode/replay/copy/max 6034562/4253250/0/0/1241250 copy_bytes 0 normals/misses 13/13 reject 0 rechecks 0
+   188.797 [dltop] src 0x16b46f4 caller 0x57ff5c words 1417 n 18 hits 18 swaps 2558-3614 ticks total/decode/replay/copy/max 4827870/0/2386462/1028688/988574 copy_bytes 178848 normals/misses 0/0 reject 0 rechecks 0
+   188.797 [dltop] src 0x16bf094 caller 0x57ff5c words 1832 n 20 hits 20 swaps 2588-3573 ticks total/decode/replay/copy/max 4280568/0/3447070/2382348/1036562 copy_bytes 242040 normals/misses 0/0 reject 0 rechecks 0
+   188.797 [dltop] src 0xa08e70 caller 0x57ff5c words 913 n 28 hits 28 swaps 2497-3567 ticks total/decode/replay/copy/max 4062920/0/2448326/1792804/987572 copy_bytes 173376 normals/misses 0/0 reject 0 rechecks 0
+   188.798 [dltop] src 0x0 caller 0x565b98 words 3 n 1108 hits 0 swaps 2494-3637 ticks total/decode/replay/copy/max 4043130/2932100/0/0/883154 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   188.798 [dltop] src 0x0 caller 0x3ffef0 words 3 n 1136 hits 0 swaps 2494-3638 ticks total/decode/replay/copy/max 3695746/1941592/0/0/873236 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   188.798 [dltop] src 0x0 caller 0x56492c words 13 n 262 hits 0 swaps 2500-3632 ticks total/decode/replay/copy/max 3470024/3159110/0/0/893932 copy_bytes 0 normals/misses 222/222 reject 0 rechecks 0
+   188.799 [dltop] src 0x16a26a8 caller 0x57ff5c words 1610 n 16 hits 16 swaps 2557-3637 ticks total/decode/replay/copy/max 3415456/0/2721918/1987314/995706 copy_bytes 170080 normals/misses 0/0 reject 0 rechecks 0
+   188.799 [dltop] src 0xa677b4 caller 0x56492c words 35 n 182 hits 0 swaps 2496-3636 ticks total/decode/replay/copy/max 3048328/2856102/0/0/925274 copy_bytes 0 normals/misses 182/182 reject 0 rechecks 0
+   188.799 [dltop] src 0x16a4fd0 caller 0x57ff5c words 481 n 19 hits 19 swaps 2530-3621 ticks total/decode/replay/copy/max 2853266/0/704796/429266/1018870 copy_bytes 62510 normals/misses 0/0 reject 0 rechecks 0
+   188.800 [dltop] src 0xa1bbd0 caller 0x57ff5c words 1727 n 20 hits 20 swaps 2679-3611 ticks total/decode/replay/copy/max 2674570/0/1796234/1068844/161794 copy_bytes 187400 normals/misses 0/0 reject 0 rechecks 0
+   188.800 [dltop] src 0x6351f4 caller 0x565050 words 18 n 200 hits 0 swaps 2496-3629 ticks total/decode/replay/copy/max 2534708/561294/0/0/895438 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   188.800 [dltop] src 0x0 caller 0x3fff10 words 1 n 1223 hits 0 swaps 2494-3638 ticks total/decode/replay/copy/max 2393612/1295334/0/0/38360 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   188.800 [dltop] src 0x0 caller 0x3ffed0 words 0 n 1204 hits 0 swaps 2494-3638 ticks total/decode/replay/copy/max 2334082/367654/0/0/864136 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   188.801 [dlwhy] batch-in-block 0 shared-verts 0 straddle/drops 0 lit+matrix 0 swap 0 open-prim 0 flushes 0
+   188.801 [dlcov] bypass: small 2271680 split 9514950 open-begin 0 (begin first 0)
+   188.801 [dlcov] words: short 11786630 new 0 changed 226710 never 0 hit 43778393 keymiss 2958217
+   188.801 [ds] per game frame (1145 game frames / 600 pictures): g3 fifo calls 979 (51310 fifo words, 55 direct words, 6724 cmds), timer sync 39 us (4 calls), sound pump 5 us, hblank 1069 us
+   188.801 [ds] display lists: 80196 replayed, 20564 decoded, 0 uncacheable, 835 KiB retained
+   188.801 [pace] 600 frames: late V-blanks 2269, resyncs 21, presents skipped 545
+   188.801 [gpu] 600 frames: atlas lookups 0 conversions 0 evictions 0 full 0; 3D batches 74253 draws 74253 tris 5022000 tex uploads 319 tex bytes compared 27747840 tex full 0 unsupported 600; box tests 40200 culled 33600 (far only 0)
+   188.802 [gputime] 600 pictures: GSP us/picture P3D 2621 PPF 440 PSC 310 (log valid); C3D completed queues 600 drawing ms avg 3.95 max 6.79; cmdbuf use max 8%
+   189.231 [sndprof] render_calls 12000 render_frames 6144000 stretches 47923 sndticks 35991 mix_ticks 8690097020 tick_ticks 701262250 mix_calls 47923 mix_frames 6144000 active_ch 538090 pcm8_ch 273 pcm16_ch 0 adpcm_ch 537817 psg_ch 0 cap_inst 0 dep_ch 0
+   195.487 [gamecpu] 600 game frames, logic us p50 37381 p95 40800 p99 41319 max 50769 (includes preemption; excludes V-blank wait)
+   195.488 [gamecpu] active logic+publish us p50 43127 p95 48369 p99 50703 max 51656 (includes skipped pictures and GPU wait; excludes V-blank wait; stages overlap)
+   198.608 [sndprof] render_calls 12600 render_frames 6451200 stretches 50323 sndticks 37791 mix_ticks 9085495070 tick_ticks 734535352 mix_calls 50323 mix_frames 6451200 active_ch 562492 pcm8_ch 273 pcm16_ch 0 adpcm_ch 562219 psg_ch 0 cap_inst 0 dep_ch 0
+   207.984 [sndprof] render_calls 13200 render_frames 6758400 stretches 52714 sndticks 39590 mix_ticks 9544976896 tick_ticks 771227504 mix_calls 52714 mix_frames 6758400 active_ch 591076 pcm8_ch 273 pcm16_ch 0 adpcm_ch 590803 psg_ch 0 cap_inst 0 dep_ch 0
+   217.356 [sndprof] render_calls 13800 render_frames 7065600 stretches 55114 sndticks 41390 mix_ticks 9992799368 tick_ticks 807097190 mix_calls 55114 mix_frames 7065600 active_ch 618821 pcm8_ch 273 pcm16_ch 0 adpcm_ch 618548 psg_ch 0 cap_inst 0 dep_ch 0
+   221.267 [gamecpu] 600 game frames, logic us p50 37518 p95 40755 p99 41191 max 41412 (includes preemption; excludes V-blank wait)
+   221.268 [gamecpu] active logic+publish us p50 43039 p95 49553 p99 50894 max 51501 (includes skipped pictures and GPU wait; excludes V-blank wait; stages overlap)
+   226.732 [sndprof] render_calls 14400 render_frames 7372800 stretches 57514 sndticks 43190 mix_ticks 10440180810 tick_ticks 842410530 mix_calls 57514 mix_frames 7372800 active_ch 646728 pcm8_ch 273 pcm16_ch 0 adpcm_ch 646455 psg_ch 0 cap_inst 0 dep_ch 0
+   236.109 [sndprof] render_calls 15000 render_frames 7680000 stretches 59905 sndticks 44989 mix_ticks 10841837452 tick_ticks 876127436 mix_calls 59905 mix_frames 7680000 active_ch 671378 pcm8_ch 273 pcm16_ch 0 adpcm_ch 671105 psg_ch 0 cap_inst 0 dep_ch 0
+   237.600 [perf] logic    us p50 36815 p95 40312 p99 40830 max 41412
+   237.601 [perf] vbl_wait us p50    24 p95    34 p99 14741 max 16301
+   237.605 [perf] g2d      us p50  1163 p95  4393 p99  4511 max  4624
+   237.606 [perf] g3d      us p50  5351 p95  8703 p99  8828 max  9024
+   237.607 [perf] gpu_wait us p50     6 p95     8 p99     9 max    11
+   237.608 [perf] submit   us p50   180 p95   313 p99  3241 max  3478
+   237.609 [perf] publish  us p50  9512 p95 10550 p99 10762 max 10847
+   237.609 [perf] window 6: 600 publishes, emulated interval (vblanks) p50 4 max 4, misses 544
+   237.610 [frame] submission interval (refreshes; LCD unobserved) 0:0 1:0 2:3 3:50 4+:547; hitches 597, presents skipped 544; frame time us p50 84304 p99 96571 max 106805
+   237.611 [frame] hitches, game frame(refreshes logic/g2d/g3d ms): 4644(7 36/1/5) 4646(5 36/1/8) 4648(5 36/1/4) 4650(5 36/1/8) 4652(6 39/1/5) 4653(3 40/1/5) 4654(3 40/1/5) 4656(5 36/4/5) 4658(5 36/4/5) 4660(5 36/4/5) 4662(5 36/1/8) 4664(5 35/1/5)
+   237.611 [frame]   4644 scene 3641: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46080
+   237.611 [frame]   4646 scene 3643: tile conv 0, spans 1, quads 1211, tex uploads 1, tex bytes compared 46080
+   237.611 [frame]   4648 scene 3645: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46080
+   237.611 [frame]   4650 scene 3647: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46080
+   237.611 [frame]   4652 scene 3649: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46080
+   237.611 [frame]   4653 scene 3650: tile conv 0, spans 1, quads 1211, tex uploads 1, tex bytes compared 46080
+   237.611 [frame]   4654 scene 3651: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46080
+   237.612 [frame]   4656 scene 3653: tile conv 0, spans 1, quads 1211, tex uploads 3, tex bytes compared 46080
+   237.612 [frame]   4658 scene 3655: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46080
+   237.612 [frame]   4660 scene 3657: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46080
+   237.612 [frame]   4662 scene 3659: tile conv 0, spans 1, quads 1211, tex uploads 1, tex bytes compared 46080
+   237.612 [frame]   4664 scene 3661: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46080
+   237.612 [scene] submissions 3001-3600 game 4644-5786 latest scene 4783; same scene 0; empty submissions 0; GPU queue complete game 5784 scene 4781; LCD presentation unobserved (submission intervals are a proxy)
+   237.613 [gpu] 600 frames: 2D screens skipped 600, layers reused 4200 rebuilt 0, bg quads 514800 obj quads 211800 draws 0 spans 600 unsupported 0 dropped 0, char KiB compared 13012
+   237.613 [g3sample] random 1/64 FIFO calls: samples 17683 total_ticks 178540358 decode_ticks 68669644 replay_ticks 53163472 (block_copy_ticks 32260514 nested); remainder includes lookup/recording and probe overhead
+   237.613 [dltop] top 20 by sampled total ticks; random 1/64; omitted samples 0 ticks 0; src NULL groups short calls; copy is inside replay; reject bits: batch=1 shared=2 drops/split=4 lit+matrix=8 swap=16 open-prim=32
+   237.613 [dltop] src 0x64a2cc caller 0x561a4c words 62 n 1952 hits 0 swaps 3640-4782 ticks total/decode/replay/copy/max 24298174/20553500/0/0/907862 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   237.614 [dltop] src 0x16a1604 caller 0x57ff5c words 1065 n 21 hits 0 swaps 3731-4722 ticks total/decode/replay/copy/max 10016250/7464546/0/0/1198646 copy_bytes 0 normals/misses 21/21 reject 0 rechecks 0
+   237.614 [dltop] src 0x0 caller 0x3ffe30 words 3 n 1208 hits 0 swaps 3639-4781 ticks total/decode/replay/copy/max 8609892/7486142/0/0/890660 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   237.614 [dltop] src 0x16d0878 caller 0x57ff5c words 5204 n 14 hits 14 swaps 3654-4627 ticks total/decode/replay/copy/max 8373962/0/5553492/2784750/1359910 copy_bytes 436352 normals/misses 0/0 reject 0 rechecks 0
+   237.614 [dltop] src 0x16c0d34 caller 0x57ff5c words 1046 n 17 hits 0 swaps 3755-4723 ticks total/decode/replay/copy/max 7025828/5303042/0/0/1199884 copy_bytes 0 normals/misses 17/17 reject 0 rechecks 0
+   237.615 [dltop] src 0x0 caller 0x5646a4 words 6 n 2081 hits 0 swaps 3639-4782 ticks total/decode/replay/copy/max 6564166/4261086/0/0/37454 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   237.615 [dltop] src 0x16c32fc caller 0x57ff5c words 5201 n 12 hits 12 swaps 3650-4753 ticks total/decode/replay/copy/max 6496876/0/4150964/2479242/1311440 copy_bytes 374016 normals/misses 0/0 reject 0 rechecks 0
+   237.615 [dltop] src 0x16b46f4 caller 0x57ff5c words 1417 n 21 hits 21 swaps 3640-4781 ticks total/decode/replay/copy/max 4469226/0/3582030/2065008/1002058 copy_bytes 208656 normals/misses 0/0 reject 0 rechecks 0
+   237.616 [dltop] src 0x16bf094 caller 0x57ff5c words 1832 n 15 hits 15 swaps 3676-4751 ticks total/decode/replay/copy/max 4249794/0/3662152/2903950/1074154 copy_bytes 181530 normals/misses 0/0 reject 0 rechecks 0
+   237.616 [dltop] src 0x0 caller 0x3fff10 words 1 n 1216 hits 0 swaps 3640-4782 ticks total/decode/replay/copy/max 4037278/2061598/0/0/875852 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   237.616 [dltop] src 0x0 caller 0x3ffef0 words 3 n 1166 hits 0 swaps 3639-4781 ticks total/decode/replay/copy/max 3919070/1118930/0/0/882302 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   237.617 [dltop] src 0x16a26a8 caller 0x57ff5c words 1610 n 25 hits 25 swaps 3679-4778 ticks total/decode/replay/copy/max 3868420/0/2810806/1679820/183622 copy_bytes 265750 normals/misses 0/0 reject 0 rechecks 0
+   237.617 [dltop] src 0xa1bbd0 caller 0x57ff5c words 1727 n 14 hits 14 swaps 3819-4752 ticks total/decode/replay/copy/max 3503652/0/1220184/744050/1015510 copy_bytes 131180 normals/misses 0/0 reject 0 rechecks 0
+   237.617 [dltop] src 0xa0fa4c caller 0x57ff5c words 758 n 20 hits 20 swaps 3678-4664 ticks total/decode/replay/copy/max 3274952/0/1923774/1478364/970952 copy_bytes 108320 normals/misses 0/0 reject 0 rechecks 0
+   237.618 [dltop] src 0xa17b98 caller 0x57ff5c words 1542 n 19 hits 19 swaps 3697-4714 ticks total/decode/replay/copy/max 3089588/0/2348260/1869844/956128 copy_bytes 192356 normals/misses 0/0 reject 0 rechecks 0
+   237.618 [dltop] src 0xa08e70 caller 0x57ff5c words 913 n 19 hits 19 swaps 3643-4682 ticks total/decode/replay/copy/max 3086148/0/2608152/1591004/920312 copy_bytes 117648 normals/misses 0/0 reject 0 rechecks 0
+   237.618 [dltop] src 0x16a6160 caller 0x57ff5c words 1573 n 20 hits 20 swaps 3656-4747 ticks total/decode/replay/copy/max 2847134/0/2009322/828006/920614 copy_bytes 168000 normals/misses 0/0 reject 0 rechecks 0
+   237.619 [dltop] src 0x0 caller 0x3ffe10 words 1 n 1195 hits 0 swaps 3639-4782 ticks total/decode/replay/copy/max 2768358/864928/0/0/776296 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   237.619 [dltop] src 0x16c27cc caller 0x57ff5c words 716 n 21 hits 21 swaps 3648-4733 ticks total/decode/replay/copy/max 2657568/0/2208768/1641060/976328 copy_bytes 109116 normals/misses 0/0 reject 0 rechecks 0
+   237.619 [dltop] src 0xa677b4 caller 0x56492c words 35 n 218 hits 0 swaps 3642-4782 ticks total/decode/replay/copy/max 2642948/2416474/0/0/49308 copy_bytes 0 normals/misses 218/218 reject 0 rechecks 0
+   237.620 [dlwhy] batch-in-block 0 shared-verts 0 straddle/drops 0 lit+matrix 0 swap 0 open-prim 0 flushes 0
+   237.620 [dlcov] bypass: small 2269696 split 9506640 open-begin 0 (begin first 0)
+   237.620 [dlcov] words: short 11776336 new 0 changed 226512 never 0 hit 43735979 keymiss 2959813
+   237.620 [ds] per game frame (1144 game frames / 600 pictures): g3 fifo calls 979 (51310 fifo words, 55 direct words, 6726 cmds), timer sync 36 us (4 calls), sound pump 8 us, hblank 1097 us
+   237.620 [ds] display lists: 80122 replayed, 20550 decoded, 0 uncacheable, 835 KiB retained
+   237.620 [pace] 600 frames: late V-blanks 2267, resyncs 21, presents skipped 544
+   237.620 [gpu] 600 frames: atlas lookups 0 conversions 0 evictions 0 full 0; 3D batches 74239 draws 74239 tris 5022000 tex uploads 317 tex bytes compared 27723264 tex full 0 unsupported 600; box tests 40200 culled 33600 (far only 0)
+   237.621 [gputime] 600 pictures: GSP us/picture P3D 2618 PPF 439 PSC 310 (log valid); C3D completed queues 600 drawing ms avg 4.03 max 6.79; cmdbuf use max 8%
+   245.481 [sndprof] render_calls 15600 render_frames 7987200 stretches 62305 sndticks 46789 mix_ticks 11299534314 tick_ticks 912989408 mix_calls 62305 mix_frames 7987200 active_ch 700054 pcm8_ch 273 pcm16_ch 0 adpcm_ch 699781 psg_ch 0 cap_inst 0 dep_ch 0
+   246.912 [gamecpu] 600 game frames, logic us p50 37337 p95 40760 p99 41096 max 48422 (includes preemption; excludes V-blank wait)
+   246.913 [gamecpu] active logic+publish us p50 42262 p95 49647 p99 50612 max 51132 (includes skipped pictures and GPU wait; excludes V-blank wait; stages overlap)
+   254.857 [sndprof] render_calls 16200 render_frames 8294400 stretches 64695 sndticks 48588 mix_ticks 11745787772 tick_ticks 948151048 mix_calls 64695 mix_frames 8294400 active_ch 727479 pcm8_ch 273 pcm16_ch 0 adpcm_ch 727206 psg_ch 0 cap_inst 0 dep_ch 0
+   264.234 [sndprof] render_calls 16800 render_frames 8601600 stretches 67095 sndticks 50388 mix_ticks 12176223098 tick_ticks 983279082 mix_calls 67095 mix_frames 8601600 active_ch 754230 pcm8_ch 273 pcm16_ch 0 adpcm_ch 753957 psg_ch 0 cap_inst 0 dep_ch 0
+   272.492 [gamecpu] 600 game frames, logic us p50 37282 p95 40710 p99 41123 max 43527 (includes preemption; excludes V-blank wait)
+   272.496 [gamecpu] active logic+publish us p50 42383 p95 47755 p99 50553 max 50743 (includes skipped pictures and GPU wait; excludes V-blank wait; stages overlap)
+   273.606 [sndprof] render_calls 17400 render_frames 8908800 stretches 69495 sndticks 52188 mix_ticks 12596171838 tick_ticks 1017875774 mix_calls 69495 mix_frames 8908800 active_ch 780282 pcm8_ch 273 pcm16_ch 0 adpcm_ch 780009 psg_ch 0 cap_inst 0 dep_ch 0
+   282.982 [sndprof] render_calls 18000 render_frames 9216000 stretches 71886 sndticks 53987 mix_ticks 13058579128 tick_ticks 1054751380 mix_calls 71886 mix_frames 9216000 active_ch 808879 pcm8_ch 273 pcm16_ch 0 adpcm_ch 808606 psg_ch 0 cap_inst 0 dep_ch 0
+   286.504 [perf] logic    us p50 36858 p95 40300 p99 40615 max 44086
+   286.505 [perf] vbl_wait us p50    24 p95    50 p99 13386 max 16025
+   286.506 [perf] g2d      us p50  1158 p95  4411 p99  4536 max  4687
+   286.507 [perf] g3d      us p50  5359 p95  8720 p99  8893 max  9144
+   286.508 [perf] gpu_wait us p50     6 p95     8 p99     9 max  3281
+   286.512 [perf] submit   us p50   180 p95   320 p99  3488 max  3621
+   286.513 [perf] publish  us p50  9910 p95 10587 p99 10786 max 11055
+   286.513 [perf] window 7: 600 publishes, emulated interval (vblanks) p50 4 max 4, misses 538
+   286.514 [frame] submission interval (refreshes; LCD unobserved) 0:0 1:0 2:2 3:56 4+:542; hitches 598, presents skipped 538; frame time us p50 84490 p99 89171 max 107979
+   286.514 [frame] hitches, game frame(refreshes logic/g2d/g3d ms): 5788(7 36/1/8) 5790(5 36/1/5) 5791(3 40/4/5) 5792(3 36/1/8) 5793(3 37/1/8) 5795(5 36/1/5) 5797(5 37/1/8) 5799(6 36/1/8) 5801(5 40/1/5) 5803(5 36/1/8) 5805(5 39/1/5) 5807(5 38/1/8)
+   286.514 [frame]   5788 scene 4785: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   286.514 [frame]   5790 scene 4787: tile conv 0, spans 1, quads 1211, tex uploads 3, tex bytes compared 46592
+   286.515 [frame]   5791 scene 4788: tile conv 0, spans 1, quads 1211, tex uploads 1, tex bytes compared 46592
+   286.515 [frame]   5792 scene 4789: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   286.515 [frame]   5793 scene 4790: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   286.515 [frame]   5795 scene 4792: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   286.515 [frame]   5797 scene 4794: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   286.515 [frame]   5799 scene 4796: tile conv 0, spans 1, quads 1211, tex uploads 1, tex bytes compared 46592
+   286.515 [frame]   5801 scene 4798: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   286.515 [frame]   5803 scene 4800: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   286.516 [frame]   5805 scene 4802: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   286.516 [frame]   5807 scene 4804: tile conv 0, spans 1, quads 1211, tex uploads 3, tex bytes compared 46592
+   286.516 [scene] submissions 3601-4200 game 5788-6924 latest scene 5921; same scene 0; empty submissions 0; GPU queue complete game 6922 scene 5919; LCD presentation unobserved (submission intervals are a proxy)
+   286.516 [gpu] 600 frames: 2D screens skipped 600, layers reused 4200 rebuilt 0, bg quads 514800 obj quads 211800 draws 0 spans 600 unsupported 0 dropped 0, char KiB compared 13012
+   286.516 [g3sample] random 1/64 FIFO calls: samples 17434 total_ticks 181897408 decode_ticks 80471716 replay_ticks 53768242 (block_copy_ticks 32464084 nested); remainder includes lookup/recording and probe overhead
+   286.516 [dltop] top 20 by sampled total ticks; random 1/64; omitted samples 0 ticks 0; src NULL groups short calls; copy is inside replay; reject bits: batch=1 shared=2 drops/split=4 lit+matrix=8 swap=16 open-prim=32
+   286.517 [dltop] src 0x64a2cc caller 0x561a4c words 62 n 1983 hits 0 swaps 4783-5920 ticks total/decode/replay/copy/max 29335532/27307224/0/0/924032 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   286.517 [dltop] src 0x16d0878 caller 0x57ff5c words 5204 n 18 hits 18 swaps 4790-5891 ticks total/decode/replay/copy/max 10362650/0/7964338/3780122/1366068 copy_bytes 561024 normals/misses 0/0 reject 0 rechecks 0
+   286.517 [dltop] src 0x16c32fc caller 0x57ff5c words 5201 n 16 hits 16 swaps 4907-5767 ticks total/decode/replay/copy/max 8263202/0/6187736/4071600/1324318 copy_bytes 498688 normals/misses 0/0 reject 0 rechecks 0
+   286.518 [dltop] src 0x16a1604 caller 0x57ff5c words 1065 n 18 hits 0 swaps 4912-5908 ticks total/decode/replay/copy/max 8228258/6701558/0/0/1267510 copy_bytes 0 normals/misses 18/18 reject 0 rechecks 0
+   286.518 [dltop] src 0x0 caller 0x5646a4 words 6 n 2035 hits 0 swaps 4783-5920 ticks total/decode/replay/copy/max 8211294/5876314/0/0/874356 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   286.518 [dltop] src 0x0 caller 0x3ffe30 words 3 n 1205 hits 0 swaps 4783-5920 ticks total/decode/replay/copy/max 7895700/6764688/0/0/888362 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   286.519 [dltop] src 0x16c0d34 caller 0x57ff5c words 1046 n 12 hits 0 swaps 4862-5776 ticks total/decode/replay/copy/max 4788644/3079788/0/0/1205260 copy_bytes 0 normals/misses 12/12 reject 0 rechecks 0
+   286.519 [dltop] src 0x16bf094 caller 0x57ff5c words 1832 n 14 hits 14 swaps 4808-5893 ticks total/decode/replay/copy/max 4134036/0/3587188/1974756/1071654 copy_bytes 169428 normals/misses 0/0 reject 0 rechecks 0
+   286.519 [dltop] src 0x0 caller 0x3ffdfc words 1 n 1211 hits 0 swaps 4783-5920 ticks total/decode/replay/copy/max 3687078/1654100/0/0/874038 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   286.519 [dltop] src 0x0 caller 0x3ffe10 words 1 n 1179 hits 0 swaps 4783-5920 ticks total/decode/replay/copy/max 3575548/2537030/0/0/864102 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   286.520 [dltop] src 0xa1bbd0 caller 0x57ff5c words 1727 n 20 hits 20 swaps 4840-5902 ticks total/decode/replay/copy/max 3544762/0/2621708/1958974/1029310 copy_bytes 187400 normals/misses 0/0 reject 0 rechecks 0
+   286.520 [dltop] src 0xa17b98 caller 0x57ff5c words 1542 n 23 hits 23 swaps 4831-5914 ticks total/decode/replay/copy/max 3540504/0/2628948/2073508/1015434 copy_bytes 232852 normals/misses 0/0 reject 0 rechecks 0
+   286.520 [dltop] src 0x16a26a8 caller 0x57ff5c words 1610 n 17 hits 17 swaps 4894-5838 ticks total/decode/replay/copy/max 3485226/0/1965582/1158344/939046 copy_bytes 180710 normals/misses 0/0 reject 0 rechecks 0
+   286.521 [dltop] src 0x0 caller 0x565b98 words 3 n 1124 hits 0 swaps 4783-5920 ticks total/decode/replay/copy/max 3269248/2121240/0/0/869012 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   286.521 [dltop] src 0x16b2ab8 caller 0x57ff5c words 1146 n 14 hits 14 swaps 4788-5865 ticks total/decode/replay/copy/max 3167430/0/2007116/1519178/1015520 copy_bytes 96768 normals/misses 0/0 reject 0 rechecks 0
+   286.521 [dltop] src 0x0 caller 0x3ffef0 words 3 n 1205 hits 0 swaps 4784-5919 ticks total/decode/replay/copy/max 3163512/2111232/0/0/868414 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   286.521 [dltop] src 0x16b46f4 caller 0x57ff5c words 1417 n 24 hits 24 swaps 4789-5862 ticks total/decode/replay/copy/max 3027228/0/2052070/1331128/167816 copy_bytes 238464 normals/misses 0/0 reject 0 rechecks 0
+   286.522 [dltop] src 0x0 caller 0x3fff10 words 1 n 1233 hits 0 swaps 4783-5920 ticks total/decode/replay/copy/max 2907552/1843388/0/0/616540 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   286.522 [dltop] src 0xa08e70 caller 0x57ff5c words 913 n 23 hits 23 swaps 4844-5914 ticks total/decode/replay/copy/max 2829632/0/2250226/849940/967918 copy_bytes 142416 normals/misses 0/0 reject 0 rechecks 0
+   286.522 [dltop] src 0x16cf1a8 caller 0x57ff5c words 694 n 23 hits 23 swaps 4802-5881 ticks total/decode/replay/copy/max 2742552/0/2262452/776084/992058 copy_bytes 117254 normals/misses 0/0 reject 0 rechecks 0
+   286.523 [dlwhy] batch-in-block 0 shared-verts 0 straddle/drops 0 lit+matrix 0 swap 0 open-prim 0 flushes 0
+   286.523 [dlcov] bypass: small 2257792 split 9456780 open-begin 0 (begin first 0)
+   286.523 [dlcov] words: short 11714572 new 0 changed 225324 never 0 hit 43511049 keymiss 2939835
+   286.523 [ds] per game frame (1138 game frames / 600 pictures): g3 fifo calls 979 (51310 fifo words, 55 direct words, 6724 cmds), timer sync 38 us (4 calls), sound pump 6 us, hblank 1095 us
+   286.523 [ds] display lists: 79706 replayed, 20438 decoded, 0 uncacheable, 835 KiB retained
+   286.524 [pace] 600 frames: late V-blanks 2254, resyncs 22, presents skipped 538
+   286.524 [gpu] 600 frames: atlas lookups 0 conversions 0 evictions 0 full 0; 3D batches 74223 draws 74223 tris 5022000 tex uploads 318 tex bytes compared 27736064 tex full 0 unsupported 600; box tests 40200 culled 33600 (far only 0)
+   286.524 [gputime] 600 pictures: GSP us/picture P3D 2623 PPF 440 PSC 310 (log valid); C3D completed queues 600 drawing ms avg 4.03 max 6.92; cmdbuf use max 8%
+   292.359 [sndprof] render_calls 18600 render_frames 9523200 stretches 74286 sndticks 55787 mix_ticks 13500021952 tick_ticks 1089922524 mix_calls 74286 mix_frames 9523200 active_ch 836332 pcm8_ch 273 pcm16_ch 0 adpcm_ch 836059 psg_ch 0 cap_inst 0 dep_ch 0
+   298.311 [gamecpu] 600 game frames, logic us p50 37387 p95 40767 p99 41135 max 46449 (includes preemption; excludes V-blank wait)
+   298.312 [gamecpu] active logic+publish us p50 43162 p95 49528 p99 50735 max 51085 (includes skipped pictures and GPU wait; excludes V-blank wait; stages overlap)
+   301.730 [sndprof] render_calls 19200 render_frames 9830400 stretches 76676 sndticks 57586 mix_ticks 13919704478 tick_ticks 1124344548 mix_calls 76676 mix_frames 9830400 active_ch 862282 pcm8_ch 273 pcm16_ch 0 adpcm_ch 862009 psg_ch 0 cap_inst 0 dep_ch 0
+   311.107 [sndprof] render_calls 19800 render_frames 10137600 stretches 79076 sndticks 59386 mix_ticks 14351804410 tick_ticks 1159849692 mix_calls 79076 mix_frames 10137600 active_ch 889136 pcm8_ch 273 pcm16_ch 0 adpcm_ch 888863 psg_ch 0 cap_inst 0 dep_ch 0
+   320.483 [sndprof] render_calls 20400 render_frames 10444800 stretches 81467 sndticks 61185 mix_ticks 14809563568 tick_ticks 1196207766 mix_calls 81467 mix_frames 10444800 active_ch 917413 pcm8_ch 273 pcm16_ch 0 adpcm_ch 917140 psg_ch 0 cap_inst 0 dep_ch 0
+   324.004 [gamecpu] 600 game frames, logic us p50 37414 p95 40809 p99 41113 max 41582 (includes preemption; excludes V-blank wait)
+   324.005 [gamecpu] active logic+publish us p50 43138 p95 48519 p99 50786 max 51605 (includes skipped pictures and GPU wait; excludes V-blank wait; stages overlap)
+   329.855 [sndprof] render_calls 21000 render_frames 10752000 stretches 83867 sndticks 62985 mix_ticks 15253519604 tick_ticks 1231688354 mix_calls 83867 mix_frames 10752000 active_ch 945056 pcm8_ch 273 pcm16_ch 0 adpcm_ch 944783 psg_ch 0 cap_inst 0 dep_ch 0
+   335.327 [perf] logic    us p50 36769 p95 40279 p99 40807 max 43805
+   335.328 [perf] vbl_wait us p50    24 p95    33 p99 14391 max 17603
+   335.329 [perf] g2d      us p50  1156 p95  4438 p99  4533 max  4711
+   335.330 [perf] g3d      us p50  5364 p95  8714 p99  8855 max  8962
+   335.331 [perf] gpu_wait us p50     6 p95     8 p99     9 max   127
+   335.332 [perf] submit   us p50   180 p95   310 p99  3445 max  3613
+   335.333 [perf] publish  us p50  9666 p95 10579 p99 10768 max 10954
+   335.333 [perf] window 8: 600 publishes, emulated interval (vblanks) p50 4 max 4, misses 541
+   335.334 [frame] submission interval (refreshes; LCD unobserved) 0:0 1:0 2:2 3:53 4+:545; hitches 598, presents skipped 541; frame time us p50 84324 p99 88873 max 101589
+   335.334 [frame] hitches, game frame(refreshes logic/g2d/g3d ms): 6926(6 35/1/5) 6928(6 35/1/8) 6930(4 35/1/7) 6932(5 35/1/4) 6934(5 36/4/4) 6936(5 36/4/5) 6938(6 36/4/5) 6940(5 36/4/5) 6942(5 36/1/8) 6944(5 39/1/5) 6946(5 40/1/8) 6948(6 36/1/5)
+   335.334 [frame]   6926 scene 5923: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 45568
+   335.334 [frame]   6928 scene 5925: tile conv 0, spans 1, quads 1211, tex uploads 1, tex bytes compared 45568
+   335.335 [frame]   6930 scene 5927: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 45568
+   335.335 [frame]   6932 scene 5929: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 45568
+   335.335 [frame]   6934 scene 5931: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 45568
+   335.335 [frame]   6936 scene 5933: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 45568
+   335.335 [frame]   6938 scene 5935: tile conv 0, spans 1, quads 1211, tex uploads 1, tex bytes compared 45568
+   335.335 [frame]   6940 scene 5937: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 45568
+   335.335 [frame]   6942 scene 5939: tile conv 0, spans 1, quads 1211, tex uploads 3, tex bytes compared 45568
+   335.335 [frame]   6944 scene 5941: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 45568
+   335.335 [frame]   6946 scene 5943: tile conv 0, spans 1, quads 1211, tex uploads 1, tex bytes compared 45568
+   335.336 [frame]   6948 scene 5945: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 45568
+   335.336 [scene] submissions 4201-4800 game 6926-8065 latest scene 7062; same scene 0; empty submissions 0; GPU queue complete game 8063 scene 7060; LCD presentation unobserved (submission intervals are a proxy)
+   335.336 [gpu] 600 frames: 2D screens skipped 600, layers reused 4200 rebuilt 0, bg quads 514800 obj quads 211800 draws 0 spans 600 unsupported 0 dropped 0, char KiB compared 13012
+   335.336 [g3sample] random 1/64 FIFO calls: samples 17225 total_ticks 186302780 decode_ticks 75502136 replay_ticks 52754180 (block_copy_ticks 34094984 nested); remainder includes lookup/recording and probe overhead
+   335.336 [dltop] top 20 by sampled total ticks; random 1/64; omitted samples 0 ticks 0; src NULL groups short calls; copy is inside replay; reject bits: batch=1 shared=2 drops/split=4 lit+matrix=8 swap=16 open-prim=32
+   335.337 [dltop] src 0x64a2cc caller 0x561a4c words 62 n 1836 hits 0 swaps 5921-7061 ticks total/decode/replay/copy/max 25372438/22572950/0/0/909232 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   335.337 [dltop] src 0x16d0878 caller 0x57ff5c words 5204 n 20 hits 20 swaps 5954-6998 ticks total/decode/replay/copy/max 12562788/0/9036510/6296056/1374266 copy_bytes 623360 normals/misses 0/0 reject 0 rechecks 0
+   335.340 [dltop] src 0x16c0d34 caller 0x57ff5c words 1046 n 20 hits 1 swaps 5932-7031 ticks total/decode/replay/copy/max 9054644/6664840/90180/50268/1215450 copy_bytes 6876 normals/misses 19/19 reject 0 rechecks 0
+   335.341 [dltop] src 0x16a1604 caller 0x57ff5c words 1065 n 22 hits 0 swaps 5923-7012 ticks total/decode/replay/copy/max 8198204/6221070/0/0/431184 copy_bytes 0 normals/misses 22/22 reject 0 rechecks 0
+   335.341 [dltop] src 0x16c32fc caller 0x57ff5c words 5201 n 14 hits 14 swaps 5943-7053 ticks total/decode/replay/copy/max 8107692/0/6344504/4516534/1331240 copy_bytes 436352 normals/misses 0/0 reject 0 rechecks 0
+   335.341 [dltop] src 0x0 caller 0x3ffe30 words 3 n 1245 hits 0 swaps 5922-7061 ticks total/decode/replay/copy/max 8103812/6991660/0/0/905050 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   335.342 [dltop] src 0x0 caller 0x5646a4 words 6 n 1955 hits 0 swaps 5921-7060 ticks total/decode/replay/copy/max 6906040/3955912/0/0/757350 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   335.342 [dltop] src 0xa1bbd0 caller 0x57ff5c words 1727 n 32 hits 32 swaps 5964-6997 ticks total/decode/replay/copy/max 5956988/0/3672524/2560090/1017882 copy_bytes 299840 normals/misses 0/0 reject 0 rechecks 0
+   335.342 [dltop] src 0x0 caller 0x3ffef0 words 3 n 1199 hits 0 swaps 5922-7059 ticks total/decode/replay/copy/max 4526094/1708286/0/0/907660 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   335.343 [dltop] src 0x0 caller 0x3ffe10 words 1 n 1188 hits 0 swaps 5921-7060 ticks total/decode/replay/copy/max 4407118/831034/0/0/886650 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   335.343 [dltop] src 0xa677b4 caller 0x56492c words 35 n 170 hits 0 swaps 5932-7055 ticks total/decode/replay/copy/max 3542780/3366144/0/0/868646 copy_bytes 0 normals/misses 170/170 reject 0 rechecks 0
+   335.343 [dltop] src 0x0 caller 0x56492c words 13 n 259 hits 0 swaps 5927-7060 ticks total/decode/replay/copy/max 3501512/3186602/0/0/895696 copy_bytes 0 normals/misses 229/229 reject 0 rechecks 0
+   335.344 [dltop] src 0x16b2ab8 caller 0x57ff5c words 1146 n 24 hits 24 swaps 5945-6976 ticks total/decode/replay/copy/max 3410828/0/1837296/1078194/937370 copy_bytes 165888 normals/misses 0/0 reject 0 rechecks 0
+   335.344 [dltop] src 0x0 caller 0x565b98 words 3 n 1109 hits 0 swaps 5922-7061 ticks total/decode/replay/copy/max 3157776/2064226/0/0/870714 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   335.344 [dltop] src 0x16a26a8 caller 0x57ff5c words 1610 n 15 hits 15 swaps 5968-7004 ticks total/decode/replay/copy/max 3146848/0/2534596/1040470/930582 copy_bytes 159450 normals/misses 0/0 reject 0 rechecks 0
+   335.344 [dltop] src 0x0 caller 0x3fff10 words 1 n 1175 hits 0 swaps 5922-7061 ticks total/decode/replay/copy/max 3084270/1951194/0/0/781456 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   335.345 [dltop] src 0xa17b98 caller 0x57ff5c words 1542 n 18 hits 18 swaps 5937-6941 ticks total/decode/replay/copy/max 2996372/0/1364568/913228/1022424 copy_bytes 182232 normals/misses 0/0 reject 0 rechecks 0
+   335.345 [dltop] src 0x16b46f4 caller 0x57ff5c words 1417 n 16 hits 16 swaps 5960-7040 ticks total/decode/replay/copy/max 2656302/0/2029918/1528216/787186 copy_bytes 158976 normals/misses 0/0 reject 0 rechecks 0
+   335.345 [dltop] src 0x16cf1a8 caller 0x57ff5c words 694 n 20 hits 20 swaps 5941-7024 ticks total/decode/replay/copy/max 2557912/0/2089080/1567742/976064 copy_bytes 101960 normals/misses 0/0 reject 0 rechecks 0
+   335.346 [dltop] src 0x16a79f4 caller 0x57ff5c words 1367 n 12 hits 12 swaps 6015-7060 ticks total/decode/replay/copy/max 2243030/0/1817270/1499554/997924 copy_bytes 112320 normals/misses 0/0 reject 0 rechecks 0
+   335.346 [dlwhy] batch-in-block 0 shared-verts 0 straddle/drops 0 lit+matrix 0 swap 0 open-prim 0 flushes 0
+   335.346 [dlcov] bypass: small 2263744 split 9481710 open-begin 0 (begin first 0)
+   335.346 [dlcov] words: short 11745454 new 0 changed 225918 never 0 hit 43625625 keymiss 2947713
+   335.346 [ds] per game frame (1141 game frames / 600 pictures): g3 fifo calls 979 (51310 fifo words, 55 direct words, 6724 cmds), timer sync 39 us (4 calls), sound pump 8 us, hblank 1076 us
+   335.346 [ds] display lists: 79916 replayed, 20492 decoded, 0 uncacheable, 835 KiB retained
+   335.347 [pace] 600 frames: late V-blanks 2261, resyncs 21, presents skipped 541
+   335.347 [gpu] 600 frames: atlas lookups 0 conversions 0 evictions 0 full 0; 3D batches 74248 draws 74248 tris 5022000 tex uploads 316 tex bytes compared 27736576 tex full 0 unsupported 600; box tests 40200 culled 33600 (far only 0)
+   335.347 [gputime] 600 pictures: GSP us/picture P3D 2618 PPF 441 PSC 310 (log valid); C3D completed queues 600 drawing ms avg 3.92 max 6.80; cmdbuf use max 8%
+   339.231 [sndprof] render_calls 21600 render_frames 11059200 stretches 86267 sndticks 64785 mix_ticks 15648331850 tick_ticks 1264915342 mix_calls 86267 mix_frames 11059200 active_ch 969425 pcm8_ch 273 pcm16_ch 0 adpcm_ch 969152 psg_ch 0 cap_inst 0 dep_ch 0
+   348.608 [sndprof] render_calls 22200 render_frames 11366400 stretches 88657 sndticks 66584 mix_ticks 16114999244 tick_ticks 1302517390 mix_calls 88657 mix_frames 11366400 active_ch 998486 pcm8_ch 273 pcm16_ch 0 adpcm_ch 998213 psg_ch 0 cap_inst 0 dep_ch 0
+   349.522 [gamecpu] 600 game frames, logic us p50 37218 p95 40683 p99 41200 max 46924 (includes preemption; excludes V-blank wait)
+   349.523 [gamecpu] active logic+publish us p50 42241 p95 47697 p99 50689 max 51338 (includes skipped pictures and GPU wait; excludes V-blank wait; stages overlap)
+   357.985 [sndprof] render_calls 22800 render_frames 11673600 stretches 91057 sndticks 68384 mix_ticks 16590212576 tick_ticks 1341330370 mix_calls 91057 mix_frames 11673600 active_ch 1028278 pcm8_ch 273 pcm16_ch 0 adpcm_ch 1027893 psg_ch 112 cap_inst 0 dep_ch 0
+   367.357 [sndprof] render_calls 23400 render_frames 11980800 stretches 93448 sndticks 70183 mix_ticks 17053723610 tick_ticks 1377693928 mix_calls 93448 mix_frames 11980800 active_ch 1056951 pcm8_ch 273 pcm16_ch 0 adpcm_ch 1056374 psg_ch 304 cap_inst 0 dep_ch 0
+   367.661 [perf] logic    us p50 26478 p95 39952 p99 41333 max 51089
+   367.662 [perf] vbl_wait us p50    30 p95 10425 p99 13984 max 16200
+   367.663 [perf] g2d      us p50  1163 p95  4438 p99  4815 max  5515
+   367.664 [perf] g3d      us p50  4546 p95  8568 p99  8956 max  9421
+   367.664 [perf] gpu_wait us p50     6 p95     8 p99     9 max   127
+   367.665 [perf] submit   us p50   180 p95   305 p99  3558 max  3861
+   367.666 [perf] publish  us p50  7002 p95 10425 p99 10967 max 11915
+   367.670 [perf] window 9: 600 publishes, emulated interval (vblanks) p50 2 max 4, misses 245
+   367.671 [frame] submission interval (refreshes; LCD unobserved) 0:0 1:2 2:330 3:24 4+:244; hitches 270, presents skipped 245; frame time us p50 36860 p99 92350 max 108141
+   367.671 [frame] hitches, game frame(refreshes logic/g2d/g3d ms): 8067(6 39/1/5) 8069(5 36/1/8) 8071(5 39/1/5) 8072(3 39/1/8) 8073(3 37/1/5) 8074(3 37/1/8) 8076(5 39/1/5) 8078(5 37/1/5) 8080(5 35/1/8) 8082(5 38/1/5) 8084(5 36/1/5) 8086(5 34/1/7)
+   367.671 [frame]   8067 scene 7064: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   367.672 [frame]   8069 scene 7066: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   367.672 [frame]   8071 scene 7068: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   367.672 [frame]   8072 scene 7069: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   367.672 [frame]   8073 scene 7070: tile conv 0, spans 1, quads 1211, tex uploads 1, tex bytes compared 46592
+   367.672 [frame]   8074 scene 7071: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   367.672 [frame]   8076 scene 7073: tile conv 0, spans 1, quads 1211, tex uploads 3, tex bytes compared 46592
+   367.672 [frame]   8078 scene 7075: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   367.672 [frame]   8080 scene 7077: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   367.672 [frame]   8082 scene 7079: tile conv 0, spans 1, quads 1211, tex uploads 1, tex bytes compared 46592
+   367.673 [frame]   8084 scene 7081: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   367.673 [frame]   8086 scene 7083: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 46592
+   367.673 [scene] submissions 4801-5400 game 8067-8910 latest scene 7907; same scene 0; empty submissions 0; GPU queue complete game 8909 scene 7906; LCD presentation unobserved (submission intervals are a proxy)
+   367.673 [gpu] 600 frames: 2D screens skipped 598, layers reused 4181 rebuilt 19, bg quads 519182 obj quads 211800 draws 87 spans 602 unsupported 0 dropped 0, char KiB compared 13213
+   367.673 [g3sample] random 1/64 FIFO calls: samples 9456 total_ticks 98011048 decode_ticks 37761860 replay_ticks 32090248 (block_copy_ticks 19057674 nested); remainder includes lookup/recording and probe overhead
+   367.673 [dltop] top 20 by sampled total ticks; random 1/64; omitted samples 0 ticks 0; src NULL groups short calls; copy is inside replay; reject bits: batch=1 shared=2 drops/split=4 lit+matrix=8 swap=16 open-prim=32
+   367.674 [dltop] src 0x64a2cc caller 0x561a4c words 62 n 1023 hits 0 swaps 7062-7905 ticks total/decode/replay/copy/max 12714342/11651342/0/0/950784 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   367.674 [dltop] src 0x16d0878 caller 0x57ff5c words 5204 n 12 hits 12 swaps 7074-7613 ticks total/decode/replay/copy/max 8873788/0/6784532/4225596/1423050 copy_bytes 374016 normals/misses 0/0 reject 0 rechecks 0
+   367.674 [dltop] src 0x0 caller 0x5646a4 words 6 n 1248 hits 0 swaps 7062-7905 ticks total/decode/replay/copy/max 6750352/3540822/0/0/918782 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   367.675 [dltop] src 0x16c32fc caller 0x57ff5c words 5201 n 9 hits 9 swaps 7080-7625 ticks total/decode/replay/copy/max 5046066/0/3908784/1793260/1396588 copy_bytes 280512 normals/misses 0/0 reject 0 rechecks 0
+   367.675 [dltop] src 0x16a1604 caller 0x57ff5c words 1065 n 8 hits 0 swaps 7070-7418 ticks total/decode/replay/copy/max 2910066/2199938/0/0/429816 copy_bytes 0 normals/misses 8/8 reject 0 rechecks 0
+   367.675 [dltop] src 0x0 caller 0x3ffdfc words 1 n 575 hits 0 swaps 7062-7879 ticks total/decode/replay/copy/max 2688414/1301040/0/0/952490 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   367.676 [dltop] src 0x0 caller 0x3ffe30 words 3 n 524 hits 0 swaps 7062-7902 ticks total/decode/replay/copy/max 2678400/2205318/0/0/39110 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   367.676 [dltop] src 0xa677b4 caller 0x56492c words 35 n 171 hits 0 swaps 7062-7903 ticks total/decode/replay/copy/max 1998134/1815032/0/0/33834 copy_bytes 0 normals/misses 171/171 reject 0 rechecks 0
+   367.676 [dltop] src 0x16c27cc caller 0x57ff5c words 716 n 13 hits 13 swaps 7115-7608 ticks total/decode/replay/copy/max 1989332/0/1724814/1366746/978458 copy_bytes 67548 normals/misses 0/0 reject 0 rechecks 0
+   367.677 [dltop] src 0x0 caller 0x565b98 words 3 n 790 hits 0 swaps 7062-7906 ticks total/decode/replay/copy/max 1660744/845270/0/0/34508 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   367.677 [dltop] src 0x16b46f4 caller 0x57ff5c words 1417 n 6 hits 6 swaps 7074-7447 ticks total/decode/replay/copy/max 1631606/0/1393150/341262/999770 copy_bytes 59616 normals/misses 0/0 reject 0 rechecks 0
+   367.677 [dltop] src 0x16bf094 caller 0x57ff5c words 1832 n 9 hits 9 swaps 7107-7546 ticks total/decode/replay/copy/max 1574800/0/1213794/739368/210608 copy_bytes 108918 normals/misses 0/0 reject 0 rechecks 0
+   367.678 [dltop] src 0x16b1d50 caller 0x57ff5c words 986 n 6 hits 6 swaps 7588-7861 ticks total/decode/replay/copy/max 1570274/0/431396/252644/1037408 copy_bytes 38976 normals/misses 0/0 reject 0 rechecks 0
+   367.678 [dltop] src 0x0 caller 0x56492c words 13 n 154 hits 0 swaps 7063-7905 ticks total/decode/replay/copy/max 1524224/1358828/0/0/44696 copy_bytes 0 normals/misses 140/140 reject 0 rechecks 0
+   367.678 [dltop] src 0x16b2ab8 caller 0x57ff5c words 1146 n 12 hits 12 swaps 7129-7389 ticks total/decode/replay/copy/max 1374954/0/965134/577898/144986 copy_bytes 82944 normals/misses 0/0 reject 0 rechecks 0
+   367.679 [dltop] src 0x16a26a8 caller 0x57ff5c words 1610 n 8 hits 8 swaps 7142-7488 ticks total/decode/replay/copy/max 1308536/0/981016/627956/200638 copy_bytes 85040 normals/misses 0/0 reject 0 rechecks 0
+   367.679 [dltop] src 0xa24e4c caller 0x57ff5c words 363 n 12 hits 12 swaps 7086-7538 ticks total/decode/replay/copy/max 1280164/0/1132576/163608/917246 copy_bytes 25848 normals/misses 0/0 reject 0 rechecks 0
+   367.679 [dltop] src 0x16c0d34 caller 0x57ff5c words 1046 n 4 hits 0 swaps 7272-7467 ticks total/decode/replay/copy/max 1272110/1002632/0/0/322000 copy_bytes 0 normals/misses 4/4 reject 0 rechecks 0
+   367.679 [dltop] src 0x6351f4 caller 0x565050 words 18 n 149 hits 0 swaps 7062-7905 ticks total/decode/replay/copy/max 1252644/441336/0/0/43810 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   367.680 [dltop] src 0x16cde90 caller 0x57ff5c words 484 n 6 hits 6 swaps 7647-7832 ticks total/decode/replay/copy/max 1229212/0/1139118/1109856/1068504 copy_bytes 21888 normals/misses 0/0 reject 0 rechecks 0
+   367.680 [dlwhy] batch-in-block 0 shared-verts 0 straddle/drops 0 lit+matrix 0 swap 0 open-prim 0 flushes 0
+   367.680 [dlcov] bypass: small 1274794 split 5243443 open-begin 0 (begin first 0)
+   367.680 [dlcov] words: short 6518237 new 22782 changed 165906 never 0 hit 23004088 keymiss 1772499
+   367.680 [ds] per game frame (845 game frames / 600 pictures): g3 fifo calls 706 (37258 fifo words, 55 direct words, 4963 cmds), timer sync 48 us (4 calls), sound pump 5 us, hblank 1079 us
+   367.681 [ds] display lists: 47007 replayed, 14918 decoded, 0 uncacheable, 1091 KiB retained
+   367.681 [pace] 600 frames: late V-blanks 1399, resyncs 9, presents skipped 245
+   367.684 [gpu] 600 frames: atlas lookups 14880 conversions 86 evictions 0 full 0; 3D batches 54096 draws 54096 tris 3244515 tex uploads 244 tex bytes compared 19048640 tex full 0 unsupported 600; box tests 20445 culled 17116 (far only 0)
+   367.684 [gputime] 600 pictures: GSP us/picture P3D 2288 PPF 459 PSC 311 (log valid); C3D completed queues 600 drawing ms avg 3.66 max 7.46; cmdbuf use max 9%
+   370.665 [gamecpu] 600 game frames, logic us p50 21770 p95 39946 p99 42041 max 51089 (includes preemption; excludes V-blank wait)
+   370.666 [gamecpu] active logic+publish us p50 27643 p95 46057 p99 49539 max 58548 (includes skipped pictures and GPU wait; excludes V-blank wait; stages overlap)
+   376.733 [sndprof] render_calls 24000 render_frames 12288000 stretches 95848 sndticks 71983 mix_ticks 17522766044 tick_ticks 1415311828 mix_calls 95848 mix_frames 12288000 active_ch 1085860 pcm8_ch 273 pcm16_ch 0 adpcm_ch 1084877 psg_ch 710 cap_inst 0 dep_ch 0
+   384.629 [nitro] overlay OVY_119 loaded
+   386.110 [sndprof] render_calls 24600 render_frames 12595200 stretches 98248 sndticks 73783 mix_ticks 18002384316 tick_ticks 1453825556 mix_calls 98248 mix_frames 12595200 active_ch 1114501 pcm8_ch 273 pcm16_ch 0 adpcm_ch 1113518 psg_ch 710 cap_inst 0 dep_ch 0
+   386.238 [nitro] overlay ds_protect loaded
+   386.251 [nitro] overlay ds_protect loaded
+   386.271 [nitro] overlay OVY_12 loaded
+   386.271 [nitro] overlay OVY_18 loaded
+   386.390 [nitro] overlay OVY_6 loaded
+   386.390 [nitro] overlay OVY_7 loaded
+   389.321 [perf] logic    us p50 24344 p95 28154 p99 30035 max 39258
+   389.322 [perf] vbl_wait us p50    27 p95 20961 p99 25307 max 33743
+   389.323 [perf] g2d      us p50  1457 p95 11038 p99 14409 max 16238
+   389.328 [perf] g3d      us p50  3058 p95  6588 p99  6848 max  8174
+   389.329 [perf] gpu_wait us p50     6 p95     8 p99     9 max   873
+   389.330 [perf] submit   us p50   181 p95   324 p99  3654 max  3968
+   389.331 [perf] publish  us p50  6735 p95 12103 p99 15722 max 17918
+   389.331 [perf] window 10: 600 publishes, emulated interval (vblanks) p50 2 max 4, misses 51
+   389.332 [frame] submission interval (refreshes; LCD unobserved) 0:0 1:39 2:484 3:35 4+:42; hitches 116, presents skipped 52; frame time us p50 33310 p99 73851 max 193093
+   389.332 [frame] hitches, game frame(refreshes logic/g2d/g3d ms): 8911(3 26/4/2) 8913(1 18/1/2) 9040(1 15/1/2) 9047(1 19/1/2) 9050(3 38/1/3) 9054(3 29/4/3) 9058(4 28/1/3) 9062(4 25/4/3) 9065(4 28/1/3) 9069(4 25/4/3) 9071(4 29/1/3) 9073(4 28/4/3)
+   389.332 [frame]   8911 scene 7908: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 23120
+   389.333 [frame]   8913 scene 7910: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 23120
+   389.333 [frame]   9040 scene 8037: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 21504
+   389.333 [frame]   9047 scene 8044: tile conv 0, spans 1, quads 1211, tex uploads 1, tex bytes compared 27328
+   389.333 [frame]   9050 scene 8047: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 29056
+   389.333 [frame]   9054 scene 8051: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 29056
+   389.333 [frame]   9058 scene 8055: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 29056
+   389.333 [frame]   9062 scene 8059: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 29056
+   389.334 [frame]   9065 scene 8062: tile conv 0, spans 1, quads 1211, tex uploads 1, tex bytes compared 29056
+   389.334 [frame]   9069 scene 8066: tile conv 0, spans 1, quads 1211, tex uploads 0, tex bytes compared 29056
+   389.334 [frame]   9071 scene 8068: tile conv 0, spans 1, quads 1211, tex uploads 1, tex bytes compared 28544
+   389.334 [frame]   9073 scene 8070: tile conv 0, spans 2, quads 1211, tex uploads 0, tex bytes compared 28544
+   389.334 [scene] submissions 5401-6000 game 8911-9562 latest scene 8552; same scene 6; empty submissions 0; GPU queue complete game 9561 scene 8551; LCD presentation unobserved (submission intervals are a proxy)
+   389.334 [gpu] 600 frames: 2D screens skipped 516, layers reused 3738 rebuilt 371, bg quads 622006 obj quads 197890 draws 848 spans 687 unsupported 0 dropped 0, char KiB compared 18056
+   389.334 [g3sample] random 1/64 FIFO calls: samples 4651 total_ticks 51605658 decode_ticks 23801882 replay_ticks 11944674 (block_copy_ticks 6450400 nested); remainder includes lookup/recording and probe overhead
+   389.335 [dltop] top 20 by sampled total ticks; random 1/64; omitted samples 0 ticks 0; src NULL groups short calls; copy is inside replay; reject bits: batch=1 shared=2 drops/split=4 lit+matrix=8 swap=16 open-prim=32
+   389.335 [dltop] src 0x64a2cc caller 0x561a4c words 62 n 551 hits 0 swaps 7907-8517 ticks total/decode/replay/copy/max 7298412/6701922/0/0/919520 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   389.335 [dltop] src 0x16d0878 caller 0x57ff5c words 5204 n 8 hits 7 swaps 8039-8413 ticks total/decode/replay/copy/max 6457906/968178/3031978/2095646/1714170 copy_bytes 218176 normals/misses 434/9 reject 0 rechecks 0
+   389.335 [dltop] src 0x16c0d34 caller 0x57ff5c words 1046 n 8 hits 0 swaps 8226-8456 ticks total/decode/replay/copy/max 3929486/2286200/0/0/1259436 copy_bytes 0 normals/misses 8/8 reject 0 rechecks 0
+   389.336 [dltop] src 0x16c32fc caller 0x57ff5c words 5201 n 5 hits 5 swaps 8090-8414 ticks total/decode/replay/copy/max 2305518/0/1682546/1018114/485920 copy_bytes 155840 normals/misses 0/0 reject 0 rechecks 0
+   389.336 [dltop] src 0x16b2cb8 caller 0x57ff5c words 564 n 8 hits 0 swaps 8019-8405 ticks total/decode/replay/copy/max 2278446/1983870/0/0/1054876 copy_bytes 0 normals/misses 8/0 reject 0 rechecks 0
+   389.336 [dltop] src 0x0 caller 0x5646a4 words 6 n 673 hits 0 swaps 7907-8460 ticks total/decode/replay/copy/max 2105782/1328798/0/0/38292 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   389.337 [dltop] src 0x0 caller 0x565b98 words 3 n 505 hits 0 swaps 7909-8461 ticks total/decode/replay/copy/max 1982410/579650/0/0/884988 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   389.337 [dltop] src 0x16b1d50 caller 0x57ff5c words 986 n 9 hits 9 swaps 8031-8440 ticks total/decode/replay/copy/max 1702578/0/1457062/398888/864958 copy_bytes 58464 normals/misses 0/0 reject 0 rechecks 0
+   389.337 [dltop] src 0x16b1930 caller 0x57ff5c words 132 n 12 hits 0 swaps 7950-8431 ticks total/decode/replay/copy/max 1632596/1392640/0/0/942328 copy_bytes 0 normals/misses 12/0 reject 0 rechecks 0
+   389.337 [dltop] src 0x0 caller 0x3ffe30 words 3 n 278 hits 0 swaps 7913-8459 ticks total/decode/replay/copy/max 1386042/1133542/0/0/12208 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   389.338 [dltop] src 0xa677b4 caller 0x56492c words 35 n 92 hits 0 swaps 7909-8459 ticks total/decode/replay/copy/max 1100506/1001376/0/0/44626 copy_bytes 0 normals/misses 92/92 reject 0 rechecks 0
+   389.338 [dltop] src 0x16d3044 caller 0x57ff5c words 512 n 3 hits 3 swaps 7923-7987 ticks total/decode/replay/copy/max 1099956/0/1052028/74990/986102 copy_bytes 11784 normals/misses 0/0 reject 0 rechecks 0
+   389.342 [dltop] src 0x16b1240 caller 0x56492c words 56 n 6 hits 0 swaps 7909-8415 ticks total/decode/replay/copy/max 1002562/996256/0/0/939172 copy_bytes 0 normals/misses 6/0 reject 0 rechecks 0
+   389.343 [dltop] src 0x0 caller 0x55d0f8 words 3 n 41 hits 0 swaps 7922-8456 ticks total/decode/replay/copy/max 967958/41208/0/0/892954 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   389.343 [dltop] src 0x0 caller 0x56492c words 13 n 92 hits 0 swaps 7919-8450 ticks total/decode/replay/copy/max 961140/822156/0/0/49904 copy_bytes 0 normals/misses 92/92 reject 0 rechecks 0
+   389.343 [dltop] src 0x6351f4 caller 0x565050 words 18 n 101 hits 0 swaps 7909-8459 ticks total/decode/replay/copy/max 840894/285062/0/0/14536 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   389.344 [dltop] src 0x16bf094 caller 0x57ff5c words 1832 n 5 hits 5 swaps 8086-8300 ticks total/decode/replay/copy/max 840180/0/639260/389910/174604 copy_bytes 60510 normals/misses 0/0 reject 0 rechecks 0
+   389.344 [dltop] src 0x16c27cc caller 0x57ff5c words 716 n 8 hits 8 swaps 8156-8449 ticks total/decode/replay/copy/max 714760/0/539796/312242/101702 copy_bytes 41568 normals/misses 0/0 reject 0 rechecks 0
+   389.344 [dltop] src 0x16c8a00 caller 0x57ff5c words 481 n 10 hits 10 swaps 8132-8410 ticks total/decode/replay/copy/max 582604/0/358874/217816/98706 copy_bytes 32900 normals/misses 0/0 reject 0 rechecks 0
+   389.344 [dltop] src 0x0 caller 0x3fff10 words 1 n 269 hits 0 swaps 7954-8460 ticks total/decode/replay/copy/max 507208/281170/0/0/32326 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   389.345 [dlwhy] batch-in-block 0 shared-verts 0 straddle/drops 0 lit+matrix 0 swap 0 open-prim 0 flushes 0
+   389.345 [dlcov] bypass: small 644525 split 2753286 open-begin 0 (begin first 0)
+   389.345 [dlcov] words: short 3397811 new 0 changed 120528 never 0 hit 10739672 keymiss 1182075
+   389.345 [ds] per game frame (652 game frames / 600 pictures): g3 fifo calls 456 (23681 fifo words, 73 direct words, 3478 cmds), timer sync 48 us (4 calls), sound pump 6 us, hblank 931 us
+   389.345 [ds] display lists: 21308 replayed, 11078 decoded, 0 uncacheable, 1091 KiB retained
+   389.345 [pace] 600 frames: late V-blanks 1007, resyncs 0, presents skipped 52
+   389.345 [gpu] 600 frames: atlas lookups 235857 conversions 20187 evictions 0 full 0; 3D batches 36203 draws 36203 tris 2287040 tex uploads 101 tex bytes compared 12816720 tex full 0 unsupported 509; box tests 15255 culled 14553 (far only 0)
+   389.346 [gputime] 600 pictures: GSP us/picture P3D 2066 PPF 475 PSC 347 (log valid); C3D completed queues 600 drawing ms avg 3.48 max 10.31; cmdbuf use max 6%
+   390.595 [gamecpu] 600 game frames, logic us p50 24879 p95 29398 p99 38826 max 157273 (includes preemption; excludes V-blank wait)
+   390.596 [gamecpu] active logic+publish us p50 32595 p95 37365 p99 44721 max 157278 (includes skipped pictures and GPU wait; excludes V-blank wait; stages overlap)
+   394.441 [nitro] overlay OVY_10 loaded
+   395.483 [sndprof] render_calls 25200 render_frames 12902400 stretches 100638 sndticks 75582 mix_ticks 18527533184 tick_ticks 1495462132 mix_calls 100638 mix_frames 12902400 active_ch 1146094 pcm8_ch 575 pcm16_ch 0 adpcm_ch 1143735 psg_ch 1784 cap_inst 0 dep_ch 0
+   396.631 [nitro] overlay OVY_7 loaded
+   404.858 [sndprof] render_calls 25800 render_frames 13209600 stretches 103038 sndticks 77382 mix_ticks 19060396816 tick_ticks 1537772300 mix_calls 103038 mix_frames 13209600 active_ch 1178324 pcm8_ch 575 pcm16_ch 0 adpcm_ch 1175283 psg_ch 2466 cap_inst 0 dep_ch 0
+   405.400 [nitro] overlay OVY_10 loaded
+   405.855 [nitro] overlay OVY_7 loaded
+   409.314 [perf] logic    us p50  1923 p95  9480 p99 15039 max 35234
+   409.315 [perf] vbl_wait us p50 18951 p95 23780 p99 25627 max 26064
+   409.316 [perf] g2d      us p50  8805 p95 13920 p99 18839 max 20709
+   409.317 [perf] g3d      us p50  1956 p95  6037 p99 26724 max 34261
+   409.318 [perf] gpu_wait us p50     6 p95     8 p99  1035 max  4848
+   409.319 [perf] submit   us p50   189 p95   305 p99  3749 max  5700
+   409.320 [perf] publish  us p50 12267 p95 19872 p99 35531 max 46278
+   409.320 [perf] window 11: 600 publishes, emulated interval (vblanks) p50 2 max 2, misses 0
+   409.321 [frame] submission interval (refreshes; LCD unobserved) 0:4 1:62 2:475 3:52 4+:7; hitches 125, presents skipped 0; frame time us p50 33413 p99 55463 max 67357
+   409.322 [frame] hitches, game frame(refreshes logic/g2d/g3d ms): 9582(3 2/14/0) 9583(1 1/7/0) 9590(3 8/14/0) 9591(1 14/7/0) 9614(4 2/14/22) 9615(1 5/5/1) 9616(1 6/7/5) 9622(3 11/13/1) 9623(1 2/10/1) 9624(4 2/10/27) 9625(1 3/9/1) 9626(3 2/6/27)
+   409.322 [frame]   9582 scene 8572: tile conv 748, spans 1, quads 1889, tex uploads 0, tex bytes compared 0
+   409.322 [frame]   9583 scene 8573: tile conv 45, spans 2, quads 1889, tex uploads 0, tex bytes compared 0
+   409.322 [frame]   9590 scene 8580: tile conv 748, spans 1, quads 1889, tex uploads 0, tex bytes compared 0
+   409.322 [frame]   9591 scene 8581: tile conv 53, spans 2, quads 1893, tex uploads 0, tex bytes compared 0
+   409.322 [frame]   9614 scene 8604: tile conv 752, spans 1, quads 1822, tex uploads 2, tex bytes compared 0
+   409.322 [frame]   9615 scene 8605: tile conv 49, spans 2, quads 1822, tex uploads 0, tex bytes compared 65536
+   409.322 [frame]   9616 scene 8606: tile conv 49, spans 2, quads 1822, tex uploads 0, tex bytes compared 65536
+   409.322 [frame]   9622 scene 8612: tile conv 748, spans 1, quads 1822, tex uploads 0, tex bytes compared 65536
+   409.323 [frame]   9623 scene 8613: tile conv 45, spans 2, quads 1818, tex uploads 0, tex bytes compared 65536
+   409.323 [frame]   9624 scene 8614: tile conv 45, spans 2, quads 1818, tex uploads 2, tex bytes compared 65536
+   409.323 [frame]   9625 scene 8615: tile conv 45, spans 2, quads 1818, tex uploads 0, tex bytes compared 65536
+   409.323 [frame]   9626 scene 8616: tile conv 45, spans 2, quads 1818, tex uploads 2, tex bytes compared 65536
+   409.326 [scene] submissions 6001-6600 game 9563-10162 latest scene 9152; same scene 0; empty submissions 0; GPU queue complete game 10161 scene 9151; LCD presentation unobserved (submission intervals are a proxy)
+   409.327 [gpu] 600 frames: 2D screens skipped 68, layers reused 2658 rebuilt 1073, bg quads 1044280 obj quads 132923 draws 3132 spans 1136 unsupported 49 dropped 0, char KiB compared 70236
+   409.327 [g3sample] random 1/64 FIFO calls: samples 0 total_ticks 0 decode_ticks 0 replay_ticks 0 (block_copy_ticks 0 nested); remainder includes lookup/recording and probe overhead
+   409.327 [dltop] top 20 by sampled total ticks; random 1/64; omitted samples 0 ticks 0; src NULL groups short calls; copy is inside replay; reject bits: batch=1 shared=2 drops/split=4 lit+matrix=8 swap=16 open-prim=32
+   409.327 [dlwhy] batch-in-block 0 shared-verts 0 straddle/drops 0 lit+matrix 0 swap 0 open-prim 0 flushes 0
+   409.327 [dlcov] bypass: small 0 split 17112 open-begin 0 (begin first 0)
+   409.328 [dlcov] words: short 17112 new 0 changed 0 never 0 hit 0 keymiss 0
+   409.328 [ds] per game frame (600 game frames / 600 pictures): g3 fifo calls 0 (28 fifo words, 196 direct words, 104 cmds), timer sync 34 us (4 calls), sound pump 6 us, hblank 17 us
+   409.328 [ds] display lists: 0 replayed, 0 decoded, 0 uncacheable, 1091 KiB retained
+   409.328 [pace] 600 frames: late V-blanks 207, resyncs 0, presents skipped 0
+   409.328 [gpu] 600 frames: atlas lookups 731428 conversions 54132 evictions 0 full 0; 3D batches 1569 draws 1569 tris 3138 tex uploads 37 tex bytes compared 51249152 tex full 0 unsupported 0; box tests 0 culled 0 (far only 0)
+   409.328 [gputime] 600 pictures: GSP us/picture P3D 1721 PPF 679 PSC 530 (log valid); C3D completed queues 600 drawing ms avg 3.77 max 9.08; cmdbuf use max 1%
+   410.584 [gamecpu] 600 game frames, logic us p50 1898 p95 8166 p99 15039 max 35234 (includes preemption; excludes V-blank wait)
+   410.585 [gamecpu] active logic+publish us p50 14618 p95 27604 p99 40428 max 67323 (includes skipped pictures and GPU wait; excludes V-blank wait; stages overlap)
+   414.235 [sndprof] render_calls 26400 render_frames 13516800 stretches 105429 sndticks 79181 mix_ticks 19599924342 tick_ticks 1579305642 mix_calls 105429 mix_frames 13516800 active_ch 1209895 pcm8_ch 765 pcm16_ch 0 adpcm_ch 1205676 psg_ch 3454 cap_inst 0 dep_ch 0
+   417.929 [nitro] overlay field loaded
+   417.929 [nitro] overlay ds_protect loaded
+   417.930 [nitro] overlay OVY_2 loaded
+   417.930 [nitro] overlay OVY_3 loaded
+   418.015 [nitro] overlay OVY_27 loaded
+   421.597 [nitro] overlay ds_protect loaded
+   423.606 [sndprof] render_calls 27000 render_frames 13824000 stretches 107829 sndticks 80981 mix_ticks 20076118690 tick_ticks 1615160464 mix_calls 107829 mix_frames 13824000 active_ch 1237584 pcm8_ch 765 pcm16_ch 0 adpcm_ch 1233227 psg_ch 3592 cap_inst 0 dep_ch 0
+   430.595 [gamecpu] 600 game frames, logic us p50 24554 p95 30189 p99 35353 max 52038 (includes preemption; excludes V-blank wait)
+   430.596 [gamecpu] active logic+publish us p50 30178 p95 37363 p99 42017 max 52043 (includes skipped pictures and GPU wait; excludes V-blank wait; stages overlap)
+   431.632 [perf] logic    us p50 23827 p95 29443 p99 31022 max 39029
+   431.633 [perf] vbl_wait us p50    30 p95 24422 p99 26677 max 30463
+   431.633 [perf] g2d      us p50  3197 p95 11687 p99 18048 max 23483
+   431.634 [perf] g3d      us p50  2934 p95  7133 p99 14060 max 14526
+   431.638 [perf] gpu_wait us p50     6 p95     8 p99  1174 max  3495
+   431.639 [perf] submit   us p50   185 p95   311 p99  3759 max  4160
+   431.640 [perf] publish  us p50  8377 p95 13590 p99 32267 max 35455
+   431.640 [perf] window 12: 600 publishes, emulated interval (vblanks) p50 2 max 4, misses 68
+   431.641 [frame] submission interval (refreshes; LCD unobserved) 0:1 1:16 2:491 3:35 4+:57; hitches 109, presents skipped 69; frame time us p50 33954 p99 72115 max 86921
+   431.642 [frame] hitches, game frame(refreshes logic/g2d/g3d ms): 10190(3 1/13/2) 10191(1 1/5/5) 10198(3 5/13/1) 10199(1 1/9/1) 10294(3 1/13/0) 10295(1 5/5/0) 10398(4 1/19/14) 10399(1 1/8/9) 10400(3 1/18/14) 10401(1 5/3/14) 10402(3 1/20/14) 10403(1 1/3/14)
+   431.642 [frame]   10190 scene 9180: tile conv 748, spans 1, quads 1774, tex uploads 0, tex bytes compared 98304
+   431.642 [frame]   10191 scene 9181: tile conv 45, spans 2, quads 1774, tex uploads 0, tex bytes compared 98304
+   431.642 [frame]   10198 scene 9188: tile conv 748, spans 1, quads 1774, tex uploads 0, tex bytes compared 98304
+   431.642 [frame]   10199 scene 9189: tile conv 45, spans 2, quads 1774, tex uploads 0, tex bytes compared 98304
+   431.643 [frame]   10294 scene 9284: tile conv 749, spans 1, quads 1697, tex uploads 0, tex bytes compared 32768
+   431.643 [frame]   10295 scene 9285: tile conv 46, spans 2, quads 1697, tex uploads 0, tex bytes compared 32768
+   431.643 [frame]   10398 scene 9388: tile conv 1023, spans 2, quads 1728, tex uploads 1, tex bytes compared 32768
+   431.643 [frame]   10399 scene 9389: tile conv 0, spans 1, quads 1728, tex uploads 1, tex bytes compared 32768
+   431.643 [frame]   10400 scene 9390: tile conv 1023, spans 2, quads 1728, tex uploads 1, tex bytes compared 32768
+   431.643 [frame]   10401 scene 9391: tile conv 0, spans 1, quads 1728, tex uploads 1, tex bytes compared 32768
+   431.643 [frame]   10402 scene 9392: tile conv 1023, spans 2, quads 1728, tex uploads 1, tex bytes compared 32768
+   431.643 [frame]   10403 scene 9393: tile conv 0, spans 1, quads 1728, tex uploads 1, tex bytes compared 32768
+   431.643 [scene] submissions 6601-7200 game 10163-10831 latest scene 9814; same scene 6; empty submissions 0; GPU queue complete game 10830 scene 9813; LCD presentation unobserved (submission intervals are a proxy)
+   431.644 [gpu] 600 frames: 2D screens skipped 357, layers reused 3413 rebuilt 533, bg quads 745770 obj quads 145605 draws 1470 spans 843 unsupported 0 dropped 0, char KiB compared 41374
+   431.644 [g3sample] random 1/64 FIFO calls: samples 3772 total_ticks 37160172 decode_ticks 14963580 replay_ticks 12479012 (block_copy_ticks 6693294 nested); remainder includes lookup/recording and probe overhead
+   431.644 [dltop] top 20 by sampled total ticks; random 1/64; omitted samples 0 ticks 0; src NULL groups short calls; copy is inside replay; reject bits: batch=1 shared=2 drops/split=4 lit+matrix=8 swap=16 open-prim=32
+   431.644 [dltop] src 0x64a2cc caller 0x561a4c words 62 n 439 hits 0 swaps 9407-9812 ticks total/decode/replay/copy/max 5389512/4948610/0/0/1021864 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   431.645 [dltop] src 0x16b2878 caller 0x57ff5c words 5204 n 9 hits 9 swaps 9417-9733 ticks total/decode/replay/copy/max 5381964/0/4110800/1927500/1412374 copy_bytes 280512 normals/misses 0/0 reject 0 rechecks 0
+   431.645 [dltop] src 0x16a1094 caller 0x57ff5c words 1832 n 10 hits 10 swaps 9497-9809 ticks total/decode/replay/copy/max 2710748/0/2207288/1686164/1078828 copy_bytes 121020 normals/misses 0/0 reject 0 rechecks 0
+   431.645 [dltop] src 0x16a2d34 caller 0x57ff5c words 1046 n 6 hits 0 swaps 9433-9789 ticks total/decode/replay/copy/max 2125936/1628916/0/0/404578 copy_bytes 0 normals/misses 6/6 reject 0 rechecks 0
+   431.646 [dltop] src 0x0 caller 0x5646a4 words 6 n 507 hits 0 swaps 9407-9812 ticks total/decode/replay/copy/max 1582812/1034876/0/0/36946 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   431.646 [dltop] src 0x16a52fc caller 0x57ff5c words 5201 n 3 hits 3 swaps 9416-9721 ticks total/decode/replay/copy/max 1422248/0/1029160/631754/528732 copy_bytes 93504 normals/misses 0/0 reject 0 rechecks 0
+   431.646 [dltop] src 0x9ffa58 caller 0x57ff5c words 159 n 9 hits 9 swaps 9418-9763 ticks total/decode/replay/copy/max 1325696/0/1247492/64736/1156360 copy_bytes 9864 normals/misses 0/0 reject 0 rechecks 0
+   431.646 [dltop] src 0x0 caller 0x3ffe30 words 3 n 256 hits 0 swaps 9408-9813 ticks total/decode/replay/copy/max 1279458/1055704/0/0/15372 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   431.647 [dltop] src 0xa677b4 caller 0x56492c words 35 n 93 hits 0 swaps 9410-9809 ticks total/decode/replay/copy/max 1080986/978748/0/0/21764 copy_bytes 0 normals/misses 93/93 reject 0 rechecks 0
+   431.647 [dltop] src 0x16a47cc caller 0x57ff5c words 716 n 11 hits 11 swaps 9444-9792 ticks total/decode/replay/copy/max 995438/0/735026/420572/124412 copy_bytes 57156 normals/misses 0/0 reject 0 rechecks 0
+   431.647 [dltop] src 0x0 caller 0x565b98 words 3 n 356 hits 0 swaps 9407-9813 ticks total/decode/replay/copy/max 776992/414950/0/0/34234 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   431.648 [dltop] src 0x0 caller 0x56492c words 13 n 64 hits 0 swaps 9413-9809 ticks total/decode/replay/copy/max 662022/595158/0/0/44570 copy_bytes 0 normals/misses 64/64 reject 0 rechecks 0
+   431.648 [dltop] src 0x16d0cb8 caller 0x57ff5c words 564 n 3 hits 0 swaps 9479-9695 ticks total/decode/replay/copy/max 597246/481294/0/0/213022 copy_bytes 0 normals/misses 3/0 reject 0 rechecks 0
+   431.648 [dltop] src 0x16b11a8 caller 0x57ff5c words 694 n 5 hits 4 swaps 9407-9735 ticks total/decode/replay/copy/max 546824/173586/236084/136778/227498 copy_bytes 20392 normals/misses 1/1 reject 0 rechecks 0
+   431.648 [dltop] src 0x6351f4 caller 0x565050 words 18 n 60 hits 0 swaps 9407-9795 ticks total/decode/replay/copy/max 500464/167328/0/0/17762 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   431.649 [dltop] src 0x16a3d8c caller 0x57ff5c words 114 n 10 hits 0 swaps 9448-9672 ticks total/decode/replay/copy/max 496380/340268/0/0/54364 copy_bytes 0 normals/misses 10/0 reject 0 rechecks 0
+   431.649 [dltop] src 0x0 caller 0x3fff10 words 1 n 234 hits 0 swaps 9412-9813 ticks total/decode/replay/copy/max 451874/252636/0/0/36736 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   431.649 [dltop] src 0x0 caller 0x3ffef0 words 3 n 233 hits 0 swaps 9410-9811 ticks total/decode/replay/copy/max 432794/219568/0/0/8920 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   431.649 [dltop] src 0x16cfb40 caller 0x57ff5c words 132 n 8 hits 0 swaps 9473-9768 ticks total/decode/replay/copy/max 416126/312390/0/0/75392 copy_bytes 0 normals/misses 8/0 reject 0 rechecks 0
+   431.650 [dltop] src 0x0 caller 0x3ffe10 words 1 n 237 hits 0 swaps 9412-9813 ticks total/decode/replay/copy/max 402832/202370/0/0/35614 copy_bytes 0 normals/misses 0/0 reject 0 rechecks 0
+   431.653 [dlwhy] batch-in-block 0 shared-verts 0 straddle/drops 0 lit+matrix 0 swap 0 open-prim 0 flushes 0
+   431.653 [dlcov] bypass: small 500804 split 2223575 open-begin 0 (begin first 0)
+   431.654 [dlcov] words: short 2724379 new 24052 changed 80586 never 0 hit 9085542 keymiss 930868
+   431.654 [ds] per game frame (669 game frames / 600 pictures): g3 fifo calls 366 (19200 fifo words, 66 direct words, 2806 cmds), timer sync 35 us (4 calls), sound pump 6 us, hblank 709 us
+   431.654 [ds] display lists: 16075 replayed, 7756 decoded, 0 uncacheable, 1357 KiB retained
+   431.654 [pace] 600 frames: late V-blanks 821, resyncs 0, presents skipped 69
+   431.654 [gpu] 600 frames: atlas lookups 359744 conversions 30671 evictions 0 full 0; 3D batches 24624 draws 24624 tris 1741723 tex uploads 113 tex bytes compared 20517952 tex full 0 unsupported 339; box tests 13221 culled 12818 (far only 0)
+   431.654 [gputime] 600 pictures: GSP us/picture P3D 1919 PPF 546 PSC 412 (log valid); C3D completed queues 600 drawing ms avg 3.65 max 8.36; cmdbuf use max 6%
+   432.983 [sndprof] render_calls 27600 render_frames 14131200 stretches 110229 sndticks 82781 mix_ticks 20531053326 tick_ticks 1649767390 mix_calls 110229 mix_frames 14131200 active_ch 1263967 pcm8_ch 765 pcm16_ch 0 adpcm_ch 1258940 psg_ch 4262 cap_inst 0 dep_ch 0
+   443.056 [kj] close requested at V-blank 22024
+   443.056 [app] terminating after 22023 V-blanks (close requested)
+   443.056 [audio] stopped, 1 underruns

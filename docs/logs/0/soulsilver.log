@@ -1,0 +1,977 @@
+
+--- new run ---
+     0.078 [app] kohjoh fecd9ce-dirty (soulsilver), homebrew (SD pack), Old 3DS
+     1.632 [gpu] renderer ready (linear free 15213 KiB, VRAM free 4794 KiB)
+     1.676 [audio] NDSP 32768 Hz stereo, 4 x 512 frames
+     1.677 [save] raw save file sdmc:/3ds/kohjoh/saves/soulsilver.sav
+     1.677 [app] starting the game
+     1.679 [kj] starting soulsilver
+     1.967 [nitro] not implemented: DWC_CheckUserData
+     1.967 [nitro] not implemented: DWC_CreateUserData
+     1.967 [nitro] not implemented: DWC_ClearDirtyFlag
+     2.079 [nitro] overlay OVY_0 loaded
+     2.079 [nitro] overlay OVY_38 loaded
+     2.079 [nitro] not implemented: DWC_Init
+     2.080 [nitro] overlay intro_title loaded
+    34.344 [nitro] overlay intro_title loaded
+    38.934 [nitro] overlay OVY_74 loaded
+    39.369 [nitro] overlay OVY_36 loaded
+    39.452 [nitro] overlay OVY_53 loaded
+   307.607 [nitro] overlay OVY_36 loaded
+   307.707 [nitro] overlay OVY_124 loaded
+   307.708 [nitro] overlay ds_protect loaded
+   307.808 [nitro] overlay field loaded
+   307.808 [nitro] overlay ds_protect loaded
+   307.808 [nitro] overlay OVY_2 loaded
+   307.808 [nitro] overlay OVY_3 loaded
+   308.157 [nitro] overlay OVY_27 loaded
+   314.696 [nitro] overlay ds_protect loaded
+   314.730 [nitro] overlay ds_protect loaded
+   314.896 [nitro] overlay field loaded
+   314.896 [nitro] overlay ds_protect loaded
+   314.896 [nitro] overlay OVY_2 loaded
+   314.896 [nitro] overlay OVY_3 loaded
+   314.990 [nitro] overlay OVY_27 loaded
+   342.458 [nitro] overlay ds_protect loaded
+   342.494 [nitro] overlay ds_protect loaded
+   342.661 [nitro] overlay field loaded
+   342.661 [nitro] overlay ds_protect loaded
+   342.662 [nitro] overlay OVY_2 loaded
+   342.662 [nitro] overlay OVY_3 loaded
+   342.943 [nitro] overlay OVY_27 loaded
+   416.636 [nitro] overlay ds_protect loaded
+   416.670 [nitro] overlay ds_protect loaded
+   416.834 [nitro] overlay field loaded
+   416.835 [nitro] overlay ds_protect loaded
+   416.835 [nitro] overlay OVY_2 loaded
+   416.835 [nitro] overlay OVY_3 loaded
+   416.927 [nitro] overlay OVY_27 loaded
+   427.148 [kj] close requested at V-blank 25225
+   427.148 [app] terminating after 25224 V-blanks (close requested)
+   427.149 [audio] stopped, 1 underruns
+
+--- new run ---
+     0.089 [app] kohjoh fecd9ce-dirty (soulsilver), homebrew (SD pack), Old 3DS
+     1.639 [gpu] renderer ready (linear free 15213 KiB, VRAM free 4794 KiB)
+     1.683 [audio] NDSP 32768 Hz stereo, 4 x 512 frames
+     1.683 [save] raw save file sdmc:/3ds/kohjoh/saves/soulsilver.sav
+     1.683 [app] starting the game
+     1.685 [kj] starting soulsilver
+     1.836 [nitro] not implemented: DWC_CheckUserData
+     1.836 [nitro] not implemented: DWC_CreateUserData
+     1.836 [nitro] not implemented: DWC_ClearDirtyFlag
+     1.948 [nitro] overlay OVY_0 loaded
+     1.948 [nitro] overlay OVY_38 loaded
+     1.948 [nitro] not implemented: DWC_Init
+     1.949 [nitro] overlay intro_title loaded
+     5.666 [nitro] overlay intro_title loaded
+    10.596 [nitro] overlay OVY_74 loaded
+    11.031 [nitro] overlay OVY_36 loaded
+    11.114 [nitro] overlay OVY_53 loaded
+   120.559 [nitro] overlay OVY_36 loaded
+   120.656 [nitro] overlay OVY_124 loaded
+   120.656 [nitro] overlay ds_protect loaded
+   120.759 [nitro] overlay field loaded
+   120.760 [nitro] overlay ds_protect loaded
+   120.760 [nitro] overlay OVY_2 loaded
+   120.760 [nitro] overlay OVY_3 loaded
+   121.115 [nitro] overlay OVY_27 loaded
+   126.275 [nitro] overlay ds_protect loaded
+   126.310 [nitro] overlay ds_protect loaded
+   126.473 [nitro] overlay field loaded
+   126.477 [nitro] overlay ds_protect loaded
+   126.477 [nitro] overlay OVY_2 loaded
+   126.477 [nitro] overlay OVY_3 loaded
+   126.562 [nitro] overlay OVY_27 loaded
+   177.846 [nitro] overlay ds_protect loaded
+   177.908 [nitro] overlay touch_save_app loaded
+   180.691 [save] 61 KB into the file in 18 ms
+   180.729 [save] 4 KB into the file in 22 ms
+   180.816 [save] 4 KB into the file in 86 ms
+   180.864 [save] 4 KB into the file in 47 ms
+   180.913 [save] 4 KB into the file in 49 ms
+   180.964 [save] 4 KB into the file in 50 ms
+   181.014 [save] 4 KB into the file in 50 ms
+   181.065 [save] 4 KB into the file in 51 ms
+   181.119 [save] 4 KB into the file in 50 ms
+   181.172 [save] 4 KB into the file in 52 ms
+   181.233 [save] 4 KB into the file in 61 ms
+   181.282 [save] 4 KB into the file in 48 ms
+   181.331 [save] 4 KB into the file in 48 ms
+   181.383 [save] 4 KB into the file in 52 ms
+   181.433 [save] 4 KB into the file in 49 ms
+   181.483 [save] 4 KB into the file in 50 ms
+   181.534 [save] 4 KB into the file in 50 ms
+   181.587 [save] 4 KB into the file in 53 ms
+   181.637 [save] 4 KB into the file in 48 ms
+   183.441 [nitro] overlay ds_protect loaded
+   187.668 [nitro] overlay ds_protect loaded
+   187.698 [nitro] overlay ds_protect loaded
+   187.863 [nitro] overlay field loaded
+   187.864 [nitro] overlay ds_protect loaded
+   187.864 [nitro] overlay OVY_2 loaded
+   187.864 [nitro] overlay OVY_3 loaded
+   188.155 [nitro] overlay OVY_27 loaded
+   231.907 [nitro] overlay ds_protect loaded
+   231.941 [nitro] overlay ds_protect loaded
+   232.105 [nitro] overlay field loaded
+   232.106 [nitro] overlay ds_protect loaded
+   232.106 [nitro] overlay OVY_2 loaded
+   232.106 [nitro] overlay OVY_3 loaded
+   232.199 [nitro] overlay OVY_27 loaded
+   272.075 [nitro] overlay ds_protect loaded
+   272.092 [nitro] overlay ds_protect loaded
+   272.154 [nitro] overlay OVY_61 loaded
+   283.105 [nitro] overlay field loaded
+   283.106 [nitro] overlay ds_protect loaded
+   283.106 [nitro] overlay OVY_2 loaded
+   283.106 [nitro] overlay OVY_3 loaded
+   283.200 [nitro] overlay OVY_27 loaded
+   289.830 [nitro] overlay ds_protect loaded
+   298.093 [nitro] overlay ds_protect loaded
+   327.591 [nitro] overlay field loaded
+   327.591 [nitro] overlay ds_protect loaded
+   327.592 [nitro] overlay OVY_2 loaded
+   327.592 [nitro] overlay OVY_3 loaded
+   327.675 [nitro] overlay OVY_27 loaded
+   345.576 [nitro] overlay ds_protect loaded
+   345.640 [nitro] overlay touch_save_app loaded
+   350.736 [save] 61 KB into the file in 19 ms
+   350.806 [save] 4 KB into the file in 55 ms
+   350.823 [save] 4 KB into the file in 17 ms
+   350.839 [save] 4 KB into the file in 15 ms
+   350.860 [save] 4 KB into the file in 20 ms
+   350.886 [save] 4 KB into the file in 25 ms
+   350.903 [save] 4 KB into the file in 16 ms
+   350.918 [save] 4 KB into the file in 15 ms
+   350.934 [save] 4 KB into the file in 15 ms
+   350.952 [save] 4 KB into the file in 17 ms
+   350.969 [save] 4 KB into the file in 16 ms
+   350.986 [save] 4 KB into the file in 16 ms
+   351.002 [save] 4 KB into the file in 16 ms
+   351.020 [save] 4 KB into the file in 17 ms
+   351.036 [save] 4 KB into the file in 15 ms
+   351.055 [save] 4 KB into the file in 19 ms
+   351.072 [save] 4 KB into the file in 16 ms
+   351.089 [save] 4 KB into the file in 17 ms
+   351.105 [save] 4 KB into the file in 15 ms
+   352.909 [nitro] overlay ds_protect loaded
+   368.825 [nitro] overlay ds_protect loaded
+   368.858 [nitro] overlay ds_protect loaded
+   369.028 [nitro] overlay field loaded
+   369.028 [nitro] overlay ds_protect loaded
+   369.028 [nitro] overlay OVY_2 loaded
+   369.028 [nitro] overlay OVY_3 loaded
+   369.111 [nitro] overlay OVY_27 loaded
+   388.736 [nitro] overlay ds_protect loaded
+   388.799 [nitro] overlay touch_save_app loaded
+   393.733 [save] 61 KB into the file in 18 ms
+   395.468 [nitro] overlay ds_protect loaded
+   403.919 [kj] close requested at V-blank 23521
+   403.919 [app] terminating after 23520 V-blanks (close requested)
+   403.927 [audio] stopped, 1 underruns
+
+--- new run ---
+     0.088 [app] kohjoh fecd9ce-dirty (soulsilver), homebrew (SD pack), Old 3DS
+     1.646 [gpu] renderer ready (linear free 15213 KiB, VRAM free 4794 KiB)
+     1.690 [audio] NDSP 32768 Hz stereo, 4 x 512 frames
+     1.690 [save] raw save file sdmc:/3ds/kohjoh/saves/soulsilver.sav
+     1.690 [app] starting the game
+     1.692 [kj] starting soulsilver
+     1.959 [nitro] overlay OVY_0 loaded
+     1.959 [nitro] overlay OVY_38 loaded
+     1.960 [nitro] not implemented: DWC_Init
+     1.960 [nitro] overlay intro_title loaded
+     6.007 [nitro] overlay intro_title loaded
+    10.787 [nitro] overlay OVY_74 loaded
+    10.962 [nitro] not implemented: WVR_StartUpAsync
+    10.976 [nitro] not implemented: WM_InitializeForListening
+    10.976 [nitro] not implemented: WM_GetNextTgid
+    10.976 [nitro] not implemented: WM_GetLinkLevel
+    11.009 [nitro] not implemented: WM_SetPortCallback
+    11.978 [nitro] not implemented: WM_Reset
+    12.275 [nitro] overlay OVY_36 loaded
+    12.375 [nitro] overlay OVY_124 loaded
+    12.375 [nitro] overlay ds_protect loaded
+    12.476 [nitro] overlay field loaded
+    12.476 [nitro] overlay ds_protect loaded
+    12.477 [nitro] overlay OVY_2 loaded
+    12.477 [nitro] overlay OVY_3 loaded
+    12.870 [nitro] overlay OVY_27 loaded
+    15.025 [nitro] overlay ds_protect loaded
+    15.055 [nitro] overlay ds_protect loaded
+    16.604 [nitro] overlay field loaded
+    16.605 [nitro] overlay ds_protect loaded
+    16.605 [nitro] overlay OVY_2 loaded
+    16.605 [nitro] overlay OVY_3 loaded
+    16.696 [nitro] overlay OVY_27 loaded
+    22.812 [nitro] overlay ds_protect loaded
+    22.846 [nitro] overlay ds_protect loaded
+    23.007 [nitro] overlay field loaded
+    23.008 [nitro] overlay ds_protect loaded
+    23.008 [nitro] overlay OVY_2 loaded
+    23.008 [nitro] overlay OVY_3 loaded
+    23.235 [nitro] overlay OVY_27 loaded
+    44.678 [nitro] overlay ds_protect loaded
+    52.764 [nitro] overlay ds_protect loaded
+    52.793 [nitro] overlay ds_protect loaded
+    52.856 [nitro] overlay options_app loaded
+    62.065 [nitro] overlay field loaded
+    62.065 [nitro] overlay ds_protect loaded
+    62.066 [nitro] overlay OVY_2 loaded
+    62.066 [nitro] overlay OVY_3 loaded
+    62.153 [nitro] overlay OVY_27 loaded
+    62.876 [nitro] overlay ds_protect loaded
+    62.909 [nitro] overlay ds_protect loaded
+    62.973 [nitro] overlay options_app loaded
+    69.336 [nitro] overlay field loaded
+    69.336 [nitro] overlay ds_protect loaded
+    69.336 [nitro] overlay OVY_2 loaded
+    69.336 [nitro] overlay OVY_3 loaded
+    69.429 [nitro] overlay OVY_27 loaded
+    70.352 [nitro] overlay ds_protect loaded
+    70.416 [nitro] overlay touch_save_app loaded
+    74.145 [save] 61 KB into the file in 23 ms
+    74.248 [save] 4 KB into the file in 53 ms
+    74.298 [save] 4 KB into the file in 50 ms
+    74.353 [save] 4 KB into the file in 54 ms
+    74.405 [save] 4 KB into the file in 51 ms
+    74.456 [save] 4 KB into the file in 51 ms
+    74.506 [save] 4 KB into the file in 49 ms
+    74.556 [save] 4 KB into the file in 49 ms
+    74.606 [save] 4 KB into the file in 50 ms
+    74.660 [save] 4 KB into the file in 49 ms
+    74.710 [save] 4 KB into the file in 49 ms
+    74.759 [save] 4 KB into the file in 49 ms
+    74.811 [save] 4 KB into the file in 51 ms
+    74.874 [save] 4 KB into the file in 63 ms
+    74.924 [save] 4 KB into the file in 49 ms
+    74.973 [save] 4 KB into the file in 48 ms
+    75.023 [save] 4 KB into the file in 49 ms
+    75.079 [save] 4 KB into the file in 56 ms
+    75.130 [save] 4 KB into the file in 49 ms
+    76.717 [nitro] overlay ds_protect loaded
+    78.969 [nitro] overlay ds_protect loaded
+    79.004 [nitro] overlay ds_protect loaded
+    79.165 [nitro] overlay field loaded
+    79.165 [nitro] overlay ds_protect loaded
+    79.166 [nitro] overlay OVY_2 loaded
+    79.166 [nitro] overlay OVY_3 loaded
+    79.255 [nitro] overlay OVY_27 loaded
+   112.984 [nitro] overlay ds_protect loaded
+   113.017 [nitro] overlay ds_protect loaded
+   113.076 [nitro] overlay OVY_15 loaded
+   123.322 [nitro] overlay field loaded
+   123.322 [nitro] overlay ds_protect loaded
+   123.322 [nitro] overlay OVY_2 loaded
+   123.322 [nitro] overlay OVY_3 loaded
+   123.412 [nitro] overlay OVY_27 loaded
+   221.996 [nitro] overlay ds_protect loaded
+   222.059 [nitro] overlay touch_save_app loaded
+   225.285 [save] 61 KB into the file in 18 ms
+   226.820 [nitro] overlay ds_protect loaded
+   241.099 [nitro] overlay ds_protect loaded
+   241.115 [nitro] overlay ds_protect loaded
+   241.169 [nitro] overlay OVY_15 loaded
+   242.627 [nitro] overlay field loaded
+   242.627 [nitro] overlay ds_protect loaded
+   242.627 [nitro] overlay OVY_2 loaded
+   242.628 [nitro] overlay OVY_3 loaded
+   242.711 [nitro] overlay OVY_27 loaded
+   266.441 [nitro] overlay ds_protect loaded
+   266.462 [nitro] overlay ds_protect loaded
+   266.524 [nitro] overlay OVY_15 loaded
+   269.266 [nitro] overlay field loaded
+   269.266 [nitro] overlay ds_protect loaded
+   269.266 [nitro] overlay OVY_2 loaded
+   269.266 [nitro] overlay OVY_3 loaded
+   269.360 [nitro] overlay OVY_27 loaded
+   310.506 [nitro] overlay ds_protect loaded
+   310.537 [nitro] overlay ds_protect loaded
+   310.704 [nitro] overlay field loaded
+   310.704 [nitro] overlay ds_protect loaded
+   310.704 [nitro] overlay OVY_2 loaded
+   310.704 [nitro] overlay OVY_3 loaded
+   310.809 [nitro] overlay OVY_27 loaded
+   376.909 [nitro] overlay ds_protect loaded
+   376.943 [nitro] overlay ds_protect loaded
+   377.104 [nitro] overlay field loaded
+   377.105 [nitro] overlay ds_protect loaded
+   377.105 [nitro] overlay OVY_2 loaded
+   377.105 [nitro] overlay OVY_3 loaded
+   377.195 [nitro] overlay OVY_27 loaded
+   380.457 [nitro] overlay ds_protect loaded
+   380.487 [nitro] overlay ds_protect loaded
+   380.548 [nitro] overlay pokegear loaded
+   380.746 [nitro] overlay pokegear_app loaded
+   389.389 [nitro] overlay field loaded
+   389.389 [nitro] overlay ds_protect loaded
+   389.390 [nitro] overlay OVY_2 loaded
+   389.390 [nitro] overlay OVY_3 loaded
+   389.478 [nitro] overlay OVY_27 loaded
+   398.369 [nitro] overlay ds_protect loaded
+   398.432 [nitro] overlay touch_save_app loaded
+   401.661 [save] 61 KB into the file in 18 ms
+   403.195 [nitro] overlay ds_protect loaded
+   417.362 [nitro] overlay ds_protect loaded
+   417.389 [nitro] overlay ds_protect loaded
+   426.893 [nitro] overlay field loaded
+   426.894 [nitro] overlay ds_protect loaded
+   426.894 [nitro] overlay OVY_2 loaded
+   426.894 [nitro] overlay OVY_3 loaded
+   426.989 [nitro] overlay OVY_27 loaded
+   437.007 [nitro] overlay OVY_115 loaded
+   441.055 [nitro] overlay ds_protect loaded
+   441.088 [nitro] overlay ds_protect loaded
+   441.186 [nitro] overlay OVY_12 loaded
+   441.186 [nitro] overlay OVY_18 loaded
+   441.300 [nitro] overlay OVY_6 loaded
+   441.300 [nitro] overlay OVY_7 loaded
+   450.891 [nitro] overlay OVY_10 loaded
+   452.315 [nitro] overlay OVY_7 loaded
+   460.026 [nitro] overlay OVY_10 loaded
+   460.885 [nitro] overlay OVY_7 loaded
+   472.072 [nitro] overlay field loaded
+   472.072 [nitro] overlay ds_protect loaded
+   472.072 [nitro] overlay OVY_2 loaded
+   472.073 [nitro] overlay OVY_3 loaded
+   472.157 [nitro] overlay OVY_27 loaded
+   503.366 [nitro] overlay OVY_120 loaded
+   505.220 [nitro] overlay ds_protect loaded
+   505.254 [nitro] overlay ds_protect loaded
+   505.347 [nitro] overlay OVY_12 loaded
+   505.347 [nitro] overlay OVY_18 loaded
+   505.464 [nitro] overlay OVY_6 loaded
+   505.464 [nitro] overlay OVY_7 loaded
+   512.300 [nitro] overlay OVY_10 loaded
+   513.011 [nitro] overlay OVY_7 loaded
+   514.542 [nitro] overlay field loaded
+   514.542 [nitro] overlay ds_protect loaded
+   514.542 [nitro] overlay OVY_2 loaded
+   514.542 [nitro] overlay OVY_3 loaded
+   514.627 [nitro] overlay OVY_27 loaded
+   522.700 [nitro] overlay ds_protect loaded
+   522.737 [nitro] overlay ds_protect loaded
+   522.898 [nitro] overlay field loaded
+   522.899 [nitro] overlay ds_protect loaded
+   522.899 [nitro] overlay OVY_2 loaded
+   522.899 [nitro] overlay OVY_3 loaded
+   523.026 [nitro] overlay OVY_27 loaded
+   542.490 [nitro] overlay ds_protect loaded
+   542.522 [nitro] overlay ds_protect loaded
+   547.956 [nitro] overlay field loaded
+   547.956 [nitro] overlay ds_protect loaded
+   547.956 [nitro] overlay OVY_2 loaded
+   547.956 [nitro] overlay OVY_3 loaded
+   548.041 [nitro] overlay OVY_27 loaded
+   549.337 [nitro] overlay ds_protect loaded
+   592.626 [nitro] overlay ds_protect loaded
+   592.689 [nitro] overlay touch_save_app loaded
+   596.149 [save] 61 KB into the file in 18 ms
+   597.683 [nitro] overlay ds_protect loaded
+   599.264 [nitro] overlay ds_protect loaded
+   599.302 [nitro] overlay ds_protect loaded
+   599.464 [nitro] overlay field loaded
+   599.464 [nitro] overlay ds_protect loaded
+   599.464 [nitro] overlay OVY_2 loaded
+   599.464 [nitro] overlay OVY_3 loaded
+   599.553 [nitro] overlay OVY_27 loaded
+   605.252 [nitro] overlay ds_protect loaded
+   605.286 [nitro] overlay ds_protect loaded
+   605.448 [nitro] overlay field loaded
+   605.448 [nitro] overlay ds_protect loaded
+   605.448 [nitro] overlay OVY_2 loaded
+   605.448 [nitro] overlay OVY_3 loaded
+   605.542 [nitro] overlay OVY_27 loaded
+   612.611 [nitro] overlay ds_protect loaded
+   618.553 [nitro] overlay ds_protect loaded
+   618.586 [nitro] overlay ds_protect loaded
+   618.753 [nitro] overlay field loaded
+   618.753 [nitro] overlay ds_protect loaded
+   618.753 [nitro] overlay OVY_2 loaded
+   618.753 [nitro] overlay OVY_3 loaded
+   618.838 [nitro] overlay OVY_27 loaded
+   635.975 [nitro] overlay OVY_120 loaded
+   637.824 [nitro] overlay ds_protect loaded
+   637.861 [nitro] overlay ds_protect loaded
+   637.954 [nitro] overlay OVY_12 loaded
+   637.954 [nitro] overlay OVY_18 loaded
+   638.071 [nitro] overlay OVY_6 loaded
+   638.071 [nitro] overlay OVY_7 loaded
+   645.505 [nitro] overlay OVY_10 loaded
+   651.270 [nitro] overlay OVY_7 loaded
+   655.777 [nitro] overlay OVY_10 loaded
+   661.732 [nitro] overlay OVY_8 loaded
+   669.787 [nitro] overlay OVY_10 loaded
+   669.973 [nitro] overlay OVY_7 loaded
+   687.850 [nitro] overlay field loaded
+   687.850 [nitro] overlay ds_protect loaded
+   687.850 [nitro] overlay OVY_2 loaded
+   687.850 [nitro] overlay OVY_3 loaded
+   687.940 [nitro] overlay OVY_27 loaded
+   702.491 [nitro] overlay ds_protect loaded
+   702.524 [nitro] overlay ds_protect loaded
+   702.586 [nitro] overlay OVY_15 loaded
+   705.695 [nitro] overlay field loaded
+   705.695 [nitro] overlay ds_protect loaded
+   705.695 [nitro] overlay OVY_2 loaded
+   705.695 [nitro] overlay OVY_3 loaded
+   705.786 [nitro] overlay OVY_27 loaded
+   744.112 [nitro] overlay ds_protect loaded
+   744.146 [nitro] overlay ds_protect loaded
+   744.206 [nitro] overlay OVY_15 loaded
+   746.845 [nitro] overlay field loaded
+   746.845 [nitro] overlay ds_protect loaded
+   746.845 [nitro] overlay OVY_2 loaded
+   746.845 [nitro] overlay OVY_3 loaded
+   746.934 [nitro] overlay OVY_27 loaded
+   758.186 [nitro] overlay OVY_119 loaded
+   759.788 [nitro] overlay ds_protect loaded
+   759.819 [nitro] overlay ds_protect loaded
+   759.914 [nitro] overlay OVY_12 loaded
+   759.914 [nitro] overlay OVY_18 loaded
+   760.034 [nitro] overlay OVY_6 loaded
+   760.034 [nitro] overlay OVY_7 loaded
+   767.953 [nitro] overlay OVY_10 loaded
+   769.571 [nitro] overlay OVY_7 loaded
+   782.256 [nitro] overlay OVY_10 loaded
+   782.943 [nitro] overlay OVY_7 loaded
+   789.354 [nitro] overlay OVY_10 loaded
+   790.347 [nitro] overlay OVY_7 loaded
+   811.495 [nitro] overlay field loaded
+   811.495 [nitro] overlay ds_protect loaded
+   811.495 [nitro] overlay OVY_2 loaded
+   811.495 [nitro] overlay OVY_3 loaded
+   811.579 [nitro] overlay OVY_27 loaded
+   840.883 [nitro] overlay ds_protect loaded
+   840.914 [nitro] overlay ds_protect loaded
+   841.081 [nitro] overlay field loaded
+   841.082 [nitro] overlay ds_protect loaded
+   841.082 [nitro] overlay OVY_2 loaded
+   841.082 [nitro] overlay OVY_3 loaded
+   841.242 [nitro] overlay OVY_27 loaded
+   859.785 [nitro] overlay ds_protect loaded
+   859.817 [nitro] overlay ds_protect loaded
+   859.981 [nitro] overlay field loaded
+   859.981 [nitro] overlay ds_protect loaded
+   859.981 [nitro] overlay OVY_2 loaded
+   859.981 [nitro] overlay OVY_3 loaded
+   860.120 [nitro] overlay OVY_27 loaded
+   875.260 [nitro] overlay ds_protect loaded
+   875.294 [nitro] overlay ds_protect loaded
+   875.458 [nitro] overlay field loaded
+   875.458 [nitro] overlay ds_protect loaded
+   875.458 [nitro] overlay OVY_2 loaded
+   875.458 [nitro] overlay OVY_3 loaded
+   875.578 [nitro] overlay OVY_27 loaded
+   884.005 [nitro] overlay ds_protect loaded
+   884.037 [nitro] overlay ds_protect loaded
+   884.097 [nitro] overlay OVY_15 loaded
+   886.838 [nitro] overlay field loaded
+   886.839 [nitro] overlay ds_protect loaded
+   886.839 [nitro] overlay OVY_2 loaded
+   886.839 [nitro] overlay OVY_3 loaded
+   886.916 [nitro] overlay OVY_27 loaded
+   892.193 [nitro] overlay ds_protect loaded
+   892.225 [nitro] overlay ds_protect loaded
+   892.393 [nitro] overlay field loaded
+   892.393 [nitro] overlay ds_protect loaded
+   892.393 [nitro] overlay OVY_2 loaded
+   892.393 [nitro] overlay OVY_3 loaded
+   892.471 [nitro] overlay OVY_27 loaded
+   904.073 [nitro] overlay OVY_119 loaded
+   906.997 [nitro] overlay ds_protect loaded
+   907.034 [nitro] overlay ds_protect loaded
+   907.128 [nitro] overlay OVY_12 loaded
+   907.128 [nitro] overlay OVY_18 loaded
+   907.245 [nitro] overlay OVY_6 loaded
+   907.245 [nitro] overlay OVY_7 loaded
+   916.732 [nitro] overlay OVY_10 loaded
+   918.189 [nitro] overlay OVY_7 loaded
+   932.809 [nitro] overlay OVY_10 loaded
+   994.309 [nitro] overlay OVY_7 loaded
+  1009.663 [nitro] overlay OVY_10 loaded
+  1010.778 [nitro] overlay OVY_7 loaded
+  1028.823 [nitro] overlay field loaded
+  1028.824 [nitro] overlay ds_protect loaded
+  1028.824 [nitro] overlay OVY_2 loaded
+  1028.824 [nitro] overlay OVY_3 loaded
+  1028.896 [nitro] overlay OVY_27 loaded
+  1032.538 [nitro] overlay ds_protect loaded
+  1032.570 [nitro] overlay ds_protect loaded
+  1032.737 [nitro] overlay field loaded
+  1032.738 [nitro] overlay ds_protect loaded
+  1032.738 [nitro] overlay OVY_2 loaded
+  1032.738 [nitro] overlay OVY_3 loaded
+  1032.810 [nitro] overlay OVY_27 loaded
+  1047.867 [nitro] overlay OVY_119 loaded
+  1050.789 [nitro] overlay ds_protect loaded
+  1050.820 [nitro] overlay ds_protect loaded
+  1050.917 [nitro] overlay OVY_12 loaded
+  1050.917 [nitro] overlay OVY_18 loaded
+  1051.035 [nitro] overlay OVY_6 loaded
+  1051.036 [nitro] overlay OVY_7 loaded
+  1058.918 [nitro] overlay OVY_10 loaded
+  1060.239 [nitro] overlay OVY_7 loaded
+  1074.828 [nitro] overlay OVY_10 loaded
+  1075.545 [nitro] overlay OVY_7 loaded
+  1294.554 [nitro] overlay OVY_10 loaded
+  1296.278 [nitro] overlay OVY_7 loaded
+  1315.354 [nitro] overlay field loaded
+  1315.354 [nitro] overlay ds_protect loaded
+  1315.354 [nitro] overlay OVY_2 loaded
+  1315.354 [nitro] overlay OVY_3 loaded
+  1315.427 [nitro] overlay OVY_27 loaded
+  1318.409 [nitro] overlay ds_protect loaded
+  1318.478 [nitro] overlay touch_save_app loaded
+  1321.596 [save] 61 KB into the file in 19 ms
+  1323.136 [nitro] overlay ds_protect loaded
+  1325.887 [nitro] overlay ds_protect loaded
+  1325.918 [nitro] overlay ds_protect loaded
+  1326.086 [nitro] overlay field loaded
+  1326.086 [nitro] overlay ds_protect loaded
+  1326.086 [nitro] overlay OVY_2 loaded
+  1326.086 [nitro] overlay OVY_3 loaded
+  1326.161 [nitro] overlay OVY_27 loaded
+  1332.971 [nitro] overlay ds_protect loaded
+  1333.008 [nitro] overlay ds_protect loaded
+  1333.170 [nitro] overlay field loaded
+  1333.170 [nitro] overlay ds_protect loaded
+  1333.170 [nitro] overlay OVY_2 loaded
+  1333.170 [nitro] overlay OVY_3 loaded
+  1333.271 [nitro] overlay OVY_27 loaded
+  1364.632 [nitro] overlay OVY_119 loaded
+  1367.555 [nitro] overlay ds_protect loaded
+  1367.588 [nitro] overlay ds_protect loaded
+  1367.682 [nitro] overlay OVY_12 loaded
+  1367.682 [nitro] overlay OVY_18 loaded
+  1367.799 [nitro] overlay OVY_6 loaded
+  1367.799 [nitro] overlay OVY_7 loaded
+  1376.320 [nitro] overlay OVY_10 loaded
+  1378.180 [nitro] overlay OVY_7 loaded
+  1391.603 [nitro] overlay field loaded
+  1391.603 [nitro] overlay ds_protect loaded
+  1391.603 [nitro] overlay OVY_2 loaded
+  1391.603 [nitro] overlay OVY_3 loaded
+  1391.676 [nitro] overlay OVY_27 loaded
+  1412.529 [nitro] overlay OVY_119 loaded
+  1415.453 [nitro] overlay ds_protect loaded
+  1415.487 [nitro] overlay ds_protect loaded
+  1415.586 [nitro] overlay OVY_12 loaded
+  1415.587 [nitro] overlay OVY_18 loaded
+  1415.701 [nitro] overlay OVY_6 loaded
+  1415.701 [nitro] overlay OVY_7 loaded
+  1423.656 [nitro] overlay OVY_10 loaded
+  1425.975 [nitro] overlay OVY_7 loaded
+  1443.314 [nitro] overlay field loaded
+  1443.314 [nitro] overlay ds_protect loaded
+  1443.314 [nitro] overlay OVY_2 loaded
+  1443.314 [nitro] overlay OVY_3 loaded
+  1443.388 [nitro] overlay OVY_27 loaded
+  1474.747 [nitro] overlay OVY_119 loaded
+  1477.665 [nitro] overlay ds_protect loaded
+  1477.697 [nitro] overlay ds_protect loaded
+  1477.792 [nitro] overlay OVY_12 loaded
+  1477.792 [nitro] overlay OVY_18 loaded
+  1477.912 [nitro] overlay OVY_6 loaded
+  1477.912 [nitro] overlay OVY_7 loaded
+  1487.467 [nitro] overlay OVY_10 loaded
+  1488.620 [nitro] overlay OVY_7 loaded
+  1503.576 [nitro] overlay OVY_10 loaded
+  1505.400 [nitro] overlay OVY_7 loaded
+  1509.742 [nitro] overlay OVY_10 loaded
+  1511.501 [nitro] overlay OVY_7 loaded
+  1515.509 [nitro] overlay OVY_10 loaded
+  1516.363 [nitro] overlay OVY_7 loaded
+  1520.278 [nitro] overlay OVY_10 loaded
+  1520.993 [nitro] overlay OVY_7 loaded
+  1525.265 [nitro] overlay OVY_10 loaded
+  1526.058 [nitro] overlay OVY_7 loaded
+  1538.340 [nitro] overlay OVY_10 loaded
+  1539.123 [nitro] overlay OVY_7 loaded
+  1558.973 [nitro] overlay field loaded
+  1558.974 [nitro] overlay ds_protect loaded
+  1558.974 [nitro] overlay OVY_2 loaded
+  1558.974 [nitro] overlay OVY_3 loaded
+  1559.046 [nitro] overlay OVY_27 loaded
+  1632.229 [nitro] overlay ds_protect loaded
+  1632.293 [nitro] overlay touch_save_app loaded
+  1635.588 [save] 61 KB into the file in 16 ms
+  1637.123 [nitro] overlay ds_protect loaded
+  1643.007 [kj] close requested at V-blank 86007
+  1643.007 [app] terminating after 86006 V-blanks (close requested)
+  1643.008 [audio] stopped, 1 underruns
+
+--- new run ---
+     0.091 [app] kohjoh fecd9ce-dirty (soulsilver), homebrew (SD pack), Old 3DS
+     1.648 [gpu] renderer ready (linear free 15213 KiB, VRAM free 4794 KiB)
+     1.691 [audio] NDSP 32768 Hz stereo, 4 x 512 frames
+     1.691 [save] raw save file sdmc:/3ds/kohjoh/saves/soulsilver.sav
+     1.692 [app] starting the game
+     1.694 [kj] starting soulsilver
+     1.948 [nitro] overlay OVY_0 loaded
+     1.948 [nitro] overlay OVY_38 loaded
+     1.948 [nitro] not implemented: DWC_Init
+     1.948 [nitro] overlay intro_title loaded
+     7.944 [nitro] overlay intro_title loaded
+    17.504 [nitro] overlay OVY_74 loaded
+    17.688 [nitro] not implemented: WVR_StartUpAsync
+    17.696 [nitro] not implemented: WM_InitializeForListening
+    17.696 [nitro] not implemented: WM_GetNextTgid
+    17.696 [nitro] not implemented: WM_GetLinkLevel
+    17.726 [nitro] not implemented: WM_SetPortCallback
+    18.127 [nitro] not implemented: WM_Reset
+    18.424 [nitro] overlay OVY_36 loaded
+    18.524 [nitro] overlay OVY_124 loaded
+    18.524 [nitro] overlay ds_protect loaded
+    18.627 [nitro] overlay field loaded
+    18.627 [nitro] overlay ds_protect loaded
+    18.627 [nitro] overlay OVY_2 loaded
+    18.627 [nitro] overlay OVY_3 loaded
+    18.906 [nitro] overlay OVY_27 loaded
+    48.237 [nitro] overlay ds_protect loaded
+    48.271 [nitro] overlay ds_protect loaded
+    48.436 [nitro] overlay field loaded
+    48.437 [nitro] overlay ds_protect loaded
+    48.437 [nitro] overlay OVY_2 loaded
+    48.437 [nitro] overlay OVY_3 loaded
+    48.516 [nitro] overlay OVY_27 loaded
+    53.921 [nitro] overlay ds_protect loaded
+    53.953 [nitro] overlay ds_protect loaded
+    54.121 [nitro] overlay field loaded
+    54.121 [nitro] overlay ds_protect loaded
+    54.121 [nitro] overlay OVY_2 loaded
+    54.121 [nitro] overlay OVY_3 loaded
+    54.219 [nitro] overlay OVY_27 loaded
+    70.234 [nitro] overlay ds_protect loaded
+    70.266 [nitro] overlay ds_protect loaded
+    70.434 [nitro] overlay field loaded
+    70.435 [nitro] overlay ds_protect loaded
+    70.435 [nitro] overlay OVY_2 loaded
+    70.435 [nitro] overlay OVY_3 loaded
+    70.505 [nitro] overlay OVY_27 loaded
+    72.840 [nitro] overlay ds_protect loaded
+    72.875 [nitro] overlay ds_protect loaded
+    73.043 [nitro] overlay field loaded
+    73.043 [nitro] overlay ds_protect loaded
+    73.043 [nitro] overlay OVY_2 loaded
+    73.043 [nitro] overlay OVY_3 loaded
+    73.113 [nitro] overlay OVY_27 loaded
+    75.547 [nitro] overlay ds_protect loaded
+    75.581 [nitro] overlay ds_protect loaded
+    75.748 [nitro] overlay field loaded
+    75.748 [nitro] overlay ds_protect loaded
+    75.748 [nitro] overlay OVY_2 loaded
+    75.748 [nitro] overlay OVY_3 loaded
+    75.818 [nitro] overlay OVY_27 loaded
+    82.834 [nitro] overlay ds_protect loaded
+    82.872 [nitro] overlay ds_protect loaded
+    83.034 [nitro] overlay field loaded
+    83.034 [nitro] overlay ds_protect loaded
+    83.034 [nitro] overlay OVY_2 loaded
+    83.034 [nitro] overlay OVY_3 loaded
+    83.110 [nitro] overlay OVY_27 loaded
+    91.529 [nitro] overlay ds_protect loaded
+    91.560 [nitro] overlay ds_protect loaded
+    91.729 [nitro] overlay field loaded
+    91.729 [nitro] overlay ds_protect loaded
+    91.729 [nitro] overlay OVY_2 loaded
+    91.729 [nitro] overlay OVY_3 loaded
+    91.977 [nitro] overlay OVY_27 loaded
+   116.204 [nitro] overlay ds_protect loaded
+   116.270 [nitro] overlay touch_save_app loaded
+   119.597 [save] 61 KB into the file in 19 ms
+   121.125 [nitro] overlay ds_protect loaded
+   126.645 [nitro] overlay ds_protect loaded
+   126.659 [nitro] overlay ds_protect loaded
+   126.787 [nitro] overlay OVY_26 loaded
+   126.812 [nitro] overlay field loaded
+   126.812 [nitro] overlay ds_protect loaded
+   126.812 [nitro] overlay OVY_2 loaded
+   126.812 [nitro] overlay OVY_4 loaded
+   126.987 [nitro] overlay OVY_27 loaded
+   142.173 [nitro] overlay OVY_115 loaded
+   146.214 [nitro] overlay ds_protect loaded
+   146.248 [nitro] overlay ds_protect loaded
+   146.340 [nitro] overlay OVY_12 loaded
+   146.340 [nitro] overlay OVY_18 loaded
+   146.459 [nitro] overlay OVY_6 loaded
+   146.459 [nitro] overlay OVY_7 loaded
+   156.048 [nitro] overlay OVY_10 loaded
+   158.540 [nitro] overlay OVY_7 loaded
+   163.884 [nitro] overlay OVY_10 loaded
+   166.382 [nitro] overlay OVY_7 loaded
+   206.136 [nitro] overlay OVY_10 loaded
+   206.656 [nitro] overlay OVY_8 loaded
+   210.812 [nitro] overlay OVY_10 loaded
+   210.901 [nitro] overlay OVY_7 loaded
+   215.445 [nitro] overlay OVY_10 loaded
+   215.545 [nitro] overlay OVY_7 loaded
+   218.019 [nitro] overlay OVY_10 loaded
+   218.803 [nitro] overlay OVY_7 loaded
+   223.284 [nitro] overlay OVY_10 loaded
+   224.535 [nitro] overlay OVY_8 loaded
+   227.345 [nitro] overlay OVY_10 loaded
+   227.917 [nitro] overlay OVY_8 loaded
+   230.833 [nitro] overlay OVY_10 loaded
+   232.889 [nitro] overlay OVY_7 loaded
+   240.433 [nitro] overlay OVY_10 loaded
+   242.729 [nitro] overlay OVY_8 loaded
+   247.268 [nitro] overlay OVY_10 loaded
+   247.354 [nitro] overlay OVY_7 loaded
+   251.894 [nitro] overlay OVY_10 loaded
+   251.998 [nitro] overlay OVY_7 loaded
+   254.503 [nitro] overlay OVY_10 loaded
+   255.295 [nitro] overlay OVY_7 loaded
+   280.320 [nitro] overlay field loaded
+   280.320 [nitro] overlay ds_protect loaded
+   280.321 [nitro] overlay OVY_2 loaded
+   280.321 [nitro] overlay OVY_4 loaded
+   280.394 [nitro] overlay OVY_27 loaded
+   324.883 [nitro] overlay ds_protect loaded
+   324.913 [nitro] overlay ds_protect loaded
+   325.078 [nitro] overlay field loaded
+   325.078 [nitro] overlay ds_protect loaded
+   325.079 [nitro] overlay OVY_2 loaded
+   325.079 [nitro] overlay OVY_3 loaded
+   325.167 [nitro] overlay OVY_27 loaded
+   329.267 [nitro] overlay ds_protect loaded
+   329.276 [nitro] overlay ds_protect loaded
+   329.279 [nitro] overlay pokegear loaded
+   329.405 [nitro] overlay pokegear_app loaded
+   477.640 [nitro] overlay field loaded
+   477.640 [nitro] overlay ds_protect loaded
+   477.640 [nitro] overlay OVY_2 loaded
+   477.640 [nitro] overlay OVY_3 loaded
+   477.731 [nitro] overlay OVY_27 loaded
+   511.490 [nitro] overlay ds_protect loaded
+   511.527 [nitro] overlay ds_protect loaded
+   511.687 [nitro] overlay field loaded
+   511.688 [nitro] overlay ds_protect loaded
+   511.688 [nitro] overlay OVY_2 loaded
+   511.688 [nitro] overlay OVY_3 loaded
+   511.862 [nitro] overlay OVY_27 loaded
+   515.563 [nitro] overlay ds_protect loaded
+   532.062 [nitro] overlay ds_protect loaded
+   532.096 [nitro] overlay ds_protect loaded
+   532.262 [nitro] overlay field loaded
+   532.262 [nitro] overlay ds_protect loaded
+   532.262 [nitro] overlay OVY_2 loaded
+   532.262 [nitro] overlay OVY_3 loaded
+   532.347 [nitro] overlay OVY_27 loaded
+   535.496 [nitro] overlay ds_protect loaded
+   535.529 [nitro] overlay ds_protect loaded
+   539.013 [nitro] overlay field loaded
+   539.013 [nitro] overlay ds_protect loaded
+   539.013 [nitro] overlay OVY_2 loaded
+   539.013 [nitro] overlay OVY_3 loaded
+   539.104 [nitro] overlay OVY_27 loaded
+   571.280 [nitro] overlay ds_protect loaded
+   571.312 [nitro] overlay ds_protect loaded
+   571.472 [nitro] overlay field loaded
+   571.473 [nitro] overlay ds_protect loaded
+   571.473 [nitro] overlay OVY_2 loaded
+   571.473 [nitro] overlay OVY_3 loaded
+   571.668 [nitro] overlay OVY_27 loaded
+   574.201 [nitro] overlay ds_protect loaded
+   574.231 [nitro] overlay ds_protect loaded
+   574.401 [nitro] overlay field loaded
+   574.401 [nitro] overlay ds_protect loaded
+   574.401 [nitro] overlay OVY_2 loaded
+   574.401 [nitro] overlay OVY_3 loaded
+   574.612 [nitro] overlay OVY_27 loaded
+   579.113 [nitro] overlay ds_protect loaded
+   579.151 [nitro] overlay ds_protect loaded
+   579.311 [nitro] overlay field loaded
+   579.311 [nitro] overlay ds_protect loaded
+   579.311 [nitro] overlay OVY_2 loaded
+   579.311 [nitro] overlay OVY_3 loaded
+   579.406 [nitro] overlay OVY_27 loaded
+   581.686 [nitro] overlay ds_protect loaded
+   581.719 [nitro] overlay ds_protect loaded
+   581.886 [nitro] overlay field loaded
+   581.886 [nitro] overlay ds_protect loaded
+   581.886 [nitro] overlay OVY_2 loaded
+   581.886 [nitro] overlay OVY_3 loaded
+   582.021 [nitro] overlay OVY_27 loaded
+   585.987 [nitro] overlay ds_protect loaded
+   586.017 [nitro] overlay ds_protect loaded
+   586.078 [nitro] overlay trainer_card loaded
+   586.145 [nitro] overlay trainer_card_main loaded
+   633.180 [nitro] overlay field loaded
+   633.180 [nitro] overlay ds_protect loaded
+   633.180 [nitro] overlay OVY_2 loaded
+   633.180 [nitro] overlay OVY_3 loaded
+   633.258 [nitro] overlay OVY_27 loaded
+   639.603 [nitro] overlay ds_protect loaded
+   639.638 [nitro] overlay ds_protect loaded
+   639.798 [nitro] overlay field loaded
+   639.798 [nitro] overlay ds_protect loaded
+   639.798 [nitro] overlay OVY_2 loaded
+   639.799 [nitro] overlay OVY_3 loaded
+   639.883 [nitro] overlay OVY_27 loaded
+   642.891 [nitro] overlay ds_protect loaded
+   642.924 [nitro] overlay ds_protect loaded
+   643.093 [nitro] overlay field loaded
+   643.093 [nitro] overlay ds_protect loaded
+   643.093 [nitro] overlay OVY_2 loaded
+   643.093 [nitro] overlay OVY_3 loaded
+   643.177 [nitro] overlay OVY_27 loaded
+   652.893 [nitro] overlay ds_protect loaded
+   652.923 [nitro] overlay ds_protect loaded
+   652.983 [nitro] overlay OVY_18 loaded
+   654.055 [nitro] overlay ds_protect loaded
+   654.089 [nitro] overlay field loaded
+   654.089 [nitro] overlay ds_protect loaded
+   654.090 [nitro] overlay OVY_2 loaded
+   654.090 [nitro] overlay OVY_3 loaded
+   654.175 [nitro] overlay OVY_27 loaded
+   655.667 [nitro] overlay ds_protect loaded
+   655.700 [nitro] overlay ds_protect loaded
+   655.762 [nitro] overlay OVY_18 loaded
+   657.262 [nitro] overlay ds_protect loaded
+   657.295 [nitro] overlay field loaded
+   657.296 [nitro] overlay ds_protect loaded
+   657.296 [nitro] overlay OVY_2 loaded
+   657.296 [nitro] overlay OVY_3 loaded
+   657.388 [nitro] overlay OVY_27 loaded
+   659.244 [nitro] overlay ds_protect loaded
+   659.272 [nitro] overlay ds_protect loaded
+   659.334 [nitro] overlay pokegear loaded
+   659.535 [nitro] overlay pokegear_app loaded
+   660.773 [nitro] overlay pokegear_app loaded
+   660.773 [nitro] overlay OVY_26 loaded
+   682.700 [nitro] overlay field loaded
+   682.701 [nitro] overlay ds_protect loaded
+   682.701 [nitro] overlay OVY_2 loaded
+   682.701 [nitro] overlay OVY_3 loaded
+   682.793 [nitro] overlay OVY_27 loaded
+   697.151 [nitro] overlay ds_protect loaded
+   697.179 [nitro] overlay ds_protect loaded
+   697.244 [nitro] overlay OVY_15 loaded
+   699.030 [nitro] overlay field loaded
+   699.030 [nitro] overlay ds_protect loaded
+   699.030 [nitro] overlay OVY_2 loaded
+   699.030 [nitro] overlay OVY_3 loaded
+   699.122 [nitro] overlay OVY_27 loaded
+   700.076 [nitro] overlay ds_protect loaded
+   700.109 [nitro] overlay ds_protect loaded
+   700.168 [nitro] overlay trainer_card loaded
+   700.233 [nitro] overlay trainer_card_main loaded
+   701.872 [nitro] overlay field loaded
+   701.872 [nitro] overlay ds_protect loaded
+   701.872 [nitro] overlay OVY_2 loaded
+   701.872 [nitro] overlay OVY_3 loaded
+   701.964 [nitro] overlay OVY_27 loaded
+   704.656 [nitro] overlay ds_protect loaded
+   704.689 [nitro] overlay ds_protect loaded
+   704.748 [nitro] overlay pokegear loaded
+   704.948 [nitro] overlay pokegear_app loaded
+   704.948 [nitro] overlay OVY_26 loaded
+   715.512 [nitro] overlay field loaded
+   715.512 [nitro] overlay ds_protect loaded
+   715.513 [nitro] overlay OVY_2 loaded
+   715.513 [nitro] overlay OVY_3 loaded
+   715.598 [nitro] overlay OVY_27 loaded
+   717.252 [nitro] overlay ds_protect loaded
+   717.286 [nitro] overlay ds_protect loaded
+   717.451 [nitro] overlay field loaded
+   717.451 [nitro] overlay ds_protect loaded
+   717.451 [nitro] overlay OVY_2 loaded
+   717.451 [nitro] overlay OVY_3 loaded
+   717.532 [nitro] overlay OVY_27 loaded
+   720.359 [nitro] overlay ds_protect loaded
+   720.393 [nitro] overlay ds_protect loaded
+   720.559 [nitro] overlay field loaded
+   720.559 [nitro] overlay ds_protect loaded
+   720.559 [nitro] overlay OVY_2 loaded
+   720.560 [nitro] overlay OVY_3 loaded
+   720.643 [nitro] overlay OVY_27 loaded
+   976.550 [nitro] overlay ds_protect loaded
+   976.584 [nitro] overlay ds_protect loaded
+   976.749 [nitro] overlay field loaded
+   976.749 [nitro] overlay ds_protect loaded
+   976.749 [nitro] overlay OVY_2 loaded
+   976.749 [nitro] overlay OVY_3 loaded
+   976.845 [nitro] overlay OVY_27 loaded
+   979.472 [nitro] overlay ds_protect loaded
+   979.506 [nitro] overlay ds_protect loaded
+   979.672 [nitro] overlay field loaded
+   979.672 [nitro] overlay ds_protect loaded
+   979.672 [nitro] overlay OVY_2 loaded
+   979.672 [nitro] overlay OVY_3 loaded
+   979.813 [nitro] overlay OVY_27 loaded
+   989.825 [nitro] overlay OVY_119 loaded
+   991.392 [nitro] overlay ds_protect loaded
+   991.425 [nitro] overlay ds_protect loaded
+   991.520 [nitro] overlay OVY_12 loaded
+   991.520 [nitro] overlay OVY_18 loaded
+   991.637 [nitro] overlay OVY_6 loaded
+   991.637 [nitro] overlay OVY_7 loaded
+  1000.964 [nitro] overlay OVY_10 loaded
+  1004.887 [nitro] overlay OVY_7 loaded
+  1019.512 [nitro] overlay OVY_10 loaded
+  1020.032 [nitro] overlay OVY_7 loaded
+  1029.518 [nitro] overlay OVY_8 loaded
+  1029.969 [nitro] overlay OVY_7 loaded
+  1033.953 [nitro] overlay OVY_10 loaded
+  1034.673 [nitro] overlay OVY_7 loaded
+  1052.505 [nitro] overlay OVY_10 loaded
+  1058.132 [nitro] overlay OVY_7 loaded
+  1076.668 [nitro] overlay field loaded
+  1076.668 [nitro] overlay ds_protect loaded
+  1076.668 [nitro] overlay OVY_2 loaded
+  1076.668 [nitro] overlay OVY_3 loaded
+  1076.751 [nitro] overlay OVY_27 loaded
+  1080.600 [nitro] overlay ds_protect loaded
+  1140.354 [nitro] overlay ds_protect loaded
+  1140.388 [nitro] overlay ds_protect loaded
+  1140.445 [nitro] overlay pokegear loaded
+  1140.645 [nitro] overlay pokegear_app loaded
+  1157.877 [nitro] overlay field loaded
+  1157.877 [nitro] overlay ds_protect loaded
+  1157.878 [nitro] overlay OVY_2 loaded
+  1157.878 [nitro] overlay OVY_3 loaded
+  1157.970 [nitro] overlay OVY_27 loaded
+  1200.405 [nitro] overlay ds_protect loaded
+  1200.469 [nitro] overlay touch_save_app loaded
+  1210.748 [save] 61 KB into the file in 18 ms
+  1212.289 [nitro] overlay ds_protect loaded
+  1245.703 [nitro] overlay OVY_119 loaded
+  1247.304 [nitro] overlay ds_protect loaded
+  1247.337 [nitro] overlay ds_protect loaded
+  1247.430 [nitro] overlay OVY_12 loaded
+  1247.430 [nitro] overlay OVY_18 loaded
+  1247.547 [nitro] overlay OVY_6 loaded
+  1247.547 [nitro] overlay OVY_7 loaded
+  1255.569 [nitro] overlay OVY_10 loaded
+  1257.016 [nitro] overlay OVY_7 loaded
+  1273.951 [nitro] overlay OVY_10 loaded
+  1274.648 [nitro] overlay OVY_7 loaded
+  1290.805 [nitro] overlay field loaded
+  1290.805 [nitro] overlay ds_protect loaded
+  1290.805 [nitro] overlay OVY_2 loaded
+  1290.805 [nitro] overlay OVY_3 loaded
+  1290.890 [nitro] overlay OVY_27 loaded
+  1307.153 [nitro] overlay OVY_119 loaded
+  1308.777 [nitro] overlay ds_protect loaded
+  1308.808 [nitro] overlay ds_protect loaded
+  1308.903 [nitro] overlay OVY_12 loaded
+  1308.903 [nitro] overlay OVY_18 loaded
+  1309.023 [nitro] overlay OVY_6 loaded
+  1309.023 [nitro] overlay OVY_7 loaded
+  1317.341 [nitro] overlay OVY_10 loaded
+  1318.493 [nitro] overlay OVY_7 loaded
+  1329.280 [nitro] overlay field loaded
+  1329.280 [nitro] overlay ds_protect loaded
+  1329.280 [nitro] overlay OVY_2 loaded
+  1329.280 [nitro] overlay OVY_3 loaded
+  1329.367 [nitro] overlay OVY_27 loaded
+  1330.804 [nitro] overlay ds_protect loaded
+  1382.907 [nitro] overlay ds_protect loaded
+  1382.970 [nitro] overlay touch_save_app loaded
+  1386.201 [save] 61 KB into the file in 20 ms
+  1387.733 [nitro] overlay ds_protect loaded
+  1389.530 [kj] close requested at V-blank 82376
+  1389.530 [app] terminating after 82375 V-blanks (close requested)
+  1389.531 [audio] stopped, 1 underruns

@@ -1,0 +1,1790 @@
+ ▐▛███▛█   Claude Code v2.1.317
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~\workdir
+
+
+● Fixing the corrupted byte and rebuilding. Running the experiments next.
+
+❯ /compact try to preserve what's gone wrong during this session & how you      
+solved/plan to solve the problems. always read coffeepot if you're confused     
+about something or need 3ds technical reference.                                
+  ⎿  Compacted
+  ⎿  Read src\app\script.c (196 lines)
+  ⎿  Read ..\..\AppData\Local\Temp\claude\596f382ffeba1215\482a5ce6-eab9-5618-b2
+     4d-12c6e48ee860\tasks\b3upnc1eq.output (7 lines)
+  ⎿  Referenced file src\graphics\g3d\textures.c
+  ⎿  Read src\graphics\g3d\g3d.h (30 lines)
+  ⎿  Referenced file src\graphics\g3d\g3d.c
+
+● Task "Wait for experiments to finish" still running in background
+
+● Task "Wait for the experiment runs" still running in background
+
+● Task "Notify when experiments finish" still running in background
+
+● Task "Wait for experiments" still running in background
+
+● Task "Wait for first experiment" still running in background
+
+● Task "Wait for first experiment shot" still running in background
+
+● Task "Rebuild then run the experiments" still running in background
+
+❯ while this runs, you should give me a briefing on the kohjoh project so far.  
+  what do we have here, how complete is it, what works and what doesn't?        
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● kohjoh: where things stand
+
+  The rebuild finished and the four Ho-Oh render experiments are running in
+  Azahar now.
+
+  What it is
+
+  kohjoh is a new HeartGold/SoulSilver port to the 3DS. It compiles the
+  decompiled game code (about 1,100 C files from pokeheartgold) against a
+  compatibility layer that stands in for the Nintendo DS system libraries.
+  Underneath is a 3DS runtime that redraws the DS display on the 3DS GPU:
+  - 2D: tiles and sprites go through a texture atlas, so all layer drawing runs
+    on the GPU.
+  - 3D: the CPU reads the DS 3D command stream, and the 3DS GPU transforms the
+    vertices.
+
+  The DS game code and the 3DS code only connect through kj_bridge.h. This is a
+  fresh start after the older hgss-3ds port. There are 9 commits so far, and
+  only HeartGold is built.
+
+  What works (seen running in the Azahar emulator)
+
+  - Boot, the intro movie, the title screen, menus, and continuing a save into
+    the Goldenrod overworld.
+  - 2D graphics: layers, sprites, priorities, blending, windows, and effects
+    that change per line. Intro frame 1650 matches our offline DS reference
+    renderer.
+  - 3D: textures, lighting and the widescreen field on the top screen, all
+    checked on New Bark and Goldenrod.
+  - Buttons and touch input.
+  - Save loading (the previous agent's fix). It still uses an interim raw .sav
+    file.
+  - Audio: you heard music on your end. My Azahar has no DSP firmware, so I
+    can't hear it here.
+  - Today: the title screen's lower screen now shows Ho-Oh instead of black. The
+    cause was that the DS uses W-buffer depth mode for that scene, which the
+    port didn't handle. Commit 4661af7.
+
+  What's broken or unproven
+
+  - Ho-Oh's wings have chunks missing. I'm testing which render state causes it
+    (culling, depth, alpha test or blending) against melonDS screenshots. I
+    won't touch the vertices, so no stretching.
+  - Battle crashes: not reproduced yet. A crash handler is installed that writes
+    logs/crash.txt, and a scripted run to a Route 34 wild battle is written but
+    not run yet.
+  - Intro stutter: measured. The worst hitches are in the 2D path:
+    - game frames 872–883: 17–34 ms spikes, plus one 74 ms logic spike;
+    - frames 987 and 1095;
+    - an 89 ms spike while the title screen loads.
+
+    New per-hitch counters, built into this run, should say whether tile
+    conversion, texture uploads or something else causes them.
+  - Performance on real hardware is unknown. Nothing has been measured on an Old
+    3DS. Azahar only gives instruction counts, which are a lower bound.
+    Goldenrod costs about 25 ms of game logic per frame, mostly 3D geometry
+    decoding, which is tight against a 33 ms budget. Locked 30 FPS on an Old 3DS
+    is not established and is doubtful at these numbers.
+  - Display-list cache (a speed feature): off on master, because enabling it
+    corrupts memory.
+  - The wip/savestore branch doesn't build. It holds:
+    - the proper save system;
+    - the fixed display-list cache;
+    - a regression where the bench save is no longer detected.
+  - Not built yet: CIA packaging, packing game data into the app (RomFS), the
+    3DS save archive, and the SoulSilver build.
+
+  How complete
+
+  About 60–70% of the way to playable, and well short of shippable. The full
+  game runs from boot to the overworld, and both 2D and 3D rendering are largely
+  right. What's missing:
+  - the battle crashes are unfixed;
+  - 3D still has visual bugs, like the Ho-Oh wings;
+  - smooth 30 FPS is unproven;
+  - the final save format, packaging and SoulSilver are not done.
+
+  The biggest risk is Old 3DS performance, not correctness.
+
+● Background command "Wait for first experiment shot" completed (exit code 0)
+
+  Read 2 files (ctrl+o to expand)
+
+● Background command "Wait for first experiment" completed (exit code 0)
+
+  Read 1 file (ctrl+o to expand)
+
+● Turning culling off (experiment 1) leaves Ho-Oh looking the same as the
+  baseline: the near wing is still missing, so culling isn't the cause. The
+  depth, alpha-test and blending runs are still going. I'll compare each one
+  against the melonDS reference when it finishes.
+
+● Background command "Notify when experiments finish" completed (exit code 0)
+
+  Read 3 files (ctrl+o to expand)
+
+● Background command "Rebuild then run the experiments" completed (exit code 0)
+
+● Background command "Wait for experiments" completed (exit code 0)
+
+  Searched for 2 patterns, listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● Checking which unsupported 3D feature the title scene uses. There's about one
+  "unsupported" draw per frame, which could be the missing wing material.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● None of the four render-state toggles restores the missing wing, so the cause
+  sits upstream of them. I'm measuring the depth range of Ho-Oh's vertices next
+  to see whether the wing parts saturate the depth buffer.
+
+  Searched for 4 patterns, listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● The title screen's wing is likely being skipped by the DS box test rather than
+  by rendering, since z equals w exactly at the zero near plane and BOX_TEST
+  treats z > w as outside. I'm checking the counters next.
+
+  Searched for 3 patterns, ran 2 shell commands (ctrl+o to expand)
+
+● Bash(python - <<'EOF'
+      import re…)
+  ⎿  935:    memset(&fb->frame, 0, sizeof(fb->frame));
+  ⎿  Updated kohjoh\src\runtime\kj_bridge.h (+2 -0)
+      163      uint32_t dropped_verts;
+      164      uint32_t dropped_batches;
+      165      uint32_t unsupported;
+      166 +    /* BOX_TEST results this frame (culled_far: outside the fa
+          +r plane only) */                                              
+      167 +    uint32_t box_tests, box_culled, box_culled_far;           
+      168  } kj_g3_frame;
+      169  
+      170  /* -----------------------------------------------------------
+            frame flow */
+  ⎿  Updated kohjoh\src\runtime\kj_g3.c (+9 -0)
+      851          out |= (o[2] > o[3]) ? 0x20u : 0u;
+      852          all_out &= out;
+      853      }
+      854 +#ifdef KJ_BOX_NO_FAR                                          
+      855 +    all_out &= ~0x20u; /* experiment: never cull on the far pl
+          +ane alone */                                                  
+      856 +#endif                                                        
+      857      uint32_t stat = get32(0x600) & ~0x3u;
+      858 +    frame_buf *fb = build();                                  
+      859 +    ++fb->frame.box_tests;                                    
+      860      if (all_out == 0) {
+      861          stat |= 0x2u;
+      862      } else {
+      863          ++s_stats.box_culled;
+      864 +        ++fb->frame.box_culled;                               
+      865 +        if (all_out == 0x20u) {                               
+      866 +            ++fb->frame.box_culled_far;                       
+      867 +        }                                                     
+      868      }
+      869      put32(0x600, stat);
+      870  }
+
+● Adding the box-test counters to the per-second [gpu] log line, then building
+  two variants: normal, and one with far-plane-only culling turned off.
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● Bash(python - <<'EOF'
+      def rep(p,old,new):…)
+  ⎿  1637:    ap.add_argument("--define", action="append", default=[],
+     #!/bin/sh
+     # usage: b.sh [outdir] [extra args]
+     … +6 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\src\graphics\g3d\g3d.c (+3 -0)
+      243      uint64_t t0 = kj_perf_now();
+      244      s_stats.batches += f->batch_count;
+      245      s_stats.unsupported += f->unsupported + f->dropped_batches
+            + f->dropped_verts;
+      246 +    s_stats.box_tests += f->box_tests;                        
+      247 +    s_stats.box_culled += f->box_culled;                      
+      248 +    s_stats.box_culled_far += f->box_culled_far;              
+      249      if (f->disp3dcnt & (1u << 7)) {
+      250          ++s_stats.unsupported; /* fog */
+      251      }
+  ⎿  Updated kohjoh\src\graphics\g3d\g3d.h (+1 -0)
+      20      uint32_t batches, draws, triangles;
+      21      uint32_t tex_uploads, tex_bytes_compared, tex_cache_full;
+      22      uint32_t unsupported;
+      23 +    uint32_t box_tests, box_culled, box_culled_far;            
+      24  } kj_g3d_stats;
+      25  
+      26  void kj_g3d_take_stats(kj_g3d_stats *out);
+  ⎿  Updated kohjoh\src\graphics\renderer.c (+3 -2)
+      153          s_skipped_presents = 0;
+      154          kj_log("[gpu] 600 frames: atlas lookups %lu conversion
+           s %lu evictions %lu full %lu; "
+      155                 "3D batches %lu draws %lu tris %lu tex uploads 
+           %lu tex bytes compared %lu "
+      156 -               "tex full %lu unsupported %lu",                
+      156 +               "tex full %lu unsupported %lu; box tests %lu cu
+          +lled %lu (far only %lu)",                                     
+      157                 (unsigned long)a.lookups, (unsigned long)a.conv
+           ersions, (unsigned long)a.evictions,
+      158                 (unsigned long)a.full, (unsigned long)d.batches
+           , (unsigned long)d.draws,
+      159                 (unsigned long)d.triangles, (unsigned long)d.te
+           x_uploads,
+      160                 (unsigned long)d.tex_bytes_compared, (unsigned 
+           long)d.tex_cache_full,
+      161 -               (unsigned long)d.unsupported);                 
+      161 +               (unsigned long)d.unsupported, (unsigned long)d.
+          +box_tests,                                                    
+      162 +               (unsigned long)d.box_culled, (unsigned long)d.b
+          +ox_culled_far);                                               
+      163      }
+      164  
+      165      /* Test directives: deterministic per-frame capture. */
+
+  Listed 1 directory, ran 2 shell commands (ctrl+o to expand)
+
+● Two builds are in progress, one with far-plane-only box culling turned off,
+  with Azahar runs to follow. Meanwhile I'm looking for a melonDS source
+  checkout so I can check its BOX_TEST rule.
+
+  Listed 1 directory (ctrl+o to expand)
+
+❯ cloned melonds into workdir for you                                           
+
+  Searched for 1 pattern, ran 2 shell commands (ctrl+o to expand)
+
+● Box culling is probably not the cause, since our test is more lenient than
+  melonDS and the clip-matrix multiply matches. Next I'll check the NNS NODEMIX
+  skinning readback, because a bad matrix readback would collapse feathers to
+  zero area.
+
+  Searched for 3 patterns, listed 1 directory, ran 3 shell commands (ctrl+o to expand)
+
+● Result-register reads all go through the hooked SDK functions, so that path
+  looks sound. Next I'm checking NODEMIX skinning while the builds finish.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● The matrix stack handling checks out against GBATEK and melonDS. Waiting for
+  the experiment builds.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● While that runs, I'm checking quad and quad-strip triangulation, a classic
+  source of half-missing quads.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Background command "Look for melonDS source and box test references" completed
+(exit code 0)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Triangulation is correct: quads and quad strips keep consistent winding.
+  Waiting on the box-test experiment.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Background command "Wait for experiments to finish" was stopped after reaching
+its background time limit
+
+● Background command "Wait for box experiments and show counters" failed with
+exit code 2
+
+  Listed 1 directory (ctrl+o to expand)
+
+● Background command "Build both variants and run box-test experiments"
+completed (exit code 0)
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Box culling is ruled out: the title scene runs no BOX_TESTs at all. I'm
+  removing that experiment switch and checking whether our offline reference
+  renderer can draw dumped 3D frames.
+
+● Bash(python - <<'EOF'
+      p='src/runtime/kj_g3.c'; s=open(p,encoding='utf-8',newline='').read()…)
+  ⎿  azahar
+     build
+     capture
+     … +20 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\src\runtime\kj_g3.c (+0 -3)
+      851          out |= (o[2] > o[3]) ? 0x20u : 0u;
+      852          all_out &= out;
+      853      }
+      854 -#ifdef KJ_BOX_NO_FAR                                          
+      855 -    all_out &= ~0x20u; /* experiment: never cull on the far pl
+          -ane alone */                                                  
+      856 -#endif                                                        
+      854      uint32_t stat = get32(0x600) & ~0x3u;
+      855      frame_buf *fb = build();
+      856      ++fb->frame.box_tests;
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● I'm adding the decoded 3D frame to the .kjd dump and projecting it offline, to
+  see whether the bug is in the GPU draw stage or in command decoding.
+
+  Searched for 1 pattern, ran 2 shell commands (ctrl+o to expand)
+
+● Bash(python - <<'EOF'
+      p='src/diagnostics/dump.c'; s=open(p,encoding='utf-8',newline='').read()…)
+  ⎿  82
+  ⎿  Updated kohjoh\src\diagnostics\dump.c (+14 -0)
+       7   * 9 x { u32 lcdc_offset, u32 size, u8 enabled, u8 mst, u8 ofs,
+           u8 0 },
+       8   * u32 lines_active, then blobs each prefixed by u32 length:
+       9   * io, pltt, oam, bg_a, bg_b, obj_a, obj_b, lcdc, lines[2][192]
+          [0x70].
+      10 + * Then the decoded 3D scene, if one was swapped: u32 present (
+         +0/1); when 1,                                                  
+      11 + * u32 swap_params, u32 viewport, u32 disp3dcnt and the blobs v
+         +erts                                                           
+      12 + * (kj_g3_vertex), indices (u16), matrices (kj_g3_matrix), batc
+         +hes                                                            
+      13 + * (kj_g3_batch). tools/capture/g3_reference.py projects them. 
+      14   */
+      15  
+      16  #include "diagnostics/dump.h"
+     ...
+      64           blob(f, m->obj_vram_a, 0x40000) && blob(f, m->obj_vram
+          _b, 0x20000) &&
+      65           blob(f, m->lcdc_vram, 0xA4000) &&
+      66           blob(f, in->lines.active ? (const void *)in->lines.reg
+          s : NULL, 2 * 192 * KJ_LINE_REG_BYTES);
+      67 +    const kj_g3_frame *g = in->g3;                             
+      68 +    const uint32_t present = g != NULL ? 1u : 0u;              
+      69 +    ok = ok && put(f, &present, 4);                            
+      70 +    if (ok && g != NULL) {                                     
+      71 +        ok = put(f, &g->swap_params, 4) && put(f, &g->viewport,
+         + 4) && put(f, &g->disp3dcnt, 4) &&                             
+      72 +             blob(f, g->verts, g->vert_count * (uint32_t)sizeof
+         +(kj_g3_vertex)) &&                                             
+      73 +             blob(f, g->indices, g->index_count * 2u) &&       
+      74 +             blob(f, g->matrices, g->matrix_count * (uint32_t)s
+         +izeof(kj_g3_matrix)) &&                                        
+      75 +             blob(f, g->batches, g->batch_count * (uint32_t)siz
+         +eof(kj_g3_batch));                                             
+      76 +    }                                                          
+      77      if (fclose(f) != 0) {
+      78          ok = false;
+      79      }
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Write(kohjoh\tools\capture\g3_reference.py)
+  ⎿  Wrote 151 lines to kohjoh\tools\capture\g3_reference.py
+       1 #!/usr/bin/env python3
+       2 """
+       3 g3_reference.py: project the decoded 3D scene of a .kjd dump on 
+         the CPU.
+       4 
+       5 The 3DS draws the scene the geometry decoder (src/runtime/kj_g3.
+         c) built:
+       6 object-space vertices, a clip matrix palette and material batche
+         s. This
+       7 tool rasterises the same data with plain float math and no GPU s
+     … +145 lines (~6 KB) (ctrl+o to expand)
+
+● The offline projection tool is written. Rebuilding so the title frames get
+  dumped with their 3D data.
+
+  Searched for 2 patterns, ran 1 shell command (ctrl+o to expand)
+
+● Building and capturing the title frames at 2300 and 2500 with their 3D data.
+  When they land I'll project them offline and compare against melonDS to see
+  which stage loses the wing.
+
+● Background command "Build and capture title frame dumps" completed (exit code
+0)
+  Listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● The run died less than a second after boot. Checking the emulator log.
+
+  Listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● My mistake: without -Holds or -Shots, run.ps1 kills Azahar after 2 seconds, so
+  the game never crashed. Rerunning with holds.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Capturing the title frames at 2300 and 2500 with their 3D data, then
+  projecting them offline. That will show whether the wing is lost in command
+  decoding or in the GPU draw.
+
+● Background command "Capture title dumps and project them" completed (exit code
+0)
+
+  Read 2 files (ctrl+o to expand)
+
+● The offline projection uses the wrong matrix orientation. The decoder stores
+  DS row-vector matrices (clip = p·M), not column-vector. Fixing the tool.
+
+● Bash(python - <<'EOF'
+      p='tools/capture/g3_reference.py'; s=open(p,encoding='utf-8').read()…)
+  ⎿  w-buffer True viewport 0,0-255,191 batches 57 verts 2531 matrices 489
+     tris 1752 w<=0 206 zero area 0 drawn 1546
+     w-buffer True viewport 0,0-255,191 batches 58 verts 2531 matrices 489
+     tris 1752 w<=0 215 zero area 0 drawn 1537
+  ⎿  Updated kohjoh\tools\capture\g3_reference.py (+1 -1)
+       97      def project(v, first):
+       98          x, y, z, mtx = v[0] / 4096.0, v[1] / 4096.0, v[2] / 40
+           96.0, v[3]
+       99          m = mats[first + mtx]
+      100 -        c = [m[k][0] * x + m[k][1] * y + m[k][2] * z + m[k][3]
+          - for k in range(4)]                                           
+      100 +        c = [m[0][j] * x + m[1][j] * y + m[2][j] * z + m[3][j]
+          + for j in range(4)]  # DS: p x M                              
+      101          if c[3] <= 0.0:
+      102              return None
+      103          sx = (c[0] / c[3] + 1.0) * vw / 2.0 + x1
+
+● Background command "Wait for the experiment runs" was stopped after reaching
+its background time limit
+
+  Read 1 file (ctrl+o to expand)
+
+● The offline projection matches Azahar, so the GPU draw stage is faithful and
+  the missing geometry is already gone after decoding. I'm now checking which
+  batches the 206–215 triangles per frame with a vertex at w ≤ 0 belong to.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Batches 10–23 hold Ho-Oh's wing and body, with some vertices at w = 0.000. I'm
+  checking whether their matrices are fully zero, which would mean the skinning
+  collapsed.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● 41 wing clip matrices are all zero, so those vertices collapse and their
+  triangles have no area; the real bug is a zero position or projection matrix
+  at submission, and I'm adding counters to find which one and why.
+
+  Searched for 1 pattern, ran 2 shell commands (ctrl+o to expand)
+
+● Bash(python - <<'EOF'
+      p='src/runtime/kj_g3.c'; s=open(p,encoding='utf-8',newline='').read()…)
+  ⎿  src/compat/nitro/include/nitro_port.h:26:void NitroPort_Log(const char
+      *fmt, ...) __attribute__((format(printf, 1, 2)));
+  ⎿  Updated kohjoh\src\runtime\kj_g3.c (+27 -0)
+      159      }
+      160  }
+      161  
+      162 +#ifdef KJ_G3_ZERO_TRACE                                       
+      163 +static void execute_body(unsigned op, const uint32_t *p);     
+      164 +#endif                                                        
+      165 +                                                              
+      166  static void stack_op(unsigned op, uint32_t param)
+      167  {
+      168      if (s_mtx_mode == 0) {
+     ...
+      1003  #endif
+      1004  {
+      1005      ++s_stats.commands;
+      1006 +#ifdef KJ_G3_ZERO_TRACE                                      
+      1007 +    {                                                        
+      1008 +        /* Diagnostics: report the first commands that leave 
+           +a zero matrix. */                                            
+      1009 +        static unsigned reported;                            
+      1010 +        static const mtx zero;                               
+      1011 +        const bool pos_was = memcmp(&s_pos, &zero, sizeof(zer
+           +o)) == 0;                                                    
+      1012 +        const bool proj_was = memcmp(&s_proj, &zero, sizeof(z
+           +ero)) == 0;                                                  
+      1013 +        execute_body(op, p);                                 
+      1014 +        const bool pos_is = memcmp(&s_pos, &zero, sizeof(zero
+           +)) == 0;                                                     
+      1015 +        const bool proj_is = memcmp(&s_proj, &zero, sizeof(ze
+           +ro)) == 0;                                                   
+      1016 +        if (((pos_is && !pos_was) || (proj_is && !proj_was)) 
+           +&& reported < 64) {                                          
+      1017 +            ++reported;                                      
+      1018 +            NitroPort_Log("[g3zero] op %02x p0 %08lx mode %d 
+           +sp %d -> pos %d proj %d (swap %lu)", op,                     
+      1019 +                          (unsigned long)p[0], s_mtx_mode, s_
+           +posvec_sp, pos_is, proj_is,                                  
+      1020 +                          (unsigned long)s_stats.swaps);     
+      1021 +        }                                                    
+      1022 +        return;                                              
+      1023 +    }                                                        
+      1024 +}                                                            
+      1025 +                                                             
+      1026 +static void execute_body(unsigned op, const uint32_t *p)     
+      1027 +{                                                            
+      1028 +#endif                                                       
+      1029      switch (op) {
+      1030      case 0x10:
+      1031          s_mtx_mode = (int)(p[0] & 3);
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● While it builds, I'm reading the other NNS paths that read matrices back.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Background command "Build trace variant and capture zero-matrix events"
+completed (exit code 0)
+
+● MTX_RESTORE reads stack slots 0x0A, 0x0C, 0x11 and 0x13, which nothing stores
+  to, because NNS fills them via direct register writes; I'm checking how the
+  port handles direct writes to the geometry command ports.
+
+  Searched for 3 patterns, ran 2 shell commands (ctrl+o to expand)
+
+● Root cause is NNS's NODEMIX writing geometry registers directly, so envelope
+  matrices never reach the engine and the wing vertices collapse. I'm checking
+  which raw register writes are still unpatched.
+
+  Searched for 3 patterns, listed 1 directory (ctrl+o to expand)
+
+● Raw writes to the G3 command-port registers aren't intercepted, so five
+  NitroSystem files still bypass the geometry engine. I'm checking the existing
+  0304 patch to match its convention.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Patch 0302 says it already converted g3d_sbc.c and g3d_gecom.c, so the writes
+  my grep found may sit in #else branches. Checking.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Confirmed. Patch 0302 converted only the GXFIFO stores, so the direct
+  command-port writes in NODEMIX, PRJMAP and NNS_G3dGetCurrentMtx were never
+  ported. Checking the workflow for adding a patch.
+
+  Ran 5 shell commands (ctrl+o to expand)
+
+● Writing the conversion. Each direct register write becomes
+  NitroPort_GxDirectWrite with the register's opcode under SDK_PORT_3DS, and the
+  DS code stays in #else, matching patch 0304.
+
+● Bash(python - <<'EOF'
+      import re…)
+  ⎿   lib/NitroSystem/src/g3d_gecom.c | 12 ++++++++++++
+      lib/NitroSystem/src/g3d_sbc.c   | 43 ++++++++++++++++++++++++++++++++
+     +++++++++
+     … +6 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\build\upstream\lib\NitroSystem\src\g3d_gecom.c (+12 -0)
+      2  #include <nnsys/g3d/gecom.h>
+      3  #if defined(SDK_PORT_3DS)
+      4  extern void NitroPort_GxFifoWord(unsigned int value);
+      5 +extern void NitroPort_GxDirectWrite(int opcode, uint32_t paramet
+        +er);                                                            
+      6  #endif
+      7  
+      8  #include <nnsys/g3d_util_internal.h>
+     ...
+      79      MtxFx44 clip;
+      80      NNS_G3dGeFlushBuffer();
+      81      // clip matrix with an identity projection = position matri
+          x
+      82 +#if defined(SDK_PORT_3DS)                                      
+      83 +    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MTXMODE_PRO
+         +JECTION));                                                     
+      84 +    NitroPort_GxDirectWrite(G3OP_MTX_PUSH, (u32)(0));          
+      85 +    NitroPort_GxDirectWrite(G3OP_MTX_IDENTITY, (u32)(0));      
+      86 +#else                                                          
+      87      reg_G3_MTX_MODE = GX_MTXMODE_PROJECTION;
+      88      reg_G3_MTX_PUSH = 0;
+      89      reg_G3_MTX_IDENTITY = 0;
+      90 +#endif                                                         
+      91      if (pPos) {
+      92          while (G3X_GetClipMtx(&clip)) {
+      93          }
+     ...
+       97          while (G3X_GetVectorMtx(pDir)) {
+       98          }
+       99      }
+      100 +#if defined(SDK_PORT_3DS)                                     
+      101 +    NitroPort_GxDirectWrite(G3OP_MTX_POP, (u32)(1));          
+      102 +    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MTXMODE_PO
+          +SITION_VECTOR));                                              
+      103 +#else                                                         
+      104      reg_G3_MTX_POP = 1;
+      105      reg_G3_MTX_MODE = GX_MTXMODE_POSITION_VECTOR;
+      106 +#endif                                                        
+      107  }
+  ⎿  Updated kohjoh\build\upstream\lib\NitroSystem\src\g3d_sbc.c (+43 -0)
+       5   * writes (3ds_port/nitro/src/port_gx3d.c). Bulk sends through 
+          MIi_CpuSend32 are
+       6   * forwarded by the port MI layer already. Platinum NitroSystem
+           0003. */
+       7  extern void NitroPort_GxFifoWord(unsigned int value);
+       8 +/* The G3 command registers (MTX_MODE..) are ordinary memory to
+         +o: their direct                                                
+       9 + * writes go through NitroPort_GxDirectWrite with the register'
+         +s opcode. */                                                   
+      10 +extern void NitroPort_GxDirectWrite(int opcode, uint32_t parame
+         +ter);                                                          
+      11  #endif
+      12  
+      13  
+     ...
+      753      MIi_CpuClearFast(0, (u32 *)&sum, sizeof(sum));
+      754      NNS_G3dGeFlushBuffer();
+      755      // keep the projection matrix in its stack and calculate w
+           ith an identity projection
+      756 +#if defined(SDK_PORT_3DS)                                     
+      757 +    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MTXMODE_PR
+          +OJECTION));                                                   
+      758 +    NitroPort_GxDirectWrite(G3OP_MTX_STORE, (u32)(1));        
+      759 +    NitroPort_GxDirectWrite(G3OP_MTX_IDENTITY, (u32)(0));     
+      760 +    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MTXMODE_PO
+          +SITION_VECTOR));                                              
+      761 +#else                                                         
+      762      reg_G3_MTX_MODE = GX_MTXMODE_PROJECTION;
+      763      reg_G3_MTX_STORE = 1;
+      764      reg_G3_MTX_IDENTITY = 0;
+      765      reg_G3_MTX_MODE = GX_MTXMODE_POSITION_VECTOR;
+      766 +#endif                                                        
+      767      for (i = 0; i < numMtx; i++) {
+      768          u32 nodeID;
+      769          u32 cached;
+     ...
+      774          offset = nodeID * sizeof(G3dEvpMtxCache);
+      775          if (!cached) {
+      776              BitVecSet(pRS->evpCached, nodeID);
+      777 +#if defined(SDK_PORT_3DS)                                     
+      778 +            NitroPort_GxDirectWrite(G3OP_MTX_RESTORE, (u32)(pE
+          +ntry[0]));                                                    
+      779 +            NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MT
+          +XMODE_POSITION));                                             
+      780 +#else                                                         
+      781              reg_G3_MTX_RESTORE = pEntry[0];
+      782              reg_G3_MTX_MODE = GX_MTXMODE_POSITION;
+      783 +#endif                                                        
+      784              G3_MultMtx43(&pEvpMtx[nodeID].invM);
+      785          }
+      786          // the previous direction matrix is added here, while 
+           the geometry engine calculates
+     ...
+      798          if (!cached) {
+     … 61 more lines (ctrl+o to expand)
+
+● Scanning the game sources and NitroSDK for other raw command-port writes that
+  are never ported.
+
+  Ran 2 shell commands (ctrl+o to expand)
+● Patch 1905 deliberately writes reg_G3_SWAP_BUFFERS under the port, so some
+  register writes may be polled after the fact. Checking whether the runtime
+  polls any command-port registers.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● Patch 1905 only covered crashes from literal addresses, but the reg_G3_*
+  writes still hit plain memory, so many geometry commands can be lost. I'm
+  checking the NitroSDK g3x.c hits next.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The G3X init and reset paths have the same bug, with matrix-stack pops and
+  identity loads never reaching the engine, so stack state can leak across
+  scenes. I'm converting that whole class next, after confirming the opcode
+  names.
+
+  Searched for 2 patterns, ran 1 shell command (ctrl+o to expand)
+
+● The NitroSDK GX_g3imm.h hits are dead code; only the old pokediamond headers
+  include them. Converting the live files: g3x.c and the game sources.
+
+● Bash(cat > /c/Users/terezi/AppData/Local/Temp/claude/596f382ffeba1215/482a5ce6
+      -eab9-5618-b24d-12c6e48ee860/scratchpad/conv_g3.py <<'EOF'
+      import re, sys…)
+  ⎿  lib/NitroSDK/src/gx/g3x.c 23
+     src/graphics_object_manager.c 3
+     src/application/plaza_game_swalot_plop.c 1
+     … +16 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\build\upstream\lib\NitroSDK\src\gx\g3x.c (+53 -0)
+      40  
+      41  void G3X_Init() {
+      42      G3X_ClearFifo();
+      43 +#ifdef SDK_PORT_3DS                                            
+      44 +    NitroPort_GxDirectWrite(G3OP_END, (u32)(0x0));             
+      45 +#else                                                          
+      46      reg_G3_END_VTXS = 0x0;
+      47 +#endif                                                         
+      48      while (reg_G3X_GXSTAT & REG_G3X_GXSTAT_B_MASK) {} // wait f
+          or geometry engine to not be busy
+      49      reg_G3X_DISP3DCNT = 0x0;
+      50      reg_G3X_GXSTAT = 0x0;
+     ...
+      68      reg_G3X_FOG_OFFSET = 0x0;
+      69      reg_G2_BG0CNT &= ~REG_G2_BG0CNT_PRIORITY_MASK;
+      70      G3X_InitTable();
+      71 +#ifdef SDK_PORT_3DS                                            
+      72 +    NitroPort_GxDirectWrite(G3OP_POLYGON_ATTR, (u32)(0x1F0080))
+         +;                                                              
+      73 +    NitroPort_GxDirectWrite(G3OP_TEXIMAGE_PARAM, (u32)(0x0));  
+      74 +    NitroPort_GxDirectWrite(G3OP_TEXPLTT_BASE, (u32)(0x0));    
+      75 +#else                                                          
+      76      reg_G3_POLYGON_ATTR = 0x1F0080;
+      77      reg_G3_TEXIMAGE_PARAM = 0x0;
+      78      reg_G3_TEXPLTT_BASE = 0x0;
+      79 +#endif                                                         
+      80  }
+      81  
+      82  void G3X_Reset() {
+     ...
+       89      reg_G3X_DISP3DCNT |= REG_G3X_DISP3DCNT_GO_MASK;
+       90      reg_G3X_DISP3DCNT |= REG_G3X_DISP3DCNT_RO_MASK;
+       91      G3X_ResetMtxStack();
+       92 +#ifdef SDK_PORT_3DS                                           
+       93 +    NitroPort_GxDirectWrite(G3OP_POLYGON_ATTR, (u32)(0x1F0080)
+          +);                                                            
+       94 +    NitroPort_GxDirectWrite(G3OP_TEXIMAGE_PARAM, (u32)(0x0)); 
+       95 +    NitroPort_GxDirectWrite(G3OP_TEXPLTT_BASE, (u32)(0x0));   
+       96 +#else                                                         
+       97      reg_G3_POLYGON_ATTR = 0x1F0080;
+       98      reg_G3_TEXIMAGE_PARAM = 0x0;
+       99      reg_G3_TEXPLTT_BASE = 0x0;
+      100 +#endif                                                        
+      101  }
+      102  
+     … 77 more lines (ctrl+o to expand)
+  ⎿  Updated
+     kohjoh\build\upstream\src\application\apricorn_box\aprijuice_screen.c
+     (+16 -0)
+      1414      Thunk_G3X_Reset();
+      1415      NNS_G2dSetupSoftwareSpriteCamera();
+      1416      Camera_PushLookAtToNNSGlb();
+      1417 +#ifdef SDK_PORT_3DS                                          
+      1418 +    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MTXMODE_P
+           +ROJECTION));                                                 
+      1419 +    NitroPort_GxDirectWrite(G3OP_MTX_IDENTITY, (u32)(0));    
+      1420 +    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MTXMODE_P
+           +OSITION_VECTOR));                                            
+      1421 +    NitroPort_GxDirectWrite(G3OP_MTX_IDENTITY, (u32)(0));    
+      1422 +#else                                                        
+      1423      reg_G3_MTX_MODE = GX_MTXMODE_PROJECTION;
+      1424      reg_G3_MTX_IDENTITY = 0;
+      1425      reg_G3_MTX_MODE = GX_MTXMODE_POSITION_VECTOR;
+      1426      reg_G3_MTX_IDENTITY = 0;
+      1427 +#endif                                                       
+      1428      NNS_G3dGlbFlushP();
+      1429      NNS_G2dSetupSoftwareSpriteCamera();
+      1430      PokepicManager_DrawAll(scene->pokepicManager);
+      1431      ParticleSystem_CalcAll();
+      1432 +#ifdef SDK_PORT_3DS                                          
+      1433 +    NitroPort_GxDirectWrite(G3OP_SWAP_BUFFERS, (u32)(1));    
+      1434 +#else                                                        
+      1435      reg_G3_SWAP_BUFFERS = 1;
+      1436 +#endif                                                       
+      1437  }
+      1438  
+      1439  static void AprijuiceScene_Delete(AprijuiceScene *scene) {
+     ...
+      1481      reg_G3X_DISP3DCNT = reg_G3X_DISP3DCNT & 0xCFDF;
+      1482      G3X_SetFog(FALSE, (GXFogBlend)0, (GXFogSlope)0, 0);
+      1483      G3X_SetClearColor(0, 0, 0x7FFF, 63, FALSE);
+      1484 +#ifdef SDK_PORT_3DS                                          
+      1485 +    NitroPort_GxDirectWrite(G3OP_SWAP_BUFFERS, (u32)(2));    
+      1486 +    NitroPort_GxDirectWrite(G3OP_VIEWPORT, (u32)(0xBFFF0000))
+           +;                                                            
+      1487 +#else                                                        
+      1488      reg_G3_SWAP_BUFFERS = 2;
+      1489      reg_G3_VIEWPORT = 0xBFFF0000;
+      1490 +#endif                                                       
+      1491  }
+      1492  
+      1493  static void AprijuiceScene_ReserveVram(GF3DVramMan *vramMan) 
+            {
+  ⎿  Updated kohjoh\build\upstream\src\application\dress_up\dress_up.c (+20
+     -0)
+       978  }
+       979  
+       980  static inline void DressUpGfx_G3Scale(fx32 x, fx32 y, fx32 z)
+             {
+       981 +#ifdef SDK_PORT_3DS                                          
+       982 +    NitroPort_GxDirectWrite(G3OP_MTX_SCALE, (u32)(x));       
+       983 +    NitroPort_GxDirectWrite(G3OP_MTX_SCALE, (u32)(y));       
+       984 +    NitroPort_GxDirectWrite(G3OP_MTX_SCALE, (u32)(z));       
+       985 +#else                                                        
+       986      reg_G3_MTX_SCALE = x;
+       987      reg_G3_MTX_SCALE = y;
+       988      reg_G3_MTX_SCALE = z;
+       989 +#endif                                                       
+       990  }
+       991  
+       992  // draws the stage rotated by angle and scaled around (x, y)
+       993  void AccessoryPortrait_DrawTransformed(DressUpGfx *gfx, int x
+            , int y, u16 angle, const DressUpScale *scale) {
+       994 +#ifdef SDK_PORT_3DS                                          
+       995 +    NitroPort_GxDirectWrite(G3OP_MTX_IDENTITY, (u32)(0));    
+       996 +    NitroPort_GxDirectWrite(G3OP_MTX_PUSH, (u32)(0));        
+       997 +#else                                                        
+       998      reg_G3_MTX_IDENTITY = 0;
+       999      reg_G3_MTX_PUSH = 0;
+      1000 +#endif                                                       
+      1001      NNS_G2dSetupSoftwareSpriteCamera();
+      1002      G3_Translate(x << FX32_SHIFT, y << FX32_SHIFT, 0);
+      1003      G3_RotZ(FX_SinIdx(angle), FX_CosIdx(angle));
+      1004      DressUpGfx_G3Scale(scale->x, scale->y, scale->z);
+      1005      G3_Translate(-x << FX32_SHIFT, -y << FX32_SHIFT, 0);
+      1006 +#ifdef SDK_PORT_3DS                                          
+      1007 +    NitroPort_GxDirectWrite(G3OP_MTX_PUSH, (u32)(0));        
+      1008 +#else                                                        
+      1009      reg_G3_MTX_PUSH = 0;
+      1010 +#endif                                                       
+      1011      if (gfx->graphicsManagerActive) {
+      1012          DressUpGfx_DrawGraphicsManager(gfx);
+      1013      }
+      1014      if (gfx->pokepicActive) {
+      1015          PokepicManager_DrawAll(gfx->pokepicManager);
+      1016      }
+      1017 +#ifdef SDK_PORT_3DS                                          
+     … 9 more lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\build\upstream\src\application\plaza_game_swalot_plop.c
+     (+4 -0)
+      2485      *reg = (*reg & ~0x3000) | 32;
+      2486      G3X_SetFog(FALSE, GX_FOGBLEND_COLOR_ALPHA, GX_FOGSLOPE_0x
+            8000, 0);
+      2487      G3X_SetClearColor(GX_RGB(26, 26, 26), 0, GF_GX_CLEARCOLOR
+            DEPTH_MAX, 63, FALSE);
+      2488 +#ifdef SDK_PORT_3DS                                          
+      2489 +    NitroPort_GxDirectWrite(G3OP_VIEWPORT, (u32)(0xBFFF0000))
+           +;                                                            
+      2490 +#else                                                        
+      2491      reg_G3_VIEWPORT = 0xBFFF0000;
+      2492 +#endif                                                       
+      2493  }
+      2494  
+      2495  static void SwalotPlopGfx_Init3D(SwalotPlopGfx *gfx, int play
+            erCount, int localIndex, enum HeapID heapId) {
+  ⎿  Updated kohjoh\build\upstream\src\application\safari_decoration.c (+20
+     -0)
+      560      reg_G3X_DISP3DCNT = (reg_G3X_DISP3DCNT & ~0x3000) | 32;
+      561      G3X_SetFog(FALSE, GX_FOGBLEND_COLOR_ALPHA, GX_FOGSLOPE_0x8
+           000, 0);
+      562      G3X_SetClearColor(RGB_BLACK, 0, 0x7FFF, 63, FALSE);
+      563 +#ifdef SDK_PORT_3DS                                           
+      564 +    NitroPort_GxDirectWrite(G3OP_SWAP_BUFFERS, (u32)(2));     
+      565 +    NitroPort_GxDirectWrite(G3OP_VIEWPORT, (u32)(0xBFFF0000));
+      566 +#else                                                         
+      567      reg_G3_SWAP_BUFFERS = 2;
+      568      reg_G3_VIEWPORT = 0xBFFF0000;
+      569 +#endif                                                        
+      570      view->heapId = heapId;
+      571      view->timeOfDay = timeOfDay;
+      572      size = NNS_GfdGetLnkTexVramManagerWorkSize(128);
+     ...
+      588      Thunk_G3X_Reset();
+      589      Camera_PushLookAtToNNSGlb();
+      590      NNS_G3dGeFlushBuffer();
+      591 +#ifdef SDK_PORT_3DS                                           
+      592 +    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MTXMODE_PR
+          +OJECTION));                                                   
+      593 +    NitroPort_GxDirectWrite(G3OP_MTX_IDENTITY, (u32)(0));     
+      594 +    NitroPort_GxDirectWrite(G3OP_MTX_MODE, (u32)(GX_MTXMODE_PO
+          +SITION_VECTOR));                                              
+      595 +    NitroPort_GxDirectWrite(G3OP_MTX_IDENTITY, (u32)(0));     
+      596 +#else                                                         
+      597      reg_G3_MTX_MODE = GX_MTXMODE_PROJECTION;
+      598      reg_G3_MTX_IDENTITY = 0;
+      599      reg_G3_MTX_MODE = GX_MTXMODE_POSITION_VECTOR;
+      600      reg_G3_MTX_IDENTITY = 0;
+      601 +#endif                                                        
+      602      if (view->visible && view->model.loaded) {
+      603          SafariDecorationModel_Draw(&view->model);
+      604      }
+      605 +#ifdef SDK_PORT_3DS                                           
+      606 +    NitroPort_GxDirectWrite(G3OP_SWAP_BUFFERS, (u32)(1));     
+      607 +#else                                                         
+      608      reg_G3_SWAP_BUFFERS = 1;
+      609 +#endif                                                        
+      610  }
+      611  
+      612  static void SafariDecorationModelView_Free(SafariDecorationMod
+           elView *view) {
+     ...
+      637          Thunk_G3X_Reset();
+      638          Camera_PushLookAtToNNSGlb();
+     … 9 more lines (ctrl+o to expand)
+  ⎿  … 3 more files changed
+
+● Bash(python - <<'EOF'
+      p='src/pokemon_summary_scene.c';
+      s=open(p,encoding='utf-8',newline='').read()…)
+  ⎿  diff --git a/src/pokeathlon/pokeathlon_lamp_jump.c b/src/pokeathlon/po
+     keathlon_lamp_jump.c
+     index a5a1997..8c69c4f 100644
+     … +56 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\build\upstream\src\pokemon_summary_scene.c (+1 -1)
+      46      NNS_G2dSetupSoftwareSpriteCamera();
+      47      PokepicManager_DrawAll(summary->pokepicManager);
+      48  #ifdef SDK_PORT_3DS
+      49 -    reg_G3_SWAP_BUFFERS = 1;                                   
+      49 +    NitroPort_GxDirectWrite(G3OP_SWAP_BUFFERS, 1u);            
+      50  #else
+      51      *(vu32 *)0x04000540 = 1;
+      52  #endif
+
+● Conversion looks right: NitroPort_GxDirectWrite gathers each command's
+  parameters and runs it, the same path the SDK's G3 inline helpers already use.
+  Building and checking the title.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Building with the fix, then capturing the title frames.
+
+● Background command "Build with fix and capture title frames" completed (exit
+code 0)
+
+  Read 1 file (ctrl+o to expand)
+
+● The vendored library build failed, so the link fell back to the old prebuilt
+  libnitrosystem.a, and the fix never got in. Finding the compile error.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● The SDK build has no nitro/gx/g3.h, so I'm defining the needed opcodes locally
+  in g3x.c. Their values follow GBATEK: opcode = (port address − 0x4000400) /
+  4.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The values match g3.h. Checking whether any other file failed, then
+  rebuilding.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Rebuilding with the opcode fix. I'll check the result when it finishes.
+
+● Background command "Rebuild and confirm vendored libs compile" completed (exit
+code 1: No matches found)
+
+  Read 1 file (ctrl+o to expand)
+
+● The build is clean: no errors, and no fallback to the old libraries. Capturing
+  the title frames.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Capture is running. I'll compare the result against melonDS when it finishes.
+
+● Background command "Capture title frames with the fix" completed (exit code 0)
+
+  Read 1 file (ctrl+o to expand)
+
+● Triangles with w ≤ 0 dropped from 206 to 102. Checking whether the remainder
+  belongs to Ho-Oh or to the sky planes.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● There are no zero matrices left. The only triangles with w ≤ 0 are in the
+  large sky and cloud planes, which legitimately extend behind the camera and
+  get clipped. Viewing the result.
+
+  Read 2 files (ctrl+o to expand)
+
+● Both wings are now whole, with full red feather fans, matching melonDS. The
+  vertices were never touched. Committing: first the upstream source changes as
+  patches, then the kohjoh side.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Commit 9c64043 in build/upstream is SDK patch 2003 from wip/savestore, which
+  isn't in master's patches/, so master builds here have been picking up an
+  unmerged SDK change. I'm documenting that and committing my upstream changes
+  as three patches.
+
+● Bash(cd /c/Users/terezi/workdir/kohjoh/build/upstream && ls
+      ../../patches/NitroSDK | grep "^06"; git add lib/NitroSystem/src/g3d_sbc.c
+      lib/NitroSystem/src/g3d_gecom.…)
+  ⎿  0601-sdk-port-hooks-for-IRQ-flag-clear-software-DMA-and-m.patch
+     0602-os-count-the-hardware-timers-in-software-SDK_PORT_3DS.patch
+     0603-fs-rom-archive-and-overlay-hooks-SDK_PORT_3DS.patch
+     … +4 lines (ctrl+o to expand)
+  ⎿  Created kohjoh\patches\NitroSystem\0305-g3d-send-the-direct-G3-command
+     -register-writes-to-th.patch (+185 -0)
+        1 +From ba45d982422675cc1e06e95859389be37f1e9768 Mon Sep 17 00:00
+          +:00 2001                                                      
+        2 +From: terezi <jules@foxtails.me>                              
+        3 +Date: Thu, 12 Nov 2026 18:06:32 -0500                         
+        4 +Subject: [PATCH] g3d: send the direct G3 command-register writ
+          +es to the port                                                
+        5 + (SDK_PORT_3DS)                                               
+        6 +                                                              
+        7 +The port's G3 command registers (0x04000440..0x040005C8) are o
+          +rdinary                                                       
+        8 +memory: a store to reg_G3_MTX_MODE and its neighbours never re
+          +aches the                                                     
+        9 +geometry engine. 0302 converted the reg_G3X_GXFIFO stores in g
+          +3d_sbc.c and                                                  
+       10 +g3d_gecom.c, but these direct port writes were left raw:      
+       11 +                                                              
+       12 +- g3d_sbc.c NNSi_G3dFuncSbc_NODEMIX: the projection store/iden
+          +tity, the                                                     
+       13 +  MTX_RESTORE of each envelope node, the MTX_MODE switches and
+          + the final                                                    
+       14 +  MTX_STORE of the blended matrix.                            
+       15 +- g3d_sbc.c PRJMAP (texture-matrix readback): PUSH/IDENTITY/PO
+          +P/MODE.                                                       
+       16 +- g3d_gecom.c NNS_G3dGetCurrentMtx: PUSH/IDENTITY/POP/MODE.   
+       17 +                                                              
+       18 +With NODEMIX's MTX_STORE lost, every weighted-envelope vertex 
+          +restored a                                                    
+       19 +matrix-stack slot that was never written (all zero), so it col
+          +lapsed onto                                                   
+       20 +clip (0,0,0,0) and its triangles had no area: the title Ho-Oh 
+          +lost most of                                                  
+       21 +both wings. Traced with a zero-matrix log in the port's geomet
+          +ry engine:                                                    
+       22 +MTX_RESTORE of slots 10, 12, 17 and 19 produced a zero positio
+          +n matrix.                                                     
+       23 +                                                              
+       24 +Under SDK_PORT_3DS each write goes through NitroPort_GxDirectW
+          +rite with the                                                 
+       25 +register's opcode, as the g3imm.h inlines and 0304 do; the DS 
+          +text is in                                                    
+       26 +#else, unchanged.                                             
+       27 +---                                                           
+       28 + src/g3d_gecom.c | 12 ++++++++++++                            
+       29 + src/g3d_sbc.c   | 43 ++++++++++++++++++++++++++++++++++++++++
+          ++++                                                           
+       30 + 2 files changed, 55 insertions(+)                            
+       31 +                                                              
+       32 +diff --git a/src/g3d_gecom.c b/src/g3d_gecom.c                
+       33 +index 48ebb0d..0f85268 100644                                 
+       34 +--- a/src/g3d_gecom.c                                         
+       35 ++++ b/src/g3d_gecom.c                                         
+       36 +@@ -2,6 +2,7 @@                                               
+       37 + #include <nnsys/g3d/gecom.h>                                 
+       38 + #if defined(SDK_PORT_3DS)                                    
+       39 + extern void NitroPort_GxFifoWord(unsigned int value);        
+       40 ++extern void NitroPort_GxDirectWrite(int opcode, uint32_t para
+          +meter);                                                       
+     … 145 more lines (ctrl+o to expand)
+
+  Ran 2 shell commands (ctrl+o to expand)
+● Committing the fix in kohjoh: the three new patches first, then the
+  diagnostics that found the bug.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Git reports script.c as binary, which means it still contains a NUL byte from
+  the earlier heredoc mistake. Fixing it.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● The committed script.c is clean now. Only the previous version (4661af7) had
+  the NUL, so git showed the diff as binary. Updating the docs next.
+
+  Listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● Writing the doc updates.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The edit script failed to parse before writing anything (a \U escape in a
+  Windows path). Rewriting it with raw strings in a file.
+
+● Write(~\AppData\Local\Temp\claude\596f382ffeba1215\482a5ce6-eab9-5618-b24d-12c
+       6e48ee860\scratchpad\docs_update.py)
+  ⎿  Wrote 65 lines to ~\AppData\Local\Temp\claude\596f382ffeba1215\482a5ce
+     6-eab9-5618-b24d-12c6e48ee860\scratchpad\docs_update.py
+       1 def app(p, after, text):
+       2     s = open(p, encoding='utf-8', newline='').read()
+       3     assert after in s, (p, after)
+       4     s = s.replace(after, after + text, 1)
+       5     open(p, 'w', encoding='utf-8', newline='').write(s)
+       6 
+       7 
+       8 app('docs/troubleshooting.md',
+       9     "| A test run diverges from its script | Live keyboard input
+          on the Azahar window was OR-ed with the script. | `wip/savestor
+     … +57 lines (~4 KB) (ctrl+o to expand)
+
+● Bash(python /c/Users/terezi/AppData/Local/Temp/claude/596f382ffeba1215/482a5ce
+      6-eab9-5618-b24d-12c6e48ee860/scratchpad/docs_update.py && python -
+      <<'EOF'
+      p='docs/sta…)
+  ⎿   docs/lessons.md         | 11 +++++++++++
+      docs/status.md          |  3 ++-
+      docs/testing.md         | 26 ++++++++++++++++++++++++++
+     … +10 lines (ctrl+o to expand)
+  ⎿  Updated kohjoh\docs\lessons.md (+11 -0)
+      44    mangled by the shell wrapper; complex edits belong in script 
+          files.
+      45  - **Contaminated tests.** Live input reached scripted runs. Tes
+          ts must own
+      46    their input.
+      47 +- **Guessing at render state.** Four Ho-Oh render-state experim
+         +ents (cull,                                                    
+      48 +  depth, alpha test, blend) changed nothing. Dumping the decode
+         +d scene and                                                    
+      49 +  projecting it on the CPU (`g3_reference.py`) showed in one st
+         +ep that the                                                    
+      50 +  geometry, not the GPU path, was wrong: 41 all-zero clip matri
+         +ces per frame.                                                 
+      51 +  Split the pipeline at a dump before toggling GPU state.      
+      52 +- **"Ported" is not "complete".** Patch 0302 converted the GXFI
+         +FO stores in                                                   
+      53 +  NNS but not the direct command-register stores beside them, a
+         +nd nothing                                                     
+      54 +  failed loudly: the writes simply vanished. When a hardware ac
+         +cess class is                                                  
+      55 +  ported, scan the whole tree for that class (see game patch 20
+         +04).                                                           
+      56 +- **A shared `build/upstream` checkout carries branch state.** 
+         +It held                                                        
+      57 +  `wip/savestore`'s SDK patch 2003 while building `master`.    
+      58  
+      59  ## Rules
+      60  
+  ⎿  Updated kohjoh\docs\status.md (+2 -1)
+      12  | Boot, intro, title, menus | verified | intro frames 150-1650 
+          held and captured |
+      13  | GPU 2D: tiles, OBJ, priorities, blending, windows, per-line s
+          pans | verified on tested frames | intro frame 1650 matches the
+           reference renderer |
+      14  | GPU 3D: GPU transform, textures, lighting, widescreen field |
+           verified visually | New Bark (intro), Goldenrod field |
+      15 +| Title 3D (Ho-Oh, W-buffer, skinned envelopes) | verified | ti
+         +tle frames 2300/2500 match melonDS; NitroSystem 0305 / NitroSDK
+         + 0606 / game 2004 |                                            
+      16  | Input: buttons and touch | verified | touch BAG opens the Bag
+          ; B closes it |
+      17  | Pacing lock (no music drift after late frames) | run | `[pace
+          ]` counters; user-reported drift fixed in code, not re-confirme
+          d |
+      18  | Tile-row gaps fix (texcoord inset) | built | awaiting user co
+          nfirmation |
+     ...
+      45  ## Next
+      46  
+      47  1. Find the save-detection regression on `wip/savestore`; finis
+          h SaveStore.
+      47 -2. Title screen: Ho-Oh/Lugia 3D missing on the lower screen.   
+      48 +2. Battle crashes (user-reported): reproduce with `route34-batt
+         +le.txt`; `logs/crash.txt`.                                     
+      49  3. Route test: Goldenrod → Route 34 grass → wild battle (`tests
+          /inputs/route34-south.txt`).
+      50  4. Cut geometry cost: display-list cache hit rate (texgen-1 lis
+          ts), then O3DS
+      51     test kit with ARM11 performance counters.
+  ⎿  Updated kohjoh\docs\testing.md (+26 -0)
+      49  `out_A.png`, `out_B.png`, `out_screens.png`. It does not render
+           3D (BG0 3D is
+      50  left transparent). Dumps are written to `sdmc:/3ds/kohjoh/dumps
+          /`.
+      51  
+      52 +`python tools/capture/g3_reference.py dump.kjd out.png` project
+         +s the dump's                                                   
+      53 +decoded 3D scene with plain float math (one flat colour per bat
+         +ch, DS-style                                                   
+      54 +depth, triangles with a vertex at w <= 0 counted and skipped). 
+         +Present here but                                               
+      55 +missing on the 3DS: the GPU stage (`src/graphics/g3d`). Missing
+         + here too: the                                                 
+      56 +decoder or the game's command stream (`src/runtime/kj_g3.c`, SD
+         +K/NNS                                                          
+      57 +patches). `--define KJ_G3_ZERO_TRACE` logs the first commands t
+         +hat leave a                                                    
+      58 +zero position/projection matrix (`[g3zero]`).                  
+      59 +                                                               
+      60 +## DS oracle                                                   
+      61 +                                                               
+      62 +melonDS (`workdir/melonDS.exe`, source in `workdir/melonDS`) ru
+         +ns the retail                                                  
+      63 +ROM. `tools/melonds/shots.ps1` saves timed screenshots to      
+      64 +`build/melonds/<tag>/`; the HG title shows Ho-Oh from about 85 
+         +s. Check                                                       
+      65 +`melonDS/src/GPU3D.cpp` before changing 3D semantics.          
+      66 +                                                               
+      67 +## Script extras                                               
+      68 +                                                               
+      69 +- `9600-11400 DOWN B`: hold keys over a V-blank range.         
+      70 +- `debug: 0x1|0x2|0x4|0x8|0x10`: 3D draw without cull / depth t
+         +est / alpha                                                    
+      71 +  test / blending / texture (`KJ_DEBUG_*` in `src/app/script.h`
+         +).                                                             
+      72 +- `[frame]` lines report real refresh intervals (0/1/2/3/4+) an
+         +d hitches with                                                 
+      73 +  per-stage times and counters. Azahar's "App FPS" is not a stu
+         +tter measure                                                   
+      74 +  (unchanged screens are not presented).                       
+      75 +- A crash writes `logs/crash.txt` (pc, lr, registers) before th
+         +e system                                                       
+      76 +  error handler; resolve addresses with addr2line on the `.elf`
+         +.                                                              
+      77 +                                                               
+      78  ## Profiling
+      79  
+      80  - **Counters**: every 600 publishes the log gets `[perf]` (stag
+          e p50/p95/p99/max),
+  ⎿  Updated kohjoh\docs\troubleshooting.md (+5 -0)
+      28  | White map, 1% speed with `KJ_DL_CACHE` | The display-list rec
+          order's counters sat after its arrays and escaped the `memset`;
+           recordings overran and corrupted the heap (100% of samples in 
+          `_malloc_r`). | Fixed on `wip/savestore` (explicit reset, bump 
+          arena); `KJ_DL_VERIFY` compares replay with live decode. |
+      29  | Saved game ignored (new-game intro) | Open, `wip/savestore` o
+          nly: appeared with the SDK shim junction change; not caused by 
+          patch 2003. | Investigate what differs between the old copied s
+          him and the live sources. |
+      30  | A test run diverges from its script | Live keyboard input on 
+          the Azahar window was OR-ed with the script. | `wip/savestore`:
+           scripted runs ignore live input. |
+      31 +| Title lower screen black (no Ho-Oh) | The title uses `GX_BUFF
+         +ERMODE_W` with near = 0, so every vertex has z/w = 1 and failed
+         + a Z-mode GREATER test. | W-buffer path in `g3d.c`: depth = w/4
+         +096 (PICA W-buffer mode), LESS, depth cleared to 0xFFFFFF. |   
+      32 +| Chunks of a skinned model missing (title Ho-Oh's wings) | Dir
+         +ect stores to G3 command registers (`reg_G3_MTX_STORE = ...`) l
+         +and in plain memory on the port. NNS NODEMIX's envelope matrice
+         +s were never stored, so weighted vertices restored zero matrice
+         +s and collapsed to clip (0,0,0,0). | Route every direct G3 comm
+         +and-register write through `NitroPort_GxDirectWrite` (NitroSyst
+         +em 0305, NitroSDK 0606, game 2004). Never "fix" this by changin
+         +g w or dropping/redrawing w <= 0 triangles: that is what produc
+         +ed the old port's stretched Ho-Oh. |                           
+      33 +| Vendored SDK change has no effect | The vendored library buil
+         +d failed and the link fell back to the prebuilt `libnitro*.a` (
+         +build log: "vendored library build failed"). | Grep the build l
+         +og for `error:` before testing any SDK/NitroSystem change. |   
+      34 +| `run.ps1` run ends after ~2 s | Without `-Holds` or `-Shots` 
+         +the harness only waits `-Extra` seconds. | Always pass `-Holds`
+         + or `-Shots`. |                                                
+      35 +| A C source turns "binary" in git, or a string has a stray tab
+         +/CR | Python edits passed through an unquoted bash heredoc turn
+         +ed `\0`, `\t`, `\r`, `\n` escapes into real control bytes. | Us
+         +e the Edit tool, or write the script to a file with raw strings
+         +; scan for NUL/CR after scripted edits. |                      
+
+● Ho-Oh's missing wing chunks are fixed. Both wings are now whole, and title
+  frames 2300 and 2500 match melonDS in Azahar. The vertices are untouched; the
+  fix is in the matrices.
+
+  fixed (build/azahar/g3fix/f02300.png)
+
+  Root cause: the port treats the DS 3D-command registers as ordinary memory.
+  When code writes one directly (for example reg_G3_MTX_STORE = …) instead of
+  going through the port's command path, the write is silently lost. The library
+  code that blends Ho-Oh's wing bones does exactly that, so the blended
+  matrices were never stored. Each wing vertex then picked up an all-zero matrix
+  and collapsed onto a single point, which left those triangles with no area:
+  41 zero matrices per frame. The old port's "stretched" Ho-Oh was a workaround
+  drawing those collapsed triangles anyway.
+
+  How I found it:
+  - Four experiments turning off culling, depth test, alpha test and blending
+    changed nothing, so the GPU stage wasn't to blame.
+  - I then wrote each frame's decoded 3D scene to a file and drew it with a
+    separate offline tool (tools/capture/g3_reference.py). It showed the same
+    holes, so the geometry itself was wrong.
+  - A trace pointed at matrix-stack restores from slots that had never been
+    written.
+
+  Fix: three new patches send these writes to the port's geometry engine. The
+  original DS code is kept in #else branches.
+  - NitroSystem 0305: the bone-blending code, plus two other spots that read
+    matrices back.
+  - NitroSDK 0606: the 3D init/reset code, which was not resetting the matrix
+    stacks between scenes.
+  - pokeheartgold 2004: game files with the same problem: the Pokémon summary
+    screen, Safari decorations, Pokéathlon, dress-up, the Apricorn box and the
+    Wi-Fi plaza. I fixed these by a scan of the source tree but have not run
+    those scenes.
+
+  Commits: f769ae3 (the fix), 617a681 (the diagnostic tools), aadc864 (docs:
+  troubleshooting, lessons, testing).
+
+  Problem with my earlier test builds: the shared upstream source checkout
+  (build/upstream) still contains SDK patch 2003 from the unfinished
+  wip/savestore branch. Every master build I've tested so far included it,
+  though master's patches/ folder doesn't. This is now noted in docs/lessons.md.
+
+  Next I'm reproducing the battle crashes.
+
+❯ alright. make sure you've updated docs so it's clear how to get this project  
+  building correctly on windows - include any flags or variables involved in    
+  builds i.a.                                                                   
+
+  Searched for 1 pattern, listed 1 directory, ran 3 shell commands (ctrl+o to expand)
+
+● I'm checking which build variables reach the build in practice, so the doc
+  states what actually works.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Inline variables only reach the build inside devkitPro's MSYS2 login shell
+  (bash.exe -lc), since MSYS Python drops them when run from Git Bash. I'm
+  checking how bootstrap handles an existing checkout next.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Patch 2003 is safe on wip/savestore, so I'm moving the old checkout aside and
+  running a clean from-scratch build to test the build doc.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● While that runs, I'm reading the existing Windows pitfalls section so the
+  rewrite doesn't duplicate it.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Background command "Fresh bootstrap and clean build following the documented
+steps" failed with exit code 1
+
+  Listed 1 directory (ctrl+o to expand)
+
+● The move failed because something held a handle in build/upstream, probably my
+  shell's working directory, which has since changed. Retrying.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● The from-scratch bootstrap and build are running. I'll write the Windows build
+  doc around whatever they show.
+
+● Background command "Fresh bootstrap and clean build" completed (exit code 0)
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● The bootstrap failed because MSYS2's own git has a broken HTTPS helper inside
+  the devkitPro shell. I'm testing a fix by putting Git for Windows first on
+  PATH.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The workaround works. Rerunning the clean build with it.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The clean build is running again with Git for Windows first on PATH.
+
+● Background command "Clean bootstrap and build with Git for Windows" completed
+(exit code 0)
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● The from-scratch build passed with all 91 patches applied and no errors,
+  taking about 6 minutes. I'm smoke-testing the clean build on the title screen
+  now, without wip patch 2003.
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+● The clean build shows the complete Ho-Oh, so the fix doesn't depend on the
+  stray patch. Rewriting the Windows build doc around what I just verified.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Write(kohjoh\docs\building-windows.md)
+  ⎿  Added 149 lines, removed 27 lines
+        1  # Build on Windows
+        2  
+        3 -Tested on Windows 11 with devkitPro (MSYS2 under `C:\devkitPro
+          -\msys2`) and the                                              
+        4 -tool versions in [`upstream.lock`](../upstream.lock). Output: 
+          -a HeartGold                                                   
+        5 -`.3dsx`. SoulSilver and CIA are not built yet.                
+        3 +Verified 2026-11-12 on Windows 11 with a **from-scratch** boot
+          +strap and build                                               
+        4 +(empty `build/upstream`, empty `build/kj`): 91 patches applied
+          +, 0 errors,                                                   
+        5 +`.3dsx` packaged in about 6 minutes, and the title screen chec
+          +ked in Azahar.                                                
+        6 +Output: a HeartGold `.3dsx`. SoulSilver and CIA are not built 
+          +yet.                                                          
+        7  
+        8  ## Requirements
+        9  
+        9 -- devkitPro with the 3DS packages (devkitARM, libctru, citro3d
+          -, 3dstools,                                                   
+       10 -  picasso), Git, and the devkitPro MSYS2 Python (`/c/devkitPro
+          -/msys2/usr/bin/python`).                                      
+       11 -- Azahar for testing (`C:\Program Files\Azahar\azahar.exe`).  
+       12 -- Your own verified US HeartGold/SoulSilver ROM for the data p
+          -ack. Never commit                                             
+       13 -  ROMs, packs, saves or extracted data.                       
+       10 +| Tool | Where | Notes |                                      
+       11 +| --- | --- | --- |                                           
+       12 +| devkitPro | `C:\devkitPro` | Packages: devkitARM, libctru, c
+          +itro3d, 3dstools, picasso. Versions are pinned in [`upstream.l
+          +ock`](../upstream.lock). Its MSYS2 (`C:\devkitPro\msys2`) supp
+          +lies `bash`, `make` and Python 3.14 (`/usr/bin/python`). |    
+       13 +| Git for Windows | `C:\Program Files\Git` | **Required for bo
+          +otstrap.** devkitPro MSYS2's own `git` cannot fetch over HTTPS
+          + (see [pitfalls](#pitfalls)). |                               
+       14 +| Azahar | `C:\Program Files\Azahar\azahar.exe` | Testing only
+          + (`tools/azahar/run.ps1`). |                                  
+       15 +| PowerShell 7 (`pwsh`) | | Runs the Azahar harness. |        
+       16 +| ROM | your own verified US dump | Only needed for the data p
+          +ack. Never commit ROMs, packs, saves or extracted data. |     
+       17  
+       18  ## Build
+       19  
+       17 -Run from a Git Bash/MSYS shell. **Use absolute `/c/...` paths*
+          -*: MSYS Python                                                
+       18 -resolves its working directory to `/home/<user>/...`, which na
+          -tive tools and                                                
+       19 -`mkdir -p` cannot use.                                        
+       20 +Run every build step **inside devkitPro's MSYS2 login shell** 
+       21 +(`C:\devkitPro\msys2\usr\bin\bash.exe -lc "..."`). The login p
+          +rofile                                                        
+       22 +(`/etc/profile.d/devkit-env.sh`) sets `DEVKITPRO=/opt/devkitpr
+          +o` and                                                        
+       23 +`DEVKITARM=/opt/devkitpro/devkitARM`, which the build reads to
+          + find                                                         
+       24 +`arm-none-eabi-gcc`. Use absolute `/c/...` paths throughout.  
+       25  
+       26 +From Git Bash or PowerShell:                                  
+       27 +                                                              
+       28  ```sh
+       22 -K=/c/Users/<you>/workdir/kohjoh                               
+       23 -python $K/tools/game/bootstrap.py                    # pinned 
+          -decomp + patches                                              
+       24 -python $K/tools/game/hgss_game.py --root $K/build/upstream \  
+       25 -    --target 3ds --out $K/build/kj -j 32             # -> buil
+          -d/kj/pokeheartgold.3dsx                                       
+       29 +C:/devkitPro/msys2/usr/bin/bash.exe -lc '                     
+       30 +  export PATH="/c/Program Files/Git/cmd:$PATH"    # Git for Wi
+          +ndows first (HTTPS)                                           
+       31 +  K=/c/Users/<you>/workdir/kohjoh                             
+       32 +  cd $K                                                       
+       33 +  python tools/game/bootstrap.py                   # pinned de
+          +comp + every patch in patches/                                
+       34 +  python tools/game/check_patches.py               # fails if 
+          +build/upstream lacks a patch                                  
+       35 +  python tools/game/hgss_game.py --root $K/build/upstream --ta
+          +rget 3ds --out $K/build/kj -j 32                              
+       36 +' > build/kj-build.log 2>&1                                   
+       37  ```
+       38  
+       28 -- First build ~3.5 min; rebuilds ~2 min (game objects are incr
+          -emental via                                                   
+       29 -  `-MMD` and flag signatures; the Nitro libraries are relinked
+          - by make).                                                    
+       30 -- Diagnostic switches are `--define NAME` (e.g. `KJ_G3_PROFILE
+          -`,                                                            
+       31 -  `KJ_DL_VERIFY`). Environment variables set inline do **not**
+          - reach the                                                    
+       32 -  build: MSYS2 Python drops them.                             
+       33 -- Build a variant into its own `--out` directory.             
+       39 +**`--target 3ds` is required.** The default is `host32`, a PC 
+          +build for tests.                                              
+       40  
+       41 +A build succeeded only if the log ends with                   
+       42 +`packaged .../pokeheartgold.3dsx` **and** has no `error:` line
+          +s. If the                                                     
+       43 +vendored SDK/NitroSystem library fails to compile, the build p
+          +rints                                                         
+       44 +`warning: the vendored library build failed; linking with libn
+          +itrosystem.a,                                                 
+       45 +libnitro.a ...` and **still packages a `.3dsx` from stale libr
+          +aries**. Any                                                  
+       46 +SDK or NitroSystem change is then silently absent. Check for i
+          +t:                                                            
+       47 +                                                              
+       48 +```sh                                                         
+       49 +grep -E "error:|vendored library build failed" build/kj-build.
+          +log   # must print nothing                                    
+       50 +```                                                           
+       51 +                                                              
+       52 +### Outputs (`--out build/kj`)                                
+       53 +                                                              
+       54 +| Path | Contents |                                           
+       55 +| --- | --- |                                                 
+       56 +| `pokeheartgold.3dsx` | the program |                        
+       57 +| `pokeheartgold-3ds.elf` | symbols, linked at 0x00100000 (`ar
+          +m-none-eabi-addr2line -e` for crash addresses) |              
+       58 +| `pokeheartgold.build-info.txt` | commit, dirty flag, sha256,
+          + the state of every legacy flag |                             
+       59 +| `obj/`, `app/`, `ctr/`, `sdk/`, `gen/` | incremental objects
+          + and generated headers |                                      
+       60 +| `link.log`, `link-<utc>.log` | linker output; unresolved sym
+          +bols are reported here |                                      
+       61 +                                                              
+       62 +The shared vendored-library trees are `build/hgss-sdk`, `build
+          +/hgss-nns`, and                                               
+       63 +`build/NitroSDK` / `build/NitroSystem` (links into `build/upst
+          +ream/lib`).                                                   
+       64 +                                                              
+       65 +### Timing and incremental builds                             
+       66 +                                                              
+       67 +- Bootstrap ≈ 1 min (shallow fetch + `git am` of the patch sta
+          +ck).                                                          
+       68 +- First build ≈ 5 min at `-j 32`. A rebuild after a kohjoh-sid
+          +e change takes                                                
+       69 +  about 2 min. Game objects are skipped when they are newer th
+          +an their source                                               
+       70 +  and every `-MMD` dependency and their flags match; the Nitro
+          + libraries are                                                
+       71 +  re-made by `make`.                                          
+       72 +- Build each variant into its own `--out` (e.g. `--out $K/buil
+          +d/kjz                                                         
+       73 +  --define KJ_G3_ZERO_TRACE`) so variants never mix objects.  
+       74 +                                                              
+       75 +## Build options                                              
+       76 +                                                              
+       77 +### `hgss_game.py` arguments                                  
+       78 +                                                              
+       79 +| Argument | Meaning |                                        
+       80 +| --- | --- |                                                 
+       81 +| `--target 3ds` | 3DS build (default `host32`: PC test build)
+          + |                                                            
+       82 +| `--game heartgold\|soulsilver` | edition (default heartgold;
+          + SoulSilver untested) |                                       
+       83 +| `--root PATH` | the patched decomp checkout (use `$K/build/u
+          +pstream`) |                                                   
+       84 +| `--out PATH` | output directory (required) |                
+       85 +| `-j N` | parallel jobs (default: CPU count) |               
+       86 +| `--define NAME` | add `-DNAME` to the runtime and game (repe
+          +atable) |                                                     
+       87 +| `--keep-going` | compile everything, report per-file errors,
+          + then link |                                                  
+       88 +| `--skip-prepare` | reuse the generated headers in `--root` |
+       89 +| `--sanitize` | host32 only: ASan/UBSan |                    
+       90 +                                                              
+       91 +### kohjoh switches (`--define NAME`)                         
+       92 +                                                              
+       93 +| Define | Effect | Status |                                  
+       94 +| --- | --- | --- |                                           
+       95 +| `KJ_G3_PROFILE` | times each geometry opcode (`[g3prof]`); e
+          +ach probe costs ~390 ticks | diagnostic |                     
+       96 +| `KJ_G3_ZERO_TRACE` | logs the first geometry commands that l
+          +eave a zero position/projection matrix (`[g3zero]`) | diagnost
+          +ic |                                                          
+       97 +| `KJ_DL_CACHE` | display-list cache | **do not enable on `mas
+          +ter`**: corrupts the heap (fixed on `wip/savestore`) |        
+       98 +| `KJ_DL_VERIFY` | cache verify mode | `wip/savestore` only | 
+       99 +                                                              
+      100 +Always pass these as `--define`. An inline variable such as `F
+          +OO=1 python ...`                                              
+      101 +works inside the `bash.exe -lc` shell but **is dropped when MS
+          +YS2 Python is                                                 
+      102 +started directly from Git Bash**. `--define` works either way.
+      103 +                                                              
+      104 +### Legacy environment variables (from hgss-3ds)              
+      105 +                                                              
+      106 +`hgss_game.py` and `src/compat/nitro/Makefile` still read thes
+          +e hgss-3ds                                                    
+      107 +variables. Set them inside the `-lc` shell, for example `HGSS_
+          +PROFILE=off                                                   
+      108 +python tools/game/hgss_game.py ...`. Each one is recorded in  
+      109 +`build-info.txt` and appended to the build tag. Leave them uns
+          +et for normal                                                 
+      110 +builds.                                                       
+      111 +                                                              
+      112 +| Variable | Effect in kohjoh today |                         
+      113 +| --- | --- |                                                 
+      114 +| `HGSS_PROFILE=off` | compiles out the H-blank timing probes 
+          +in `port_os.c` |                                              
+      115 +| `HGSS_SND_ADPCM=1` | the alternative sample-saturation path 
+          +in `port_sound_chip.c` |                                      
+      116 +| `HGSS_A0_DIAG=1` | H-blank scan cross-check counters in `por
+          +t_os.c` |                                                     
+      117 +| `HGSS_BENCH=1` | hgss-3ds benchmark chainload define; no koh
+          +joh source uses it |                                          
+      118 +| `HGSS_GX3D_*`, `HGSS_TEXTURE_*`, `HGSS_PALETTE_HASH` | set a
+          + define that no kohjoh source reads; no effect |              
+      119 +| `HGSS_HOST_CC` | host32 compiler (default `gcc-10`) |       
+      120 +| `DEVKITPRO`, `DEVKITARM` | toolchain location; set by the MS
+          +YS2 login profile |                                           
+      121 +                                                              
+      122 +## Changing the decomp, NitroSDK or NitroSystem               
+      123 +                                                              
+      124 +`build/upstream` is generated: the pinned decomp plus `patches
+          +/` applied as                                                 
+      125 +commits. A change to it only counts once it is a patch in `pat
+          +ches/`:                                                       
+      126 +                                                              
+      127 +1. Edit inside `build/upstream`, keeping the DS code in `#else
+          +` under                                                       
+      128 +   `#ifdef SDK_PORT_3DS`. Build and verify.                   
+      129 +2. Commit in `build/upstream` (identity `terezi <jules@foxtail
+          +s.me>`).                                                      
+      130 +3. Export it to the stack that matches the files:             
+      131 +   ```sh                                                      
+      132 +   cd build/upstream                                          
+      133 +   git format-patch -1 --relative=lib/NitroSystem --start-numb
+          +er 305 -o ../../patches/NitroSystem  # NitroSystem            
+      134 +   git format-patch -1 --relative=lib/NitroSDK    --start-numb
+          +er 606 -o ../../patches/NitroSDK     # NitroSDK               
+      135 +   git format-patch -1                            --start-numb
+          +er 2004 -o ../../patches/pokeheartgold # game                 
+      136 +   ```                                                        
+      137 +   Number new patches after the highest one in that directory 
+          +on every branch.                                              
+      138 +   `wip/savestore` holds `NitroSDK/2003`.                     
+      139 +4. Commit the patch file in kohjoh.                           
+      140 +                                                              
+      141 +Bootstrap refuses an existing `build/upstream` if it has local
+          + changes, or if                                               
+      142 +its applied-patch count differs from `patches/` (for example a
+          +fter switching                                                
+      143 +branches). Then run `python tools/game/bootstrap.py --clean`, 
+          +which deletes and                                             
+      144 +re-creates it. Export your commits first; `--clean` discards t
+          +hem.                                                          
+      145 +`check_patches.py` compares commit subjects, so it catches a t
+          +ree that is                                                   
+      146 +missing a patch. It does not catch a tree with **extra** commi
+          +ts from another                                               
+      147 +branch: switch branches → `bootstrap.py --clean`.             
+      148 +                                                              
+      149  ## Data pack
+      150  
+      151  Not yet run from this repository (tested via hgss-3ds's identi
+           cal builder):
+     ...
+      166  pwsh tools/azahar/run.ps1 -Pack build\private\hg.pak -Manifest
+            build\private\hg\manifest.json -FreshSave -Shots 10,30 -Tag b
+           oot
+      167  ```
+      168  
+       55 -Stages the build to Azahar's SD (`%APPDATA%\Azahar\sdmc\3ds\ko
+          -hjoh\`),                                                      
+       56 -launches it, saves screenshots and logs to `build/azahar/<tag>
+          -/`. See                                                       
+       57 -[testing](testing.md) for scripts, held frames, dumps and prof
+          -iling.                                                        
+      169 +This stages the build to Azahar's SD (`%APPDATA%\Azahar\sdmc\3
+          +ds\kohjoh\`),                                                 
+      170 +launches it, and saves screenshots and logs to `build/azahar/<
+          +tag>/`. Pass                                                  
+      171 +`-Holds` or `-Shots`: without them the harness closes Azahar a
+          +fter about 2 s.                                               
+      172 +See [testing](testing.md) for scripts, held frames, dumps and 
+          +profiling.                                                    
+      173  
+       59 -## Windows/MSYS2 pitfalls                                     
+      174 +## Pitfalls                                                   
+      175  
+       61 -See [troubleshooting](troubleshooting.md#windows-build-chain);
+          - the build tools                                              
+       62 -already handle each case.                                     
+      176 +| Symptom | Cause | Fix |                                     
+      177 +| --- | --- | --- |                                           
+      178 +| `git-remote-https.exe: error while loading shared libraries`
+          + during bootstrap | devkitPro MSYS2's `git` has a broken HTTPS
+          + helper. | Put `/c/Program Files/Git/cmd` first on `PATH` insi
+          +de the `-lc` shell. |                                         
+      179 +| `.3dsx` built but an SDK/NNS change has no effect | vendored
+          + library compile failed; link used the stale prebuilt librarie
+          +s | grep the log for `error:` / `vendored library build failed
+          +` |                                                           
+      180 +| `mv`/`rm` of `build/upstream`: "Device or resource busy" | a
+          + shell's working directory is inside it | `cd` out first |    
+      181 +| `build-info.txt` says `dirty: yes` with no source changes | 
+          +untracked files in the repository count as dirty | harmless; c
+          +ommit or ignore them |                                        
+      182 +                                                              
+      183 +More, with causes, in [troubleshooting](troubleshooting.md#win
+          +dows-build-chain).                                            
+      184 +The build tools already handle each case listed there.        
+
+● Checking the README and troubleshooting for build instructions that now
+  disagree with this doc.
+
+  Ran 1 shell command, searched memories (ctrl+o to expand)
+
+● Updating the troubleshooting row, lessons, status and my project memory to
+  match, then committing.
+
+● Bash(python - <<'PYEOF'
+      def rep(p,old,new):…)
+  ⎿  92a9a6d docs: complete, verified Windows build guide
+  ⎿  Updated kohjoh\docs\lessons.md (+3 -1)
+      54    failed loudly: the writes simply vanished. When a hardware ac
+          cess class is
+      55    ported, scan the whole tree for that class (see game patch 20
+          04).
+      56  - **A shared `build/upstream` checkout carries branch state.** 
+          It held
+      57 -  `wip/savestore`'s SDK patch 2003 while building `master`.    
+      57 +  `wip/savestore`'s SDK patch 2003 while building `master`; `ch
+         +eck_patches.py`                                                
+      58 +  only detects missing patches, not extra ones. Re-created with
+      59 +  `bootstrap.py --clean` on 2026-11-12; after switching branche
+         +s, do the same.                                                
+      60  
+      61  ## Rules
+      62  
+  ⎿  Updated kohjoh\docs\troubleshooting.md (+2 -1)
+       8  | Symptom | Cause | Fix |
+       9  | --- | --- | --- |
+      10  | `Cannot create temporary file in C:\Windows\` | MSYS2 drops `
+          TMP`/`TEMP` from child processes; native GCC falls back to `C:\
+          Windows`. | `common.mk` exports them; `hgss_nitro.py` sets them
+           in Python. |
+      11 -| `-DFOO` set via `FOO=1 python ...` has no effect | MSYS2 Pyth
+         -on does not see inline environment variables. | `hgss_game.py -
+         --define FOO`. |                                                
+      11 +| `-DFOO` set via `FOO=1 python ...` has no effect | MSYS2 Pyth
+         +on started directly from Git Bash does not see inline environme
+         +nt variables (inside `bash.exe -lc` it does). | `hgss_game.py -
+         +-define FOO`. |                                                
+      12 +| Bootstrap: `git-remote-https.exe: error while loading shared 
+         +libraries` | devkitPro MSYS2's `git` has a broken HTTPS helper.
+         + | `export PATH="/c/Program Files/Git/cmd:$PATH"` inside the `-
+         +lc` shell ([build](building-windows.md#build)). |              
+      13  | `mkdir: cannot create directory '/home'`; headers "not found"
+           | MSYS2 Python resolves the working directory as `/home/<user>
+          /...`, which bash, make and native tools cannot use; MSYS also 
+          does not convert glued arguments such as `-idirafter/c/...`. | 
+          Invoke with absolute `/c/...` paths and `--root`; pass `-idiraf
+          ter` and its path as separate arguments. |
+      14  | `ld: cannot find /c/Users/.../x.o` | Native `ld` reads paths 
+          inside `@response` files literally; MSYS converts only command-
+          line arguments. | Response files use `C:/...` (`_tool_path`). |
+      15  | `ar: Argument list too long` | Very deep output paths (e.g. u
+          nder `%TEMP%`). | Build under the repository's `build/`. |
+
+  Wrote 1 memory (ctrl+o to expand)
+
+● I rewrote docs/building-windows.md (commit 92a9a6d) and tested it by following
+  it exactly from scratch, with empty build/upstream and build/kj. All 91
+  patches applied, the build finished with 0 errors in about 6 minutes, and the
+  title screen with the fixed Ho-Oh checked out in Azahar.
+
+  Two problems the fresh build turned up, both now in the doc:
+  - Bootstrap fails over HTTPS. devkitPro's MSYS2 git can't fetch over HTTPS
+    (git-remote-https.exe: error while loading shared libraries). The fix is to
+    put Git for Windows first on PATH inside the build shell.
+  - The build can report success while using stale libraries. If the SDK or
+    NitroSystem code fails to compile, the build quietly links the old prebuilt
+    libraries and still produces a .3dsx. The doc now says to treat a build as
+    good only when the log ends in packaged and contains no error: or vendored 
+    library build failed lines.
+
+  What the doc now covers:
+  - Where to run it: inside devkitPro's MSYS2 login shell (bash.exe -lc), which
+    sets DEVKITPRO and DEVKITARM.
+  - Required flags: --target 3ds must be passed, because the default is a PC
+    test build. Absolute /c/... paths are required.
+  - Every hgss_game.py argument.
+  - Every --define switch:
+    - KJ_G3_PROFILE and KJ_G3_ZERO_TRACE are diagnostics.
+    - KJ_DL_CACHE is marked unsafe on master.
+  - Legacy HGSS_* variables from hgss-3ds: what each still does in kohjoh. Only
+    HGSS_PROFILE=off, HGSS_SND_ADPCM and HGSS_A0_DIAG change anything. The
+    HGSS_GX3D_*, HGSS_TEXTURE_* and HGSS_PALETTE_HASH ones have no effect.
+  - When inline environment variables work: they reach the build inside the -lc
+    shell, but are dropped when MSYS2 Python is started directly from Git Bash.
+    --define works either way.
+  - Outputs and timings: what the build produces (.3dsx, .elf for crash
+    addresses, build-info.txt), how long it takes, and how incremental rebuilds
+    work.
+  - Changing the decomp, NitroSDK or NitroSystem: edit and commit in
+    build/upstream, export with git format-patch into the matching patches/
+    folder, and run bootstrap.py --clean after switching branches.
+    check_patches.py catches a missing patch but not an extra one from another
+    branch, which is how the stray patch 2003 got into my earlier builds.
+
+  The clean rebuild also removed that stray wip/savestore patch, so
+  build/upstream now matches master. The old checkout and build are kept as
+  build/upstream.pre-clean and build/kj.pre-clean; nothing in them is unsaved,
+  so you can delete them.
+
+● Session resumed
+
+● Loaded from the session's last compaction, so the messages it 
+  summarized aren't here.
+
+● This terminal now has its own copy of the session: new work here stays
+  local and will not appear in the Claude app. To continue on your 
+  phone later, run /remote-control in this session.

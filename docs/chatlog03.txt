@@ -1,0 +1,618 @@
+you're working on kohjoh. read chatlog02.txt, read the kohjoh project documentation, and pick up where the last agent left off working - your end goal is getting kohjoh back to the point where it's able to load the existing goldenrod heartgold save we have, player AAA. test against azahar.
+
+I’ll read the handoff and project documentation first, then trace the current save-loading path and test the existing AAA save in Azahar.
+• Exited (status 1) Get-ChildItem -Force | Select-Object Name,FullName,Mode; rg --files -g 'chatlog02.txt' -g 'AGENTS.md' -g '*README*' -g '*doc*' -g '*gol…
+  └ zensical-check            C:\Users\terezi\workdir\zensical-check            d----
+    PICA200.md                C:\Users\terezi\workdir\PICA200.md                -a---
+
+• Ran Get-Content AGENTS.md; Get-Content README.md; Get-Content docs/README.md; Get-Content docs/chatlog02.txt -Tail 300; git status --short; rg --files do…
+  └ docs\building-windows.md
+    docs\building-linux.md
+    docs\architecture.md
+• Ran Get-Content docs/status.md; Get-Content docs/testing.md; Get-Content docs/building-windows.md; Get-Content docs/lessons.md; Get-Content docs/troubles…
+  └    enable by default once verify is clean over the corpus.
+    5. SaveStore (two generations), CIA packaging, O3DS test kit with ARM11
+       performance counters.
+• Ran git branch -vv; git log -5 --oneline; Get-ChildItem build -Force | Select-Object Name; Get-Item ..\hgss-3ds\build\bench\heartgold.sav -ErrorAction Si…
+  └
+    A **CRC-32** here is only a corruption detector (it catches torn writes and bit rot, not tampering).
+
+The handoff identifies a save-detection regression after the SDK shim switched to live sources; the current checkout is the earlier master branch, with the unfinished work preserved separately. I’m checking the actual available save and build artifacts before choosing the smallest reproducible fix.
+• Ran Get-ChildItem -Path C:\Users\terezi\workdir\hgss-3ds,C:\Users\terezi\workdir\kohjoh,$env:APPDATA\Azahar -Filter *.sav -Recurse -ErrorAction SilentlyC…
+  └  docs/troubleshooting.md  |  88 +++++++---------------
+     6 files changed, 214 insertions(+), 404 deletions(-)
+
+• Ran Get-Process azahar -ErrorAction SilentlyContinue | Select-Object Id,MainWindowTitle; Get-Content tests\inputs\goldenrod-step.txt; Get-ChildItem "$env…
+  └                                                                                        1
+                                                                                           1
+
+• Exited (status 1) Get-Content ..\coffeepot\ctr\engineering\c-style-guide.md -TotalCount 100
+  └    2 |  Get-Content ..\coffeepot\ctr\engineering\c-style-guide.md -TotalCount …
+         |  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+         | Cannot find path 'C:\Users\terezi\workdir\coffeepot\ctr\engineering\c-style-guide.md' because it does not exist.
+• Ran git diff master..wip/savestore -- src/compat/nitro src/runtime/kj_boot.c tools/game/hgss_nitro.py; Get-Content src/storage/save_raw.c; rg -n 'open_sa…
+  └ src/compat/nitro\src\port_card.c:261:        /* Pokémon Platinum uses the 4 Mbit FLASH cartridge. Reject other
+    src/compat/nitro\src\port_card.c:263:        return cmd->type == CARD_BACKUP_TYPE_FLASH_4MBITS && open_save()
+    src/compat/nitro\src\port_card.c:266:    if (cmd->type != CARD_BACKUP_TYPE_FLASH_4MBITS)
+• Ran Get-ChildItem build\hgss-sdk -Force | Select-Object Name,LinkType,Target; rg --files ..\coffeepot\ctr | rg 'style'; git diff master..wip/savestore --…
+  └ verify7
+    verify8
+
+• Exited (status 1) Get-Content build\azahar\bisect1\heartgold.log -Tail 35; Get-Content build\azahar\gold1\heartgold.log -TotalCount 50; Get-ChildItem bui…
+  └ hgss_compat Junction C:\Users\terezi\workdir\kohjoh\src\compat\hgss\src
+    hgss_sub    Junction C:\Users\terezi\workdir\kohjoh\build\upstream\sub\lib\src
+
+• Viewed image t030.png
+The first Azahar run reproduces the reported failure: the staged save leads to the new-game tutorial. I’m narrowing down which live SDK source changed the save read, while preserving the original save file.
+• Exited (status 1) Get-Content docs\chatlog02.txt | Select-Object -Skip 4900 -First 270; Get-Content src\compat\nitro\src\port_card.c -TotalCount 300; rg …
+  └             *(u8 *)(uintptr_t)cmd->dst = 0; /* WIP=0: no pending program */
+                okay = TRUE;
+            }
+• Ran Get-ChildItem patches -Recurse | Where-Object Name -match '2002|2003'; rg -n 'keystream|2002|cache' docs\chatlog02.txt | Select-Object -Last 30; Get-…
+  └ Name : ref05000_screens.png
+
+
+• Ran Get-Content patches\pokeheartgold\2002*; Get-Content build\upstream\src\math_util.c | Select-Object -First 180; Get-ChildItem build\kj,build\kjc,buil…
+  └ FullName      : C:\Users\terezi\workdir\kohjoh\build\kjv\pokeheartgold.3dsx
+    LastWriteTime : 11/12/2026 3:22:08 PM
+
+• Exited (status 1) Get-Content src\compat\hgss\include\nitro\math\crc.h; rg -n 'CRC16|crc16' src\compat\nitro src\compat\hgss build\upstream\src\math_util…
+  └ patches\pokeheartgold\1906-math-util-build-the-CRC-16-table-GF_CalcCRC16-use.patch:31:+ * MATH_CRC16InitTable to ntrtwl's reflected table (for MATH_Cal…
+    patches\pokeheartgold\1906-math-util-build-the-CRC-16-table-GF_CalcCRC16-use.patch:33:+#define HGSS_MATH_KEEP_HGSS_CRC16_INIT
+    src\compat\hgss\include\nitro\os\systemCall.h:23:u16 SVC_GetCRC16(u32 start, const void *datap, u32 size);
+• Exited (status 1) Get-Content patches\pokeheartgold\1907*; rg -n 'MATHi_CRC16InitTable|MATH_CalcCRC16CCITT' build\upstream\lib\NitroSDK\src src\compat\ni…
+  └    2 |  … \nitro\src; Get-Content build\azahar\resume-baseline\heartgold.log -T …
+         |                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+         | Cannot find path 'C:\Users\terezi\workdir\kohjoh\build\azahar\resume-baseline\heartgold.log' because it does not exist.
+• Exited (status 1) Get-Content build\upstream\lib\NitroSDK\src\math\MATH_crc.c; rg -n -i 'legacy|footer|crc' patches\pokeheartgold\19*save*
+  └     return ~ctx;
+    }
+    rg: patches\pokeheartgold\19*save*: IO error for operation on patches\pokeheartgold\19*save*: The filename, directory name, or volume label syntax is i…
+• Ran rg -n -i 'footer|legacy' patches/pokeheartgold | Select-Object -First 60; Get-Content build\upstream\src\save.c | Select-String -Pattern 'footer|crc'…
+  └   #ifdef SDK_PORT_3DS
+                  /* At the last chunk this would read hdr[i + 1], one entry past
+
+• Ran pwsh -NoProfile -File tools/azahar/run.ps1 -Save C:/Users/terezi/workdir/hgss-3ds/build/bench/heartgold.sav -Script tests/inputs/goldenrod-step.txt -…
+  └ shot build\azahar\resume-baseline\t030.png
+    shot build\azahar\resume-baseline\t090.png
+    log copied
+• Ran Get-Content build\azahar\resume-baseline\heartgold.log -TotalCount 25; rg -n 'math_util.c|include ' tools/game/hgss_game.py | Select-Object -First 30…
+  └ --------
+    C:\Users\terezi\workdir\kohjoh\build\kj\obj\src\math_util.o
+
+• Viewed image t090.png
+• Ran Get-Content src\app\input.c; Get-Content src\app\script.c -TotalCount 160; Get-Content tools\game\hgss_game.py | Select-Object -Skip 280 -First 65; G…
+  └ [   1.897622] Service.APT <Warning> core/hle/service/apt/apt.cpp:AppletUtility:735: (STUBBED) called command=0X00000004, input_size=0X00000001, output_…
+    [   1.909994] Service <Error> core/hle/service/service.cpp:ReportUnimplementedFunction:170: unknown / unimplemented function 'ConfigureNew3DSCPU': port…
+    [   1.991735] Service.FS <Error> ./core/file_sys/archive_backend.h:GetOpenDelayNs:221: Delay generator was not initalized. Using default
+• Ran git diff master..wip/savestore -- src/app/input.c; Get-Content ..\coffeepot\ctr\engineering\testing-on-hardware.md -TotalCount 35
+  └ | System integration | HOME button and return; closing from the HOME Menu; sleep (closing the lid) and wake during gameplay and during loading; power b…
+    | Memory | Peak use in the largest level, after long play (leaks, fragmentation); start-up in the smallest memory mode you support ([memory and cache](…
+    | Display | 3D slider from off to full and back while running; both screens; wide mode if used |
+• Edited kohjoh\src\app\input.c (+2 -2)
+-        if (kj_script_input(s_vblank++, &keys, &touch, &tx, &ty) && (keys != 0 || touch)) {
+-            /* a scripted press wins; otherwise live input stays usable */
++        if (kj_script_input(s_vblank++, &keys, &touch, &tx, &ty)) {
+The test harness had a separate reliability issue: physical input could reach the game between scripted presses. I’ve applied the existing work-in-progress fix so the next run can distinguish a real save failure from stray input, and I’m rebuilding against the live SDK.
+• Exited (status 1) Get-Content src\compat\hgss\include\hgss_port_math.h -TotalCount 80; Get-Content build\upstream\lib\include\assert.h -TotalCount 60; rg…
+  └
+    #endif //_MSL_ASSERT_H_
+    rg: build\kj\obj\src\math_util.d: IO error for operation on build\kj\obj\src\math_util.d: The system cannot find the file specified. (os error 2)
+• Ran rg -n 'kj_input_sample' src; Get-Content build\azahar\resume-baseline\heartgold.log | Select-String -Pattern 'script|overlay'
+  └      9.735 [nitro] overlay OVY_36 loaded
+         9.818 [nitro] overlay OVY_53 loaded
+
+• Ran C:\devkitPro\msys2\usr\bin\python.exe /c/Users/terezi/workdir/kohjoh/tools/game/hgss_game.py --root /c/Users/terezi/workdir/kohjoh/build/upstream --t…
+  └    [sound] _0210D750 -> nns_volume_table.c (512 bytes, [128] = 0)
+       packaged /c/Users/terezi/workdir/kohjoh/build/kj/pokeheartgold.3dsx (5531844 bytes)
+       build info: pokeheartgold.build-info.txt
+• Ran Get-Content build\resume-build.log -Tail 8
+  └ == compiling C/C++ (1092 files, -j32)
+       1092 compiled, 0 failed
+    == assembling ARM9 .s (150 files)
+• Viewed image t020.png
+• Ran Get-Content build\resume-build.log -Tail 5
+  └ == duplicate symbols
+       0 symbols defined in more than one object (0 objects weakened)
+    == Wi-Fi stand-ins
+• Ran Select-String -Path build\resume-build.log -Pattern 'error|warning: the vendored|Permission denied' | Select-Object -First 10
+  └ build\resume-build.log:35:   warning: the vendored library build failed; linking with libnitrosystem.a, libnitro.a and
+    reporting what is missing
+
+The deterministic run is now following the normal title sequence, which confirms the earlier run was contaminated by live input. I’m letting it reach Continue and Goldenrod; separately, the sandboxed build could only link existing SDK archives because MSYS couldn’t create its generated-header directory, so I’m checking a complete build as well.
+• Ran Get-Content build\resume-build.log -Tail 4
+  └ == duplicate symbols
+       0 symbols defined in more than one object (0 objects weakened)
+    == Wi-Fi stand-ins
+• Ran Get-Process python,azahar -ErrorAction SilentlyContinue | Select-Object Id,CPU,ProcessName
+  └ 88612  34.70 python
+    92444   0.02 python
+
+• Exited (status 1) C:\devkitPro\msys2\usr\bin\bash.exe -lc 'cd /c/Users/terezi/workdir/kohjoh && /usr/bin/python /c/Users/terezi/workdir/kohjoh/tools/game…
+  └ /home/CodexSandboxOffline could not be created.
+    Setting HOME to /tmp.
+    Initial setup complete. MSYS2 is now ready to use.
+• Viewed image t090.png
+• Ran rg -n 'SAVE_CHUNK_MAGIC|struct SaveChunkFooter|SAVE_SECTOR_SIZE' build\upstream\include build\upstream\src\save.c; Get-Content build\resume-full-buil…
+  └ == compiling C/C++ (1092 files, -j32)
+       1092 compiled, 0 failed
+    == assembling ARM9 .s (150 files)
+• Ran C:\devkitPro\devkitARM\bin\arm-none-eabi-objdump.exe -dr build\kj\obj\src\math_util.o | Select-String -Pattern '<GF_CRC16Init>' -Context 0,38; Get-Co…
+  └     int rollbackCounter;
+        int unk_4;
+
+• Ran @' …
+  └ 0xf700 0x21a10 0x12310 1 0x6449 0x6449
+    0x40000 0x4f628 0xf628 0 0x3134 0x3134
+    0x4f700 0x61a10 0x12310 1 0x6449 0x6449
+The save itself has valid HeartGold sector footers and checksums, so it is intact. The controlled run still appears to enter the new-game flow after the scripted title input; I’m checking the card read and loader rather than modifying the save.
+• Ran pwsh -NoProfile -File tools/azahar/run.ps1 -Save C:/Users/terezi/workdir/hgss-3ds/build/bench/heartgold.sav -Script tests/inputs/goldenrod-step.txt -…
+  └ shot build\azahar\deterministic-save\t090.png
+    shot build\azahar\deterministic-save\t150.png
+    log copied
+• Edited kohjoh\src\compat\nitro\src\port_card.c (+3 -0)
++    NitroPort_Log("[save] opened 512 KiB image: %02x %02x %02x %02x",
++                  sImage[0], sImage[1], sImage[2], sImage[3]);
++    NitroPort_Log("[save] invalid or unreadable save image");
+• Ran Get-Content build\resume-full-build.log -Tail 5; Select-String -Path build\resume-full-build.log -Pattern 'Permission denied|warning: the vendored' |…
+  └   CC  port_thread.c
+      CC  port_tp.c
+      CC  pxi.c
+• Viewed image t150.png
+• Ran Get-Content build\resume-full-build.log -Tail 3; Select-String -Path build\resume-full-build.log -Pattern 'error|warning: the vendored' | Select-Obje…
+  └   CC  snd_destroy_bank.c
+      CC  snd_flush_command.c
+      CC  snd_interface.c
+• Ran Get-Content build\resume-full-build.log -Tail 3; Get-Content build\azahar\deterministic-save\heartgold.log | Select-String -Pattern 'overlay|script|s…
+  └     87.086 [nitro] overlay OVY_36 loaded
+        87.170 [nitro] overlay OVY_53 loaded
+
+The source save’s four sector checksums all match the game’s CRC-16 algorithm. I’ve added a small read diagnostic and am rebuilding the SDK libraries fully, which should show whether the failure is in opening the file or later in the game’s validation.
+• Ran Get-Content build\resume-full-build.log -Tail 5
+  └ == duplicate symbols
+       0 symbols defined in more than one object (0 objects weakened)
+    == Wi-Fi stand-ins
+• Ran C:\devkitPro\msys2\usr\bin\bash.exe -lc 'cd /c/Users/terezi/workdir/kohjoh && /usr/bin/python /c/Users/terezi/workdir/kohjoh/tools/game/hgss_game.py …
+  └ (no output)
+• Ran Get-Content build\resume-full-build.log -Tail 8; Select-String -Path build\resume-full-build.log -Pattern 'error|warning: the vendored' | Select-Obje…
+  └    [sound] _0210D750 -> nns_volume_table.c (512 bytes, [128] = 0)
+       packaged /c/Users/terezi/workdir/kohjoh/build/kj/pokeheartgold.3dsx (5532040 bytes)
+       build info: pokeheartgold.build-info.txt
+• Ran Get-Content "$env:APPDATA\Azahar\sdmc\3ds\kohjoh\logs\heartgold.log" -TotalCount 20
+  └      0.853 [nitro] overlay OVY_38 loaded
+         0.853 [nitro] not implemented: DWC_Init
+         0.853 [nitro] overlay intro_title loaded
+• Edited kohjoh\src\compat\nitro\src\port_card.c (+4 -0)
++    static unsigned logged;
+    ⋮
++    if (logged++ < 4) {
+• Ran Get-Content tools\game\bootstrap.py -TotalCount 120; Get-Content src\compat\nitro\src\port_card.c | Select-Object -Skip 300 -First 120; Get-Content b…
+  └         return LOAD_STATUS_TOTAL_FAIL;
+        }
+
+• Exited (status 1) Get-ChildItem ..\hgss-3ds\build -Directory | Select-Object -First 25 Name; Get-Content build\upstream\lib\NitroSDK\src\card\CARD_backup…
+  └      |                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+         | Cannot find path 'C:\Users\terezi\workdir\kohjoh\build\upstream\src\flash.c' because it does not exist.
+
+• Ran git diff --no-index -- build\upstream\lib\NitroSDK\src\card ..\hgss-3ds\build\hgss-sdk\libraries\hgss\card --stat | Select-Object -First 80; Get-Cont…
+  └ == compiling C/C++ (1092 files, -j32)
+       1092 compiled, 0 failed
+    == assembling ARM9 .s (150 files)
+• Ran git diff --no-index --stat -- build/upstream/lib/NitroSDK/src/card ../hgss-3ds/build/hgss-sdk/libraries/hgss/card
+  └ (no output)
+• Exited (status 1) git diff --no-index --stat -- build/upstream/lib/NitroSDK/src ../hgss-3ds/build/hgss-sdk/libraries/hgss
+  └  .../lib/NitroSDK/src/wm_settings.c => /dev/null    |  155 -
+     build/upstream/lib/NitroSDK/src/wvr.c => /dev/null |  173 -
+     209 files changed, 1 insertion(+), 31494 deletions(-)
+• Ran Get-Content build\resume-read-build.log -Tail 3; Get-ChildItem build\azahar\full-sdk-save | Select-Object Name
+  └   CC  os_spin_lock_word.c
+      CC  os_system.c
+      CC  os_terminate_proc.c
+• Viewed image t090.png
+The fully rebuilt version opens the 512 KiB file successfully, but the controlled test still enters the tutorial. That narrows the failure to the game’s subsequent card reads or save validation; the original file remains unchanged.
+• Ran Get-Content build\resume-read-build.log -Tail 3
+  └   CC  card_cache_flush_threshold.c
+      CC  card_read_card.c
+      CC  card_spi_wait.c
+• Ran Get-Item ..\hgss-3ds\build\hgss-sdk\libraries\hgss | Format-List FullName,LinkType,Target; Get-Content build\upstream\lib\NitroSDK\src\card\card_requ…
+  └ build\upstream\src\save.c:1001:            FlashLoadChunk((hdr->sector + 64) * SAVE_SECTOR_SIZE, ret, size);
+    build\upstream\src\save.c:1033:    FlashLoadChunk(hdr->sector * SAVE_SECTOR_SIZE, ret, size);
+    build\upstream\src\save.c:1036:    FlashLoadChunk((hdr->sector + 64) * SAVE_SECTOR_SIZE, ret, size);
+• Ran Get-Content build\upstream\lib\NitroSDK\include\CARD_common.h | Select-Object -First 150; Get-Content build\upstream\lib\NitroSDK\include\CARD_backup…
+  └ }
+
+    #endif //POKEDIAMOND_CARD_BACKUP_H
+• Ran Get-Content build\resume-read-build.log -Tail 3
+  └   ARM7 CC sound_shared_work.c
+      ARM7 CC ds_sound_tables.c
+      ARM7 CC snd_arm7_data.c
+The loader does open the staged file, and the checksums on disk are valid. I’m instrumenting the backup-card reads next; that will tell us whether the game receives both save sectors intact.
+• Ran pwsh -NoProfile -File tools/azahar/run.ps1 -Save C:/Users/terezi/workdir/hgss-3ds/build/bench/heartgold.sav -Script tests/inputs/goldenrod-step.txt -…
+  └ shot build\azahar\full-sdk-save\t090.png
+    shot build\azahar\full-sdk-save\t150.png
+    log copied
+• Ran Get-Content build\resume-read-build.log -Tail 4
+  └ == duplicate symbols
+       0 symbols defined in more than one object (0 objects weakened)
+    == Wi-Fi stand-ins
+• Ran Get-Content build\upstream\lib\NitroSDK\include\CARD_common.h | Select-Object -Skip 145 -First 75; Get-Content build\upstream\src\save.c | Select-Str…
+  └       lock = OS_GetLockID();
+          GF_ASSERT(lock != OS_LOCK_ID_ERROR);
+
+• Ran C:\devkitPro\msys2\usr\bin\bash.exe -lc 'cd /c/Users/terezi/workdir/kohjoh && /usr/bin/python /c/Users/terezi/workdir/kohjoh/tools/game/hgss_game.py …
+  └ (no output)
+• Ran pwsh -NoProfile -File tools/azahar/run.ps1 -Save C:/Users/terezi/workdir/hgss-3ds/build/bench/heartgold.sav -Script tests/inputs/goldenrod-step.txt -…
+  └ shot build\azahar\save-reads\t005.png
+    log copied
+• Ran Get-Content build\azahar\save-reads\heartgold.log -TotalCount 35
+  └      0.853 [nitro] overlay OVY_38 loaded
+         0.853 [nitro] not implemented: DWC_Init
+         0.854 [nitro] overlay intro_title loaded
+• Ran git diff --no-index --stat -- build/upstream/lib/NitroSDK/src/card/card_request_stream_command.c ../hgss-3ds/build/upstream/lib/NitroSDK/src/card/car…
+  └
+    void CARDi_RequestStreamCommandCore(Card *c) {
+        int mode;
+• Ran rg -n 'MI_CpuCopy8\(' src\compat\nitro build\upstream\lib\NitroSDK\src\mi build\upstream\lib\include\nitro\mi | Select-Object -First 25; rg -n 'MATH_…
+  └ 556:+ make -C /c/Users/terezi/workdir/kohjoh/src/compat/nitrosystem TARGET=3ds DEVKITPRO=/opt/devkitpro DEVKITARM=/opt/devkitpro/devkitARM OUT=../../..…
+    895:  CC  card_request_stream_command.c
+    948:  CC  MATH_crc.c
+• Edited kohjoh\src\compat\nitro\src\port_card.c (+5 -0)
++    if (offset == 256 && length == 256) {
++        NitroPort_Log("[save] previous page copy %s",
++                      memcmp((const void *)(uintptr_t)(cardi_common.dst - 256), sImage, 256) == 0
+• Ran Get-Content src\compat\nitro\src\mi_memory.c | Select-Object -Skip 130 -First 35; Get-Content build\azahar\gold1\heartgold.log | Select-String -Patte…
+  └ freeze 5300 4
+    end: 11500
+
+• Ran Get-Content build\resume-copy-build.log -Tail 3
+  └ == compiling C/C++ (1092 files, -j32)
+       1092 compiled, 0 failed
+    == assembling ARM9 .s (150 files)
+• Ran rg -n 'SAVE_PAGE_MAX' build\upstream\include\constants\save_arrays.h
+  └ 50:#define SAVE_PAGE_MAX    35
+• Edited kohjoh\src\compat\nitro\src\port_card.c (+7 -0)
++    static const void *first_sector;
+    ⋮
++    if (offset == 0 && length == 256) {
+The card service is reading the save in 256-byte pages as expected. I’m checking whether those pages arrive intact in the game’s buffer, which separates an SDK transfer bug from a checksum or menu-flow problem.
+• Ran Get-Content build\resume-copy-build.log -Tail 3
+  └   CC  snd_read_track_info.c
+      CC  std_sprintf.c
+      CC  std_sprintf_writer.c
+• Ran Get-Content build\resume-copy-build.log -Tail 3
+  └   CC  card_spi_wait_init.c
+      CC  card_terminate_pulled_out.c
+      CC  card_try_read_dma.c
+• Ran Get-Content build\resume-copy-build.log -Tail 3
+  └   CC  port_overlay.c
+      CC  port_pm.c
+      CC  port_rtc.c
+• Ran Get-Content build\resume-copy-build.log -Tail 3
+  └ == overlay table
+      129 overlays (37 with data, 2 with static initializers), 828 objects (85 not in this build): sections grouped per overlay
+    == duplicate symbols
+• Ran Get-Content build\resume-copy-build.log -Tail 3
+  └ == duplicate symbols
+       0 symbols defined in more than one object (0 objects weakened)
+    == Wi-Fi stand-ins
+The full SDK rebuild now succeeds. The remaining question is whether its card transfer preserves the complete first save sector in memory; I’m running that targeted check before changing the loader.
+• Ran C:\devkitPro\msys2\usr\bin\bash.exe -lc 'cd /c/Users/terezi/workdir/kohjoh && /usr/bin/python /c/Users/terezi/workdir/kohjoh/tools/game/hgss_game.py …
+  └ (no output)
+• Ran pwsh -NoProfile -File tools/azahar/run.ps1 -Save C:/Users/terezi/workdir/hgss-3ds/build/bench/heartgold.sav -Script tests/inputs/goldenrod-step.txt -…
+  └ shot build\azahar\save-copy\t005.png
+    log copied
+• Ran Get-Content build\azahar\save-copy\heartgold.log -TotalCount 22
+  └      0.855 [nitro] overlay OVY_38 loaded
+         0.855 [nitro] not implemented: DWC_Init
+         0.855 [nitro] overlay intro_title loaded
+• Ran rg -n 'sSaveDataPtr|saveSlotSpecs' build\upstream\src\save.c build\upstream\include\save.h | Select-Object -First 25; Get-Content build\upstream\incl…
+  └ 46:static void SaveData_InitSlotSpecs(struct SaveSlotSpec *slotSpecs, struct SaveArrayHeader *headers);
+    85:    SaveData_InitSlotSpecs(ret->saveSlotSpecs, ret->arrayHeaders);
+    777:static void SaveData_InitSlotSpecs(struct SaveSlotSpec *slotSpecs, struct SaveArrayHeader *headers) {
+The first 140 KiB sector reaches the game byte-for-byte intact. That rules out the card transfer for that sector and points to the game’s save layout or validation; I’m checking the layout it computed against the valid footers on disk.
+• Edited kohjoh\src\compat\nitro\src\port_card.c (+5 -0)
++#include "save.h"
+    ⋮
++        SaveData *save = SaveData_Get();
+• Ran Get-Content build\upstream\src\save.c | Select-Object -Skip 750 -First 75; rg -n 'save chunk|gSaveChunkHeaders|gSaveChunk' build\upstream\src\save.c
+  └ 749:    hdr = gSaveChunkHeaders;
+    764:             * gSaveChunkHeaders. Harmless bss on the DS; ASan reports it on
+    812:    chunkHeaders = gSaveChunkHeaders;
+• Ran Get-Content build\resume-layout-build.log -Tail 3
+  └ == compiling C/C++ (1092 files, -j32)
+       1092 compiled, 0 failed
+    == assembling ARM9 .s (150 files)
+• Exited (status -1) Get-Content build\resume-layout-build.log -Tail 4; Select-String -Path build\resume-layout-build.log -Pattern 'error:' | Select-Object…
+  └ Failed to create unified exec process: CreateProcessWithLogonW failed: 267
+• Ran Get-Content build\resume-layout-build.log -Tail 4; Select-String -Path build\resume-layout-build.log -Pattern 'error:' | Select-Object -First 5
+  └   CC  rtc_convert_pre.c
+      CC  rtc_convert_post.c
+      CC  rtc_internal.c
+• Ran Select-String -Path build\resume-layout-build.log -Pattern 'error:|warning:' -Context 1,2 | Select-Object -First 15
+  └   build\resume-layout-build.log:117:   91 | #define HW_OAM_END              0x07000400
+      build\resume-layout-build.log:118:      |         ^~~~~~~~~~
+
+The sector-copy check passed in Azahar. I’m now comparing the loader’s computed offsets and sizes with the save’s footer locations; a mismatch there would explain why valid bytes are rejected.
+• Ran Select-String -Path build\resume-layout-build.log -Pattern 'error:|warning: the vendored' | Select-Object -First 5; Get-Content build\resume-layout-b…
+  └   CC  fx_vec_mult_add.c
+      CC  g3_util.c
+• Ran Get-Content build\resume-layout-build.log -Tail 3; Select-String -Path build\resume-layout-build.log -Pattern 'error:' | Select-Object -First 4
+  └   ARM7 CC snd_arm7_data.c
+      ARM7 CC ds_sound_tables.c
+    built ../../../build/kj/sdk/libnitro.a
+• Ran Get-Content build\resume-layout-build.log -Tail 3
+  └ == duplicate symbols
+       0 symbols defined in more than one object (0 objects weakened)
+    == Wi-Fi stand-ins
+The transfer check narrows this further: the save is neither missing nor corrupt, and the SDK copies its first sector correctly. The next short run will expose the exact layout the game calculated.
+• Ran C:\devkitPro\msys2\usr\bin\bash.exe -lc 'cd /c/Users/terezi/workdir/kohjoh && /usr/bin/python /c/Users/terezi/workdir/kohjoh/tools/game/hgss_game.py …
+  └ (no output)
+• Ran pwsh -NoProfile -File tools/azahar/run.ps1 -Save C:/Users/terezi/workdir/hgss-3ds/build/bench/heartgold.sav -Script tests/inputs/goldenrod-step.txt -…
+  └ shot build\azahar\save-layout\t005.png
+    log copied
+• Ran Get-Content build\azahar\save-layout\heartgold.log -TotalCount 20
+  └      0.727 [nitro] not implemented: DWC_CreateUserData
+         0.727 [nitro] not implemented: DWC_ClearDirtyFlag
+         0.855 [nitro] overlay OVY_0 loaded
+• Ran Get-Item build\kjc\obj\src\save.o,build\kj\obj\src\save.o | Select-Object FullName,LastWriteTime; rg -n 'gSaveChunkHeaders' build\upstream\src; git d…
+  └ C:\Users\terezi\workdir\kohjoh\build\kjc\obj\src\save.o 11/12/2026 2:43:02 PM
+    C:\Users\terezi\workdir\kohjoh\build\kj\obj\src\save.o  11/12/2026 3:27:49 PM
+
+I found the regression: the game computes save chunks at 0xf714 and 0xf800, while this valid save uses 0xf628 and 0xf700. I’m tracing which compiled save structures changed size so the fix restores the original layout without rewriting the save.
+• Ran Get-Content build\upstream\src\save_arrays.c | Select-Object -First 230
+  └      0,
+         (SAVESIZEFN)MigratedPokemon_GetSize,
+         (SAVEINITFN)MigratedPokemon_Init,
+• Exited (status 1) @' …
+  └   File "/opt/devkitpro/msys2/usr/lib/python3.14/subprocess.py", line 1990, in _execute_child
+        raise child_exception_type(errno_num, err_msg, err_filename)
+    FileNotFoundError: [Errno 2] No such file or directory: 'C:\\devkitPro\\devkitARM\\bin\\arm-none-eabi-objdump.exe'
+• Ran @' …
+  └ Pokewalker_sizeof
+     old ['e3a00f4d mov\tr0, #308', 'e12fff1e bx\tlr']
+     new ['e3a00f4e mov\tr0, #312', 'e12fff1e bx\tlr']
+• Ran C:\devkitPro\devkitARM\bin\arm-none-eabi-objdump.exe -d --disassemble=Save_PalPad_sizeof build\kj\pokeheartgold-3ds.elf
+  └ 004a6a98 <Save_PalPad_sizeof>:
+      4a6a98:    e3a00d22     mov    r0, #2176    @ 0x880
+      4a6a9c:    e12fff1e     bx    lr
+• Ran @' …
+  └ 48
+• Ran @' …
+  └ BattleRecord_sizeof ['e59f0000', 'e12fff1e', '00001d50'] ['e59f0000', 'e12fff1e', '00001d58']
+    BattleRecord_sizeof ['e59f0000', 'e12fff1e', '00001d50'] ['e59f0000', 'e12fff1e', '00001d58']
+    BattleRecord_sizeof ['e59f0000', 'e12fff1e', '00001d50'] ['e59f0000', 'e12fff1e', '00001d58']
+• Ran @' …
+  └ BattleRecord_sizeof ['e59f0000', 'e12fff1e', '00001d50'] ['e59f0000', 'e12fff1e', '00001d58']
+    BattleRecord_sizeof ['e59f0000', 'e12fff1e', '00001d50'] ['e59f0000', 'e12fff1e', '00001d58']
+    BattleRecord_sizeof ['e59f0000', 'e12fff1e', '00001d50'] ['e59f0000', 'e12fff1e', '00001d58']
+• Ran @' …
+  └ BattleRecord_sizeof ['e59f0000', 'e12fff1e', '00001d50'] ['e59f0000', 'e12fff1e', '00001d58']
+    BattleRecord_sizeof ['e59f0000', 'e12fff1e', '00001d50'] ['e59f0000', 'e12fff1e', '00001d58']
+    BattleRecord_sizeof ['e59f0000', 'e12fff1e', '00001d50'] ['e59f0000', 'e12fff1e', '00001d58']
+• Exited (status 1) python -c "import elftools; print('available')"
+  └     import elftools; print('available')
+        ^^^^^^^^^^^^^^^
+    ModuleNotFoundError: No module named 'elftools'
+The mismatch is concrete: the current build’s first save chunk is 236 bytes too large, and its second is four bytes too large. I’m comparing the size functions in the earlier build with the current build to identify the structures responsible.
+• Ran Get-ChildItem build\kjc\obj\src -Filter '*pokemon*' | Select-Object Name; Get-ChildItem build\kjc\obj\src -Filter '*flags*' | Select-Object -First 4 …
+  └ ?? docs/testing.md
+    ?? docs/worklog/
+
+• Exited (status 1) git diff --no-index -- build/kjc/obj/src/pokemon.o.flags build/kj/obj/src/pokemon.o.flags; git diff --no-index -- build/kjc/obj/src/sav…
+  └ +/c/Users/terezi/workdir/kohjoh/build/kj/gen/overlay_ids.h
+    \ No newline at end of file
+    error: Could not access 'build/kjc/obj/src/save_misc_data.o.flags'
+• Ran Get-Content build\upstream\include\pokemon.h | Select-String -Pattern 'struct Pokemon|BoxPokemon|PartyPokemon' -Context 0,12 | Select-Object -First 1…
+  └  C:/Users/terezi/workdir/kohjoh/build/upstream/src/pokemon.c \
+     C:/Users/terezi/workdir/kohjoh/build/upstream/lib/include/assert.h \
+
+• Ran git diff --no-index -- build/kjc/obj/src/pokemon.o.d build/kj/obj/src/pokemon.o.d | Select-Object -First 150
+  └ - C:/Users/terezi/workdir/kohjoh/build/hgss-sdk/include/nitro/gx/gxcommon.h \
+    - C:/Users/terezi/workdir/kohjoh/src/compat/hgss/include/nitro/gx/gx.h \
+    - C:/Users/terezi/workdir/kohjoh/build/hgss-sdk/include/nitro/gx/gx.h \
+• Explored
+  └ Read pokemon.o.d
+• Ran Get-Content build\upstream\include\pokemon_types_def.h -TotalCount 100; Get-Content build\upstream\include\global.h -TotalCount 60; Get-Content src\c…
+  └ #else  // __cplusplus
+    #define NULL ((void *)0)
+    #endif // __cplusplus
+• Exited (status 1) Get-Item build\hgss-sdk\include\nitro,build\hgss-sdk\include\nitro.h | Format-List FullName,LinkType,Target,Length; rg -n 'typedef.*u64…
+  └
+    rg: build\upstream\lib\NitroSDK\include\nitro\types.h: The system cannot find the path specified. (os error 3)
+    src\compat\nitro\include\nitro_port.h:216:/* DS-ABI u64 is aligned(4), so this is 12 bytes with stride 12. The shell
+• Ran Get-Item build\hgss-sdk\include\nitro\types.h | Format-List FullName,LinkType,Length,LastWriteTime; Get-Content build\hgss-sdk\include\nitro\types.h …
+  └ #include <nitro/fs.h>
+    #include <nitro/std.h>
+
+• Ran rg -n 'types.h|time.h|pokemon_types' build/kj/obj/src/pokemon.o.d build/kjc/obj/src/pokemon.o.d; Get-Content build/kj/obj/src/pokemon.o.flags | Selec…
+  └ -I/c/Users/terezi/workdir/kohjoh/build/kj/gen
+    -include
+    /c/Users/terezi/workdir/kohjoh/build/kj/gen/overlay_ids.h
+• Ran @' …
+  └ typedef s64 fx64c;
+    typedef u64 OSTick;
+
+• Ran git diff -- src/compat/nitro/src/port_card.c
+  └      return TRUE;
+     }
+
+The size changes match the 64-bit alignment issue documented in the project’s save patches. The current headers specify the correct alignment, but the existing game objects predate the SDK shim change and their dependency files omit those headers. I’m testing a clean build to see whether stale objects are the cause.
+• Ran rg -n -- '-MMD|-MD|dependencies|dependency' tools\game\hgss_game.py | Select-Object -First 35; rg -n '1905|layout' patches\pokeheartgold patches\Nitr…
+  └ patches\pokeheartgold\1909-pc-box-handle-mode-4-and-guard-a-non-enum-state.patch:97:         layout = 6;
+    patches\pokeheartgold\1909-pc-box-handle-mode-4-and-guard-a-non-enum-state.patch:101:+        layout = 3;
+    patches\pokeheartgold\1909-pc-box-handle-mode-4-and-guard-a-non-enum-state.patch:106:     work->view->gridInput = GridInputHandler_Create(gPCBoxGridLay…
+• Ran Get-Content tools\game\hgss_game.py | Select-Object -Skip 1290 -First 70; Get-Content build\resume-clean-build.log -Tail 2
+  └             text += alias_text
+    == heartgold 3ds: 1036 C, 56 C++, 150 .s
+    == compiling C/C++ (1092 files, -j32)
+• Ran Get-Item build\kj-clean\obj\src\party.o -ErrorAction SilentlyContinue | Select-Object LastWriteTime; Get-Content build\resume-clean-build.log -Tail 2
+  └ == heartgold 3ds: 1036 C, 56 C++, 150 .s
+    == compiling C/C++ (1092 files, -j32)
+• Edited kohjoh\tools\game\hgss_game.py (+5 -3)
+-    # every header it read (-MMD), and was built with the same flags.
++    # every header it read, including system-classified SDK headers, and was
++    # built with the same flags. Junctions can cause GCC to classify the SDK
+• Ran Get-Content build\resume-clean-build.log -Tail 2; Get-Item build\kj-clean\obj\src\party.o -ErrorAction SilentlyContinue | Select-Object LastWriteTime
+  └ -------------
+    11/12/2026 4:18:49 PM
+
+• Ran C:\devkitPro\devkitARM\bin\arm-none-eabi-objdump.exe -d --disassemble=SaveArray_Party_sizeof build\kj-clean\obj\src\party.o; C:\devkitPro\devkitARM\b…
+  └ Disassembly of section .text.Party_HasMon:
+
+    Disassembly of section .text.SaveArray_Party_Get:
+The clean build has already restored the party structure to the earlier, correct size. I also updated dependency tracking so changes to SDK headers classified as system headers will invalidate game objects instead of silently leaving stale ones.
+• Ran Get-Content build\resume-clean-build.log -Tail 2
+  └    1092 compiled, 0 failed
+    == assembling ARM9 .s (150 files)
+• Ran git diff master..wip/savestore -- tools/game/hgss_nitro.py | git apply
+  └ (no output)
+• Ran git diff -- tools/game/hgss_nitro.py | Select-Object -Last 65; Get-Content build\resume-clean-build.log -Tail 3
+  └ == compiling C/C++ (1092 files, -j32)
+       1092 compiled, 0 failed
+    == assembling ARM9 .s (150 files)
+• Ran Get-Content build\resume-clean-build.log -Tail 3; git diff --stat -- tools/game/hgss_nitro.py tools/game/hgss_game.py src/app/input.c
+  └  tools/game/hgss_game.py  |  8 +++++---
+     tools/game/hgss_nitro.py | 33 ++++++++++++++++++++++++++-------
+     3 files changed, 33 insertions(+), 12 deletions(-)
+The fresh objects now match the known-good save structure sizes. I’ve also brought forward the earlier junction fix so future builds read the live SDK sources, alongside the dependency fix that forces a rebuild when those headers change.
+• Ran Get-Content build\resume-clean-build.log -Tail 3; Select-String -Path build\resume-clean-build.log -Pattern 'error:|warning: the vendored|Traceback' …
+  └   CC  port_tp.c
+      CC  pxi.c
+      CC  svc.c
+• Ran Get-Content build\resume-clean-build.log -Tail 3
+  └   CC  mi_compress_search.c
+      CC  mi_dma.c
+      CC  mi_dma_card.c
+• Ran Get-Content build\resume-clean-build.log -Tail 3
+  └   CC  g2d_renderer_identity.c
+      CC  g2d_renderer_mtx_cache.c
+      CC  g2d_renderer_mtx_stack.c
+The clean build is still compiling the SDK and renderer libraries. Once it links, I’ll run the scripted save through Continue and capture the field; the earlier tests established only the failure and its cause.
+• Edited kohjoh\src\compat\nitro\src\port_card.c (+0 -24)
+-#include "save.h"
+    ⋮
+-    NitroPort_Log("[save] opened 512 KiB image: %02x %02x %02x %02x",
+• Ran git diff -- src/compat/nitro/src/port_card.c; Get-Content build\resume-clean-build.log -Tail 3
+  └ built ../../../build/kj-clean/sdk/libnitrosystem.a
+    make: Leaving directory '/c/Users/terezi/workdir/kohjoh/src/compat/nitrosystem'
+    == overlay table
+• Ran Get-Content build\resume-clean-build.log -Tail 3
+  └ == duplicate symbols
+       0 symbols defined in more than one object (0 objects weakened)
+    == Wi-Fi stand-ins
+• Ran C:\devkitPro\msys2\usr\bin\bash.exe -lc 'cd /c/Users/terezi/workdir/kohjoh && /usr/bin/python /c/Users/terezi/workdir/kohjoh/tools/game/hgss_game.py …
+  └ (no output)
+• Ran Get-Content "$env:APPDATA\Azahar\sdmc\3ds\kohjoh\logs\heartgold.log" -TotalCount 18
+  └      0.724 [save] layout: 0 f628 / f700 12310
+         0.734 [save] first sector transfer matches
+         0.734 [save] layout: 0 f628 / f700 12310
+The clean build now computes exactly the save’s original layout, and Azahar has read the first sector successfully. The Continue-to-field run is underway; I’m also rebuilding the final artifact with the dependency and junction fixes included.
+• Ran Get-Content build\resume-final-build.log -Tail 8
+  └ done: 890 files, 2 updated under /c/Users/terezi/workdir/kohjoh/build/upstream
+    == heartgold 3ds: 1036 C, 56 C++, 150 .s
+    == compiling C/C++ (1092 files, -j32)
+• Ran rg -n 'nitro/types.h' build/kj-final/obj/src/party.o.d -m 1; Get-Item build\hgss-sdk\include\nitro | Select-Object LinkType,Target
+  └ -------- ------
+    Junction C:\Users\terezi\workdir\kohjoh\build\upstream\lib\include\nitro
+
+• Ran Get-Item build\kj-final\obj\src\party.o -ErrorAction SilentlyContinue | Select-Object LastWriteTime; Get-Content build\resume-final-build.log -Tail 3
+  └ done: 890 files, 2 updated under /c/Users/terezi/workdir/kohjoh/build/upstream
+    == heartgold 3ds: 1036 C, 56 C++, 150 .s
+    == compiling C/C++ (1092 files, -j32)
+
+alright, once you're done the save fix don't continue any further, just merge it into master and stop working
+
+Understood. I’ll finish verifying the save fix, put just that fix on master, and stop there.
+• Ran if (Test-Path build\kj-final\obj\src\party.o.d) { rg -n 'nitro/types.h' build/kj-final/obj/src/party.o.d -m 1 }; Get-Content build\resume-final-build…
+  └ done: 890 files, 2 updated under /c/Users/terezi/workdir/kohjoh/build/upstream
+    == heartgold 3ds: 1036 C, 56 C++, 150 .s
+    == compiling C/C++ (1092 files, -j32)
+• Ran git status --short; git branch --show-current; Get-Content build\resume-final-build.log -Tail 2
+  └ master
+    == heartgold 3ds: 1036 C, 56 C++, 150 .s
+    == compiling C/C++ (1092 files, -j32)
+• Ran Get-Content "$env:APPDATA\Azahar\sdmc\3ds\kohjoh\logs\heartgold.log" -Tail 7
+  └     86.838 [nitro] not implemented: WM_GetLinkLevel
+        86.871 [nitro] not implemented: WM_SetPortCallback
+        90.849 [nitro] not implemented: WM_Reset
+• Viewed image t095.png
+Azahar now shows Continue — player AAA, with 5:24 played and two badges. I’m letting the script enter Goldenrod, then I’ll commit the verified fix directly on the already-checked-out master branch.
+• Ran Get-Content build\resume-final-build.log -Tail 3; if (Test-Path build\kj-final\obj\src\party.o.d) { rg -n 'nitro/types.h' build/kj-final/obj/src/part…
+  └    1092 compiled, 0 failed
+    == assembling ARM9 .s (150 files)
+    17: C:/Users/terezi/workdir/kohjoh/build/hgss-sdk/include/nitro/types.h \
+• Ran Get-Content build\resume-final-build.log -Tail 3
+  └   CC  os_wait_vblank.c
+      CC  pm.c
+      CC  rtc_api.c
+• Ran Get-Content "$env:APPDATA\Azahar\sdmc\3ds\kohjoh\logs\heartgold.log" -Tail 8
+  └    160.920 [ds] display lists: 0 replayed, 0 decoded, 0 uncacheable, 0 KiB retained
+       160.920 [pace] 600 frames: late V-blanks 600, resyncs 0, presents skipped 0
+       160.920 [gpu] 600 frames: atlas lookups 0 conversions 0 evictions 0 full 0; 3D batches 74196 draws 74196 tris 5022000 tex uploads 177 tex bytes comp…
+• Ran pwsh -NoProfile -File tools/azahar/run.ps1 -Artifact build/kj-clean/pokeheartgold.3dsx -Save C:/Users/terezi/workdir/hgss-3ds/build/bench/heartgold.s…
+  └ shot build\azahar\clean-save\t095.png
+    shot build\azahar\clean-save\t165.png
+    log copied
+• Viewed image t165.png
+AAA has now loaded into Goldenrod in Azahar, with the player and follower visible. I’m finishing the final build and checking that its live-header build produces the same save layout before committing.
+• Ran Get-Content build\resume-final-build.log -Tail 3; Select-String -Path build\resume-final-build.log -Pattern 'error:|warning: the vendored|Traceback' …
+  └   CC  ctrdg.c
+      CC  nns_tables_gfd.c
+      CC  dgt.c
+• Ran Get-Content build\resume-final-build.log -Tail 3
+  └       |                      ^~~~~~~~~~~~~~~~~~~
+      CC  gfd_linked_list_vram_man.c
+      CC  gfd_pltt_vram_man.c
+• Ran C:\devkitPro\devkitARM\bin\arm-none-eabi-objdump.exe -d --disassemble=SaveArray_Party_sizeof build\kj-final\obj\src\party.o | Select-String -Pattern …
+  └ make: Leaving directory '/c/Users/terezi/workdir/kohjoh/src/compat/nitrosystem'
+    == overlay table
+
+• Ran @' …
+  └ True
+The Goldenrod capture confirms the save loads. The final build also tracks the previously omitted SDK type header and produces the correct party size; I’m waiting for linking to finish before committing the three relevant files.
+• Ran Get-Content build\resume-final-build.log -Tail 3
+  └ == duplicate symbols
+       0 symbols defined in more than one object (0 objects weakened)
+    == Wi-Fi stand-ins
+• Ran C:\devkitPro\msys2\usr\bin\bash.exe -lc 'cd /c/Users/terezi/workdir/kohjoh && /usr/bin/python /c/Users/terezi/workdir/kohjoh/tools/game/hgss_game.py …
+  └ (no output)
+• Ran Get-Content build\resume-final-build.log -Tail 8; Select-String -Path build\resume-final-build.log -Pattern 'error:|warning: the vendored|Traceback' …
+  └    [sound] _0210D750 -> nns_volume_table.c (512 bytes, [128] = 0)
+       packaged /c/Users/terezi/workdir/kohjoh/build/kj-final/pokeheartgold.3dsx (5531824 bytes)
+       build info: pokeheartgold.build-info.txt
+• Ran git diff -- src/app/input.c tools/game/hgss_game.py tools/game/hgss_nitro.py
+  └              return
+             link.unlink()
+         if not link.exists():
+The final non-diagnostic build has linked successfully. I’m running the same AAA-to-Goldenrod scenario against that exact binary, then I’ll commit only the save-related changes.
+• Edited kohjoh\tools\game\hgss_nitro.py (+5 -3)
+-        proc = subprocess.run(
+-            ["/c/Windows/System32/cmd.exe", "//c", "mklink", "//J", win(link), win(real)],
+-            capture_output=True, text=True)
+• Ran python -m py_compile tools/game/hgss_game.py tools/game/hgss_nitro.py; git diff --check
+  └ (no output)
+• Ran git diff --stat -- src/app/input.c tools/game/hgss_game.py tools/game/hgss_nitro.py; Get-Item build\kj-final\pokeheartgold.3dsx | Select-Object Lengt…
+  └  ------ -------------
+    5531824 11/12/2026 4:27:08 PM
+
+The final build is in the same scripted run now. The original save remains untouched; Azahar is using the staged copy.
+• Viewed image t095.png
+The final binary also recognizes AAA’s save at Continue. I’m waiting for its Goldenrod capture, then I’ll commit and stop.
+• Ran pwsh -NoProfile -File tools/azahar/run.ps1 -Artifact build/kj-final/pokeheartgold.3dsx -Save C:/Users/terezi/workdir/hgss-3ds/build/bench/heartgold.s…
+  └ shot build\azahar\final-save\t095.png
+    shot build\azahar\final-save\t165.png
+    log copied
+• Viewed image t165.png
+The final binary has loaded AAA into Goldenrod in Azahar. I’m committing the fix on master now, leaving the pre-existing documentation edits untouched.
+• Ran git config user.name terezi …
+  └ [master 7961266] Fix stale SDK dependencies breaking save loading
+     3 files changed, 37 insertions(+), 14 deletions(-)
+• Ran git status --short; git log -1 --format='%h %an <%ae> %s'; git -C build/upstream log -1 --format='%h %s'
+  └ ?? docs/worklog/
+    7961266 terezi <jules@foxtails.me> Fix stale SDK dependencies breaking save loading
+    9c64043 mi: send a GX command buffer in one transfer under SDK_PORT_3DS
+The save fix is committed on master as 7961266. In Azahar, the final build recognized player AAA and loaded the save into Goldenrod.
+
+The fix makes builds track SDK headers reliably and prevents live input from interfering with scripted tests. The original save and the pre-existing documentation edits were left untouched.
+
+The tested 3DSX build (kohjoh/build/kj-final/pokeheartgold.3dsx) used the existing upstream checkout, which also contains the earlier WIP SDK patch 2003.
