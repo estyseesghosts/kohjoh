@@ -798,6 +798,23 @@ static bool rect_quad(int x0, int y0, int x1, int y1, uint32_t rgba, uint32_t *f
     return true;
 }
 
+/* The top screen's 3D (BG0) is drawn wide, but a screen without layout
+ * rows keeps its 2D scissored to the DS columns (restore_2d_state). Passes
+ * that must reach the side 3D too (windows, BLDY) open the scissor to the
+ * wide range there. */
+static bool wide_3d(const ctx *c)
+{
+    return c->screen == KJ_SCREEN_TOP && (c->dispcnt & 0x108u) == 0x108u;
+}
+
+static void open_wide_3d_scissor(const ctx *c)
+{
+    if (wide_3d(c) && !c->nrows) {
+        kj_gpu_scissor(c->target->width, phys_x(c->target, KJ_LAYOUT_LEFT), phys_y(c->target, c->y0),
+                       phys_x(c->target, KJ_LAYOUT_RIGHT), phys_y(c->target, c->y1));
+    }
+}
+
 /* Window rectangles of a span into stencil bits 4-5. WIN1 first, then
  * WIN0 (WIN0 has priority). Coordinates wrap when x1 > x2 / y1 > y2. */
 static void write_windows(const ctx *c)
@@ -828,13 +845,8 @@ static void write_windows(const ctx *c)
          * untouched; only the presentation mask grows. The field has no
          * layout rows but its 3D (BG0) is drawn wide on the top screen, so
          * the encounter wipe there needs the same extension. */
-        const bool wide3d = c->screen == KJ_SCREEN_TOP && (c->dispcnt & 0x108u) == 0x108u;
-        if (wide3d && !c->nrows) {
-            /* restore_2d_state scissors such screens to the DS columns. */
-            kj_gpu_scissor(c->target->width, phys_x(c->target, KJ_LAYOUT_LEFT), phys_y(c->target, c->y0),
-                           phys_x(c->target, KJ_LAYOUT_RIGHT), phys_y(c->target, c->y1));
-        }
-        if (c->nrows || wide3d) {
+        open_wide_3d_scissor(c);
+        if (c->nrows || wide_3d(c)) {
             for (int i = 0; i < nx; ++i) {
                 if (xs[i][0] >= xs[i][1]) {
                     continue;
@@ -1414,6 +1426,9 @@ static void draw_span(ctx *c, const prepared *pr, bool draw_3d, bool *drew_3d)
             draw_layer(&f, LAYER_OBJ, &pr->obj[p * 2 + 1], true);
         }
     }
+    /* (A Gym Leader's VS wipe darkens the field around its band: the side
+     * 3D darkens with the middle.) */
+    open_wide_3d_scissor(c);
     brightness_pass(&f);
 }
 
