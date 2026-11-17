@@ -79,6 +79,22 @@ static const kj_layout_row PC_BOX_B[] = {
     MOVE(0x1, 0, 192, 0, 256, -32), OBJS(0, 192, 0, 256, -32),
 };
 
+/* Battle (engine A on top: BG0 3D battlers, BG1 the dialogue frame and
+ * text, BG3 the terrain backdrop; battle_main.c Battle_InitBackgrounds).
+ * The HP boxes are OBJs and move to the outer edges (Unown's wide_boxes,
+ * done at emission so the DS OAM is untouched): the enemy box (upper left)
+ * 32 px left, the player box (right, above the dialogue) 32 px right. The
+ * platforms are OBJs too but their middles lie outside both boxes. The
+ * dialogue frame's edges move out and its interior continues; the text
+ * stays where the DS draws it. Terrain bands continue by their edge columns.
+ * Lines and columns measured in LOTUS (Route 29 wild battle, 2026-11-17). */
+static const kj_layout_row BATTLE_A[] = {
+    FILL(0x8, 0, 192, -32, 0, 0), FILL(0x8, 0, 192, 256, 288, 255),
+    MOVE(0x2, 144, 192, 0, 12, -32), FILL(0x2, 144, 192, -20, 12, 12),
+    MOVE(0x2, 144, 192, 244, 256, 32), FILL(0x2, 144, 192, 244, 276, 243),
+    OBJS(8, 60, -64, 160, -32), OBJS(84, 144, 120, 320, 32),
+};
+
 /* Plain or gradient tops: the picture's own edge columns continue. */
 static const kj_layout_row EDGE_SIDES[] = {
     FILL(0xF, 0, 192, -32, 0, 0), FILL(0xF, 0, 192, 256, 288, 255),
@@ -91,6 +107,7 @@ typedef struct screen_layout {
 } screen_layout;
 
 static const screen_layout LAYOUTS[] = {
+    { KJ_SCREEN_BATTLE, { BATTLE_A, NULL }, { N(BATTLE_A), 0 } },
     { KJ_SCREEN_SUMMARY, { SUMMARY_A, NULL }, { N(SUMMARY_A), 0 } },
     { KJ_SCREEN_PARTY, { NULL, PARTY_B }, { 0, N(PARTY_B) } },
     { KJ_SCREEN_BAG, { BAG_A, NULL }, { N(BAG_A), 0 } },

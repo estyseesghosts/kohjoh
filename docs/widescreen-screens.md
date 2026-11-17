@@ -20,7 +20,8 @@ States: not attempted / basic edge fill / layout implemented / authored WideArt 
 | options | A/B | 1 | layout implemented | backdrop map wraps, dither continuous to both edges (`...wide-options.png`) |
 | pcbox | B | 5 | layout implemented | info panel flush left, title bar and panel run on; box switching (R) leaves the top stable (`...wide-pcbox.png`) |
 | naming, flymap, signature | A/B | 2 | basic edge fill | not captured on the test save (needs Fly / a rename / a signature); same FILL rows as the bag's verified backdrop |
-| field, battle, title, intro, others | - | 0 | not attempted | DS picture centred (#14/#18/#19) |
+| battle (wild, single) | A | 8 | layout implemented | HP boxes to the outer edges (OBJs moved at emission, DS OAM untouched), dialogue frame and terrain to both edges; a Tackle turn and the return to the field leave no stale panel (`...wide-battle.png`, `...wide-battle-turn.png`); trainer, double, cave and Surf battles not yet captured |
+| field, title, intro, others | - | 0 | not attempted | DS picture centred (#14/#19) |
 
 Navigation verified with screen transitions in the log: field > party >
 summary > party > field, field > bag > field, field > pokegear > gearphone >

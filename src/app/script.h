@@ -16,6 +16,8 @@
  *   dump <frame>          write the DS state the renderer read for game frame
  *                         <frame> to sdmc:/3ds/kohjoh/dumps/f<frame>.kjd
  *   end: N                close at V-blank N
+ *                         (after its last input event the script releases
+ *                         the pad to live input)
  *   debug: FLAGS          renderer experiment switches (KJ_DEBUG_* below)
  * Frame-indexed scripts make Azahar captures reproducible; V-blank indexing
  * matches hgss-3ds's tests/inputs format.

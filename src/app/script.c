@@ -149,6 +149,18 @@ bool kj_script_input(uint32_t vblank, uint16_t *keys, bool *touch, uint16_t *tx,
     if (!s_active || s_event_count == 0) {
         return false;
     }
+    /* After its last event the script hands the pad back, so a scripted
+     * drive to a scene can be continued by hand or over LOTUS MCP. */
+    uint32_t last = 0;
+    for (unsigned i = 0; i < s_event_count; ++i) {
+        const uint32_t len = s_events[i].length != 0 ? s_events[i].length : s_every;
+        if (s_events[i].vblank + len > last) {
+            last = s_events[i].vblank + len;
+        }
+    }
+    if (vblank >= last) {
+        return false;
+    }
     *keys = 0;
     *touch = false;
     for (unsigned i = 0; i < s_event_count; ++i) {
