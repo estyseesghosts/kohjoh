@@ -23,6 +23,14 @@ States: not attempted / basic edge fill / layout implemented / authored WideArt 
 | battle (wild, single) | A | 8 | layout implemented | HP boxes to the outer edges (OBJs moved at emission, DS OAM untouched), dialogue frame and terrain to both edges; a Tackle turn and the return to the field leave no stale panel (`...wide-battle.png`, `...wide-battle-turn.png`); trainer, double, cave and Surf battles not yet captured |
 | field, title, intro, others | - | 0 | not attempted | DS picture centred (#14/#19) |
 
+Field encounter wipes (#19): the field's 3D runs wide but its 2D is the DS's
+256 columns. Window wipes (trainer effects, `encounter_effect_wipe.c`) now
+extend edge-touching windows over the side columns on the top screen when
+BG0 is 3D. The wild-grass wipe (`encounter_effect_wild.c`, `RectTrail`) fills
+black rectangles into a 256-column text BG instead of using windows, so its
+bars still stop at the DS edge (captured at r29 frame 6250); covering it needs
+a field layout rule active only during the effect.
+
 Navigation verified with screen transitions in the log: field > party >
 summary > party > field, field > bag > field, field > pokegear > gearphone >
 pokegear > field, field > trainercard > field, field > options; no stale IDs

@@ -825,8 +825,16 @@ static void write_windows(const ctx *c)
         /* Wide layout (#19): a window that reaches a DS screen edge runs on
          * across the side columns, so wipes and covers that close in from
          * the edges hide the widened picture too. The DS registers are
-         * untouched; only the presentation mask grows. */
-        if (c->nrows) {
+         * untouched; only the presentation mask grows. The field has no
+         * layout rows but its 3D (BG0) is drawn wide on the top screen, so
+         * the encounter wipe there needs the same extension. */
+        const bool wide3d = c->screen == KJ_SCREEN_TOP && (c->dispcnt & 0x108u) == 0x108u;
+        if (wide3d && !c->nrows) {
+            /* restore_2d_state scissors such screens to the DS columns. */
+            kj_gpu_scissor(c->target->width, phys_x(c->target, KJ_LAYOUT_LEFT), phys_y(c->target, c->y0),
+                           phys_x(c->target, KJ_LAYOUT_RIGHT), phys_y(c->target, c->y1));
+        }
+        if (c->nrows || wide3d) {
             for (int i = 0; i < nx; ++i) {
                 if (xs[i][0] >= xs[i][1]) {
                     continue;
