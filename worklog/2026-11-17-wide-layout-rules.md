@@ -19,4 +19,7 @@ Kohjoh's retained GPU layers instead of a CPU compositor.
 
 Verified: LOTUS kj-prof, party screen (engine B top, 6 rows) at frame 7258:
 panel frame at both 400 px edges, wave continued, no seams
-(`2026-11-17-party-wide.png`). Field/battle (no rows) unchanged.
+(`2026-11-17-party-wide.png`). Summary (24 A rows: MOVE+COPY+FILL+OBJS+SHIFT3D)
+at frame 7518: memo panel widened with dotted lines continued, name/sprite/3D
+Cyndaquil at the right edge (`2026-11-17-summary-wide.png`). Field/battle (no
+rows) unchanged.
