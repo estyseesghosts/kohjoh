@@ -1,0 +1,72 @@
+From e4fe6ed9253a500682b153a3fc4a7a737d064c14 Mon Sep 17 00:00:00 2001
+From: terezi <jules@foxtails.me>
+Date: Tue, 17 Nov 2026 17:48:27 -0500
+Subject: [PATCH] field: start a trainer battle a LOTUS test script asks for
+ (SDK_PORT_3DS)
+
+kohjoh issue #18: trainer, Gym Leader and double battle layouts are
+reachable from a script's battle: line without a long scripted walk.
+Normal play never fires it.
+---
+ src/field_system.c | 37 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
+
+diff --git a/src/field_system.c b/src/field_system.c
+index 07f87d0..84465d9 100644
+--- a/src/field_system.c
++++ b/src/field_system.c
+@@ -25,6 +25,12 @@
+ #include "pokedex_resume_state.h"
+ #include "gear_phone_ring_manager.h"
+ 
++#ifdef SDK_PORT_3DS
++#include "encounter.h"
++#include "task.h"
++#include <nitro_port_debug.h>
++#endif
++
+ FS_EXTERN_OVERLAY(intro_title);
+ FS_EXTERN_OVERLAY(OVY_124);
+ FS_EXTERN_OVERLAY(field);
+@@ -179,7 +185,38 @@ static void ppOverlayManager_RunFrame_DeleteIfFinished(OverlayManager **man) {
+     }
+ }
+ 
++#ifdef SDK_PORT_3DS
++// A LOTUS test script can ask for a trainer battle (kohjoh issue #18) so
++// trainer, Gym Leader and double layouts are reachable without a long walk.
++// It fires only from a script's `battle:` line; normal play never sees it.
++static BOOL Task_PortDebugBattle(TaskManager *taskManager) {
++    u32 *state = TaskManager_GetStatePtr(taskManager);
++    u32 *ids = TaskManager_GetEnvironment(taskManager);
++
++    if (*state == 0) {
++        SetupAndStartTrainerBattle(taskManager, ids[0], ids[1], 0, 0, 0, HEAP_ID_FIELD2, NULL);
++        (*state)++;
++        return FALSE;
++    }
++    return TRUE;
++}
++
++static void FieldSystem_PortDebugBattle(FieldSystem *fieldSystem) {
++    static u32 ids[2];
++    unsigned t1, t2;
++
++    if (FieldSystem_IsPlayerMovementAllowed(fieldSystem) && NitroPort_DebugBattle(&t1, &t2)) {
++        ids[0] = t1;
++        ids[1] = t2;
++        FieldSystem_CreateTask(fieldSystem, Task_PortDebugBattle, ids);
++    }
++}
++#endif
++
+ static BOOL FieldSystem_Main(FieldSystem *fieldSystem) {
++#ifdef SDK_PORT_3DS
++    FieldSystem_PortDebugBattle(fieldSystem);
++#endif
+     FieldSystem_Control(fieldSystem);
+     if (FieldSystem_RunTaskFrame(fieldSystem) == TRUE) {
+         if (fieldSystem->mapSystems) {
+-- 
+2.56.0.windows.4
+

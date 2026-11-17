@@ -6,6 +6,8 @@
 
 #include "diagnostics/log.h"
 
+#include "compat/nitro/include/nitro_port_debug.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,6 +37,9 @@ static uint32_t s_every = 10;
 static uint32_t s_end;
 static bool s_active;
 static uint32_t s_debug;
+static uint32_t s_now;
+static uint32_t s_battle_frame; /* 0: no `battle:` request */
+static unsigned s_battle_t1, s_battle_t2;
 
 static uint16_t key_bit(const char *k)
 {
@@ -98,6 +103,15 @@ void kj_script_load(const char *path)
         } else if (strcmp(tok, "end:") == 0) {
             tok = strtok(NULL, " \t\r\n");
             s_end = tok ? (uint32_t)strtoul(tok, NULL, 10) : 0;
+        } else if (strcmp(tok, "battle:") == 0) {
+            char *f = strtok(NULL, " \t\r\n");
+            char *a = strtok(NULL, " \t\r\n");
+            char *b = strtok(NULL, " \t\r\n");
+            if (f != NULL && a != NULL) {
+                s_battle_frame = (uint32_t)strtoul(f, NULL, 10);
+                s_battle_t1 = (unsigned)strtoul(a, NULL, 10);
+                s_battle_t2 = b ? (unsigned)strtoul(b, NULL, 10) : 0;
+            }
         } else if (strcmp(tok, "freeze") == 0 || strcmp(tok, "dump") == 0) {
             const bool dump = tok[0] == 'd';
             char *a = strtok(NULL, " \t\r\n");
@@ -144,6 +158,7 @@ bool kj_script_active(void)
 
 bool kj_script_input(uint32_t vblank, uint16_t *keys, bool *touch, uint16_t *tx, uint16_t *ty)
 {
+    s_now = vblank;
     /* Only a script with input events owns the pad: one that sets only
      * debug flags, marks or pacing leaves live input working. */
     if (!s_active || s_event_count == 0) {
@@ -206,4 +221,17 @@ uint32_t kj_script_debug(void)
 uint32_t kj_script_end(void)
 {
     return s_end;
+}
+
+int NitroPort_DebugBattle(unsigned *trainer1, unsigned *trainer2)
+{
+    if (s_battle_frame == 0 || s_now < s_battle_frame) {
+        return 0;
+    }
+    *trainer1 = s_battle_t1;
+    *trainer2 = s_battle_t2;
+    s_battle_frame = 0;
+    kj_log("[script] battle: trainer %u/%u at v-blank %lu", s_battle_t1, s_battle_t2,
+           (unsigned long)s_now);
+    return 1;
 }
