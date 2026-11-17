@@ -48,3 +48,14 @@ at `workdir/melonDS.exe` with `heartgold.nds`/`.sav`).
 2. Battle stat-arrow repro with `battle_arrows.script`; check WININ/WINOUT
    and OBJ-window semantics against `g2d.c` (mode-2/3 OBJs are skipped in
    `objs()`; the OBJ window is treated as the WINOUT region).
+
+## Root cause and fix (follow-up session)
+
+The puffs are SPL 3D particles, not 2D OBJs, so the 2D-only oracle could not see them.
+`lib/src/spl_draw_ptcl.c` stored its geometry straight to `reg_G3_*`, which on the port
+is plain memory; patch 2004 had only routed `src/`. Dumps showed 0 G3 batches during the
+particle phases while breakpoints confirmed `spl_draw`/`spl_draw_bb` ran every frame.
+
+Patch 2008 routes all 61 stores through `NitroPort_GxDirectWrite` (same model as 0604/0605/2004).
+Verified in LOTUS (kj-prof, frame 3450): leaves and green sparkles render around Chikorita.
+This should also restore SPL effects in battle and on the field.
