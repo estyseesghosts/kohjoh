@@ -238,6 +238,297 @@ static GPU_TEXTURE_WRAP_PARAM wrap_mode(bool repeat, bool flip)
     return !repeat ? GPU_CLAMP_TO_EDGE : flip ? GPU_MIRRORED_REPEAT : GPU_REPEAT;
 }
 
+/* ---- union-palette join (issue #13) ------------------------------------
+ * A separate C3D_DrawElements costs ~9.7 us on an O3DS no matter how few
+ * triangles it carries (coffeepot PICA200/gpu-rendering.md, "What a draw
+ * call costs"); a DS batch is a material with its own matrix-palette
+ * slice, so consecutive batches rarely share state byte for byte and the
+ * adjacency join in #10's baseline measured 0 joins. Opaque batches that
+ * DO share material state (poly_attr, texture, lighting context,
+ * viewport) can share one draw over a union palette: the scratch VBO
+ * carries each vertex with its matrix index remapped into the union's
+ * slots, the scratch IBO is the concatenated index buffers with vertex
+ * bases remapped, and the union palette is uploaded once per group.
+ * Translucent batches are never joined: with depth blending, the DS's
+ * own draw order is the content.
+ *
+ * Joining is a pure optimisation with two visible-output risks, both
+ * guarded here: batches are only joined when every state input that
+ * reaches the GPU is identical, and any overflow (union palette wider
+ * than the shader's, scratch space) falls back to the direct path, which
+ * is the #10-verified code. */
+
+#define KJ_JOIN_MAX_VERTS 8192
+#define KJ_JOIN_MAX_INDICES 16384
+
+static kj_g3_vertex s_join_verts[KJ_JOIN_MAX_VERTS];
+static uint16_t s_join_indices[KJ_JOIN_MAX_INDICES];
+static uint16_t s_join_map[KJ_G3_MAX_VERTS];
+static uint8_t s_join_src[KJ_G3_MAX_VERTS];
+static uint32_t s_join_epoch[KJ_G3_MAX_VERTS];
+static uint32_t s_join_stamp;
+
+static bool join_key_equal(const kj_g3_batch *a, const kj_g3_batch *b,
+                           bool translucent_pass)
+{
+    if (b->index_count == 0 || (b->flags & KJ_G3_BATCH_SHADOW) != 0) {
+        return false;
+    }
+    if (((b->flags & KJ_G3_BATCH_TRANSLUCENT) != 0) != translucent_pass) {
+        return false;
+    }
+    if (b->poly_attr != a->poly_attr || b->tex_param != a->tex_param ||
+        b->tex_pltt != a->tex_pltt || b->viewport != a->viewport) {
+        return false;
+    }
+    if ((b->flags & KJ_G3_BATCH_LIT) != (a->flags & KJ_G3_BATCH_LIT)) {
+        return false;
+    }
+    if ((b->flags & KJ_G3_BATCH_LIT) != 0 && (b->flags >> 16) != (a->flags >> 16)) {
+        return false;
+    }
+    return true;
+}
+
+/* Slot of `m` in the union (adding it when there is room), or -1 if full. */
+static int union_find_or_add(kj_g3_matrix *u, unsigned *count, unsigned cap,
+                             const kj_g3_matrix *m)
+{
+    for (unsigned i = 0; i < *count; ++i) {
+        if (memcmp(&u[i], m, sizeof(*m)) == 0) {
+            return (int)i;
+        }
+    }
+    if (*count >= cap) {
+        return -1;
+    }
+    u[(*count)++] = *m;
+    return (int)(*count - 1);
+}
+
+/* Set every GPU state input of `b` except the matrix palette: program and
+ * lighting, viewport fixup, texture, TEV, cull, depth, blend. */
+static void apply_batch_state(const kj_g3_batch *b, bool translucent,
+                              uint32_t disp3dcnt, uint32_t dbg, bool wbuffer,
+                              const kj_target *target, uint32_t *last_vp,
+                              float fix[4][4])
+{
+    const kj_program_id program = (b->flags & KJ_G3_BATCH_LIT)
+                                      ? KJ_PROGRAM_3D_LIT : KJ_PROGRAM_3D;
+    if (program != s_draw_program) {
+        kj_gpu_use_program(program);
+        s_draw_program = program;
+        s_last_pal = NULL;
+        s_last_tex = NULL;
+        s_last_lighting = NULL;
+        s_shininess_valid = false;
+    }
+    if (program == KJ_PROGRAM_3D_LIT) {
+        upload_lighting(b);
+    }
+    if (b->viewport != *last_vp) {
+        make_fixup(target, b->viewport, wbuffer, fix);
+        *last_vp = b->viewport;
+    }
+
+    /* texture */
+    C3D_Tex *tex = NULL;
+    if (((b->tex_param >> 26) & 7u) != 0 && (disp3dcnt & 1u) && !(dbg & KJ_DEBUG_NO_TEXTURE)) {
+        tex = kj_tex_get(b->tex_param, b->tex_pltt);
+    }
+    const uint32_t wrap = (b->tex_param >> 16) & 0xFu;
+    if (tex != NULL && (tex != s_last_tex || wrap != s_last_wrap)) {
+        C3D_TexSetWrap(tex, wrap_mode((b->tex_param >> 16) & 1u, (b->tex_param >> 18) & 1u),
+                       wrap_mode((b->tex_param >> 17) & 1u, (b->tex_param >> 19) & 1u));
+        C3D_TexBind(0, tex);
+        C3D_FVUnifSet(GPU_VERTEX_SHADER, kj_gpu_uloc_3d_texscale(),
+                      1.0f / (16.0f * tex->width), -1.0f / (16.0f * tex->height), 0.0f, 1.0f);
+        s_last_tex = tex;
+        s_last_wrap = wrap;
+    }
+    const int tev = (int)((b->poly_attr >> 4) & 3u) | (tex != NULL ? 4 : 0);
+    if (tev != s_last_tev) {
+        tev_for(b->poly_attr, tex != NULL);
+        s_last_tev = tev;
+    }
+
+    /* culling: bit 6 render back, bit 7 render front; 0 draws both */
+    const unsigned faces = (b->poly_attr >> 6) & 3u;
+    const uint32_t cull = (dbg & KJ_DEBUG_NO_CULL) ? GPU_CULL_NONE
+                          : faces == 2u            ? GPU_CULL_BACK_CCW
+                          : faces == 1u            ? GPU_CULL_FRONT_CCW
+                                                   : GPU_CULL_NONE;
+    if (cull != s_last_cull) {
+        C3D_CullFace(cull);
+        s_last_cull = cull;
+    }
+#ifndef HGSS_PROFILE_OFF
+    else {
+        ++s_stats.state_skips;
+    }
+#endif
+
+    /* depth: func and write mask in one key */
+    const bool depth_equal = (b->poly_attr >> 14) & 1u;
+    const bool depth_write = !translucent || ((b->poly_attr >> 11) & 1u);
+    GPU_TESTFUNC func;
+    if (wbuffer) {
+        func = depth_equal ? GPU_LEQUAL : GPU_LESS;
+    } else {
+        func = depth_equal ? GPU_GEQUAL : GPU_GREATER;
+    }
+    if (dbg & KJ_DEBUG_NO_DEPTH) {
+        func = GPU_ALWAYS;
+    }
+    const uint32_t depth = ((uint32_t)func << 4) | (depth_write ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
+    if (depth != s_last_depth) {
+        C3D_DepthTest(true, func, depth_write ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
+        s_last_depth = depth;
+    }
+#ifndef HGSS_PROFILE_OFF
+    else {
+        ++s_stats.state_skips;
+    }
+#endif
+
+    /* blend: on/off only; the factors are fixed either way */
+    const uint32_t blend = (translucent && (disp3dcnt & 8u) && !(dbg & KJ_DEBUG_NO_BLEND)) ? 1u : 0u;
+    if (blend != s_last_blend) {
+        if (blend) {
+            C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
+                           GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+        } else {
+            C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
+        }
+        s_last_blend = blend;
+    }
+#ifndef HGSS_PROFILE_OFF
+    else {
+        ++s_stats.state_skips;
+    }
+#endif
+}
+
+/* One batch, drawn straight from the frame's VBO/IBO: the #10-verified
+ * path. Used for single batches and as the fallback for declined joins. */
+static void draw_batch_direct(const kj_g3_frame *f, const kj_g3_batch *b,
+                              bool translucent, uint32_t disp3dcnt, uint32_t dbg,
+                              bool wbuffer, const kj_target *target,
+                              uint32_t *last_vp, float fix[4][4])
+{
+    apply_batch_state(b, translucent, disp3dcnt, dbg, wbuffer, target, last_vp, fix);
+    const kj_g3_matrix *pal = &f->matrices[b->first_matrix];
+    if (s_last_pal == NULL || s_last_pal_count != b->matrix_count || s_last_pal_vp != b->viewport ||
+        memcmp(s_last_pal, pal, b->matrix_count * sizeof(*pal)) != 0) {
+        upload_palette(b, fix);
+        s_last_pal = pal;
+        s_last_pal_count = b->matrix_count;
+        s_last_pal_vp = b->viewport;
+    }
+    C3D_DrawElements(GPU_TRIANGLES, (int)b->index_count, C3D_UNSIGNED_SHORT,
+                     f->indices + b->first_index);
+#ifndef HGSS_PROFILE_OFF
+    ++s_stats.draws;
+    s_stats.triangles += b->index_count / 3u;
+#endif
+}
+
+/* Join `n` batches of one state group into one draw over the union of
+ * their matrix palettes. False: overflow of any kind; the caller falls
+ * back to direct draws (never a partial draw). */
+static bool draw_joined(const kj_g3_frame *f, const kj_g3_batch **members, unsigned n,
+                        bool translucent, uint32_t disp3dcnt, uint32_t dbg,
+                        bool wbuffer, const kj_target *target, uint32_t *last_vp,
+                        float fix[4][4])
+{
+    const kj_g3_batch *b0 = members[0];
+    const unsigned cap = (b0->flags & KJ_G3_BATCH_LIT) ? KJ_G3_LIT_PALETTE : KJ_G3_PALETTE;
+    kj_g3_matrix u[KJ_G3_PALETTE];
+    unsigned ucount = 0;
+
+    for (unsigned i = 0; i < b0->matrix_count; ++i) {
+        if (union_find_or_add(u, &ucount, cap, &f->matrices[b0->first_matrix + i]) < 0) {
+            return false;
+        }
+    }
+    uint32_t vused = 0, iused = 0;
+    ++s_join_stamp;
+    for (unsigned m = 0; m < n; ++m) {
+        const kj_g3_batch *b = members[m];
+        uint8_t pal[KJ_G3_PALETTE];
+        for (unsigned k = 0; k < b->matrix_count; ++k) {
+            int s = union_find_or_add(u, &ucount, cap, &f->matrices[b->first_matrix + k]);
+            if (s < 0) {
+                return false;
+            }
+            pal[k] = (uint8_t)s;
+        }
+        for (uint32_t j = 0; j < b->index_count; ++j) {
+            const uint32_t v = f->indices[b->first_index + j];
+            const kj_g3_vertex *ov = &f->verts[v];
+            /* Lit batches pack lighting/normal data in mtx's top 3 bits
+             * (palette index is mtx & 7); keep those bits through the
+             * remap. A shared vertex can be named by two batches with
+             * different matrix indices (each batch's mtx is batch-
+             * relative); such a vertex needs a transformed copy per
+             * mapping, not one. */
+            const bool lit = (b->flags & KJ_G3_BATCH_LIT) != 0;
+            const unsigned in = lit ? (ov->mtx & 7u) : ov->mtx;
+            const uint8_t out = lit ? (uint8_t)((ov->mtx & 0xF8u) | pal[in]) : pal[in];
+            if (s_join_epoch[v] != s_join_stamp || s_join_src[v] != ov->mtx ||
+                s_join_verts[s_join_map[v]].mtx != out) {
+                if (vused >= KJ_JOIN_MAX_VERTS) {
+                    return false;
+                }
+                kj_g3_vertex nv = *ov;
+                nv.mtx = out;
+                s_join_map[v] = (uint16_t)vused;
+                s_join_src[v] = ov->mtx;
+                s_join_verts[vused++] = nv;
+                s_join_epoch[v] = s_join_stamp;
+            }
+            if (iused >= KJ_JOIN_MAX_INDICES) {
+                return false;
+            }
+            s_join_indices[iused++] = s_join_map[v];
+        }
+    }
+
+    apply_batch_state(b0, translucent, disp3dcnt, dbg, wbuffer, target, last_vp, fix);
+    const int loc = kj_gpu_uloc_3d_palette();
+    for (unsigned s = 0; s < ucount; ++s) {
+        C3D_FVec *rows = C3D_FVUnifWritePtr(GPU_VERTEX_SHADER, loc + (int)s * 4, 4);
+        for (int k = 0; k < 4; ++k) {
+            float o[4];
+            for (int c = 0; c < 4; ++c) {
+                o[c] = fix[k][0] * u[s].m[c][0] + fix[k][1] * u[s].m[c][1] +
+                       fix[k][2] * u[s].m[c][2] + fix[k][3] * u[s].m[c][3];
+            }
+            rows[k].x = o[0];
+            rows[k].y = o[1];
+            rows[k].z = o[2];
+            rows[k].w = o[3];
+        }
+    }
+    s_last_pal = NULL; /* scratch union: always re-upload after a join */
+    s_last_pal_count = ucount;
+    s_last_pal_vp = b0->viewport;
+
+    GSPGPU_FlushDataCache(s_join_verts, vused * sizeof(kj_g3_vertex));
+    GSPGPU_FlushDataCache(s_join_indices, iused * sizeof(uint16_t));
+    C3D_BufInfo *bi = C3D_GetBufInfo();
+    BufInfo_Init(bi);
+    BufInfo_Add(bi, s_join_verts, sizeof(kj_g3_vertex), 4, 0x2130);
+    C3D_DrawElements(GPU_TRIANGLES, (int)iused, C3D_UNSIGNED_SHORT, s_join_indices);
+    BufInfo_Init(bi);
+    BufInfo_Add(bi, f->verts, sizeof(kj_g3_vertex), 4, 0x2130);
+#ifndef HGSS_PROFILE_OFF
+    ++s_stats.draws;
+    s_stats.triangles += iused / 3u;
+#endif
+    return true;
+}
+
 static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t disp3dcnt,
                       uint8_t stencil_flags)
 {
@@ -246,11 +537,14 @@ static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t d
     const uint32_t dbg = kj_script_debug();
     uint32_t last_vp = 0xFFFFFFFFu;
     float fix[4][4];
+    (void)stencil_flags;
 
-    for (uint32_t i = 0; i < f->batch_count; ++i) {
+    uint32_t i = 0;
+    while (i < f->batch_count) {
         const kj_g3_batch *b = &f->batches[i];
         const bool translucent = (b->flags & KJ_G3_BATCH_TRANSLUCENT) != 0;
         if (translucent != translucent_pass || b->index_count == 0) {
+            ++i;
             continue;
         }
         if (b->flags & KJ_G3_BATCH_SHADOW) {
@@ -259,120 +553,54 @@ static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t d
 #ifndef HGSS_PROFILE_OFF
                 ++s_stats.unsupported; /* shadow mask volume: not drawn */
 #endif
+                ++i;
                 continue;
             }
         }
-        const kj_program_id program = (b->flags & KJ_G3_BATCH_LIT)
-                                          ? KJ_PROGRAM_3D_LIT : KJ_PROGRAM_3D;
-        if (program != s_draw_program) {
-            kj_gpu_use_program(program);
-            s_draw_program = program;
-            s_last_pal = NULL;
-            s_last_tex = NULL;
-            s_last_lighting = NULL;
-            s_shininess_valid = false;
-        }
-        if (program == KJ_PROGRAM_3D_LIT) {
-            upload_lighting(b);
-        }
-        if (b->viewport != last_vp) {
-            make_fixup(target, b->viewport, wbuffer, fix);
-            last_vp = b->viewport;
-        }
-        const kj_g3_matrix *pal = &f->matrices[b->first_matrix];
-        if (s_last_pal == NULL || s_last_pal_count != b->matrix_count || s_last_pal_vp != b->viewport ||
-            memcmp(s_last_pal, pal, b->matrix_count * sizeof(*pal)) != 0) {
-            upload_palette(b, fix);
-            s_last_pal = pal;
-            s_last_pal_count = b->matrix_count;
-            s_last_pal_vp = b->viewport;
+
+        if (translucent_pass) {
+            /* Translucent geometry is depth-blended: the DS's own order is
+             * the content, so it is never joined (issue #13). */
+            draw_batch_direct(f, b, true, disp3dcnt, dbg, wbuffer, target, &last_vp, fix);
+            ++i;
+            continue;
         }
 
-        /* texture */
-        C3D_Tex *tex = NULL;
-        if (((b->tex_param >> 26) & 7u) != 0 && (disp3dcnt & 1u) && !(dbg & KJ_DEBUG_NO_TEXTURE)) {
-            tex = kj_tex_get(b->tex_param, b->tex_pltt);
+        /* Opaque: extend a state group while join_key_equal holds, then try
+         * one joined draw over a union palette; any overflow falls back to
+         * the direct path for the whole group (never a partial join). */
+        const kj_g3_batch *members[KJ_G3_MAX_BATCHES > 256 ? 256 : 256];
+        unsigned n = 1;
+        members[0] = b;
+        while (n < 256 && i + n < f->batch_count &&
+               join_key_equal(b, &f->batches[i + n], false)) {
+            members[n] = &f->batches[i + n];
+            ++n;
         }
-        const uint32_t wrap = (b->tex_param >> 16) & 0xFu;
-        if (tex != NULL && (tex != s_last_tex || wrap != s_last_wrap)) {
-            C3D_TexSetWrap(tex, wrap_mode((b->tex_param >> 16) & 1u, (b->tex_param >> 18) & 1u),
-                           wrap_mode((b->tex_param >> 17) & 1u, (b->tex_param >> 19) & 1u));
-            C3D_TexBind(0, tex);
-            C3D_FVUnifSet(GPU_VERTEX_SHADER, kj_gpu_uloc_3d_texscale(),
-                          1.0f / (16.0f * tex->width), -1.0f / (16.0f * tex->height), 0.0f, 1.0f);
-            s_last_tex = tex;
-            s_last_wrap = wrap;
-        }
-        const int tev = (int)((b->poly_attr >> 4) & 3u) | (tex != NULL ? 4 : 0);
-        if (tev != s_last_tev) {
-            tev_for(b->poly_attr, tex != NULL);
-            s_last_tev = tev;
-        }
-
-        /* culling: bit 6 render back, bit 7 render front; 0 draws both */
-        const unsigned faces = (b->poly_attr >> 6) & 3u;
-        const uint32_t cull = (dbg & KJ_DEBUG_NO_CULL) ? GPU_CULL_NONE
-                              : faces == 2u            ? GPU_CULL_BACK_CCW
-                              : faces == 1u            ? GPU_CULL_FRONT_CCW
-                                                       : GPU_CULL_NONE;
-        if (cull != s_last_cull) {
-            C3D_CullFace(cull);
-            s_last_cull = cull;
-        }
+        bool drawn = false;
+        if (n > 1 && !(dbg & (KJ_DEBUG_NO_JOIN |
+                              ((b->flags & KJ_G3_BATCH_LIT) ? KJ_DEBUG_NO_JOIN_LIT : 0)))) {
 #ifndef HGSS_PROFILE_OFF
-        else {
-            ++s_stats.state_skips;
-        }
+            ++s_stats.join_groups;
 #endif
-
-        /* depth: func and write mask in one key */
-        const bool depth_equal = (b->poly_attr >> 14) & 1u;
-        const bool depth_write = !translucent || ((b->poly_attr >> 11) & 1u);
-        GPU_TESTFUNC func;
-        if (wbuffer) {
-            func = depth_equal ? GPU_LEQUAL : GPU_LESS;
-        } else {
-            func = depth_equal ? GPU_GEQUAL : GPU_GREATER;
-        }
-        if (dbg & KJ_DEBUG_NO_DEPTH) {
-            func = GPU_ALWAYS;
-        }
-        const uint32_t depth = ((uint32_t)func << 4) | (depth_write ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
-        if (depth != s_last_depth) {
-            C3D_DepthTest(true, func, depth_write ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
-            s_last_depth = depth;
-        }
+            drawn = draw_joined(f, members, n, false, disp3dcnt, dbg, wbuffer, target,
+                                &last_vp, fix);
 #ifndef HGSS_PROFILE_OFF
-        else {
-            ++s_stats.state_skips;
-        }
-#endif
-
-        /* blend: on/off only; the factors are fixed either way */
-        const uint32_t blend = (translucent && (disp3dcnt & 8u) && !(dbg & KJ_DEBUG_NO_BLEND)) ? 1u : 0u;
-        if (blend != s_last_blend) {
-            if (blend) {
-                C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
-                               GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+            if (drawn) {
+                ++s_stats.joined_groups;
+                s_stats.joined_batches += n;
             } else {
-                C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
+                ++s_stats.join_declined;
             }
-            s_last_blend = blend;
+#endif
         }
-#ifndef HGSS_PROFILE_OFF
-        else {
-            ++s_stats.state_skips;
+        if (!drawn) {
+            for (unsigned m = 0; m < n; ++m) {
+                draw_batch_direct(f, members[m], false, disp3dcnt, dbg, wbuffer, target,
+                                  &last_vp, fix);
+            }
         }
-#endif
-        (void)stencil_flags;
-        C3D_DrawElements(GPU_TRIANGLES, (int)b->index_count, C3D_UNSIGNED_SHORT,
-                         f->indices + b->first_index);
-#ifndef HGSS_PROFILE_OFF
-        ++s_stats.draws;
-#endif
-#ifndef HGSS_PROFILE_OFF
-        s_stats.triangles += b->index_count / 3u;
-#endif
+        i += n;
     }
 }
 

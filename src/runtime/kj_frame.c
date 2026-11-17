@@ -40,9 +40,12 @@ static u32 s_pump_calls, s_hblank_walks;
 static u64 s_sync_calls_base, s_sync_ticks_base;
 /* Game-side probes: siblings, not nested (slot 0 = the whole call, 1..n =
  * its parts; slot 0 minus the children is the unattributed remainder). */
+#ifndef HGSS_PROFILE_OFF
 static u64 s_probe_ticks[KJ_PROBE_SLOTS];
 static u32 s_probe_calls[KJ_PROBE_SLOTS];
+#endif
 
+#ifndef HGSS_PROFILE_OFF
 u64 NitroPort_ProbeNow(void)
 {
     return svcGetSystemTick();
@@ -55,6 +58,7 @@ void NitroPort_NoteProbeSince(unsigned slot, u64 t0)
         ++s_probe_calls[slot];
     }
 }
+#endif
 
 /* V-blanks without a publish after which the V-blank publishes itself. Two
  * is the main loop's normal cadence; four leaves room for a frame that
@@ -223,10 +227,12 @@ void kj_ds_take_profile(kj_ds_profile *out)
     kj_g3_dl_stats(&out->dl_hits, &out->dl_misses, &out->dl_uncacheable, &out->dl_bytes);
     s_pump_ticks = s_hblank_ticks = 0;
     s_pump_calls = s_hblank_walks = 0;
+#ifndef HGSS_PROFILE_OFF
     for (unsigned i = 0; i < KJ_PROBE_SLOTS; ++i) {
         out->probe_ticks[i] = s_probe_ticks[i];
         out->probe_calls[i] = s_probe_calls[i];
         s_probe_ticks[i] = 0;
         s_probe_calls[i] = 0;
     }
+#endif
 }
