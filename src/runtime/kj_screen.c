@@ -69,12 +69,7 @@ TEMPLATES(X)
 INITS(X)
 #undef X
 
-static const char *const NAMES[KJ_SCREEN_COUNT] = {
-    "unknown", "field", "battle", "title", "intro", "mainmenu", "oakspeech",
-    "party", "summary", "bag", "pcbox", "pokedex", "pokegear", "gearmap",
-    "gearphone", "gearradio", "gearconfig", "trainercard", "signature",
-    "options", "flymap", "starter", "credits", "easychat", "naming", "other",
-};
+static const char *const NAMES[KJ_SCREEN_COUNT] = KJ_SCREEN_NAMES_INIT;
 
 static uint32_t classify(const void *init)
 {

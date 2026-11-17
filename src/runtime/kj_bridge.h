@@ -206,6 +206,9 @@ typedef struct kj_g3_frame {
 #define KJ_SCREEN_OTHER          25u  /* a known application without an ID */
 #define KJ_SCREEN_COUNT          26u
 
+/* Names of the IDs above, in order (logs and the wide_layouts.txt override). */
+#define KJ_SCREEN_NAMES_INIT                                                            { "unknown", "field", "battle", "title", "intro", "mainmenu", "oakspeech",           "party", "summary", "bag", "pcbox", "pokedex", "pokegear", "gearmap",              "gearphone", "gearradio", "gearconfig", "trainercard", "signature",                "options", "flymap", "starter", "credits", "easychat", "naming", "other" }
+
 /* One wide-layout rule (issue #16; Unown's ss3ds_widelayouts.h rows).
  * Columns and lines are the DS's; the wide top screen shows DS columns
  * -32..287. Unless bgs has KJ_LAYOUT_SCREEN, x0..x1 and top..bottom are

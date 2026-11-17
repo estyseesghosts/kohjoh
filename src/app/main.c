@@ -17,6 +17,7 @@
 #include "diagnostics/crash.h"
 #include "diagnostics/log.h"
 #include "diagnostics/perf.h"
+#include "graphics/layout/override.h"
 #include "graphics/renderer.h"
 #include "runtime/kj_bridge.h"
 #include "storage/paths.h"
@@ -186,6 +187,8 @@ int main(int argc, char **argv)
         char script[128];
         snprintf(script, sizeof(script), "%s/script.txt", paths->root);
         kj_script_load(script);
+        snprintf(script, sizeof(script), "%s/wide_layouts.txt", paths->root);
+        kj_layout_override_load(script);
     }
     gfxInitDefault();
     gfxSet3D(false);

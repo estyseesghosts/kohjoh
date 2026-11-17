@@ -26,6 +26,7 @@
 #include "diagnostics/perf.h"
 #include "graphics/g3d/g3d.h"
 #include "graphics/layout/layout.h"
+#include "graphics/layout/override.h"
 #include "graphics/pica/gpu.h"
 #include "graphics/pica/targets.h"
 #include "graphics/resources/atlas.h"
@@ -1414,10 +1415,14 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
     c.bg_vram_size = engine == 0 ? 0x80000u : 0x20000u;
     c.obj_vram = engine == 0 ? mem->obj_vram_a : mem->obj_vram_b;
     c.obj_vram_size = engine == 0 ? 0x40000u : 0x20000u;
-    if (screen == KJ_SCREEN_TOP && in->screen.rows[engine] != NULL) {
-        c.rows = in->screen.rows[engine];
-        c.nrows = in->screen.row_count[engine] < KJ_LAYOUT_MAX_ROWS ? in->screen.row_count[engine]
-                                                                     : KJ_LAYOUT_MAX_ROWS;
+    if (screen == KJ_SCREEN_TOP) {
+        const kj_layout_row *rows = in->screen.rows[engine];
+        uint32_t n = in->screen.row_count[engine];
+        kj_layout_override_get(in->screen.screen_id, engine, &rows, &n);
+        if (rows != NULL && n > 0) {
+            c.rows = rows;
+            c.nrows = n < KJ_LAYOUT_MAX_ROWS ? n : KJ_LAYOUT_MAX_ROWS;
+        }
     }
 
     const uint8_t *io = mem->io + engine * 0x1000;
