@@ -51,9 +51,12 @@ static const kj_layout_row BAG_A[] = {
     MOVE(0x4, 0, 192, 244, 256, 32), FILL(0x4, 0, 192, 244, 276, 242),
 };
 
-/* Options (BG0 a banded backdrop), either engine. */
+/* Options (BG0 a banded backdrop), either engine. Unown repeats the edge
+ * columns, which turns the dithered rows between bands solid at the sides
+ * (LOTUS capture 2026-11-17); the bands are horizontal, so continuing the
+ * BG's own map keeps the dither. */
 static const kj_layout_row OPTIONS[] = {
-    FILL(0x1, 0, 192, -32, 0, 0), FILL(0x1, 0, 192, 256, 288, 255),
+    WRAP(0x1 | KJ_LAYOUT_SCREEN, 0, 192),
 };
 
 /* Pokegear, all tabs (engine B on top: BG0 the curved backdrop opens in the

@@ -17,7 +17,7 @@ States: not attempted / basic edge fill / layout implemented / authored WideArt 
 | bag | A | 6 | layout implemented | bands and description bar to both edges (`...wide-bag17.png`) |
 | pokegear (all tabs) | B | 3 | layout implemented | backdrop opens at its level middle; call window stays DS width; missing text is #1 (`...wide-gear17.png`) |
 | trainercard | A | 4 | layout implemented | pattern wraps, badge band runs on, tab at left edge (`...wide-tcard.png`) |
-| options | A/B | 2 | basic edge fill | bands continue by their edge column; dithered rows show a solid side (`...wide-options.png`) |
+| options | A/B | 1 | layout implemented | backdrop map wraps, dither continuous to both edges (`...wide-options.png`) |
 | pcbox | B | 5 | layout implemented | not yet captured (needs a PC in reach) |
 | naming, flymap, signature | A/B | 2 | basic edge fill | not yet captured |
 | field, battle, title, intro, others | - | 0 | not attempted | DS picture centred (#14/#18/#19) |
