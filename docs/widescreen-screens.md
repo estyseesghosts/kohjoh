@@ -16,14 +16,14 @@ States: not attempted / basic edge fill / layout implemented / authored WideArt 
 | summary | A | 24 | layout implemented | memo panel widened, dotted lines continued, name/sprite/3D at right edge (`...summary-wide.png`) |
 | bag | A | 6 | layout implemented | bands and description bar to both edges; pocket switching leaves the top stable (`...wide-bag17.png`) |
 | pokegear (phone, map, config) | B | 3 | layout implemented | backdrop opens at its level middle; windows stay DS width; phone text missing is #1 (`...wide-gear17.png`, `...wide-gearmap.png`, `...wide-gearcfg.png`); radio tab not unlocked on the test save |
-| trainercard | A | 4 | layout implemented | pattern wraps, badge band runs on, tab at left edge (`...wide-tcard.png`) |
+| trainercard | A | 4 | layout implemented | pattern wraps, badge band runs on, tab at left edge; the card's front/back flip is on the lower screen and leaves the top unchanged (`...wide-tcard.png`) |
 | options | A/B | 1 | layout implemented | backdrop map wraps, dither continuous to both edges (`...wide-options.png`) |
 | pcbox | B | 5 | layout implemented | info panel flush left, title bar and panel run on; box switching (R) leaves the top stable (`...wide-pcbox.png`) |
-| naming, flymap, signature | A/B | 2 | basic edge fill | not yet captured |
+| naming, flymap, signature | A/B | 2 | basic edge fill | not captured on the test save (needs Fly / a rename / a signature); same FILL rows as the bag's verified backdrop |
 | field, battle, title, intro, others | - | 0 | not attempted | DS picture centred (#14/#18/#19) |
 
 Navigation verified with screen transitions in the log: field > party >
 summary > party > field, field > bag > field, field > pokegear > gearphone >
 pokegear > field, field > trainercard > field, field > options; no stale IDs
-and no art leaking between screens. O3DS frame-interval checks are pending
-on hardware.
+and no art leaking between screens. O3DS frame-interval checks need real hardware and belong to the
+release gate in #21.
