@@ -296,6 +296,11 @@ static uint32_t text_bg(const ctx *c, int bg, run *out)
                 pal = pal_256(c->in, c->engine, 0, &pal_id);
             }
             const kj_tile_ref t = kj_atlas_tile(source, c->bg_vram + toff, toff, bpp8, pal, pal_id);
+            /* Note even tiles that came back transparent: the retained layer's
+             * reuse check compares the bytes of everything the map references,
+             * so a tile that was blank at build time must still widen the
+             * range or later glyph writes into it are never noticed. */
+            run_note(out, t.slot, toff, tile_bytes);
             if (!t.valid || t.transparent) {
                 continue;
             }
@@ -305,7 +310,6 @@ static uint32_t text_bg(const ctx *c, int bg, run *out)
 #endif
                 continue;
             }
-            run_note(out, t.slot, toff, tile_bytes);
             put_quad(out->v + out->count * 4u, sx, sy, 8, 8, t.slot, (entry >> 10) & 1,
                      (entry >> 11) & 1);
             ++out->count;
@@ -538,10 +542,12 @@ static uint32_t objs(const ctx *c, int prio, bool semi, run *out)
                 off &= mask;
                 const kj_tile_ref t =
                     kj_atlas_tile(source, c->obj_vram + off, off, bpp8, pal, pal_id);
+                /* As in text_bg: track blank tiles too, or later OBJ tile
+                 * writes into them are invisible to the reuse check. */
+                run_note(out, t.slot, off, tile_bytes);
                 if (!t.valid || t.transparent) {
                     continue;
                 }
-                run_note(out, t.slot, off, tile_bytes);
                 kj_v2d *v = out->v + out->count * 4u;
                 if (!affine) {
                     const int qx = x + (hf ? (tw - 1 - tx) : tx) * 8;
