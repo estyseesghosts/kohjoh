@@ -40,6 +40,7 @@ static uint32_t s_debug;
 static uint32_t s_now;
 static uint32_t s_battle_frame; /* 0: no `battle:` request */
 static unsigned s_battle_t1, s_battle_t2;
+static int s_battle_bg = -1, s_battle_terrain = -1; /* -1: the map's */
 
 static uint16_t key_bit(const char *k)
 {
@@ -107,6 +108,12 @@ void kj_script_load(const char *path)
             char *f = strtok(NULL, " \t\r\n");
             char *a = strtok(NULL, " \t\r\n");
             char *b = strtok(NULL, " \t\r\n");
+            char *bg = strtok(NULL, " \t\r\n");
+            char *ter = strtok(NULL, " \t\r\n");
+            if (bg != NULL && ter != NULL) {
+                s_battle_bg = (int)strtol(bg, NULL, 10);
+                s_battle_terrain = (int)strtol(ter, NULL, 10);
+            }
             if (f != NULL && a != NULL) {
                 s_battle_frame = (uint32_t)strtoul(f, NULL, 10);
                 s_battle_t1 = (unsigned)strtoul(a, NULL, 10);
@@ -233,5 +240,16 @@ int NitroPort_DebugBattle(unsigned *trainer1, unsigned *trainer2)
     s_battle_frame = 0;
     kj_log("[script] battle: trainer %u/%u at v-blank %lu", s_battle_t1, s_battle_t2,
            (unsigned long)s_now);
+    return 1;
+}
+
+int NitroPort_DebugBattleBackdrop(int *bg, int *terrain)
+{
+    if (s_battle_bg < 0 || s_battle_terrain < 0) {
+        return 0;
+    }
+    *bg = s_battle_bg;
+    *terrain = s_battle_terrain;
+    s_battle_bg = s_battle_terrain = -1;
     return 1;
 }

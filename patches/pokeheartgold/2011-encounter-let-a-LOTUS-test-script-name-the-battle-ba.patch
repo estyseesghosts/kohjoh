@@ -1,0 +1,48 @@
+From bd6cad614c5a3fea4e1ef2803308b63fe6956542 Mon Sep 17 00:00:00 2001
+From: terezi <jules@foxtails.me>
+Date: Tue, 17 Nov 2026 18:01:57 -0500
+Subject: [PATCH] encounter: let a LOTUS test script name the battle backdrop
+ (SDK_PORT_3DS)
+
+kohjoh issue #18: cave and water battle layouts without walking there.
+Only a script's battle: line with backdrop numbers sets it.
+---
+ src/encounter.c | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/src/encounter.c b/src/encounter.c
+index 4cb5bf2..5077be8 100644
+--- a/src/encounter.c
++++ b/src/encounter.c
+@@ -41,6 +41,10 @@
+ #include "gear_phone_ring_manager.h"
+ #include "use_item_on_mon.h"
+ 
++#ifdef SDK_PORT_3DS
++#include <nitro_port_debug.h>
++#endif
++
+ static BOOL Task_StartBattle(TaskManager *taskManager);
+ static void CallTask_StartBattle(TaskManager *taskManager, BattleSetup *setup);
+ static Encounter *Encounter_New(BattleSetup *setup, s32 effect, s32 bgm, u32 *winFlag);
+@@ -716,6 +720,17 @@ void SetupAndStartTrainerBattle(TaskManager *taskManager, u32 opponentTrainer1,
+     setup = BattleSetup_New(HEAP_ID_FIELD2, battleType);
+     BattleSetup_InitFromFieldSystem(setup, fieldSystem);
+ 
++#ifdef SDK_PORT_3DS
++    {
++        // A LOTUS test script's battle: line may name the backdrop (kohjoh
++        // issue #18: cave and water layouts without walking there).
++        int bg, terrain;
++        if (NitroPort_DebugBattleBackdrop(&bg, &terrain)) {
++            setup->battleBg = (BattleBg)bg;
++            setup->terrain = (Terrain)terrain;
++        }
++    }
++#endif
+     setup->trainerId[BATTLER_ENEMY] = opponentTrainer1;
+     setup->trainerId[BATTLER_ENEMY2] = opponentTrainer2;
+     setup->trainerId[BATTLER_PLAYER2] = followerTrainerNum;
+-- 
+2.56.0.windows.4
+

@@ -14,3 +14,5 @@ the pad back to `lotus_input`.
   frame at or after that v-blank where the player could move; the same ID
   twice is a double battle (e.g. `10 10`, Twins Amy & Mimi); Falkner is 20.
   Implemented by game patch 2010 and `NitroPort_DebugBattle` (script.c).
+  Two more numbers name the backdrop (decomp `BattleBg` and `Terrain`):
+  `battle: 3900 8 0 9 5` is a cave, `battle: 3900 8 0 1 7` water (patch 2011).

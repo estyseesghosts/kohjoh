@@ -20,7 +20,7 @@ States: not attempted / basic edge fill / layout implemented / authored WideArt 
 | options | A/B | 1 | layout implemented | backdrop map wraps, dither continuous to both edges (`...wide-options.png`) |
 | pcbox | B | 5 | layout implemented | info panel flush left, title bar and panel run on; box switching (R) leaves the top stable (`...wide-pcbox.png`) |
 | naming, flymap, signature | A/B | 2 | basic edge fill | not captured on the test save (needs Fly / a rename / a signature); same FILL rows as the bag's verified backdrop |
-| battle (wild, single) | A | 8 | layout implemented | HP boxes to the outer edges (OBJs moved at emission, DS OAM untouched), dialogue frame and terrain to both edges; a Tackle turn and the return to the field leave no stale panel (`...wide-battle.png`, `...wide-battle-turn.png`); trainer, double, cave and Surf battles not yet captured |
+| battle (wild, single) | A | 8 | layout implemented | HP boxes to the outer edges (OBJs moved at emission, DS OAM untouched), dialogue frame and terrain to both edges; a Tackle turn and the return to the field leave no stale panel (`...wide-battle.png`, `...wide-battle-turn.png`); trainer intro, double battle (opponent panels at the left edge, player panels at the right), cave and water backdrops captured via the `battle:` script line (`...wide-battle-trainer.png`, `...-double.png`, `...-cave.png`, `...-water.png`); a Gym Leader and an end-to-end switch/faint/capture run not yet captured |
 | field, title, intro, others | - | 0 | not attempted | DS picture centred (#14/#19) |
 
 Field encounter wipes (#19): the field's 3D runs wide but its 2D is the DS's
