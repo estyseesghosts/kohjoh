@@ -1632,6 +1632,68 @@ def build_libraries(root: Path, target: str, out: Path, jobs: int) -> tuple[bool
 
 # ---------------------------------------------------------------------- main
 
+def build_lock(out: Path):
+    """Refuse to run two builds against one --out tree (issue #12).
+
+    Two concurrent builds mix object layouts (a shared header change
+    compiles some objects with the old struct, some with the new) and link
+    a binary whose halves disagree; it usually still boots, so the only
+    symptom is measurement fiction. The lock is per --out tree; a stale
+    file whose PID is gone is removed."""
+    import atexit
+
+    lock = out / ".build.lock"
+    if lock.is_file():
+        try:
+            pid = int(lock.read_text().strip() or 0)
+        except ValueError:
+            pid = 0
+        if pid and pid != os.getpid():
+            alive = False
+            try:
+                os.kill(pid, 0)
+                alive = True
+            except OSError:
+                pass
+            if alive:
+                raise SystemExit(
+                    f"hgss_game: a build is already running on {out} "
+                    f"(pid {pid}); wait for it or remove {lock}")
+        print(f"hgss_game: removing a stale build lock (pid {pid})", file=sys.stderr)
+    lock.write_text(str(os.getpid()))
+
+    def release():
+        try:
+            if lock.read_text().strip() == str(os.getpid()):
+                lock.unlink()
+        except OSError:
+            pass
+
+    atexit.register(release)
+    return release
+
+
+def print_freshness_stamp(out: Path) -> None:
+    """Print the newest object and the newest port header (issue #12).
+
+    Comparing these two timestamps is what diagnosed the mixed-layout
+    incident: kj_frame.o was older than the header edit while renderer.o
+    was newer, and the numbers were fiction. A measurement that depends on
+    a struct layout should check this line before believing a window."""
+    try:
+        objects = sorted(out.rglob("*.o"), key=lambda p: p.stat().st_mtime)
+        headers = sorted((REPO / "src").rglob("*.h"), key=lambda p: p.stat().st_mtime)
+        if objects and headers:
+            fmt = "%Y-%m-%d %H:%M:%S"
+            o, h = objects[-1], headers[-1]
+            print(f"   [fresh] newest object {o.relative_to(out)} "
+                  f"({datetime.datetime.fromtimestamp(o.stat().st_mtime, datetime.timezone.utc).strftime(fmt)} UTC), "
+                  f"newest header {h.relative_to(REPO)} "
+                  f"({datetime.datetime.fromtimestamp(h.stat().st_mtime, datetime.timezone.utc).strftime(fmt)} UTC)")
+    except OSError:
+        pass
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--target", choices=["host32", "3ds"], default="host32")
@@ -1683,6 +1745,7 @@ def main(argv: list[str] | None = None) -> int:
             return 2
     tools = target_tools(args.target)
     out.mkdir(parents=True, exist_ok=True)
+    build_lock(out)
     log_dir = out / "logs"
     log_dir.mkdir(exist_ok=True)
     gen = out / "gen"
@@ -1882,6 +1945,7 @@ def main(argv: list[str] | None = None) -> int:
         if dsx is not None:
             manifest = write_build_info(dsx, args.game, args.target, build_info)
             print(f"   build info: {manifest.name}")
+        print_freshness_stamp(out)
         return 0
     print(f"   link failed ({len(unresolved)} unresolved symbols); log: {out / 'link.log'}")
     for name in unresolved:
