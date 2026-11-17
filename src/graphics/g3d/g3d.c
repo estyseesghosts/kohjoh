@@ -604,7 +604,7 @@ static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t d
     }
 }
 
-void kj_g3d_draw(const kj_target *target, bool wide, uint8_t stencil_flags)
+void kj_g3d_draw(const kj_target *target, bool wide, uint8_t stencil_flags, int window)
 {
     const kj_g3_frame *f = s_frame;
     (void)wide;
@@ -657,7 +657,15 @@ void kj_g3d_draw(const kj_target *target, bool wide, uint8_t stencil_flags)
     const unsigned alpha_ref = (f->disp3dcnt & 4u) ? f->alpha_test_ref : 0u;
     C3D_AlphaTest(!(kj_script_debug() & KJ_DEBUG_NO_ALPHA_TEST), GPU_GREATER,
                   (int)(alpha_ref * 255u / 31u));
-    C3D_StencilTest(true, GPU_ALWAYS, stencil_flags, 0, 0x03);
+    /* Window regions live in stencil bits 4-5 (g2d.c); test them, write only
+     * the effect flags in bits 0-1. */
+    if (window == KJ_G3D_WINDOW_ALL) {
+        C3D_StencilTest(true, GPU_ALWAYS, stencil_flags, 0, 0x03);
+    } else {
+        const bool except = window >= KJ_G3D_WINDOW_EXCEPT;
+        const uint8_t region = (uint8_t)((window & 3) << 4);
+        C3D_StencilTest(true, except ? GPU_NOTEQUAL : GPU_EQUAL, region | stencil_flags, 0x30, 0x03);
+    }
     C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_REPLACE);
 
     draw_pass(target, false, f->disp3dcnt, stencil_flags);

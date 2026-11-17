@@ -13,8 +13,12 @@ void kj_g3d_exit(void);
 void kj_g3d_set_frame(const kj_g3_frame *frame);
 /* Draw the 3D layer into the current target at BG0's place. `wide`: show the
  * extended horizontal field (top screen). `stencil_flags`: the 2D effect
- * flags (blend target bits) the 3D pixels carry. */
-void kj_g3d_draw(const kj_target *target, bool wide, uint8_t stencil_flags);
+ * flags (blend target bits) the 3D pixels carry. `window`: the 2D window
+ * regions (stencil bits 4-5) BG0 shows in: KJ_G3D_WINDOW_ALL, region r
+ * only (r), or every region except r (KJ_G3D_WINDOW_EXCEPT + r). */
+#define KJ_G3D_WINDOW_ALL (-1)
+#define KJ_G3D_WINDOW_EXCEPT 4
+void kj_g3d_draw(const kj_target *target, bool wide, uint8_t stencil_flags, int window);
 
 typedef struct kj_g3d_stats {
     uint32_t batches, draws, triangles;
