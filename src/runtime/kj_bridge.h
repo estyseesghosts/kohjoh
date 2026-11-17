@@ -176,6 +176,52 @@ typedef struct kj_g3_frame {
 
 /* ----------------------------------------------------------- frame flow */
 
+/* Semantic screen IDs (issue #15): the application on display, from the
+ * game's OverlayManager. Fixed values; never stored in the save. */
+#define KJ_SCREEN_UNKNOWN        0u
+#define KJ_SCREEN_FIELD          1u
+#define KJ_SCREEN_BATTLE         2u
+#define KJ_SCREEN_TITLE          3u
+#define KJ_SCREEN_INTRO          4u
+#define KJ_SCREEN_MAIN_MENU      5u
+#define KJ_SCREEN_OAK_SPEECH     6u
+#define KJ_SCREEN_PARTY          7u
+#define KJ_SCREEN_SUMMARY        8u
+#define KJ_SCREEN_BAG            9u
+#define KJ_SCREEN_PC_BOX         10u
+#define KJ_SCREEN_POKEDEX        11u
+#define KJ_SCREEN_POKEGEAR       12u
+#define KJ_SCREEN_GEAR_MAP       13u
+#define KJ_SCREEN_GEAR_PHONE     14u
+#define KJ_SCREEN_GEAR_RADIO     15u
+#define KJ_SCREEN_GEAR_CONFIG    16u
+#define KJ_SCREEN_TRAINER_CARD   17u
+#define KJ_SCREEN_TC_SIGNATURE   18u
+#define KJ_SCREEN_OPTIONS        19u
+#define KJ_SCREEN_FLY_MAP        20u
+#define KJ_SCREEN_STARTER        21u
+#define KJ_SCREEN_CREDITS        22u
+#define KJ_SCREEN_EASY_CHAT      23u
+#define KJ_SCREEN_NAMING         24u
+#define KJ_SCREEN_OTHER          25u  /* a known application without an ID */
+#define KJ_SCREEN_COUNT          26u
+
+/* One wide-layout rule (issue #16 fills these; none yet). */
+typedef struct kj_layout_row {
+    int16_t kind, bgs, top, bottom, x0, x1, dx, arg;
+} kj_layout_row;
+
+/* The screen on display and its layout, per engine (0 = A, 1 = B). The
+ * generation changes whenever any of it changes; a renderer cache keyed on
+ * it never compares strings or scans memory. */
+typedef struct kj_screen_state {
+    uint32_t screen_id;
+    uint32_t depth;              /* nesting of the screen's application */
+    uint32_t generation;
+    uint32_t row_count[2];
+    const kj_layout_row *rows[2]; /* immutable while generation holds */
+} kj_screen_state;
+
 /* What the DS side hands the renderer at the frame boundary. */
 typedef struct kj_frame_input {
     const kj_ds_memory *mem;
@@ -185,6 +231,7 @@ typedef struct kj_frame_input {
     uint32_t vblank_count;          /* DS V-blanks so far */
     uint32_t game_frame;            /* publishes so far */
     bool engine_a_on_top;           /* POWCNT1 bit 15 */
+    kj_screen_state screen;         /* same generation as this frame's DS state */
 } kj_frame_input;
 
 /* DS side -> 3DS side, on the game thread. */

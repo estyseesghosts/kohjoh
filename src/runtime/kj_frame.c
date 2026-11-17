@@ -18,6 +18,7 @@
 
 #include "kj_bridge.h"
 #include "kj_g3.h"
+#include "kj_screen.h"
 
 #include <nitro.h>
 #include <nitro_port.h>
@@ -141,6 +142,7 @@ static void publish(void)
     in.vblank_count = s_vblanks;
     in.game_frame = ++s_publishes;
     in.engine_a_on_top = NitroPort_EngineAOnTop() != FALSE;
+    kj_screen_snapshot(&in.screen);
     s_last_publish_vblank = s_vblanks;
     kj_ctr_publish_frame(&in);
     kj_g3_set_capture(kj_ctr_capture_next_frame());

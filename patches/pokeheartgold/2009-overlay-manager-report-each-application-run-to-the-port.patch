@@ -1,0 +1,56 @@
+From 93b4a815ea9786905fa7ad8f20964d69a2c6701e Mon Sep 17 00:00:00 2001
+From: terezi <jules@foxtails.me>
+Date: Tue, 17 Nov 2026 07:18:16 -0500
+Subject: [PATCH] overlay manager: report each application run to the port
+ (SDK_PORT_3DS)
+
+kohjoh names the screen on display from the deepest running
+OverlayManager application (kohjoh issue #15). Display only.
+---
+ src/overlay_manager.c | 19 ++++++++++++++++++-
+ 1 file changed, 18 insertions(+), 1 deletion(-)
+
+diff --git a/src/overlay_manager.c b/src/overlay_manager.c
+index a7689bb..7e72323 100644
+--- a/src/overlay_manager.c
++++ b/src/overlay_manager.c
+@@ -2,6 +2,10 @@
+ 
+ #include "poke_overlay.h"
+ 
++#ifdef SDK_PORT_3DS
++#include <nitro_port_app.h>
++#endif
++
+ OverlayManager *OverlayManager_New(const OverlayManagerTemplate *template, void *args, enum HeapID heapID) {
+     OverlayManager *ret;
+ 
+@@ -42,7 +46,7 @@ void *OverlayManager_GetArgs(OverlayManager *man) {
+     return man->args;
+ }
+ 
+-BOOL OverlayManager_Run(OverlayManager *man) {
++static BOOL OverlayManager_RunStep(OverlayManager *man) {
+     switch (man->exec_state) {
+     case 0:
+         if (man->template.ovy_id != FS_OVERLAY_ID_NONE) {
+@@ -73,3 +77,16 @@ BOOL OverlayManager_Run(OverlayManager *man) {
+     }
+     return FALSE;
+ }
++
++BOOL OverlayManager_Run(OverlayManager *man) {
++#ifdef SDK_PORT_3DS
++    // The port names the screen on display from the deepest running application
++    // (kohjoh issue #15); display only.
++    NitroPort_AppEnter((const void *)man->template.init);
++    BOOL done = OverlayManager_RunStep(man);
++    NitroPort_AppLeave();
++    return done;
++#else
++    return OverlayManager_RunStep(man);
++#endif
++}
+-- 
+2.56.0.windows.4
+
