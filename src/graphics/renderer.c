@@ -247,10 +247,20 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
         kj_log("[ds] display lists: %lu replayed, %lu decoded, %lu uncacheable, %lu KiB retained",
                (unsigned long)dp.dl_hits, (unsigned long)dp.dl_misses,
                (unsigned long)dp.dl_uncacheable, (unsigned long)(dp.dl_bytes / 1024u));
+        {
             /* Game-side probes (issue #11): per game frame, microseconds.
              * Slots are siblings of slot 0, so slot 0 minus the children is
              * the unattributed remainder. A window of zeros is not evidence
              * that nothing ran; check probe_calls and the scene content. */
+            char line[160];
+            int n = 0;
+            n += snprintf(line, sizeof(line), "[probe] per game frame:");
+            for (unsigned i = 0; i < KJ_PROBE_SLOTS; ++i) {
+                n += snprintf(line + n, sizeof(line) - n, " %u: %.0f/%luus",
+                              i, dp.probe_ticks[i] * us, (unsigned long)(dp.probe_calls[i] / gf));
+            }
+            kj_log("%s", line);
+        }
         uint32_t late, resyncs;
         kj_pacing_stats(&late, &resyncs);
         kj_log("[pace] 600 frames: late V-blanks %lu, resyncs %lu, presents skipped %lu",

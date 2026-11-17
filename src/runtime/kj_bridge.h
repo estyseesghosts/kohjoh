@@ -215,6 +215,10 @@ typedef struct kj_input {
 
 const kj_input *kj_ctr_input(void);
 
+/* Game-side probe slots (sibling slots in kj_ds_profile.probe_*; both sides
+ * of the bridge share the struct). */
+#define KJ_PROBE_SLOTS 11
+
 /* DS-side profile since the last call (ARM11 ticks / counts). */
 typedef struct kj_ds_profile {
     uint64_t g3_fifo_ticks;
@@ -225,9 +229,29 @@ typedef struct kj_ds_profile {
     uint64_t hblank_ticks;
     uint32_t hblank_walks;
     uint32_t dl_hits, dl_misses, dl_uncacheable, dl_bytes;
+    /* Game-side probes (kj_frame.c NitroPort_NoteProbeSince). Slots are
+     * siblings, not nested: slot 0 is the whole measured call, slots 1..n
+     * are its parts, so slot 0 minus the children is the unattributed
+     * remainder. The slot count lives here because both sides of the
+     * bridge share this struct; after changing it, clean-build (issue #12:
+     * a partial rebuild links objects that disagree about this layout and
+     * produces plausible fiction). */
+    uint64_t probe_ticks[KJ_PROBE_SLOTS];
+    uint32_t probe_calls[KJ_PROBE_SLOTS];
 } kj_ds_profile;
 
 void kj_ds_take_profile(kj_ds_profile *out);
+
+/* Game-side probes. Compile out with HGSS_PROFILE_OFF: the svcGetSystemTick
+ * pair is the cost, not the counters. Use these, never OS_GetTick (the
+ * port's timer emulation syncs DS timers, ~8 us per two calls per frame). */
+#ifdef HGSS_PROFILE_OFF
+#define NitroPort_ProbeNow() (0u)
+#define NitroPort_NoteProbeSince(slot, t0) ((void)0)
+#else
+uint64_t NitroPort_ProbeNow(void);
+void NitroPort_NoteProbeSince(unsigned slot, uint64_t t0);
+#endif
 
 /* Game termination / reset requests. */
 void kj_ctr_terminate(void) __attribute__((noreturn));
