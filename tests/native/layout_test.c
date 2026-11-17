@@ -105,6 +105,25 @@ static void test_scroll_picture_coords(void)
     assert(kj_layout_active(band, 1, &b2, 60) == 0);
 }
 
+static void test_screen_fill_scrolled(void)
+{
+    /* #19: a SCREEN FILL repeats the screen's edge column whatever the
+     * scroll (the battle intro slides BG3). */
+    const kj_layout_row r[] = { { KJ_LAYOUT_FILL, 1 | KJ_LAYOUT_SCREEN, 0, 192, -32, 0, 0, 0 },
+                                { KJ_LAYOUT_FILL, 1 | KJ_LAYOUT_SCREEN, 0, 192, 256, 288, 0, 255 } };
+    for (int h = 0; h < 512; h += 37) {
+        kj_layout_bg bg = { 0, h, 0, 512, 256 };
+        int o[320];
+        plan(r, 2, &bg, 0, o);
+        for (int s = -32; s < 0; ++s) {
+            assert(o[s + 32] == 0);
+        }
+        for (int s = 256; s < 288; ++s) {
+            assert(o[s + 32] == 255);
+        }
+    }
+}
+
 static void test_wrap(void)
 {
     const kj_layout_row r[] = { { KJ_LAYOUT_WRAP, 1 | KJ_LAYOUT_SCREEN, 0, 192, 0, 0, 0, 0 } };
@@ -157,6 +176,7 @@ int main(void)
     test_move();
     test_fill_copy();
     test_scroll_picture_coords();
+    test_screen_fill_scrolled();
     test_wrap();
     test_tables();
     puts("layout_test: ok");

@@ -822,6 +822,23 @@ static void write_windows(const ctx *c)
         else { xs[nx][0] = x1; xs[nx++][1] = 256; xs[nx][0] = 0; xs[nx++][1] = x2; }
         if (y1 <= y2) { ys[ny][0] = y1; ys[ny++][1] = y2; }
         else { ys[ny][0] = y1; ys[ny++][1] = 192; ys[ny][0] = 0; ys[ny++][1] = y2; }
+        /* Wide layout (#19): a window that reaches a DS screen edge runs on
+         * across the side columns, so wipes and covers that close in from
+         * the edges hide the widened picture too. The DS registers are
+         * untouched; only the presentation mask grows. */
+        if (c->nrows) {
+            for (int i = 0; i < nx; ++i) {
+                if (xs[i][0] >= xs[i][1]) {
+                    continue;
+                }
+                if (xs[i][0] == 0) {
+                    xs[i][0] = -64;
+                }
+                if (xs[i][1] == 256) {
+                    xs[i][1] = 320;
+                }
+            }
+        }
         C3D_StencilTest(true, GPU_ALWAYS, (u8)((w + 1) << 4), 0, 0x30);
         C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_REPLACE);
         for (int i = 0; i < nx; ++i) {

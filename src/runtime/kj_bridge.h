@@ -212,7 +212,9 @@ typedef struct kj_g3_frame {
 /* One wide-layout rule (issue #16; Unown's ss3ds_widelayouts.h rows).
  * Columns and lines are the DS's; the wide top screen shows DS columns
  * -32..287. Unless bgs has KJ_LAYOUT_SCREEN, x0..x1 and top..bottom are
- * columns and lines of the BG's picture (scroll applied), not the screen.
+ * columns and lines of the BG's picture (scroll applied), not the screen;
+ * with it, FILL/COPY's arg is a screen column too (the edge a scrolling
+ * BG shows, #19).
  *   MOVE  bgs top bottom x0 x1 dx  : those columns drawn dx px over
  *   FILL  bgs top bottom x0 x1 arg : wide columns x0..x1-1 show column arg
  *   COPY  bgs top bottom x0 x1 arg : wide columns x0..x1-1 show arg, arg+1..

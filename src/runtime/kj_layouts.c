@@ -86,10 +86,11 @@ static const kj_layout_row PC_BOX_B[] = {
  * 32 px left, the player box (right, above the dialogue) 32 px right. The
  * platforms are OBJs too but their middles lie outside both boxes. The
  * dialogue frame's edges move out and its interior continues; the text
- * stays where the DS draws it. Terrain bands continue by their edge columns.
+ * stays where the DS draws it. Terrain bands continue by the screen's edge
+ * columns (screen-relative: the intro scrolls BG3, #19).
  * Lines and columns measured in LOTUS (Route 29 wild battle, 2026-11-17). */
 static const kj_layout_row BATTLE_A[] = {
-    FILL(0x8, 0, 192, -32, 0, 0), FILL(0x8, 0, 192, 256, 288, 255),
+    FILL(0x8 | KJ_LAYOUT_SCREEN, 0, 192, -32, 0, 0), FILL(0x8 | KJ_LAYOUT_SCREEN, 0, 192, 256, 288, 255),
     MOVE(0x2, 144, 192, 0, 12, -32), FILL(0x2, 144, 192, -20, 12, 12),
     MOVE(0x2, 144, 192, 244, 256, 32), FILL(0x2, 144, 192, 244, 276, 243),
     OBJS(8, 60, -64, 160, -32), OBJS(84, 144, 120, 320, 32),

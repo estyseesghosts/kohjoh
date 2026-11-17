@@ -116,7 +116,10 @@ int kj_layout_segments(const kj_layout_row *rows, uint32_t n, uint32_t active,
             for (int c = t->x0; c < t->x1; ++c) {
                 const int s = scr ? c : c - h0;
                 if (s >= KJ_LAYOUT_LEFT && s < KJ_LAYOUT_RIGHT) {
-                    const int pic = t->kind == KJ_LAYOUT_COPY ? t->arg + (c - t->x0) : t->arg;
+                    int pic = t->kind == KJ_LAYOUT_COPY ? t->arg + (c - t->x0) : t->arg;
+                    if (scr) {
+                        pic += h0; /* arg is a screen column */
+                    }
                     r[s - KJ_LAYOUT_LEFT] = (int16_t)(pic & m);
                 }
             }
