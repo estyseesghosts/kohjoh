@@ -247,17 +247,21 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
         kj_log("[ds] display lists: %lu replayed, %lu decoded, %lu uncacheable, %lu KiB retained",
                (unsigned long)dp.dl_hits, (unsigned long)dp.dl_misses,
                (unsigned long)dp.dl_uncacheable, (unsigned long)(dp.dl_bytes / 1024u));
+            /* Game-side probes (issue #11): per game frame, microseconds.
+             * Slots are siblings of slot 0, so slot 0 minus the children is
+             * the unattributed remainder. A window of zeros is not evidence
+             * that nothing ran; check probe_calls and the scene content. */
         uint32_t late, resyncs;
         kj_pacing_stats(&late, &resyncs);
         kj_log("[pace] 600 frames: late V-blanks %lu, resyncs %lu, presents skipped %lu",
                (unsigned long)late, (unsigned long)resyncs, (unsigned long)s_skipped_presents);
         s_skipped_presents = 0;
         kj_log("[gpu] 600 frames: atlas lookups %lu conversions %lu evictions %lu full %lu; "
-               "3D batches %lu draws %lu tris %lu tex uploads %lu tex bytes compared %lu "
+               "3D batches %lu draws %lu tris %lu state skips %lu tex uploads %lu tex bytes compared %lu "
                "tex full %lu unsupported %lu; box tests %lu culled %lu (far only %lu)",
                (unsigned long)a.lookups, (unsigned long)a.conversions, (unsigned long)a.evictions,
                (unsigned long)a.full, (unsigned long)d.batches, (unsigned long)d.draws,
-               (unsigned long)d.triangles, (unsigned long)d.tex_uploads,
+               (unsigned long)d.triangles, (unsigned long)d.state_skips, (unsigned long)d.tex_uploads,
                (unsigned long)d.tex_bytes_compared, (unsigned long)d.tex_cache_full,
                (unsigned long)d.unsupported, (unsigned long)d.box_tests,
                (unsigned long)d.box_culled, (unsigned long)d.box_culled_far);

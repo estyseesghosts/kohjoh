@@ -46,6 +46,13 @@ static uint32_t s_last_pal_vp;
 static kj_program_id s_draw_program;
 static const kj_lighting *s_last_lighting;
 static uint32_t s_last_alpha;
+/* GPU rasteriser state, keyed to skip redundant citro3d setters (issue #10:
+ * coffeepot PICA200/gpu-rendering.md, "What a draw call costs": each state
+ * change is 1-2 us on an O3DS, a tenth of a separate draw). 0xFFFFFFFF is
+ * "unset": the first batch of a program or frame always sends. */
+static uint32_t s_last_cull, s_last_depth, s_last_blend;
+static uint32_t s_last_shininess[32];
+static bool s_shininess_valid;
 
 bool kj_g3d_init(void)
 {
@@ -178,12 +185,16 @@ static void upload_lighting(const kj_g3_batch *b)
         }
         C3D_FVUnifSet(GPU_VERTEX_SHADER, u->emission,
                       light->emission[0], light->emission[1], light->emission[2], 0);
-        if (light->use_shininess) {
+        if (light->use_shininess &&
+            (!s_shininess_valid ||
+             memcmp(s_last_shininess, light->shininess, sizeof(s_last_shininess)) != 0)) {
             for (unsigned i = 0; i < 32; ++i) {
                 const uint32_t word = light->shininess[i];
                 C3D_FVUnifSet(GPU_VERTEX_SHADER, u->shininess + i,
                               word & 255u, word >> 8 & 255u, word >> 16 & 255u, word >> 24);
             }
+            memcpy(s_last_shininess, light->shininess, sizeof(s_last_shininess));
+            s_shininess_valid = true;
         }
     }
     if (light != s_last_lighting || alpha != s_last_alpha) {
@@ -259,6 +270,7 @@ static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t d
             s_last_pal = NULL;
             s_last_tex = NULL;
             s_last_lighting = NULL;
+            s_shininess_valid = false;
         }
         if (program == KJ_PROGRAM_3D_LIT) {
             upload_lighting(b);
@@ -299,12 +311,21 @@ static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t d
 
         /* culling: bit 6 render back, bit 7 render front; 0 draws both */
         const unsigned faces = (b->poly_attr >> 6) & 3u;
-        C3D_CullFace((dbg & KJ_DEBUG_NO_CULL) ? GPU_CULL_NONE
-                     : faces == 2u                ? GPU_CULL_BACK_CCW
-                     : faces == 1u                ? GPU_CULL_FRONT_CCW
-                                                  : GPU_CULL_NONE);
+        const uint32_t cull = (dbg & KJ_DEBUG_NO_CULL) ? GPU_CULL_NONE
+                              : faces == 2u            ? GPU_CULL_BACK_CCW
+                              : faces == 1u            ? GPU_CULL_FRONT_CCW
+                                                       : GPU_CULL_NONE;
+        if (cull != s_last_cull) {
+            C3D_CullFace(cull);
+            s_last_cull = cull;
+        }
+#ifndef HGSS_PROFILE_OFF
+        else {
+            ++s_stats.state_skips;
+        }
+#endif
 
-        /* depth */
+        /* depth: func and write mask in one key */
         const bool depth_equal = (b->poly_attr >> 14) & 1u;
         const bool depth_write = !translucent || ((b->poly_attr >> 11) & 1u);
         GPU_TESTFUNC func;
@@ -316,15 +337,33 @@ static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t d
         if (dbg & KJ_DEBUG_NO_DEPTH) {
             func = GPU_ALWAYS;
         }
-        C3D_DepthTest(true, func,
-                      depth_write ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
-
-        if (translucent && (disp3dcnt & 8u) && !(dbg & KJ_DEBUG_NO_BLEND)) {
-            C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
-                           GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
-        } else {
-            C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
+        const uint32_t depth = ((uint32_t)func << 4) | (depth_write ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
+        if (depth != s_last_depth) {
+            C3D_DepthTest(true, func, depth_write ? GPU_WRITE_ALL : GPU_WRITE_COLOR);
+            s_last_depth = depth;
         }
+#ifndef HGSS_PROFILE_OFF
+        else {
+            ++s_stats.state_skips;
+        }
+#endif
+
+        /* blend: on/off only; the factors are fixed either way */
+        const uint32_t blend = (translucent && (disp3dcnt & 8u) && !(dbg & KJ_DEBUG_NO_BLEND)) ? 1u : 0u;
+        if (blend != s_last_blend) {
+            if (blend) {
+                C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
+                               GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA);
+            } else {
+                C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
+            }
+            s_last_blend = blend;
+        }
+#ifndef HGSS_PROFILE_OFF
+        else {
+            ++s_stats.state_skips;
+        }
+#endif
         (void)stencil_flags;
         C3D_DrawElements(GPU_TRIANGLES, (int)b->index_count, C3D_UNSIGNED_SHORT,
                          f->indices + b->first_index);
@@ -380,6 +419,8 @@ void kj_g3d_draw(const kj_target *target, bool wide, uint8_t stencil_flags)
     s_last_tev = -1;
     s_last_tex = NULL;
     s_last_pal = NULL;
+    s_last_cull = s_last_depth = s_last_blend = 0xFFFFFFFFu;
+    s_shininess_valid = false;
     C3D_BufInfo *bi = C3D_GetBufInfo();
     BufInfo_Init(bi);
     BufInfo_Add(bi, f->verts, sizeof(kj_g3_vertex), 4, 0x2130);

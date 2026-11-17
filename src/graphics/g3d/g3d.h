@@ -18,6 +18,7 @@ void kj_g3d_draw(const kj_target *target, bool wide, uint8_t stencil_flags);
 
 typedef struct kj_g3d_stats {
     uint32_t batches, draws, triangles;
+    uint32_t state_skips;
     uint32_t tex_uploads, tex_bytes_compared, tex_cache_full;
     uint32_t unsupported;
     uint32_t box_tests, box_culled, box_culled_far;
