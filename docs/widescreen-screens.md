@@ -21,15 +21,19 @@ States: not attempted / basic edge fill / layout implemented / authored WideArt 
 | pcbox | B | 5 | layout implemented | info panel flush left, title bar and panel run on; box switching (R) leaves the top stable (`...wide-pcbox.png`) |
 | naming, flymap, signature | A/B | 2 | basic edge fill | not captured on the test save (needs Fly / a rename / a signature); same FILL rows as the bag's verified backdrop |
 | battle (wild, single) | A | 8 | layout implemented | HP boxes to the outer edges (OBJs moved at emission, DS OAM untouched), dialogue frame and terrain to both edges; a Tackle turn and the return to the field leave no stale panel (`...wide-battle.png`, `...wide-battle-turn.png`); trainer intro, double battle (opponent panels at the left edge, player panels at the right), cave and water backdrops captured via the `battle:` script line (`...wide-battle-trainer.png`, `...-double.png`, `...-cave.png`, `...-water.png`); a Gym Leader and an end-to-end switch/faint/capture run not yet captured |
-| field, title, intro, others | - | 0 | not attempted | DS picture centred (#14/#19) |
+| field | A | 2 | layout implemented | 3D drawn wide; BG1-3 edge columns continue (encounter wipes, VS band) |
+| title, intro, others | - | 0 | not attempted | DS picture centred (#14/#19) |
 
 Field encounter wipes (#19): the field's 3D runs wide but its 2D is the DS's
 256 columns. Window wipes (trainer effects, `encounter_effect_wipe.c`) now
 extend edge-touching windows over the side columns on the top screen when
-BG0 is 3D. The wild-grass wipe (`encounter_effect_wild.c`, `RectTrail`) fills
-black rectangles into a 256-column text BG instead of using windows, so its
-bars still stop at the DS edge (captured at r29 frame 6250); covering it needs
-a field layout rule active only during the effect.
+BG0 is 3D. The wild-grass wipe (`encounter_effect_wild.c`, `RectTrail`) and
+a Gym Leader's VS band draw into 256-column text BGs instead; the field's top
+layout (`FIELD_A`) continues BG1-3's screen-edge columns over the sides, so
+both reach 400 px (`...wide-wild-wipe.png`, r29 frame 6250;
+`...wide-vs-wipe.png`, Falkner frame 4110). The overworld's own 2D is inset
+from the edges, so its sides stay transparent (no change on the plain field).
+The VS wipe's BLDY darkening runs under the same wide scissor.
 
 Navigation verified with screen transitions in the log: field > party >
 summary > party > field, field > bag > field, field > pokegear > gearphone >

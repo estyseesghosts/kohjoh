@@ -101,6 +101,15 @@ static const kj_layout_row EDGE_SIDES[] = {
     FILL(0xF, 0, 192, -32, 0, 0), FILL(0xF, 0, 192, 256, 288, 255),
 };
 
+/* Field top (#19): the overworld's 2D (BG1-3) is empty at the screen edges
+ * except while an encounter effect covers it (the wild wipe's rectangles,
+ * a Gym Leader's VS band) - its edge columns continue over the wide 3D.
+ * Message windows and menus are inset from the edges, so a transparent
+ * edge column leaves the sides as they were. */
+static const kj_layout_row FIELD_A[] = {
+    FILL(0xE | KJ_LAYOUT_SCREEN, 0, 192, -32, 0, 0), FILL(0xE | KJ_LAYOUT_SCREEN, 0, 192, 256, 288, 255),
+};
+
 typedef struct screen_layout {
     uint32_t id;
     const kj_layout_row *rows[2];
@@ -108,6 +117,7 @@ typedef struct screen_layout {
 } screen_layout;
 
 static const screen_layout LAYOUTS[] = {
+    { KJ_SCREEN_FIELD, { FIELD_A, NULL }, { N(FIELD_A), 0 } },
     { KJ_SCREEN_BATTLE, { BATTLE_A, NULL }, { N(BATTLE_A), 0 } },
     { KJ_SCREEN_SUMMARY, { SUMMARY_A, NULL }, { N(SUMMARY_A), 0 } },
     { KJ_SCREEN_PARTY, { NULL, PARTY_B }, { 0, N(PARTY_B) } },
