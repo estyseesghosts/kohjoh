@@ -14,11 +14,11 @@ States: not attempted / basic edge fill / layout implemented / authored WideArt 
 | --- | --- | --- | --- | --- |
 | party | B | 6 | layout implemented | panel to both edges, wave continued (`worklog/2026-11-17-party-wide.png`) |
 | summary | A | 24 | layout implemented | memo panel widened, dotted lines continued, name/sprite/3D at right edge (`...summary-wide.png`) |
-| bag | A | 6 | layout implemented | bands and description bar to both edges (`...wide-bag17.png`) |
-| pokegear (all tabs) | B | 3 | layout implemented | backdrop opens at its level middle; call window stays DS width; missing text is #1 (`...wide-gear17.png`) |
+| bag | A | 6 | layout implemented | bands and description bar to both edges; pocket switching leaves the top stable (`...wide-bag17.png`) |
+| pokegear (phone, map, config) | B | 3 | layout implemented | backdrop opens at its level middle; windows stay DS width; phone text missing is #1 (`...wide-gear17.png`, `...wide-gearmap.png`, `...wide-gearcfg.png`); radio tab not unlocked on the test save |
 | trainercard | A | 4 | layout implemented | pattern wraps, badge band runs on, tab at left edge (`...wide-tcard.png`) |
 | options | A/B | 1 | layout implemented | backdrop map wraps, dither continuous to both edges (`...wide-options.png`) |
-| pcbox | B | 5 | layout implemented | not yet captured (needs a PC in reach) |
+| pcbox | B | 5 | layout implemented | info panel flush left, title bar and panel run on; box switching (R) leaves the top stable (`...wide-pcbox.png`) |
 | naming, flymap, signature | A/B | 2 | basic edge fill | not yet captured |
 | field, battle, title, intro, others | - | 0 | not attempted | DS picture centred (#14/#18/#19) |
 
