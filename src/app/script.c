@@ -144,7 +144,9 @@ bool kj_script_active(void)
 
 bool kj_script_input(uint32_t vblank, uint16_t *keys, bool *touch, uint16_t *tx, uint16_t *ty)
 {
-    if (!s_active) {
+    /* Only a script with input events owns the pad: one that sets only
+     * debug flags, marks or pacing leaves live input working. */
+    if (!s_active || s_event_count == 0) {
         return false;
     }
     *keys = 0;

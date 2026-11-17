@@ -42,6 +42,9 @@ end: 11800            # close at V-blank 11800
 V-blank indices count from boot; game frames are publishes (≈ V-blanks / 2).
 A scripted run ignores live input on `wip/savestore`; on `master` a live press
 can still leak in, so do not type into the Azahar window during a test.
+A script without input events (only `debug:`, `every:`, `end:`, `freeze` or
+`dump` lines) leaves live input working, so debug flags can be set while
+driving the game by hand (LOTUS MCP or a real pad).
 
 | Script | Purpose |
 | --- | --- |
