@@ -30,4 +30,6 @@ You need a 3DS with custom firmware (Luma3DS), the Homebrew Launcher, and your o
 
 Never share the `.pak` files: they contain your game's data. Saves are kept on the SD card.
 
+To bring a save from a cart or an emulator, put it at `sdmc:/3ds/kohjoh/saves/heartgold.sav` (or `soulsilver.sav`). A raw 512 KB cart dump works as-is; a DeSmuME `.dsv` or a No$GBA `.SAV` (packed or not) is converted to the raw format the first time the game reads it, and the original is kept beside it as `heartgold.sav.orig`.
+
 The optional CIA is a Luma3DS HOME Menu shortcut; it launches the 3DSX from that exact path and keeps saves on SD. The forwarder requires Luma3DS and has not yet been tested on hardware.

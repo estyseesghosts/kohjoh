@@ -104,6 +104,125 @@ static void close_save(void)
     }
 }
 
+/* Saves exported by DS emulators, as players bring them (kohjoh issue #2):
+ * DeSmuME's .dsv is the raw image with a footer ending "|-DESMUME SAVE-|".
+ * No$GBA's starts "NocashGbaBackupMediaSavDataFile", "SRAM" at 0x40 and the
+ * method at 0x44: 0, the image's size at 0x48 and the image at 0x4C; 1
+ * (packed), the image's size at 0x4C and run-length data at 0x50: 0 ends
+ * it, 1..0x7F is that many bytes as they are, 0x81..0xFF is (n - 0x80) of
+ * the next byte, 0x80 is the next byte times the 16-bit count after it.
+ * Each comes out as the raw image in `out`, or FALSE. */
+#define IMPORT_MAX_BYTES (2u * 1024u * 1024u)
+
+static u32 rd32(const unsigned char *p)
+{
+    return (u32)p[0] | (u32)p[1] << 8 | (u32)p[2] << 16 | (u32)p[3] << 24;
+}
+
+static BOOL unpack_nocash(const unsigned char *in, u32 size, unsigned char *out)
+{
+    static const char MAGIC[] = "NocashGbaBackupMediaSavDataFile\x1a";
+    u32 src = 0x50, dst = 0;
+
+    if (size < 0x50 || memcmp(in, MAGIC, sizeof(MAGIC) - 1) != 0 || memcmp(in + 0x40, "SRAM", 4) != 0)
+        return FALSE;
+    if (rd32(in + 0x44) == 0) {
+        if (rd32(in + 0x48) != SAVE_BYTES || size - 0x4C < SAVE_BYTES) return FALSE;
+        memcpy(out, in + 0x4C, SAVE_BYTES);
+        return TRUE;
+    }
+    if (rd32(in + 0x44) != 1 || rd32(in + 0x4C) != SAVE_BYTES) return FALSE;
+    while (src < size) {
+        const u32 cc = in[src];
+        u32 run;
+        if (cc == 0) {
+            return dst == SAVE_BYTES;
+        }
+        if (cc < 0x80) {   /* cc literal bytes */
+            if (size - src - 1 < cc || SAVE_BYTES - dst < cc) return FALSE;
+            memcpy(out + dst, in + src + 1, cc);
+            src += cc + 1;
+            dst += cc;
+            continue;
+        }
+        if (cc == 0x80) {   /* 0x80, the byte, a 16-bit count */
+            if (size - src < 4) return FALSE;
+            run = (u32)in[src + 2] | (u32)in[src + 3] << 8;
+        } else {   /* cc - 0x80 of the byte after */
+            if (size - src < 2) return FALSE;
+            run = cc - 0x80;
+        }
+        if (SAVE_BYTES - dst < run) return FALSE;
+        memset(out + dst, in[src + 1], run);
+        src += cc == 0x80 ? 4 : 2;
+        dst += run;
+    }
+    return FALSE;
+}
+
+static BOOL import_save(const unsigned char *in, u32 size, unsigned char *out, const char **kind)
+{
+    static const char DESMUME[] = "|-DESMUME SAVE-|";
+    const u32 tag = sizeof(DESMUME) - 1;
+
+    if (size > SAVE_BYTES && size <= SAVE_BYTES + 0x400 && memcmp(in + size - tag, DESMUME, tag) == 0) {
+        memcpy(out, in, SAVE_BYTES);
+        *kind = "DeSmuME .dsv";
+        return TRUE;
+    }
+    if (unpack_nocash(in, size, out)) {
+        *kind = "No$GBA";
+        return TRUE;
+    }
+    return FALSE;
+}
+
+/* A save file that isn't the raw image: converted in place when it's one
+ * import_save knows, the original kept beside it as <path>.orig. */
+static void convert_save(long size)
+{
+    unsigned char *in;
+    const char *kind = NULL;
+    char *orig;
+    FILE *f;
+    BOOL ok;
+
+    if (size <= 0 || (unsigned long)size > IMPORT_MAX_BYTES || !(in = (unsigned char *)malloc((size_t)size)))
+        return;
+    ok = fseek(sSave, 0, SEEK_SET) == 0 && fread(in, 1, (size_t)size, sSave) == (size_t)size &&
+         import_save(in, (u32)size, sImage, &kind);
+    if (!ok) {
+        free(in);
+        NitroPort_Log("[save] %s: %ld bytes, not a 512 KB DS save the port can read", sSavePath, size);
+        return;
+    }
+    orig = (char *)malloc(strlen(sSavePath) + sizeof(".orig"));
+    if (orig) {
+        strcpy(orig, sSavePath);
+        strcat(orig, ".orig");
+        if ((f = fopen(orig, "wb")) != NULL) {
+            ok = fwrite(in, 1, (size_t)size, f) == (size_t)size;
+            ok = fclose(f) == 0 && ok;
+        } else {
+            ok = FALSE;
+        }
+        free(orig);
+    }
+    free(in);
+    if (!orig || !ok) {
+        NitroPort_Log("[save] %s: could not keep the original, not converting it", sSavePath);
+        return;
+    }
+    fclose(sSave);
+    sSave = fopen(sSavePath, "w+b");
+    if (!sSave) return;
+    (void)setvbuf(sSave, NULL, _IONBF, 0);
+    if (fwrite(sImage, 1, SAVE_BYTES, sSave) == SAVE_BYTES && fflush(sSave) == 0) {
+        (void)fsync(fileno(sSave));
+        NitroPort_Log("[save] imported a %s save (%ld bytes); original kept as .orig", kind, size);
+    }
+}
+
 static BOOL open_save(void)
 {
     long size;
@@ -119,6 +238,10 @@ static BOOL open_save(void)
             goto invalid;
     } else {
         (void)setvbuf(sSave, NULL, _IONBF, 0);
+        if (fseek(sSave, 0, SEEK_END) == 0 && (size = ftell(sSave)) != (long)SAVE_BYTES) {
+            convert_save(size);
+            if (!sSave) return FALSE;
+        }
     }
     if (fseek(sSave, 0, SEEK_END) != 0 ||
         (size = ftell(sSave)) != (long)SAVE_BYTES) goto invalid;
