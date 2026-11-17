@@ -25,6 +25,7 @@
 #include "diagnostics/log.h"
 #include "diagnostics/perf.h"
 #include "graphics/g3d/g3d.h"
+#include "graphics/layout/layout.h"
 #include "graphics/pica/gpu.h"
 #include "graphics/pica/targets.h"
 #include "graphics/resources/atlas.h"
@@ -177,6 +178,9 @@ typedef struct ctx {
     const uint8_t *obj_vram;
     uint32_t obj_vram_size;
     int y0, y1; /* span lines [y0, y1) */
+    /* The wide layout (top screen only; nrows 0 = draw as the DS). */
+    const kj_layout_row *rows;
+    uint32_t nrows;
 } ctx;
 
 /* ------------------------------------------------------------ quad emit */
@@ -273,14 +277,19 @@ static uint32_t text_bg(const ctx *c, int bg, run *out)
     const uint32_t source = (uint32_t)(c->engine * 2);
 
     const int first_sy = c->y0 - ((c->y0 + vofs) & 7);
-    if (!run_begin(out, 33u * (uint32_t)((c->y1 - first_sy + 7) / 8))) {
+    /* Under a wide layout the quads cover every column a segment can name
+     * (layout.h); the segments' scissors decide what shows. */
+    const int sx_lo = c->nrows ? KJ_LAYOUT_SRC_LO : 0;
+    const int sx_hi = c->nrows ? KJ_LAYOUT_SRC_HI : 256;
+    const uint32_t cols = (uint32_t)(sx_hi - sx_lo) / 8u + 1u;
+    if (!run_begin(out, cols * (uint32_t)((c->y1 - first_sy + 7) / 8))) {
         return 0;
     }
     for (int sy = first_sy; sy < c->y1; sy += 8) {
         const int my = (sy + vofs) & (h - 1);
         const uint32_t row_base = scr_base + (uint32_t)((my >> 8) * (w >> 8)) * 0x800u +
                                   (uint32_t)((my & 255) >> 3) * 64u;
-        for (int sx = -(hofs & 7); sx < 256; sx += 8) {
+        for (int sx = sx_lo - (hofs & 7); sx < sx_hi; sx += 8) {
             const int mx = (sx + hofs) & (w - 1);
             const uint32_t addr = (row_base + (uint32_t)(mx >> 8) * 0x800u +
                                    (uint32_t)((mx & 255) >> 3) * 2u) & mask;
@@ -496,7 +505,15 @@ static uint32_t objs(const ctx *c, int prio, bool semi, run *out)
         if (y + bh > 256) {
             y -= 256;
         }
-        if (y >= c->y1 || y + bh <= c->y0 || x >= 256 || x + bw <= 0) {
+        int x_lo = 0, x_hi = 256;
+        if (c->nrows) {
+            /* OBJS rows move a sprite by its middle; the wide screen shows
+             * DS columns -32..287. OAM itself is never rewritten. */
+            x += kj_layout_obj_dx(c->rows, c->nrows, x + bw / 2, y + bh / 2);
+            x_lo = KJ_LAYOUT_LEFT;
+            x_hi = KJ_LAYOUT_RIGHT;
+        }
+        if (y >= c->y1 || y + bh <= c->y0 || x >= x_hi || x + bw <= x_lo) {
             continue;
         }
         const bool bpp8 = (a0 & 0x2000) != 0;
@@ -582,16 +599,35 @@ static uint32_t objs(const ctx *c, int prio, bool semi, run *out)
 
 /* ------------------------------------------------------------- passes */
 
-static void set_xform(const kj_target *t)
+/* x' = k * x + add before the target's own mapping (wide layouts: k = 1
+ * translates a segment, k > 1 stretches one column across it). */
+static void set_xform_x(const kj_target *t, float k, float add)
 {
     /* clip.x = 1 - y_phys/120 ; clip.y = 1 - x_phys/(w/2)
-     * y_phys = y * scale ; x_phys = x * scale + offset */
+     * y_phys = y * scale ; x_phys = x' * scale + offset */
     const float half_w = t->width / 2.0f;
     C3D_FVUnifSet(GPU_VERTEX_SHADER, kj_gpu_uloc_2d_xform(), -t->scale / 120.0f, 1.0f,
-                  -t->scale / half_w, 1.0f - t->offset_x / half_w);
+                  -t->scale * k / half_w, 1.0f - (t->offset_x + t->scale * add) / half_w);
     C3D_FVUnifSet(GPU_VERTEX_SHADER, kj_gpu_uloc_2d_uvscale(),
                   1.0f / (KJ_ATLAS_SIZE * KJ_ATLAS_UV_UNIT), -1.0f / (KJ_ATLAS_SIZE * KJ_ATLAS_UV_UNIT),
                   0.0f, 1.0f);
+}
+
+static void set_xform(const kj_target *t)
+{
+    set_xform_x(t, 1.0f, 0.0f);
+}
+
+/* DS column / line -> physical pixel, rounded the same way for every edge
+ * so neighbouring scissors abut. */
+static int phys_x(const kj_target *t, int x)
+{
+    return (int)lroundf(t->offset_x + (float)x * t->scale);
+}
+
+static int phys_y(const kj_target *t, int y)
+{
+    return (int)lroundf((float)y * t->scale);
 }
 
 typedef struct fx {
@@ -909,6 +945,7 @@ static layer_cache s_obj_cache[2];
 typedef struct screen_memo {
     bool drawn;
     int engine;
+    uint32_t layout_generation;
     uint8_t regs[KJ_LINE_REG_BYTES];
     uint16_t pal[512];
 } screen_memo;
@@ -965,6 +1002,7 @@ static void text_key(const ctx *c, int bg, uint8_t key[16])
     const uint32_t d = c->dispcnt & 0x7F000000u; /* char/screen offsets, ext palettes */
     memcpy(key + 6, &d, 4);
     key[10] = (uint8_t)c->engine;
+    key[11] = c->nrows ? 1 : 0; /* wide quads (-64..320) */
 }
 
 static void text_map_range(const ctx *c, int bg, uint32_t *off, uint32_t *len)
@@ -1055,6 +1093,12 @@ static bool objs_retained(const ctx *c, drawable sub[9])
     const uint32_t d = c->dispcnt & 0x80301010u; /* OBJ on, mapping, boundary, ext */
     memcpy(key, &d, 4);
     key[4] = (uint8_t)c->engine;
+    if (c->nrows) {
+        /* OBJS moves depend on the layout, which the generation names. */
+        const uint32_t gen = c->in->screen.generation;
+        key[5] = 1;
+        memcpy(key + 8, &gen, 4);
+    }
     if (lc->valid && memcmp(lc->key, key, 16) == 0 && memcmp(lc->oam, oam, 0x400) == 0 &&
         memcmp(lc->pal, pal, 512) == 0 && lc->ext_src == ext &&
         (ext == NULL || memcmp(lc->ext, ext, 0x2000) == 0) && chars_same(lc, c->obj_vram)) {
@@ -1126,6 +1170,7 @@ void kj_g2d_begin_frame(void)
 typedef struct prepared {
     drawable bg[4];
     bool bg_ok[4];
+    bool bg_text[4];
     drawable obj[9]; /* priority * 2 + semi; [8]: OBJ-window OBJs */
     bool obj_ok;
     bool all_reused;
@@ -1162,6 +1207,7 @@ static void prepare_span(const ctx *c, bool retain, prepared *pr)
 #endif
             continue;
         }
+        pr->bg_text[bg] = !affine && !ext16;
         if (!affine && !ext16 && retain) {
             pr->bg_ok[bg] = text_bg_retained(c, bg, &pr->bg[bg]);
         } else {
@@ -1216,8 +1262,13 @@ static void prepare_span(const ctx *c, bool retain, prepared *pr)
 
 static void restore_2d_state(const ctx *c, int sx0)
 {
-    kj_gpu_scissor(c->target->width, sx0, (int)(c->y0 * c->target->scale),
-                   sx0 + (int)(256 * c->target->scale), (int)(c->y1 * c->target->scale));
+    if (c->nrows) {
+        kj_gpu_scissor(c->target->width, phys_x(c->target, KJ_LAYOUT_LEFT), phys_y(c->target, c->y0),
+                       phys_x(c->target, KJ_LAYOUT_RIGHT), phys_y(c->target, c->y1));
+    } else {
+        kj_gpu_scissor(c->target->width, sx0, (int)(c->y0 * c->target->scale),
+                       sx0 + (int)(256 * c->target->scale), (int)(c->y1 * c->target->scale));
+    }
     kj_gpu_use_program(KJ_PROGRAM_2D);
     set_xform(c->target);
     kj_gpu_bind_texture(0, kj_atlas_texture());
@@ -1225,6 +1276,48 @@ static void restore_2d_state(const ctx *c, int sx0)
     C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_COLOR);
     C3D_AlphaTest(true, GPU_GREATER, 0);
     C3D_CullFace(GPU_CULL_NONE);
+}
+
+/* A text BG under a wide layout: per band of lines with the same active
+ * rows, its quads once per segment, translated or stretched under the
+ * segment's scissor (layout.c). */
+static void draw_layer_wide(const ctx *c, const fx *f, int bg, const drawable *d)
+{
+    const kj_target *t = c->target;
+    const uint16_t cnt = r16(c->regs, 0x08 + 2 * bg);
+    const kj_layout_bg g = { bg, r16(c->regs, 0x10 + 4 * bg) & 0x1FF, r16(c->regs, 0x12 + 4 * bg) & 0x1FF,
+                             (cnt >> 14) & 1 ? 512 : 256, (cnt >> 14) & 2 ? 512 : 256 };
+    if (d->count == 0) {
+        return;
+    }
+    for (int y = c->y0; y < c->y1;) {
+        const uint32_t act = kj_layout_active(c->rows, c->nrows, &g, y);
+        int y1 = y + 1;
+        while (y1 < c->y1 && kj_layout_active(c->rows, c->nrows, &g, y1) == act) {
+            ++y1;
+        }
+        kj_layout_seg seg[KJ_LAYOUT_MAX_SEGS];
+        bool unsupported;
+        const int n = kj_layout_segments(c->rows, c->nrows, act, &g, seg, &unsupported);
+#ifndef HGSS_PROFILE_OFF
+        s_stats.unsupported_modes += unsupported ? 1u : 0u;
+        s_stats.layout_segments += (uint32_t)n;
+#endif
+        for (int k = 0; k < n; ++k) {
+            const int s0 = seg[k].s0, s1 = seg[k].s1;
+            kj_gpu_scissor(t->width, phys_x(t, s0), phys_y(t, y), phys_x(t, s1), phys_y(t, y1));
+            if (seg[k].stretch) {
+                const float kx = (float)(s1 - s0);
+                set_xform_x(t, kx, (float)s0 - (float)seg[k].sx * kx);
+            } else {
+                set_xform_x(t, 1.0f, (float)(s0 - seg[k].sx));
+            }
+            draw_layer(f, bg, d, false);
+        }
+        y = y1;
+    }
+    set_xform(t);
+    restore_2d_state(c, (int)t->offset_x);
 }
 
 static void draw_span(ctx *c, const prepared *pr, bool draw_3d, bool *drew_3d)
@@ -1260,7 +1353,13 @@ static void draw_span(ctx *c, const prepared *pr, bool draw_3d, bool *drew_3d)
                     const bool t2 = (f.bldcnt >> 8) & 1;
                     const bool t1 = f.bldcnt & 1;
                     kj_gpu_scissor_off();
-                    kj_g3d_draw(c->target, c->screen == KJ_SCREEN_TOP,
+                    /* SHIFT3D: the 3D picture moves on the target only; the
+                     * DS matrices, viewport and box tests are untouched. */
+                    kj_target shifted = *c->target;
+                    if (c->nrows) {
+                        shifted.offset_x += (float)kj_layout_shift3d(c->rows, c->nrows) * shifted.scale;
+                    }
+                    kj_g3d_draw(&shifted, c->screen == KJ_SCREEN_TOP,
                                 (uint8_t)((t2 ? 1 : 0) | (t1 && f.mode >= 2 ? 2 : 0)),
                                 bg0_window(&f));
                     *drew_3d = true;
@@ -1268,7 +1367,19 @@ static void draw_span(ctx *c, const prepared *pr, bool draw_3d, bool *drew_3d)
                 }
                 continue;
             }
-            if (pr->bg_ok[bg]) {
+            if (!pr->bg_ok[bg]) {
+                continue;
+            }
+            if (c->nrows && pr->bg_text[bg]) {
+                draw_layer_wide(c, &f, bg, &pr->bg[bg]);
+            } else if (c->nrows) {
+                /* Affine BGs keep the DS's 256 columns (no layout rule
+                 * maps them yet: counted, drawn unchanged). */
+                kj_gpu_scissor(c->target->width, phys_x(c->target, 0), phys_y(c->target, c->y0),
+                               phys_x(c->target, 256), phys_y(c->target, c->y1));
+                draw_layer(&f, bg, &pr->bg[bg], false);
+                restore_2d_state(c, sx0);
+            } else {
                 draw_layer(&f, bg, &pr->bg[bg], false);
             }
         }
@@ -1303,6 +1414,11 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
     c.bg_vram_size = engine == 0 ? 0x80000u : 0x20000u;
     c.obj_vram = engine == 0 ? mem->obj_vram_a : mem->obj_vram_b;
     c.obj_vram_size = engine == 0 ? 0x40000u : 0x20000u;
+    if (screen == KJ_SCREEN_TOP && in->screen.rows[engine] != NULL) {
+        c.rows = in->screen.rows[engine];
+        c.nrows = in->screen.row_count[engine] < KJ_LAYOUT_MAX_ROWS ? in->screen.row_count[engine]
+                                                                     : KJ_LAYOUT_MAX_ROWS;
+    }
 
     const uint8_t *io = mem->io + engine * 0x1000;
     const uint32_t dispcnt = r32(io, 0);
@@ -1328,6 +1444,7 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
         prepare_span(&c, true, &pr);
         prepared_ok = true;
         if (pr.all_reused && !has_3d && memo->drawn && memo->engine == engine &&
+            memo->layout_generation == in->screen.generation &&
             memcmp(memo->regs, io, KJ_LINE_REG_BYTES) == 0 && memcmp(memo->pal, pal, 1024) == 0) {
 #ifndef HGSS_PROFILE_OFF
             ++s_skipped_screens;
@@ -1393,6 +1510,7 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
 
     memo->drawn = single_span;
     memo->engine = engine;
+    memo->layout_generation = in->screen.generation;
     memcpy(memo->regs, io, KJ_LINE_REG_BYTES);
     memcpy(memo->pal, pal, 1024);
     kj_perf_add(KJ_PERF_G2D, kj_perf_now() - t0);

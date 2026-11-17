@@ -206,10 +206,28 @@ typedef struct kj_g3_frame {
 #define KJ_SCREEN_OTHER          25u  /* a known application without an ID */
 #define KJ_SCREEN_COUNT          26u
 
-/* One wide-layout rule (issue #16 fills these; none yet). */
+/* One wide-layout rule (issue #16; Unown's ss3ds_widelayouts.h rows).
+ * Columns and lines are the DS's; the wide top screen shows DS columns
+ * -32..287. Unless bgs has KJ_LAYOUT_SCREEN, x0..x1 and top..bottom are
+ * columns and lines of the BG's picture (scroll applied), not the screen.
+ *   MOVE  bgs top bottom x0 x1 dx  : those columns drawn dx px over
+ *   FILL  bgs top bottom x0 x1 arg : wide columns x0..x1-1 show column arg
+ *   COPY  bgs top bottom x0 x1 arg : wide columns x0..x1-1 show arg, arg+1..
+ *   WRAP  bgs top bottom           : beside the screen the BG map continues
+ *   OBJS  top bottom x0 x1 dx      : OBJs whose middle is in the box move dx
+ *   SHIFT3D dx                     : the 3D layer moves dx px */
 typedef struct kj_layout_row {
     int16_t kind, bgs, top, bottom, x0, x1, dx, arg;
 } kj_layout_row;
+
+#define KJ_LAYOUT_MOVE    1
+#define KJ_LAYOUT_FILL    2
+#define KJ_LAYOUT_OBJS    3
+#define KJ_LAYOUT_SHIFT3D 4
+#define KJ_LAYOUT_COPY    5
+#define KJ_LAYOUT_WRAP    6
+#define KJ_LAYOUT_SCREEN  0x10
+#define KJ_LAYOUT_MAX_ROWS 32
 
 /* The screen on display and its layout, per engine (0 = A, 1 = B). The
  * generation changes whenever any of it changes; a renderer cache keyed on

@@ -22,6 +22,7 @@
 #include <stdint.h>
 
 #include "kj_bridge.h"
+#include "kj_layouts.h"
 #include "kj_screen.h"
 
 /* OverlayManagerTemplate (include/overlay_manager.h): init, main, exit,
@@ -126,13 +127,12 @@ void NitroPort_AppLeave(void)
     const uint32_t id = classify(s_shown);
     s_state.screen_id = id;
     s_state.depth = (uint32_t)(s_deepest_at < 0 ? 0 : s_deepest_at);
-    /* No layout rules yet (issue #16): every screen draws as the DS does. */
-    s_state.row_count[0] = s_state.row_count[1] = 0;
-    s_state.rows[0] = s_state.rows[1] = NULL;
+    kj_layouts_for(id, &s_state);
     ++s_state.generation;
-    NitroPort_Log("[screen] %s (depth %lu, init %p, generation %lu)", NAMES[id],
-                  (unsigned long)s_state.depth, s_shown,
-                  (unsigned long)s_state.generation);
+    NitroPort_Log("[screen] %s (depth %lu, init %p, generation %lu, layout rows A %lu B %lu)",
+                  NAMES[id], (unsigned long)s_state.depth, s_shown,
+                  (unsigned long)s_state.generation, (unsigned long)s_state.row_count[0],
+                  (unsigned long)s_state.row_count[1]);
 }
 
 void kj_screen_snapshot(kj_screen_state *out)
