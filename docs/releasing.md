@@ -71,8 +71,11 @@ the CIA forwarder look for them:
 | `SHA256SUMS` | `sha256sum -b` of every file above, binary-mode format (`<hash> *<name>`) |
 
 The CIA is only a forwarder that launches `/3ds/kohjoh-<edition>.3dsx`, so it
-rarely changes except for its version. Building one needs `makerom` and
-`bannertool` (not installed by default). Without `bannertool`, reuse the
+rarely changes except for its version, so if you do not need to bump it you
+can simply reattach the previous release's CIAs. `makerom.exe` and
+`bannertool.exe` are already on this machine in
+`C:\Users\terezi\workdir\Pokemon-Soulsilver-New3ds\build\cia-tools\bin\`
+(not on PATH). Without `bannertool`, reuse the
 existing `build/{gold,silver}.bnr`, `build/{gold,silver}.smdh` and
 `build/forwarder-{gold,silver}.elf` and run the `makerom` line from the
 Makefile directly (title ids `0xD7101` gold / `0xD7102` silver; the Makefile
