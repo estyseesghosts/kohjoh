@@ -33,6 +33,7 @@ with its source revision; local changes are listed per import.
 | `src/compat/stubs/` | hgss-3ds `hgss/game/stubs`, `hgss/game/app/cpp_runtime.c` | `a26c003` | GPL-3.0 | none |
 | `tools/game/*.py` | hgss-3ds `tools/` | `a26c003` | GPL-3.0 | paths; bootstrap reads `upstream.lock`, generates headers in Python, refreshes MSYS copies safely; build split into DS-side/3DS-side runtimes and per-file shaders; incremental compile (-MMD + flag signatures) |
 | `tools/rompack/*.py` | hgss-3ds `builder/` | `a26c003` | GPL-3.0 | none yet |
+| `src/graphics/g2d/wideart.c`, `wideart.h`, `tools/wideart/pack_wideart.py`; art key and band quads in `src/graphics/g2d/g2d.c` | Sinjoh `engine/graphics/g2d/`, `tools/wideart/` | `418dcf4` | GPL-3.0 | empty `wideart/` is not an error; debug overlay removed; keys hashed only for retained top-screen text BGs |
 
 Fixed-point lighting/texgen formulas in `src/runtime/kj_g3.c` follow the
 GBATEK-derived code in Platinum's `port_gx3d.c` (cited inline).

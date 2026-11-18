@@ -413,6 +413,36 @@ def devkit_tool(*parts: str) -> Path:
     return tool
 
 
+def wideart_object(out: Path) -> Path:
+    """The WideArt pictures (issue #14): wideart/*.png packed by
+    tools/wideart/pack_wideart.py into one blob (bands already RGBA5551 in
+    the PICA's tile order), embedded by bin2s as wideart_bin /
+    wideart_bin_size. No pictures: a valid blob with none, and the renderer
+    keeps its edge fills."""
+    wdir = out / "wideart"
+    wdir.mkdir(parents=True, exist_ok=True)
+    blob = wdir / "wideart.bin"
+    asm = wdir / "wideart_bin.s"
+    obj = wdir / "wideart_bin.o"
+    proc = run([sys.executable, str(REPO / "tools" / "wideart" / "pack_wideart.py"),
+                "--source", str(REPO / "wideart"), "--output", str(blob)])
+    if proc.returncode != 0:
+        raise RuntimeError(f"pack_wideart: {(proc.stderr or proc.stdout).strip()}")
+    print("  " + proc.stdout.strip())
+    bin2s = devkit_tool("tools", "bin", "bin2s")
+    assembler = devkitarm_bin() / "arm-none-eabi-as"
+    if os.name == "nt" and assembler.with_suffix(".exe").is_file():
+        assembler = assembler.with_suffix(".exe")
+    proc = run([str(bin2s), str(blob)])
+    if proc.returncode != 0:
+        raise RuntimeError(f"bin2s failed: {(proc.stderr or proc.stdout).strip()}")
+    asm.write_text(proc.stdout, encoding="utf-8")
+    proc = run([str(assembler), "-o", str(obj), str(asm)])
+    if proc.returncode != 0:
+        raise RuntimeError(f"as failed: {(proc.stderr or proc.stdout).strip()}")
+    return obj
+
+
 def _one_shader_object(out: Path, src: Path) -> Path:
     shdir = out / "shaders"
     shdir.mkdir(parents=True, exist_ok=True)
@@ -1890,6 +1920,7 @@ def main(argv: list[str] | None = None) -> int:
         app_failed += ctr_failed
         try:
             app_objects += shader_objects(out)
+            app_objects.append(wideart_object(out))
         except RuntimeError as exc:
             print(f"   shader build failed: {exc}", file=sys.stderr)
             app_failed.append((Path("shaders"), 1, ""))

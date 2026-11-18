@@ -22,8 +22,10 @@
 
 #include "graphics/g2d/g2d.h"
 
+#include "app/script.h"
 #include "diagnostics/log.h"
 #include "diagnostics/perf.h"
+#include "graphics/g2d/wideart.h"
 #include "graphics/g3d/g3d.h"
 #include "graphics/layout/layout.h"
 #include "graphics/layout/override.h"
@@ -975,6 +977,9 @@ typedef struct layer_cache {
     /* OBJ: per (priority, semi) sub-ranges of quads */
     uint32_t sub_first[9], sub_count[9];
     uint8_t oam[0x400];
+    /* text BG on the top screen: its wide-art bands (at most 2 quads) */
+    kj_v2d *band;
+    uint32_t band_count;
 } layer_cache;
 
 static layer_cache s_bg_cache[2][4];
@@ -1041,6 +1046,7 @@ static void text_key(const ctx *c, int bg, uint8_t key[16])
     memcpy(key + 6, &d, 4);
     key[10] = (uint8_t)c->engine;
     key[11] = c->nrows ? 1 : 0; /* wide quads (-64..320) */
+    key[12] = c->screen == KJ_SCREEN_TOP ? 1 : 0; /* wide-art bands: top only */
 }
 
 static void text_map_range(const ctx *c, int bg, uint32_t *off, uint32_t *len)
@@ -1068,8 +1074,170 @@ static const uint8_t *text_ext_src(const ctx *c, int bg)
     return ext_bg_slot(c->in, c->engine, slot);
 }
 
+/* ------------------------------------------------------------ wide art */
+
+/*
+ * The wide art (issue #14, from Sinjoh at 418dcf4): hand-drawn side bands
+ * for a text BG on the top screen. A picture is found by the layer's art
+ * key, FNV-1a over the layer's kind and CNT, its map entries, the bytes of
+ * the tiles the map uses and the palette banks it uses: what the layer
+ * shows, not where it is scrolled. Pictures are named <key>_<hofs>_<vofs>
+ * (tools/wideart/pack_wideart.py), and the key of every top-screen text BG
+ * is logged once, so a picture can be drawn for any scene.
+ *
+ * Only retained layers get bands: a frame with per-line register changes
+ * draws none (its layers are rebuilt each frame and hashing their maps
+ * every frame is not worth it).
+ */
+
+#define ART_KEY_START 0xcbf29ce484222325ull
+#define ART_KIND_TEXT 1u
+#define ART_REST 8 /* how far the layer may scroll from the picture's spot */
+#define WIDE_CANVAS_W 320
+#define WIDE_BAND_W 32
+#define WIDE_ORIGIN 32
+
+static const int s_text_sizes[4][2] = { { 256, 256 }, { 512, 256 }, { 256, 512 }, { 512, 512 } };
+static uint64_t s_logged_key[2][4];
+static uint32_t s_art_matched, s_art_missing;
+
+static uint64_t art_key_add(uint64_t h, uint32_t v)
+{
+    for (int i = 0; i < 4; ++i) {
+        h = (h ^ (v & 0xFFu)) * 0x100000001b3ull;
+        v >>= 8;
+    }
+    return h;
+}
+
+static uint64_t text_art_key(const ctx *c, int bg)
+{
+    const uint16_t cnt = r16(c->regs, 0x08 + 2 * bg);
+    const bool bpp8 = (cnt & 0x80u) != 0;
+    const uint32_t entries =
+        (uint32_t)(s_text_sizes[cnt >> 14][0] / 8) * (uint32_t)(s_text_sizes[cnt >> 14][1] / 8);
+    const uint32_t mask = c->bg_vram_size - 1u;
+    uint32_t char_base = ((cnt >> 2) & 15u) * 0x4000u;
+    uint32_t screen_base = ((cnt >> 8) & 31u) * 0x800u;
+    uint32_t used[1024 / 32];
+    uint32_t banks = 0;
+
+    if (c->engine == 0) {
+        char_base += ((c->dispcnt >> 24) & 7u) * 0x10000u;
+        screen_base += ((c->dispcnt >> 27) & 7u) * 0x10000u;
+    }
+    uint64_t h = art_key_add(ART_KEY_START, ART_KIND_TEXT | ((uint32_t)(cnt & 0xC080u) << 8));
+    memset(used, 0, sizeof(used));
+    for (uint32_t i = 0; i < entries; ++i) {
+        const uint32_t entry = r16(c->bg_vram, (screen_base + i * 2u) & mask);
+        const uint32_t tile = entry & 0x3FFu;
+        h = art_key_add(h, entry);
+        used[tile >> 5] |= 1u << (tile & 31u);
+        banks |= 1u << (entry >> 12);
+    }
+    const uint32_t tile_bytes = bpp8 ? 64u : 32u;
+    for (uint32_t i = 0; i < 1024; ++i) {
+        if (!(used[i >> 5] & (1u << (i & 31u)))) {
+            continue;
+        }
+        for (uint32_t k = 0; k < tile_bytes; k += 4) {
+            h = art_key_add(h, r32(c->bg_vram, (char_base + i * tile_bytes + k) & mask));
+        }
+    }
+    const uint16_t *pal = pltt_ptr(c->in->mem, c->engine, 0);
+    const uint8_t *ext = bpp8 ? text_ext_src(c, bg) : NULL;
+    if (!bpp8) {
+        for (uint32_t i = 0; i < 16; ++i) {
+            for (uint32_t k = 0; (banks & (1u << i)) && k < 16; ++k) {
+                h = art_key_add(h, pal[i * 16u + k] & 0x7FFFu);
+            }
+        }
+    } else if (ext != NULL) {
+        for (uint32_t i = 0; i < 16; ++i) {
+            for (uint32_t k = 0; (banks & (1u << i)) && k < 256; ++k) {
+                h = art_key_add(h, r16(ext, (i << 9) + k * 2u) & 0x7FFFu);
+            }
+        }
+    } else {
+        for (uint32_t i = 0; i < 256; ++i) {
+            h = art_key_add(h, pal[i] & 0x7FFFu);
+        }
+    }
+    return h != 0 ? h : 1;
+}
+
+static void put_band_quad(kj_v2d *v, int x, int w, int h, int tx, int ty)
+{
+    const int16_t u0 = (int16_t)(tx * KJ_ATLAS_UV_UNIT + 1);
+    const int16_t u1 = (int16_t)((tx + w) * KJ_ATLAS_UV_UNIT - 1);
+    const int16_t v0 = (int16_t)(ty * KJ_ATLAS_UV_UNIT + 1);
+    const int16_t v1 = (int16_t)((ty + h) * KJ_ATLAS_UV_UNIT - 1);
+    v[0] = (kj_v2d){ (int16_t)x, 0, u0, v0, 255, 255, 255, 255 };
+    v[1] = (kj_v2d){ (int16_t)(x + w), 0, u1, v0, 255, 255, 255, 255 };
+    v[2] = (kj_v2d){ (int16_t)x, (int16_t)h, u0, v1, 255, 255, 255, 255 };
+    v[3] = (kj_v2d){ (int16_t)(x + w), (int16_t)h, u1, v1, 255, 255, 255, 255 };
+}
+
+/* The picture's bands as quads (at most 2), shifted by dx: how far the
+ * layer has scrolled right since the picture was made. */
+static uint32_t band_quads(const kj_wideart_pic *pic, int dx, kj_v2d *v)
+{
+    const int bh = pic->band_h;
+    uint32_t n = 0;
+    int lo = dx > 0 ? 0 : -dx;
+    int hi = dx > 0 ? WIDE_BAND_W - dx : WIDE_BAND_W;
+
+    if (hi > lo) {
+        put_band_quad(v, lo - WIDE_ORIGIN, hi - lo, bh, pic->left_x + lo + dx, pic->left_y);
+        ++n;
+    }
+    const int rx0 = WIDE_CANVAS_W - WIDE_BAND_W;
+    lo = dx > 0 ? rx0 : rx0 - dx;
+    hi = dx > 0 ? WIDE_CANVAS_W - dx : WIDE_CANVAS_W;
+    if (hi > lo) {
+        put_band_quad(v + n * 4u, lo - WIDE_ORIGIN, hi - lo, bh, pic->right_x + lo + dx - rx0,
+                      pic->right_y);
+        ++n;
+    }
+    return n;
+}
+
+/* A rebuilt layer's bands: its key, logged once, and its picture's quads. */
+static uint32_t layer_bands(const ctx *c, int bg, kj_v2d *v)
+{
+    const uint64_t key = text_art_key(c, bg);
+    const kj_wideart_pic *pic = kj_wideart_find(key);
+
+    const bool fresh = s_logged_key[c->engine][bg] != key;
+    if (fresh) {
+        s_logged_key[c->engine][bg] = key;
+        /* <key>_<hofs>_<vofs>.png is the name a picture for this layer
+         * as it is now would have. */
+        kj_log("[wide art] engine %d bg %d key %016llx_%d_%d%s", c->engine, bg, (unsigned long long)key,
+               r16(c->regs, 0x10 + 4 * bg) & 0x1FF, r16(c->regs, 0x12 + 4 * bg) & 0x1FF,
+               pic != NULL ? " (a picture)" : "");
+    }
+    if (pic == NULL) {
+        ++s_art_missing;
+        return 0;
+    }
+    const uint16_t cnt = r16(c->regs, 0x08 + 2 * bg);
+    int dx = 0;
+    pic = kj_wideart_find_near(key, r16(c->regs, 0x10 + 4 * bg) & 0x1FF,
+                               r16(c->regs, 0x12 + 4 * bg) & 0x1FF, s_text_sizes[cnt >> 14][0],
+                               s_text_sizes[cnt >> 14][1], 256, 192, &dx);
+    if (pic == NULL || (!(pic->flags & KJ_WIDE_ART_LOOP) && (dx < -ART_REST || dx > ART_REST))) {
+        if (fresh) {
+            kj_log("[wide art] engine %d bg %d: no picture near this scroll", c->engine, bg);
+        }
+        return 0;
+    }
+    ++s_art_matched;
+    return band_quads(pic, dx, v);
+}
+
 /* A text BG, retained when possible. */
-static bool text_bg_retained(const ctx *c, int bg, drawable *out)
+static bool text_bg_retained(const ctx *c, int bg, drawable *out, drawable *band)
 {
     layer_cache *lc = &s_bg_cache[c->engine][bg];
     const uint16_t *pal = pltt_ptr(c->in->mem, c->engine, 0);
@@ -1085,6 +1253,8 @@ static bool text_bg_retained(const ctx *c, int bg, drawable *out)
         chars_same(lc, c->bg_vram)) {
         out->base = lc->quads;
         out->count = lc->count;
+        band->base = lc->band;
+        band->count = lc->band_count;
 #ifndef HGSS_PROFILE_OFF
         ++s_reused_layers;
 #endif
@@ -1093,6 +1263,18 @@ static bool text_bg_retained(const ctx *c, int bg, drawable *out)
     if (!cache_alloc(lc)) {
         return false;
     }
+    lc->band_count = 0;
+    if (c->screen == KJ_SCREEN_TOP &&
+        (kj_wideart_count() > 0 || (kj_script_debug() & KJ_DEBUG_ART_KEYS))) {
+        if (lc->band == NULL) {
+            lc->band = linearAlloc(2u * 4u * sizeof(kj_v2d));
+        }
+        if (lc->band != NULL) {
+            lc->band_count = layer_bands(c, bg, lc->band);
+        }
+    }
+    band->base = lc->band;
+    band->count = lc->band_count;
     run r;
     memset(&r, 0, sizeof(r));
     r.ext = true;
@@ -1207,6 +1389,7 @@ void kj_g2d_begin_frame(void)
 
 typedef struct prepared {
     drawable bg[4];
+    drawable band[4]; /* wide-art bands (retained top-screen text BGs) */
     bool bg_ok[4];
     bool bg_text[4];
     drawable obj[9]; /* priority * 2 + semi; [8]: OBJ-window OBJs */
@@ -1247,7 +1430,7 @@ static void prepare_span(const ctx *c, bool retain, prepared *pr)
         }
         pr->bg_text[bg] = !affine && !ext16;
         if (!affine && !ext16 && retain) {
-            pr->bg_ok[bg] = text_bg_retained(c, bg, &pr->bg[bg]);
+            pr->bg_ok[bg] = text_bg_retained(c, bg, &pr->bg[bg], &pr->band[bg]);
         } else {
             run r;
             memset(&r, 0, sizeof(r));
@@ -1420,6 +1603,19 @@ static void draw_span(ctx *c, const prepared *pr, bool draw_3d, bool *drew_3d)
             } else {
                 draw_layer(&f, bg, &pr->bg[bg], false);
             }
+            if (pr->band[bg].count != 0 && kj_wideart_texture() != NULL) {
+                /* The bands lie outside the DS columns: open the scissor
+                 * to the wide screen and sample the wide-art texture. */
+                kj_gpu_bind_texture(0, kj_wideart_texture());
+                C3D_FVUnifSet(GPU_VERTEX_SHADER, kj_gpu_uloc_2d_uvscale(),
+                              1.0f / (float)(kj_wideart_texture_width() * KJ_ATLAS_UV_UNIT),
+                              -1.0f / (float)(kj_wideart_texture_height() * KJ_ATLAS_UV_UNIT), 0.0f, 1.0f);
+                kj_gpu_scissor(c->target->width, phys_x(c->target, KJ_LAYOUT_LEFT),
+                               phys_y(c->target, c->y0), phys_x(c->target, KJ_LAYOUT_RIGHT),
+                               phys_y(c->target, c->y1));
+                draw_layer(&f, bg, &pr->band[bg], false);
+                restore_2d_state(c, sx0);
+            }
         }
         if (pr->obj_ok) {
             draw_layer(&f, LAYER_OBJ, &pr->obj[p * 2], false);
@@ -1566,11 +1762,18 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
 bool kj_g2d_init(void)
 {
     memset(s_pal, 0, sizeof(s_pal));
-    return kj_gpu_init() && kj_atlas_init();
+    if (!kj_gpu_init() || !kj_atlas_init()) {
+        return false;
+    }
+    kj_wideart_init(); /* optional: without it the sides keep their fills */
+    return true;
 }
 
 void kj_g2d_exit(void)
 {
+    kj_log("[wide art] %lu layer builds with a picture, %lu without", (unsigned long)s_art_matched,
+           (unsigned long)s_art_missing);
+    kj_wideart_exit();
     kj_atlas_exit();
     kj_gpu_exit();
 }

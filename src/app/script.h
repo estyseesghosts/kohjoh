@@ -39,6 +39,7 @@ bool kj_script_dump(uint32_t frame);
 #define KJ_DEBUG_NO_TEXTURE 0x10u
 #define KJ_DEBUG_NO_JOIN 0x20u       /* issue #13: no batch joins at all */
 #define KJ_DEBUG_NO_JOIN_LIT 0x40u   /* issue #13: no joins for lit batches */
+#define KJ_DEBUG_ART_KEYS 0x80u      /* issue #14: log wide-art keys with no pictures */
 uint32_t kj_script_debug(void);
 /* V-blank at which to close (0: never). */
 uint32_t kj_script_end(void);
