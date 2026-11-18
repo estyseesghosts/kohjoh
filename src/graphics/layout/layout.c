@@ -20,7 +20,7 @@
 static bool bg_row(const kj_layout_row *t)
 {
     return t->kind == KJ_LAYOUT_MOVE || t->kind == KJ_LAYOUT_FILL || t->kind == KJ_LAYOUT_COPY ||
-           t->kind == KJ_LAYOUT_WRAP;
+           t->kind == KJ_LAYOUT_WRAP || t->kind == KJ_LAYOUT_SCALE;
 }
 
 /* Unown's h0: the scroll as a small signed picture offset. */
@@ -80,6 +80,14 @@ int kj_layout_segments(const kj_layout_row *rows, uint32_t n, uint32_t active,
     *unsupported = false;
     if (n > KJ_LAYOUT_MAX_ROWS) {
         n = KJ_LAYOUT_MAX_ROWS;
+    }
+    /* SCALE wins over the other rows: the whole layer, 5/4 wide (Unown's
+     * wide title, soulsilver3ds/platform/title_layers.h: sx = (4x+2)/5). */
+    for (uint32_t k = 0; k < n; ++k) {
+        if ((active & (1u << k)) && rows[k].kind == KJ_LAYOUT_SCALE) {
+            out[0] = (kj_layout_seg){ KJ_LAYOUT_LEFT, KJ_LAYOUT_RIGHT, 0, 2 };
+            return 1;
+        }
     }
     /* r[] holds picture columns first. */
     for (int s = KJ_LAYOUT_LEFT; s < KJ_LAYOUT_RIGHT; ++s) {

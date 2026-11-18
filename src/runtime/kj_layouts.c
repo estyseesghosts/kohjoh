@@ -21,6 +21,7 @@
 #define WRAP(bgs, t, b)              { KJ_LAYOUT_WRAP, (bgs), (t), (b), 0, 0, 0, 0 }
 #define OBJS(t, b, x0, x1, dx)       { KJ_LAYOUT_OBJS, 0, (t), (b), (x0), (x1), (dx), 0 }
 #define SHIFT3D(dx)                  { KJ_LAYOUT_SHIFT3D, 0, 0, 0, 0, 0, (dx), 0 }
+#define SCALE(bgs, t, b)             { KJ_LAYOUT_SCALE, (bgs), (t), (b), 0, 0, 0, 0 }
 #define N(t) ((uint32_t)(sizeof(t) / sizeof((t)[0])))
 
 /* Summary (engine A on top: BG0 3D Pokemon, BG1 text, BG2 page extras, BG3
@@ -36,6 +37,14 @@ static const kj_layout_row SUMMARY_A[] = {
     MOVE(0x8, 0, 192, 136, 256, 32),
     MOVE(0x6, 0, 192, 0, 141, -32), MOVE(0x6, 0, 192, 141, 256, 32),
     OBJS(0, 192, 0, 141, -32), OBJS(0, 192, 141, 256, 32), SHIFT3D(32),
+};
+
+/* Title (engine B on top: BG3 the animated sunburst, whose tiles and
+ * palette change every frame, so no wide-art picture can match it; BG0-2
+ * the logo and text). The sunburst is drawn 5/4 wide, the logo keeps the
+ * DS columns: Unown's GPU wide title, approved in Azahar there. */
+static const kj_layout_row TITLE_B[] = {
+    SCALE(0x8 | KJ_LAYOUT_SCREEN, 0, 192),
 };
 
 /* Party (engine B on top: BG1 the framed panel, BG0 the bottom bar). */
@@ -118,6 +127,7 @@ typedef struct screen_layout {
 
 static const screen_layout LAYOUTS[] = {
     { KJ_SCREEN_FIELD, { FIELD_A, NULL }, { N(FIELD_A), 0 } },
+    { KJ_SCREEN_TITLE, { NULL, TITLE_B }, { 0, N(TITLE_B) } },
     { KJ_SCREEN_BATTLE, { BATTLE_A, NULL }, { N(BATTLE_A), 0 } },
     { KJ_SCREEN_SUMMARY, { SUMMARY_A, NULL }, { N(SUMMARY_A), 0 } },
     { KJ_SCREEN_PARTY, { NULL, PARTY_B }, { 0, N(PARTY_B) } },

@@ -20,7 +20,8 @@
 #define KJ_LAYOUT_MAX_SEGS 32
 
 /* Wide columns [s0, s1) show source screen columns: stretch = 0, sx + (s -
- * s0); stretch = 1, column sx repeated. Source columns are where the
+ * s0); stretch = 1, column sx repeated; stretch = 2 (SCALE), source columns
+ * 0..255 drawn 5/4 wide over [s0, s1). Source columns are where the
  * layer's quads lie (picture column minus scroll). */
 typedef struct kj_layout_seg {
     int16_t s0, s1, sx;

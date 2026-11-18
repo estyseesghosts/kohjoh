@@ -1527,7 +1527,9 @@ static void draw_layer_wide(const ctx *c, const fx *f, int bg, const drawable *d
         for (int k = 0; k < n; ++k) {
             const int s0 = seg[k].s0, s1 = seg[k].s1;
             kj_gpu_scissor(t->width, phys_x(t, s0), phys_y(t, y), phys_x(t, s1), phys_y(t, y1));
-            if (seg[k].stretch) {
+            if (seg[k].stretch == 2) {
+                set_xform_x(t, (float)(s1 - s0) / 256.0f, (float)s0);
+            } else if (seg[k].stretch) {
                 const float kx = (float)(s1 - s0);
                 set_xform_x(t, kx, (float)s0 - (float)seg[k].sx * kx);
             } else {

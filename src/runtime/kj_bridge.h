@@ -220,7 +220,10 @@ typedef struct kj_g3_frame {
  *   COPY  bgs top bottom x0 x1 arg : wide columns x0..x1-1 show arg, arg+1..
  *   WRAP  bgs top bottom           : beside the screen the BG map continues
  *   OBJS  top bottom x0 x1 dx      : OBJs whose middle is in the box move dx
- *   SHIFT3D dx                     : the 3D layer moves dx px */
+ *   SHIFT3D dx                     : the 3D layer moves dx px
+ *   SCALE bgs top bottom           : the BG drawn 5/4 wide across all
+ *                                    400 px (a backdrop with no edge to
+ *                                    continue, e.g. the title's sunburst) */
 typedef struct kj_layout_row {
     int16_t kind, bgs, top, bottom, x0, x1, dx, arg;
 } kj_layout_row;
@@ -231,6 +234,7 @@ typedef struct kj_layout_row {
 #define KJ_LAYOUT_SHIFT3D 4
 #define KJ_LAYOUT_COPY    5
 #define KJ_LAYOUT_WRAP    6
+#define KJ_LAYOUT_SCALE   7
 #define KJ_LAYOUT_SCREEN  0x10
 #define KJ_LAYOUT_MAX_ROWS 32
 
