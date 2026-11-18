@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "comment": "Widescreen QA corpus (issue #21). Frames are V-blanks from boot (deterministic in LOTUS). save_sha256 names the kohjoh-prof card's HeartGold save (Cherrygrove, early game); the save itself is never committed. expect_log entries are regexes over this boot's log. Classes with no case yet are listed in tools/qa/README.md as open.",
+  "tolerance": 8,
+  "cases": [
+    {
+      "id": "intro-wideart",
+      "title": "Opening intro shot with WideArt bands",
+      "class": "animation",
+      "edition": "HG",
+      "save_sha256": "6f70eb0ee066b6a108de7c0d586f844f59bf81ec2cf8a580c9bdfc1bf8008eaf",
+      "script": "tools/lotus/trainer_battle.script",
+      "frames": [{ "frame": 1700, "note": "intro shot, three layers with pictures" }],
+      "expect_log": ["\\[wide art\\] \\d+ pictures", "\\(a picture\\)"]
+    },
+    {
+      "id": "title-wide",
+      "title": "Title screen, sunburst drawn 5/4 wide (SCALE row)",
+      "class": "animation",
+      "edition": "HG",
+      "save_sha256": "6f70eb0ee066b6a108de7c0d586f844f59bf81ec2cf8a580c9bdfc1bf8008eaf",
+      "script": "tools/lotus/trainer_battle.script",
+      "frames": [{ "frame": 2300, "note": "title (START at 2000 skips the intro; A at 2420)" }],
+      "expect_log": ["\\[screen\\] title .*layout rows A 0 B 1"]
+    },
+    {
+      "id": "battle-trainer",
+      "title": "Trainer battle (Youngster Joey): intro and command menu",
+      "class": "battle",
+      "edition": "HG",
+      "save_sha256": "6f70eb0ee066b6a108de7c0d586f844f59bf81ec2cf8a580c9bdfc1bf8008eaf",
+      "script": "tools/lotus/trainer_battle.script",
+      "frames": [
+        { "frame": 4300, "note": "battle intro" },
+        { "frame": 4800, "note": "command menu" }
+      ],
+      "expect_log": ["\\[script\\] battle: trainer 8/0", "\\[screen\\] battle"]
+    },
+    {
+      "id": "battle-elite4",
+      "title": "Elite Four Will",
+      "class": "battle",
+      "edition": "HG",
+      "save_sha256": "6f70eb0ee066b6a108de7c0d586f844f59bf81ec2cf8a580c9bdfc1bf8008eaf",
+      "script": "tools/lotus/elite4_will.script",
+      "frames": [
+        { "frame": 4150, "note": "VS wipe" },
+        { "frame": 4800, "note": "battle" }
+      ],
+      "expect_log": ["\\[script\\] battle: trainer 245/0", "\\[screen\\] battle"]
+    },
+    {
+      "id": "battle-rocket",
+      "title": "Team Rocket Grunt battle intro",
+      "class": "battle",
+      "edition": "HG",
+      "save_sha256": "6f70eb0ee066b6a108de7c0d586f844f59bf81ec2cf8a580c9bdfc1bf8008eaf",
+      "script": "tools/lotus/rocket_grunt.script",
+      "frames": [
+        { "frame": 3960, "note": "Rocket wipe" },
+        { "frame": 4800, "note": "battle" }
+      ],
+      "expect_log": ["\\[script\\] battle: trainer 12/0"]
+    },
+    {
+      "id": "battle-kimono",
+      "title": "Kimono Girl battle intro",
+      "class": "battle",
+      "edition": "HG",
+      "save_sha256": "6f70eb0ee066b6a108de7c0d586f844f59bf81ec2cf8a580c9bdfc1bf8008eaf",
+      "script": "tools/lotus/kimono_girl.script",
+      "frames": [
+        { "frame": 3960, "note": "Kimono Girl wipe" },
+        { "frame": 4800, "note": "battle" }
+      ],
+      "expect_log": ["\\[script\\] battle: trainer 160/0"]
+    },
+    {
+      "id": "battle-wild-r29",
+      "title": "Route 29 wild battle, wipe and command menu",
+      "class": "battle",
+      "edition": "HG",
+      "save_sha256": "6f70eb0ee066b6a108de7c0d586f844f59bf81ec2cf8a580c9bdfc1bf8008eaf",
+      "script": "tools/lotus/r29_battle.script",
+      "frames": [
+        { "frame": 6250, "note": "wild wipe" },
+        { "frame": 7600, "note": "command menu" }
+      ],
+      "expect_log": ["\\[screen\\] battle"]
+    }
+  ]
+}

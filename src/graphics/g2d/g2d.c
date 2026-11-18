@@ -929,6 +929,26 @@ static void master_brightness(const ctx *c, uint16_t mb)
 #endif
 }
 
+/* The side columns black (QA switch KJ_DEBUG_NO_SIDE_FILL, issue #21):
+ * shows what the widescreen stages add over a plain centred picture. */
+static void side_black(void)
+{
+    uint32_t q;
+    if (!rect_quad(-64, 0, 0, 192, 0xFF000000u, &q)) {
+        return;
+    }
+    uint32_t q2;
+    if (!rect_quad(256, 0, 320, 192, 0xFF000000u, &q2)) {
+        return;
+    }
+    kj_gpu_scissor_off();
+    kj_gpu_tev_vertex_color();
+    blend_off();
+    C3D_StencilTest(false, GPU_ALWAYS, 0, 0, 0);
+    kj_gpu_draw_quads(q, 1);
+    kj_gpu_draw_quads(q2, 1);
+}
+
 /* --------------------------------------------------------------- spans */
 
 /* Lines [y0, y1) whose registers equal line y0's (the bytes the 2D
@@ -1264,7 +1284,7 @@ static bool text_bg_retained(const ctx *c, int bg, drawable *out, drawable *band
         return false;
     }
     lc->band_count = 0;
-    if (c->screen == KJ_SCREEN_TOP &&
+    if (c->screen == KJ_SCREEN_TOP && !(kj_script_debug() & KJ_DEBUG_NO_WIDEART) &&
         (kj_wideart_count() > 0 || (kj_script_debug() & KJ_DEBUG_ART_KEYS))) {
         if (lc->band == NULL) {
             lc->band = linearAlloc(2u * 4u * sizeof(kj_v2d));
@@ -1657,7 +1677,7 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
         const kj_layout_row *rows = in->screen.rows[engine];
         uint32_t n = in->screen.row_count[engine];
         kj_layout_override_get(in->screen.screen_id, engine, &rows, &n);
-        if (rows != NULL && n > 0) {
+        if (rows != NULL && n > 0 && !(kj_script_debug() & KJ_DEBUG_NO_LAYOUT)) {
             c.rows = rows;
             c.nrows = n < KJ_LAYOUT_MAX_ROWS ? n : KJ_LAYOUT_MAX_ROWS;
         }
@@ -1749,6 +1769,9 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
     kj_gpu_scissor_off();
     kj_gpu_use_program(KJ_PROGRAM_2D);
     set_xform(target);
+    if (screen == KJ_SCREEN_TOP && (kj_script_debug() & KJ_DEBUG_NO_SIDE_FILL)) {
+        side_black();
+    }
     master_brightness(&c, r16(io, 0x6C));
 
     memo->drawn = single_span;
