@@ -25,6 +25,8 @@ pacing comes from hardware runs of the same cases ([pace]/[gputime] lines).
 |---|---|---|
 | intro / title | intro-wideart, title-wide | baselines: title-wide |
 | battle | trainer, Elite Four, Rocket, Kimono Girl, wild R29 | captured in LOTUS; see worklog |
-| field, applications, scripted events, stress | none yet | open: need save fixtures / input traces |
+| field | field-route (Continue, walk east) | LOTUS HG: log passes (field, layout rows A 2), baseline recorded |
+| applications | app-start-menu (X menu, first app) | staged; not yet captured |
+| scripted events, stress | none yet | open: need input traces |
 | melonDS reference | none | open: no melonDS automation here |
 | O3DS pacing | none | hardware runs by the maintainer |
