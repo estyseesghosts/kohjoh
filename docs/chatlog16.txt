@@ -1,0 +1,595 @@
+ ▐▛███▛█   Claude Code v2.1.317
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~\workdir\kohjoh
+
+
+❯ you are continuing to work on kohjoh. see chatlog15 to figure out where we    
+  left off. you were knocking out the remaining github issues and implementing  
+  wideart. see what issues are still open and not already completed, and get to 
+  work. commit as you go along and always follow agents.md attribution rules.   
+  before you get too comfortable, make sure you can drive lotus over mcp.       
+  ⎿  You've hit your 5-hour limit · resets 11:10am (America/New_York)
+     /upgrade or /usage-credits to finish what you’re working on.
+
+● Usage limit reached · continuing automatically at 11:10am · esc to 
+  cancel
+
+✻ Churned for 0s · done 9:52 AM
+
+● Usage limit reset · Continuing automatically
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● First, confirm Lotus over MCP works.
+
+  Called lotus 5 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/0300000000000000b4c0cdae0de1e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Lotus MCP works (session created, 300 frames run, capture taken); converting
+  the capture to check pixels.
+
+  Ran 6 shell commands (ctrl+o to expand)
+
+● Checking the capture image.
+
+  Read 1 file, called lotus 2 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/0500000000000000680ba2d818e1e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Lotus over MCP works: primary session on the kohjoh card ran 900 frames and
+  captures decode (title intro visible). Resuming at #18.
+
+  Ran 6 shell commands (ctrl+o to expand)
+
+● Adding the HP-box anchoring patch for #18; checking how game patches call into
+  the port.
+
+  Ran 6 shell commands (ctrl+o to expand)
+
+● Finding the kj-prof build command, then rebuilding with a battle layout.
+
+  Ran 6 shell commands (ctrl+o to expand)
+
+● Driving the session to the field to reach a wild battle for layout
+  measurements.
+
+  Called lotus 10 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/0700000000000000d4bffdfc36e1e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 3 shell commands (ctrl+o to expand)
+
+● Reached a new-game intro instead of Continue; checking the main menu.
+
+  Called lotus 6 times, ran 3 shell commands (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/0900000000000000f813f84848e1e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+● Checking the main menu capture.
+
+  Read 1 file, called lotus 5 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/0b000000000000006c6977cd4de1e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+● The script file captured the pad; restoring it to no input events.
+
+  Called lotus 9 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/0d00000000000000187d45285ae1e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Searched for 1 pattern, read 1 file, called lotus 5 times, ran 1 shell command (ctrl+o to expand)
+
+● START skips straight to the new-game tutorial, so the card's save isn't being
+  treated as valid. Inspecting it.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Card save is blank; copying the kohjoh-prof card's save (as the last session
+  did).
+
+  Searched for 1 pattern, read 1 file, called lotus 16 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/1400000000000000a08b722a73e1e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Save loads (Continue menu). Pressing A to enter the field.
+
+  Called lotus 5 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/150000000000000018b8c3ea79e1e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● In Cherrygrove. Checking LOTUS savestate support to avoid replaying boot.
+
+  Called lotus (ctrl+o to expand)
+
+● Savestate taken. Walking toward Route 30.
+
+  Called lotus 7 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/170000000000000074f8aa9d80e1e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 3 shell commands (ctrl+o to expand)
+
+● Heading west to Route 29 grass (route used last session).
+
+  Called lotus 7 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/190000000000000048832a8888e1e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 7 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/1b000000000000007c60fd418ee1e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Wrong direction (Route 29 is east of Cherrygrove). Reloading the savestate and
+  heading east.
+
+  Called lotus 8 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/1d00000000000000086e896195e1e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 7 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/1f0000000000000024deac449be1e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 7 times, ran 1 shell command (ctrl+o to expand)
+● readMcpResource(Read resource
+                 "lotus://artifact/21000000000000006ceefefba0e1e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Route 29 reached; grass just below. Saving state, then pacing in the grass for
+  an encounter.
+
+  Searched for 2 patterns, called lotus 30 times (ctrl+o to expand)
+
+● Battle started. Advancing past the intro and saving state.
+
+  Called lotus 3 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/25000000000000004c1b8822b1e1e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Battle reached (DS picture is 1.25× scaled, 32 logical px of margin each
+  side). Checking Unown's battle rows and the override format so I can iterate
+  without rebuilding.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Override is read only at boot, so savestates can't pick up edits. Checking the
+  battle BG setup in the decomp to pick rows.
+
+  Ran 5 shell commands (ctrl+o to expand)
+
+● BG1 = dialogue frame, BG3 = terrain, BG0 = 3D, HP boxes are OBJs. Adding
+  battle rows: HP boxes pushed to the outer edges, dialogue frame and terrain
+  extended.
+
+● Update(src\runtime\kj_layouts.c)
+  ⎿  Added 16 lines
+       79      MOVE(0x1, 0, 192, 0, 256, -32), OBJS(0, 192, 0, 256, -32),
+       80  };
+       81  
+       82 +/* Battle (engine A on top: BG0 3D battlers, BG1 the dialogue 
+          +frame and                                                     
+       83 + * text, BG3 the terrain backdrop; battle_main.c Battle_InitBa
+          +ckgrounds).                                                   
+       84 + * The HP boxes are OBJs and move to the outer edges (Unown's 
+          +wide_boxes,                                                   
+       85 + * done at emission so the DS OAM is untouched): the enemy box
+          + (upper left)                                                 
+       86 + * 32 px left, the player box (right, above the dialogue) 32 p
+          +x right. The                                                  
+       87 + * platforms are OBJs too but their middles lie outside both b
+          +oxes. The                                                     
+       88 + * dialogue frame's edges move out and its interior continues;
+          + the text                                                     
+       89 + * stays where the DS draws it. Terrain bands continue by thei
+          +r edge columns.                                               
+       90 + * Lines and columns measured in LOTUS (Route 29 wild battle, 
+          +2026-11-17). */                                               
+       91 +static const kj_layout_row BATTLE_A[] = {                     
+       92 +    FILL(0x8, 0, 192, -32, 0, 0), FILL(0x8, 0, 192, 256, 288, 
+          +255),                                                         
+       93 +    MOVE(0x2, 144, 192, 0, 12, -32), FILL(0x2, 144, 192, -20, 
+          +12, 12),                                                      
+       94 +    MOVE(0x2, 144, 192, 244, 256, 32), FILL(0x2, 144, 192, 244
+          +, 276, 243),                                                  
+       95 +    OBJS(8, 60, -64, 160, -32), OBJS(84, 144, 120, 320, 32),  
+       96 +};                                                            
+       97 +                                                              
+       98  /* Plain or gradient tops: the picture's own edge columns cont
+           inue. */
+       99  static const kj_layout_row EDGE_SIDES[] = {
+      100      FILL(0xF, 0, 192, -32, 0, 0), FILL(0xF, 0, 192, 256, 288, 
+           255),
+
+● Update(src\runtime\kj_layouts.c)
+  ⎿  Added 1 line
+      107  } screen_layout;
+      108  
+      109  static const screen_layout LAYOUTS[] = {
+      110 +    { KJ_SCREEN_BATTLE, { BATTLE_A, NULL }, { N(BATTLE_A), 0 }
+          + },                                                           
+      111      { KJ_SCREEN_SUMMARY, { SUMMARY_A, NULL }, { N(SUMMARY_A), 
+           0 } },
+      112      { KJ_SCREEN_PARTY, { NULL, PARTY_B }, { 0, N(PARTY_B) } },
+      113      { KJ_SCREEN_BAG, { BAG_A, NULL }, { N(BAG_A), 0 } },
+
+● Building kj-prof.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Built. Replaying the same inputs as a frame-indexed script on the new build.
+
+● Bash(cd ~/workdir/LOTUS-v0.0.4-windows-x64/data/sessions/cards/kohjoh/sdmc/3ds
+      /kohjoh; cat > script.txt <<'EOF'
+      every: 20…)
+  ⎿  Created tools\lotus\r29_battle.script (+22 -0)
+       1 +every: 20                                                      
+       2 +2000 START                                                     
+       3 +2420 A                                                         
+       4 +3340 A                                                         
+       5 +3960-4040 DOWN                                                 
+       6 +4040-4640 RIGHT                                                
+       7 +4660-4694 UP                                                   
+       8 +4694-5294 RIGHT                                                
+       9 +5314-5348 DOWN                                                 
+      10 +5348-5948 RIGHT                                                
+      11 +5968-6008 LEFT                                                 
+      12 +6008-6056 DOWN                                                 
+      13 +6056-6088 UP                                                   
+      14 +6088-6120 DOWN                                                 
+      15 +6120-6152 UP                                                   
+      16 +6152-6184 DOWN                                                 
+      17 +6204-6236 UP                                                   
+      18 +6236-6268 DOWN                                                 
+      19 +6268-6300 UP                                                   
+      20 +6300-6332 DOWN                                                 
+      21 +6332-6364 UP                                                   
+      22 +6364-6396 DOWN                                                 
+
+  Searched for 1 pattern, called lotus 13 times (ctrl+o to expand)
+
+● Replay reached the battle with 8 layout rows. Advancing to the command menu.
+
+  Called lotus 3 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/2700000000000000783bbee734e2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● HP boxes now sit on the outer edges, dialogue frame and terrain span 400 px.
+  Checking a turn (Fight → move) for stale panels or clipped values.
+
+  Called lotus 9 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/2900000000000000d8deed323ae2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/2a00000000000000186403333ae2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 2 times, ran 1 shell command (ctrl+o to expand)
+
+● Buttons aren't taking; tapping FIGHT on the touch screen.
+
+  Called lotus 9 times (ctrl+o to expand)
+● Inputs are ignored because the input script owns the pad for the whole run.
+  Checking script.c.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Adding a hand-back: once the script's last input event ends, live input takes
+  over (so a script can drive to a scene and LOTUS can continue interactively).
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Update(src\app\script.c)
+  ⎿  Added 12 lines
+      149      if (!s_active || s_event_count == 0) {
+      150          return false;
+      151      }
+      152 +    /* After its last event the script hands the pad back, so 
+          +a scripted                                                    
+      153 +     * drive to a scene can be continued by hand or over LOTUS
+          + MCP. */                                                      
+      154 +    uint32_t last = 0;                                        
+      155 +    for (unsigned i = 0; i < s_event_count; ++i) {            
+      156 +        const uint32_t len = s_events[i].length != 0 ? s_event
+          +s[i].length : s_every;                                        
+      157 +        if (s_events[i].vblank + len > last) {                
+      158 +            last = s_events[i].vblank + len;                  
+      159 +        }                                                     
+      160 +    }                                                         
+      161 +    if (vblank >= last) {                                     
+      162 +        return false;                                         
+      163 +    }                                                         
+      164      *keys = 0;
+      165      *touch = false;
+      166      for (unsigned i = 0; i < s_event_count; ++i) {
+
+● Bash(cd ~/workdir/kohjoh; sed -i 's|^ \*   end: N                close at
+      V-blank N| *   end: N                close at V-blank N\n *
+               (after…)
+  ⎿   * File: sdmc:/3ds/kohjoh/script.txt. Lines:
+      *   every: N              each press lasts N V-blanks (default 10)
+      *   <vblank> KEYS...      press KEYS (A B X Y L R START SELECT UP DOW
+     … +17 lines (ctrl+o to expand)
+  ⎿  Updated src\app\script.h (+2 -0)
+      16   *   dump <frame>          write the DS state the renderer read
+           for game frame
+      17   *                         <frame> to sdmc:/3ds/kohjoh/dumps/f<
+          frame>.kjd
+      18   *   end: N                close at V-blank N
+      19 + *                         (after its last input event the scri
+         +pt releases                                                    
+      20 + *                         the pad to live input)              
+      21   *   debug: FLAGS          renderer experiment switches (KJ_DEB
+          UG_* below)
+      22   * Frame-indexed scripts make Azahar captures reproducible; V-b
+          lank indexing
+      23   * matches hgss-3ds's tests/inputs format.
+  ⎿  (timeout 10m)
+
+  Called lotus 14 times (ctrl+o to expand)
+
+● Replay is deterministic (identical audio hash at frame 7600). Saving state,
+  then FIGHT → move 1 by touch.
+
+  Called lotus 6 times (ctrl+o to expand)
+
+● Input now reaches the game (new frame hashes). Tapping move 1 and capturing
+  mid-turn.
+
+  Called lotus 5 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/3100000000000000c43bcec7b7e2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 2 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/33000000000000006c238abebae2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● HP bars update in place. Finishing the battle to check the return to the
+  field.
+
+  Searched for 1 pattern, called lotus 17 times (ctrl+o to expand)
+
+● Battle won and back to the field with 0 layout rows. Capturing the field to
+  confirm nothing stale.
+
+  Called lotus (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/3500000000000000dc11ed96c7e2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Field is clean after the battle. Recording evidence and committing.
+
+● Bash(cd ~/workdir/kohjoh; S="C:/Users/terezi/AppData/Local/Temp/claude/596f382
+      ffeba1215/9cd2cd01-841b-4f63-822d-427471011d95/scratchpad"; cp
+      "$S/battle1.png" worklog…)
+  ⎿  782729c Wide battle layout: HP boxes to the edges, dialogue and terrai
+     n to 400 px (#18)
+  ⎿  Updated docs\widescreen-screens.md (+2 -1)
+      20  | options | A/B | 1 | layout implemented | backdrop map wraps, 
+          dither continuous to both edges (`...wide-options.png`) |
+      21  | pcbox | B | 5 | layout implemented | info panel flush left, t
+          itle bar and panel run on; box switching (R) leaves the top sta
+          ble (`...wide-pcbox.png`) |
+      22  | naming, flymap, signature | A/B | 2 | basic edge fill | not c
+          aptured on the test save (needs Fly / a rename / a signature); 
+          same FILL rows as the bag's verified backdrop |
+      23 -| field, battle, title, intro, others | - | 0 | not attempted |
+         - DS picture centred (#14/#18/#19) |                            
+      23 +| battle (wild, single) | A | 8 | layout implemented | HP boxes
+         + to the outer edges (OBJs moved at emission, DS OAM untouched),
+         + dialogue frame and terrain to both edges; a Tackle turn and th
+         +e return to the field leave no stale panel (`...wide-battle.png
+         +`, `...wide-battle-turn.png`); trainer, double, cave and Surf b
+         +attles not yet captured |                                      
+      24 +| field, title, intro, others | - | 0 | not attempted | DS pict
+         +ure centred (#14/#19) |                                        
+      25  
+      26  Navigation verified with screen transitions in the log: field >
+           party >
+      27  summary > party > field, field > bag > field, field > pokegear 
+          > gearphone >
+  ⎿  Created tools\lotus\README-scripts.md (+10 -0)
+       1 +# LOTUS input scripts                                          
+       2 +                                                               
+       3 +Copy one to the card's `sdmc/3ds/kohjoh/script.txt`, then load/
+         +reset the                                                      
+       4 +session. V-blank indexed from boot; deterministic in LOTUS (sam
+         +e audio hash                                                   
+       5 +at the same frame across runs). After its last input event the 
+         +script hands                                                   
+       6 +the pad back to `lotus_input`.                                 
+       7 +                                                               
+       8 +- `r29_battle.script`: kohjoh-prof card save (Cherrygrove) -> R
+         +oute 29 grass ->                                               
+       9 +  wild Rattata battle; command menu at frame ~7600. Touch FIGHT
+         + at (160,100),                                                 
+      10 +  move 1 at (80,70) (3DS bottom-screen coordinates).           
+  ⎿  … 2 more files changed
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● LOTUS works over MCP, and the first part of #18 (widescreen battles) is done
+  and committed as 782729c.
+
+  LOTUS: I opened a session on the kohjoh card, booted the profiled build,
+  loaded a save, played into a wild battle and won it, using savestates, button
+  and touch input, and screen captures.
+
+  What changed for #18:
+  - Battle screen: wild battles now fill the full 400 px top screen. The enemy
+    HP box sits at the left edge and yours at the right edge. The dialogue box
+    and the background stretch to both sides. This is done in the renderer, so
+    the game's own code and sprite data are unchanged and no game patch was
+    needed.
+  - What I checked: a Route 29 wild battle, from the move menu through a Tackle
+    turn (the HP bar updated) to winning. Back on the field the wide battle
+    layout was gone and nothing from the battle was left on screen. Screenshots
+    are in worklog/2026-11-17-wide-battle*.png and the status table in
+    docs/widescreen-screens.md is updated.
+  - Script fix: input scripts (script.txt) used to keep control of the buttons
+    for the whole run, so live input was ignored. A script now hands control
+    back after its last scheduled press, so you can script your way to a scene
+    and then play by hand or over MCP.
+  - Repro: tools/lotus/r29_battle.script gets from the save to the battle the
+    same way on every run.
+
+  Not done on #18: trainer and Gym Leader battles, double battles, cave and Surf
+  battles, and catching a Pokémon. None of these are tested yet because the
+  test save is too early in the game to reach them. The O3DS frame-rate check
+  needs real hardware. I left a progress comment on the issue, and it stays
+  open.
+
+  Save change: the kohjoh card's save was blank, so I copied in the kohjoh-prof
+  card's save. The card's .bak file is untouched.
+
+  Still open: #19 (battle wipes and screen effects), #20 (WideArt coverage), #21
+  (widescreen test suite and release gate), #14 (Sinjoh WideArt integration),
+  plus #9, #5, #4, #3 and #2. I'd take #19 next, since it builds directly on the
+  battle work.
+
+✻ Churned for 32m 45s · done 11:43 AM

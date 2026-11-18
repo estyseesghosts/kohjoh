@@ -1,0 +1,3312 @@
+ ▐▛███▛█   Claude Code v2.1.317
+▝▜██████▀  Opus 5.5 · Claude Pro
+ ▝▝   ▝▝   ~\workdir\kohjoh
+
+
+❯ you are working on kohjoh. read chatlog14 to see where we left off. fix the   
+  bug that the last agent never got to fix. then continue knocking bugs off the 
+  issues list. if you've fixed all the real bugs, start working on the wideart  
+  issues from github. you have unowncollectables port available to you in this  
+  workdir. don't forget to close issues on github, commit as you go along, and  
+  always follow agents.md rules. before you get too comfortable, make sure you  
+  can drive lotus over mcp.                                                     
+
+  Called lotus, ran 2 shell commands (ctrl+o to expand)
+
+● LOTUS MCP works (windowed, control on). Checking issues and AGENTS.md next.
+
+  Called lotus 3 times, ran 4 shell commands (ctrl+o to expand)
+
+● Driving LOTUS over MCP works (session created, ran 600 frames, captured). Now
+  converting captures to view the intro.
+
+● readMcpResource(Read resource
+                 "lotus://artifact/0700000000000000105ec9665fd0e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 3 shell commands (ctrl+o to expand)
+
+● Capture pipeline works (frame 600 = intro gradient). Advancing to the starter
+  slide-in (~vblank 3380) for a live sweep.
+
+  Called lotus 7 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/4f00000000000000a48de71b73d0e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 2 shell commands (ctrl+o to expand)
+
+● Sweeping the starter scene in ~30-frame steps.
+
+  Called lotus 2 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/5200000000000000c8a07f8077d0e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 2 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/5400000000000000f04f17b37ad0e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 2 times, ran 1 shell command (ctrl+o to expand)
+
+● Identical to 3440. Stepping on.
+
+  Called lotus 2 times (ctrl+o to expand)
+
+● Top screen unchanged 3440–3490 (empty gradient). Checking the prior agent's
+  oracle renders for timing.
+
+  Read 2 files, ran 2 shell commands (ctrl+o to expand)
+
+● Oracle shows starters on the DS bottom screen. Checking the 3DS bottom
+  capture.
+
+● readMcpResource(Read resource
+                 "lotus://artifact/5900000000000000b00dc0767ed0e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Bottom shows the Totodile (blue) gradient with no starter yet. Stepping in
+  10-frame increments.
+
+  Called lotus 4 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/5c000000000000003cb3116b86d0e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Captures are BGRA (my converter swapped R/B — Cyndaquil's colors are actually
+  fine). Fixing converter; checking the original particle report.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Two reported bugs: starter particles, and battle stat arrows masked inverted.
+  The arrow one points at a concrete code note (OBJ window treated as WINOUT).
+  Reading g2d.c window handling.
+  Searched for 1 pattern, ran 2 shell commands (ctrl+o to expand)
+
+● The DS OBJ window (DISPCNT bit 15) is unimplemented, which would explain the
+  inverted stat-arrow mask and possibly the starter puffs. I'm reading the
+  prepare path next.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● I'm building the mode-2 OBJs as a ninth OBJ run in stencil region 3, with
+  WINOUT bits 8–13 as its enables, and I'm checking the coffeepot window spec
+  first.
+
+  Searched for 2 patterns, ran 1 shell command (ctrl+o to expand)
+
+● GPU_2D.md already specifies stencil for the OBJ window. Implementing.
+
+● Bash(cd /c/Users/terezi/workdir/kohjoh; python - <<'E'
+      p='src/graphics/g2d/g2d.c'…)
+  ⎿   src/graphics/g2d/g2d.c | 71 +++++++++++++++++++++++++++++++----------
+     ---------
+      1 file changed, 44 insertions(+), 27 deletions(-)
+  ⎿  Updated src\graphics\g2d\g2d.c (+44 -27)
+       3   *
+       4   * Translates one engine's state per scanline span into ordered
+           GPU passes:
+       5   *   clear (backdrop colour; stencil = backdrop's effect flags)
+       6 - *   window regions -> stencil bits 4-5 (0 outside, 1 WIN0, 2 W
+         -IN1)                                                           
+       6 + *   window regions -> stencil bits 4-5 (0 outside, 1 WIN0, 2 W
+         +IN1, 3 OBJ                                                     
+       7 + *   window: the opaque pixels of mode-2 OBJs, below WIN1 and W
+         +IN0)                                                           
+       8   *   for priority 3..0: BG3..BG0 of that priority (BG0 may be t
+          he 3D layer),
+       9   *                      then the OBJs of that priority (lower O
+          AM index on top)
+      10   *   brightness (BLDY) pass on target-1 pixels; master brightne
+          ss pass
+     ...
+      441  static const uint8_t OBJ_W[4][4] = { { 8, 16, 32, 64 }, { 16, 
+           32, 32, 64 }, { 8, 8, 16, 32 }, { 0 } };
+      442  static const uint8_t OBJ_H[4][4] = { { 8, 16, 32, 64 }, { 8, 8
+           , 16, 32 }, { 16, 32, 32, 64 }, { 0 } };
+      443  
+      443 -/* Emit the OBJs of one priority and blend kind (semi = OBJ mo
+          -de 1). */                                                     
+      444 +/* Emit the OBJs of one priority and blend kind (semi = OBJ mo
+          +de 1).                                                        
+      445 + * prio < 0 emits the OBJ-window OBJs (mode 2) of every priori
+          +ty. */                                                        
+      446  static uint32_t objs(const ctx *c, int prio, bool semi, run *o
+           ut)
+      447  {
+      448      const uint8_t *oam = c->in->mem->oam + c->engine * 0x400;
+     ...
+      466          if (!affine && (a0 & 0x200)) {
+      467              continue;
+      468          }
+      467 -        if (((a2 >> 10) & 3) != prio) {                       
+      468 -            continue;                                         
+      469 -        }                                                     
+      469          const int mode = (a0 >> 10) & 3;
+      471 -        if (mode == 2 || mode == 3) {                         
+      470 +        if (prio < 0) {                                       
+      471 +            if (mode != 2) {                                  
+      472 +                continue;                                     
+      473 +            }                                                 
+      474 +        } else if (((a2 >> 10) & 3) != prio || mode == 2) {   
+      475 +            continue;                                         
+      476 +        } else if (mode == 3) {                               
+      477  #ifndef HGSS_PROFILE_OFF
+      473 -            ++s_stats.unsupported_modes; /* OBJ window / bitma
+          -p OBJ */                                                      
+      478 +            ++s_stats.unsupported_modes; /* bitmap OBJ */     
+      479  #endif
+      480              continue;
+      476 -        }                                                     
+      477 -        if ((mode == 1) != semi) {                            
+     … 140 more lines (ctrl+o to expand)
+
+● Building.
+
+  Ran 7 shell commands (ctrl+o to expand)
+
+● Building the profiled HG into build/kj-prof (the LOTUS kohjoh-prof asset).
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Background command "Find OBJ window docs, cache arrays" completed (exit code
+0)
+
+● Build running in background. Checking coffeepot for a stencil citation
+  meanwhile.
+
+  Searched for 2 patterns, listed 1 directory (ctrl+o to expand)
+
+● Citation: coffeepot ctr/engineering/PICA200/rendering-2d.md:658,732 (sprite
+  windows → stencil mask pass). Waiting on build.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Monitor(kj-prof build finish or error)
+  ⎿  Monitor started · task bwsw4254o · timeout 900s
+
+● While it builds: preparing the battle stat-arrow repro.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Placeholder timings only, so I'll drive the battle interactively over MCP.
+  Checking where the card's save stands, using the running session.
+
+  Called lotus 5 times (ctrl+o to expand)
+
+● Monitor "kj-prof build finish or error" stream ended
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/5e000000000000004c3b58d1d7d0e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Still in the intro. Waiting for the new build before starting the battle
+  drive.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Background command "Build profiled HG with OBJ window" completed (exit code 0)
+
+● Background command "Wait for build packaging" completed (exit code 0)
+
+● Build clean. Loading it and re-checking the starter scene.
+
+  Called lotus 8 times (ctrl+o to expand)
+
+● Starter scene is pixel-identical to before (same SHA) — the particles aren't
+  OBJ-window driven. Looking at the oracle renders for any puff.
+
+  Read 2 files (ctrl+o to expand)
+
+● Neither oracle shows puffs — the oracle renders 2D state only. HGSS particles
+  are usually SPL (3D engine), so checking the dump's 3D state at 1770.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● The scanner reads DISPCNT A as 0 (offset likely wrong), so it can't tell me
+  about 3D. Going to the decomp source for the intro's starter scene instead.
+
+  Ran 2 shell commands (ctrl+o to expand)
+● Confirmed: the starter puffs are SPL particles on engine A's BG0 3D layer —
+  the 2D oracle could never show them. Reading the scene's 3D setup.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The scene calls GfGfx_SwapDisplay(), so engine A (with the 3D particles) is on
+  the DS bottom screen. Checking whether kohjoh's g3d handles 3D on the bottom
+  screen.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● g3d isn't top-only. Getting runtime evidence: guest log counters during the
+  particle scene.
+
+  Called lotus (ctrl+o to expand)
+
+● Native log is noise; reading the game's own sdmc log instead.
+
+  Called lotus, ran 2 shell commands (ctrl+o to expand)
+
+● Stats show no unsupported/dropped 3D. Checking whether g3d handles the
+  translucent texture formats SPL particles use (A3I5/A5I3).
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Formats supported. Capturing actual PICA draws in the particle phase via
+  LOTUS.
+
+  Called lotus 11 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/65000000000000009872c1c830d1e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+● Bottom stays an empty gradient 3410–3545 while Cyndaquil appears on top at
+  3545. Sweeping further to place Chikorita/Totodile.
+
+  Called lotus 2 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/66000000000000002884230534d1e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Colors correct now. Display swaps per starter (engine A follows each one), so
+  Chikorita must be in 3390–3440 on the bottom. Fine-stepping from the
+  savestate.
+
+  Called lotus 3 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/69000000000000001c19d43a39d1e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/68000000000000004c0ac63a39d1e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 2 files, ran 1 shell command (ctrl+o to expand)
+
+● Chikorita and likely Totodile vanish from both screens for about 150 frames
+  after Ethan and Lyra exit, not just their particles. I'm checking the live DS
+  state and the script dump syntax next.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Testing directly: GPU-capture one frame at ~3430 (Chikorita phase) to see
+  what's drawn on the bottom target.
+
+  Called lotus 5 times (ctrl+o to expand)
+
+● Zero PICA draws that frame. Capturing over 10 frames.
+
+  Called lotus 2 times (ctrl+o to expand)
+
+● Only ~1 draw per frame: screens are being skipped as unchanged, meaning the
+  game isn't producing the Chikorita OBJ/3D state at all live. Reading the scene
+  state machine.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Live, during RUN_GRASS_PARTICLES (engine A on the DS bottom with 3D on),
+  kohjoh issues almost no draws; Cyndaquil (engine A on top) works. Checking how
+  the renderer maps engines to screens.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Renderer skip logic looks right, so maybe frames aren't being published.
+  Checking the guest log's frame hitches around game frame ~1700.
+
+  Called lotus, ran 2 shell commands (ctrl+o to expand)
+
+● 3D batches are being produced in that window, yet live draws are ~1/frame.
+  Inspecting one captured draw.
+
+  Called lotus 5 times (ctrl+o to expand)
+● Draws are running at about 56 per frame, so the event-mode count was low. I
+  suspect the window-pan effect's GX_SetVisibleWnd(NONE) call is hiding the OBJs
+  and 3D, and I'm checking how lines.active is managed next.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Getting ground truth instead: live DS-state dumps across the Chikorita phase
+  in this session.
+
+  Called lotus 7 times, ran 2 shell commands (ctrl+o to expand)
+
+● Live dumps match the old ones: Chikorita's OBJs are in DS state at game frames
+  1690–1710, yet the screen lacks them. Parsing the dump registers properly
+  (the scanner's DISPCNT A=0 looks wrong).
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+● At Chikorita time engine A is on the bottom with BG0=3D (prio 0), BG3, OBJ; no
+  windows; BLDCNT alpha mode. Checking the Chikorita OBJs' priority and the 3D
+  scene in the dump.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● OBJs are prio 0 in both phases; the only difference is engine A on the bottom
+  screen. Rendering the dumped 3D scene.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Key finding: the dumped 3D scene has 0 batches during both particle phases —
+  kohjoh's G3 capture gets no geometry from the SPL particle system. Reading the
+  scene's 3D main.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● No vertex reaches the G3 capture at all (no drops counted either), so SPL's
+  draw isn't emitting G3 commands. Checking how SPL draw is ported.
+
+  Ran 4 shell commands (ctrl+o to expand)
+
+● Using LOTUS breakpoints to see how far SPL draw gets. Loading symbols.
+
+  Called lotus, ran 3 shell commands (ctrl+o to expand)
+
+● Setting breakpoints on SPL_Draw and spl_draw during the grass-particle phase.
+
+  Called lotus 3 times (ctrl+o to expand)
+
+● spl_draw is reached (frame 3419). Checking the per-particle draw functions
+  next.
+
+  Called lotus 6 times, ran 1 shell command (ctrl+o to expand)
+
+● spl_draw_bb is called, so billboards are submitted. Reading what G3 commands
+  it issues.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● SPL uses direct reg_G3_* port writes. Checking how kohjoh's compat layer maps
+  those registers.
+
+  Ran 6 shell commands (ctrl+o to expand)
+
+● Root cause is likely that the port's reg_G3_* writes are plain array stores,
+  so SPL's direct geometry writes never reach the G3 engine; I'm checking the
+  patches for any SPL handling next.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Patch 2004's scan skipped lib/src, so SPL particle geometry writes are lost,
+  which likely explains the missing starter particles. I'm scoping those writes
+  now.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All 61 writes sit in lib/src/spl_draw_ptcl.c, and I'm fixing them the way
+  patch 2004 did, routing through NitroPort_GxDirectWrite under SDK_PORT_3DS
+  while leaving the DS text alone. Next I'll check the upstream checkout and the
+  opcode names.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Writing the patch.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(cd /c/Users/terezi/workdir/kohjoh/build/upstream; python - <<'E'
+      import re…)
+  ⎿  rewrote 61
+     0
+     19:#define SPL_G3_WRITE(name, value) (reg_G3_##name = (value))
+     … +11 lines (ctrl+o to expand)
+  ⎿  Updated build\upstream\lib\src\spl_draw_ptcl.c (+81 -61)
+       1  #include "spl_internal.h"
+       2  
+       3 +// Under SDK_PORT_3DS the G3 command registers are ordinary mem
+         +ory and only writes through                                    
+       4 +// NitroPort_GxDirectWrite reach the port's geometry engine (se
+         +e the game-side patch 2004); without                           
+       5 +// this every particle quad was lost and no SPL effect was draw
+         +n. The DS build writes the                                     
+       6 +// registers as before.                                        
+       7 +#ifdef SDK_PORT_3DS                                            
+       8 +#define SPL_G3OP_BEGIN_VTXS G3OP_BEGIN                         
+       9 +#define SPL_G3OP_END_VTXS G3OP_END                             
+      10 +#define SPL_G3OP_TEXCOORD G3OP_TEXCOORD                        
+      11 +#define SPL_G3OP_VTX_10 G3OP_VTX_10                            
+      12 +#define SPL_G3OP_MTX_SCALE G3OP_MTX_SCALE                      
+      13 +#define SPL_G3OP_MTX_IDENTITY G3OP_MTX_IDENTITY                
+      14 +#define SPL_G3OP_MTX_TRANS G3OP_MTX_TRANS                      
+      15 +#define SPL_G3OP_COLOR G3OP_COLOR                              
+      16 +#define SPL_G3OP_POLYGON_ATTR G3OP_POLYGON_ATTR                
+      17 +#define SPL_G3_WRITE(name, value) NitroPort_GxDirectWrite(SPL_G
+         +3OP_##name, (u32)(value))                                      
+      18 +#else                                                          
+      19 +#define SPL_G3_WRITE(name, value) (reg_G3_##name = (value))    
+      20 +#endif                                                         
+      21 +                                                               
+      22 +                                                               
+      23  // particle drawing for each draw type, parents and children: b
+          illboard (bb), directional billboard
+      24  // (dbb), polygon (pol) and directional polygon (dpl), with the
+           texture set-up, the polygon rotation
+      25  // matrices and the quad drawn in the XY / XZ plane
+      26  
+      27  static inline void TexCoord(fx32 s, fx32 t) {
+       8 -    reg_G3_TEXCOORD = (u16)(s >> 8) | ((u16)(t >> 8) << REG_G3_
+         -TEXCOORD_DECIMAL_T_SHIFT);                                     
+      28 +    SPL_G3_WRITE(TEXCOORD, (u16)(s >> 8) | ((u16)(t >> 8) << RE
+         +G_G3_TEXCOORD_DECIMAL_T_SHIFT));                               
+      29  }
+      30  
+      31  static inline void Vtx10(fx16 x, fx16 y, fx16 z) {
+      12 -    reg_G3_VTX_10 = ((x >> 6) & 0x3FF) | (((y >> 6) & 0x3FF) <<
+         - REG_G3_VTX_10_DECIMAL_Y_SHIFT) | (((z >> 6) & 0x3FF) << REG_G3
+         -_VTX_10_DECIMAL_Z_SHIFT);                                      
+      32 +    SPL_G3_WRITE(VTX_10, ((x >> 6) & 0x3FF) | (((y >> 6) & 0x3F
+         +F) << REG_G3_VTX_10_DECIMAL_Y_SHIFT) | (((z >> 6) & 0x3FF) << R
+         +EG_G3_VTX_10_DECIMAL_Z_SHIFT));                                
+      33  }
+      34  
+      35  static inline void MtxScale(fx32 x, fx32 y, fx32 z) {
+      16 -    reg_G3_MTX_SCALE = x;                                      
+      17 -    reg_G3_MTX_SCALE = y;                                      
+      18 -    reg_G3_MTX_SCALE = z;                                      
+     … 338 more lines (ctrl+o to expand)
+
+● Committing in the upstream checkout, exporting as patch 2008, and rebuilding.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Build running (backgrounded). Waiting for it.
+
+  Read 1 file, ran 2 shell commands (ctrl+o to expand)
+
+● The build is still running in the background; I'll pick up when it completes.
+
+  Read 1 file (ctrl+o to expand)
+● I've found the cause of the missing starter particles and written a fix. The
+  fix is built but not yet checked in LOTUS, and nothing is committed or closed
+  on GitHub yet.
+
+  LOTUS over MCP works. I can create sessions, step frames, capture screens, use
+  savestates, set breakpoints and capture GPU draws. Captures come back as raw
+  BGRA, so I convert them with a small script.
+
+  Starter particles (the bug the last agent left unfixed). The puffs are 3D
+  particles drawn by the game's particle library, not 2D sprites. The particle
+  code writes its geometry straight to the DS 3D hardware registers, and in the
+  port those writes go into plain memory, so kohjoh never saw them. Breakpoints
+  show the particle draw functions run every frame, while the dumped 3D scene
+  for those frames has 0 batches and 0 vertices.
+  - An earlier fix for the same problem (patch 2004) covered the game's own
+    source but skipped lib/src, where the particle library lives. This likely
+    also explains missing particle effects in battles and on the field.
+  - The fix is new patch patches/pokeheartgold/2008-spl-send-the-particle-draw-s
+    -direct-G3-command-regis.patch. It sends all 61 of those register writes
+    through the port's hook; the DS build is unchanged. The patch check reports
+    98/98 applied.
+  - The previous agent's "oracle" renders only 2D layers, which is why it could
+    never show the puffs.
+
+  Battle stat arrows (masked onto everything except the Pokémon). kohjoh didn't
+  implement the DS sprite-shaped window: the sprites that define it were
+  dropped, and the area inside it was treated as outside. I implemented it in
+  src/graphics/g2d/g2d.c using a stencil mask, which the coffeepot wiki
+  recommends for sprite windows (ctr/engineering/PICA200/rendering-2d.md). It
+  builds cleanly and leaves the intro pixel-identical. I haven't reproduced the
+  battle yet, because the existing battle drive script still has placeholder
+  timings.
+
+  Still open:
+  - In the live capture, Chikorita itself never appears for about 150 frames,
+    even though the game's state has its sprites in place. This may be a
+    separate bug, and I'll re-check it with the new build.
+  - I overwrote script.txt in the disposable LOTUS session's copy of the card
+    without looking at it first. That copy is deleted when the session stops, so
+    the real card is untouched.
+
+  Next: confirm the particles and the battle arrows in LOTUS, commit each fix,
+  then post on GitHub and continue down the issue list.
+
+✻ Sautéed for 25m 32s · done 6:30 AM
+
+❯ /compact essential that you remember - what have you accomplished this        
+session? what have you learned while working on this codebase? what has gone    
+well for you so far? what has gone poorly, why, and how did you resolve it?     
+  ⎿  Compacted (ctrl+o to see full summary)
+  ⎿  Read ..\..\..\..\AppData\Local\Temp\claude\596f382ffeba1215\e16eeb15-41bd-4
+     576-a7e8-e86e5ceddc54\tasks\bpby8oldo.output (4 lines)
+  ⎿  Read ..\..\..\..\AppData\Local\Temp\claude\596f382ffeba1215\e16eeb15-41bd-4
+     576-a7e8-e86e5ceddc54\tasks\bxhjmv316.output (5 lines)
+
+● 4 background commands completed
+
+  Called lotus 7 times (ctrl+o to expand)
+
+● The build with the particle fix is done. LOTUS rejected the kohjoh-prof
+  handle, so I'm checking which asset names it accepts.
+
+  Called lotus 6 times (ctrl+o to expand)
+
+● The build with the particle fix is now running in LOTUS. It's at frame 2400;
+  the starter puffs show up around frame 3450, so I'm stepping there to capture
+  both screens.
+
+  Called lotus 3 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/6a00000000000000406a0f75e5d1e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The new build is now at the starter-particle scene, and I've captured the top
+  screen. I'm looking at it to see whether the puffs appear.
+
+  Read 1 file (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/6b00000000000000ccc11875e5d1e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● The fix works: leaves and green sparkles now render around Chikorita on the
+  bottom screen. Committing.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(cat >> worklog/2026-11-17-starter-particles.md <<'EOF'…)
+  ⎿  3e542bf Route SPL particle G3 register writes through the port's geome
+     try engine
+  ⎿  Updated worklog\2026-11-17-starter-particles.md (+11 -0)
+      48  2. Battle stat-arrow repro with `battle_arrows.script`; check W
+          ININ/WINOUT
+      49     and OBJ-window semantics against `g2d.c` (mode-2/3 OBJs are 
+          skipped in
+      50     `objs()`; the OBJ window is treated as the WINOUT region).
+      51 +                                                               
+      52 +## Root cause and fix (follow-up session)                      
+      53 +                                                               
+      54 +The puffs are SPL 3D particles, not 2D OBJs, so the 2D-only ora
+         +cle could not see them.                                        
+      55 +`lib/src/spl_draw_ptcl.c` stored its geometry straight to `reg_
+         +G3_*`, which on the port                                       
+      56 +is plain memory; patch 2004 had only routed `src/`. Dumps showe
+         +d 0 G3 batches during the                                      
+      57 +particle phases while breakpoints confirmed `spl_draw`/`spl_dra
+         +w_bb` ran every frame.                                         
+      58 +                                                               
+      59 +Patch 2008 routes all 61 stores through `NitroPort_GxDirectWrit
+         +e` (same model as 0604/0605/2004).                             
+      60 +Verified in LOTUS (kj-prof, frame 3450): leaves and green spark
+         +les render around Chikorita.                                   
+      61 +This should also restore SPL effects in battle and on the field
+         +.                                                              
+
+● The starter particle bug is fixed and committed as 3e542bf. The new build in
+  LOTUS shows the leaves and green sparkles around Chikorita on the bottom
+  screen.
+
+  - Cause: the game's particle library wrote its 3D drawing commands straight
+    into the DS 3D hardware registers. On the port those writes land in plain
+    memory, so they never reached the 3D renderer. The fix is new patch 2008,
+    which sends them through the port's existing hook, the same approach patch
+    2004 used for the game's own code.
+  - Wider effect: this likely brings back particle effects in battles and on the
+    field too, but I haven't checked those yet.
+  - Chikorita: the earlier worry that Chikorita itself was missing turned out
+    not to be a bug. It was on the bottom screen, not the top.
+  - Worklog: updated with the cause and fix.
+
+  The fix for the battle stat arrows is still uncommitted in
+  src/graphics/g2d/g2d.c, and I haven't seen the battle running yet. It builds
+  and leaves the intro pixel-identical. Next I'll find a save that reaches a
+  battle with stat arrows, confirm the fix there, commit it, and then continue
+  down the GitHub issue list.
+
+✻ Brewed for 2m 17s · done 6:34 AM
+
+❯ /goal complete all of the requested work on kohjoh                            
+  ⎿  Goal set: complete all of the requested work on kohjoh
+
+● Goal set. Continuing with the battle stat-arrow check.
+
+  Listed 1 directory, called lotus 3 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/6c000000000000009cd71af9f7d1e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Driving the game from the intro into a battle so I can check the stat-arrow
+  fix.
+
+  Read 1 file, called lotus 10 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/6e0000000000000030d4929800d2e818" from server
+                 "lotus")  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Still on the title screen; my button presses were too short to register.
+  Retrying with longer holds.
+
+  Called lotus 9 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/7200000000000000e0e8ce9006d2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Searched for 1 pattern, read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● LOTUS button presses aren't reaching the game. I'm checking whether the
+  script.txt I wrote earlier is blocking live input.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● The active script overrides live input. Finding the session's sdmc on disk to
+  replace it.
+
+  Ran 5 shell commands, searched memories (ctrl+o to expand)
+
+● Any script.txt, even one with no input lines, takes over the buttons and
+  blocks live input. Removing it from the throwaway session and rebooting.
+
+  Called lotus 14 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/7400000000000000508d026c29d2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Still on the title screen after a reboot. I'm checking how the earlier drive
+  scripts sent input to the game.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● LOTUS uses its own button bits: START is 0x400, not 0x8.
+
+  Called lotus 10 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/7600000000000000104a1aa736d2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● This booted into a new game, which means the scratch session has no save.
+  Checking which saves are available.
+
+  Called lotus 5 times, ran 3 shell commands (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/79000000000000009c2685093fd2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Still navigating the title menu in LOTUS to load the save and reach a battle.
+
+  Read 1 file, ran 2 shell commands (ctrl+o to expand)
+
+● Scratch save is blank. Copying the kohjoh-prof card's save into the scratch
+  session.
+
+  Called lotus 19 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/7a0000000000000060782fd861d2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus, ran 1 shell command (ctrl+o to expand)
+
+● The save is loaded and the player is in town outside a Pokémon Center. I've
+  saved a LOTUS state there, and next I'll look for tall grass to start a wild
+  battle.
+
+● readMcpResource(Read resource
+                 "lotus://artifact/7b00000000000000e4723ed861d2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 4 shell commands (ctrl+o to expand)
+
+● Writing a small driver so walking and capturing take one call each.
+  Ran 2 shell commands (ctrl+o to expand)
+
+● The bridge isn't connected to this LOTUS window, so I'll drive over MCP
+  directly.
+
+  Called lotus 5 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/7c0000000000000054e6272e6fd2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 7 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/7e0000000000000050393ec675d2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+● I'm walking the player west from the Pokémon Center to find grass for a
+  battle, checking the screen after each move.
+
+  Read 1 file, called lotus 5 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/80000000000000000c30328c7ad2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● The player didn't move left, so 0x20 isn't LEFT in LOTUS. Trying the other
+  direction bit.
+
+  Called lotus 5 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/82000000000000001492b4527ed2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 5 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/8400000000000000d43ea3a683d2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+● Still walking the player toward tall grass to trigger a battle; checking the
+  latest screen.
+
+  Read 1 file, called lotus 7 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/86000000000000006c26a4d289d2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Walking isn't working reliably, so I'm checking the LOTUS docs for the button
+  bit layout.
+
+  Listed 1 directory, ran 1 shell command (ctrl+o to expand)
+
+● Driving to a battle by hand is slow. Checking for an existing battle dump I
+  can replay instead.
+
+  Called lotus 5 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/8800000000000000f073cff790d2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● LOTUS uses Citra's order: Up=0x10, Down=0x20, Left=0x40, Right=0x80. Heading
+  west to Route 29.
+
+  Called lotus 7 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/8a00000000000000300ad69f98d2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 7 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/8c00000000000000d81d1c259fd2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+● Heading west through town toward Route 29's grass; checking the latest frame.
+  Read 1 file, called lotus 7 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/8e00000000000000f823ccafa9d2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Back by the Pokémon Center; going down then east to the Route 29 exit.
+
+  Called lotus 8 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/90000000000000006092a539b3d2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● On Route 29 next to tall grass. Saving state, then pacing in the grass.
+
+  Called lotus 12 times (ctrl+o to expand)
+
+● No encounter yet (bottom screen unchanged). Pacing more.
+
+  Called lotus 15 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/9400000000000000dc2dfaacc1d2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 8 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/960000000000000018759d7cc7d2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+● Still trying to trigger a wild battle on Route 29 to check the stat-arrow fix;
+  checking where the player ended up.
+
+  Read 1 file, called lotus 7 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/9800000000000000dc7cbcccccd2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Player is boxed in by a ledge; heading into the grass patch to the lower left
+  instead.
+
+  Called lotus 9 times (ctrl+o to expand)
+
+● Bottom screen changed, so a battle may have started.
+
+● readMcpResource(Read resource
+                 "lotus://artifact/9a0000000000000070b927dbd2d2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Battle transition. Running into the battle.
+
+  Called lotus 3 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/9d00000000000000f88c3565d8d2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● In battle. Selecting FIGHT.
+
+  Called lotus 5 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/9f0000000000000058860ba1dcd2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 5 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/a1000000000000004c314692e0d2e818" from server
+                 "lotus")  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+● I reached a wild battle in LOTUS and opened the move list. Next I pick a
+  stat-lowering move so the stat arrows appear.
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Selecting Leer (RIGHT then A).
+
+  Called lotus 10 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/a200000000000000a01b8163e6d2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Leer is playing. Stepping through to the stat-down arrows.
+
+  Called lotus 2 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/a4000000000000000ccf44eee9d2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● The arrows may have played between captures. Reloading and stepping finer.
+
+  Called lotus 7 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/a6000000000000004caf2b44eed2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/a80000000000000044c82569eed2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/aa000000000000006c6e8b8eeed2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 2 files, ran 2 shell commands (ctrl+o to expand)
+
+● No arrows yet: by frame 15294 the text already reads "used Leer!", so the
+  arrow animation probably plays earlier. Replaying from the battle menu and
+  capturing every 30 frames to find it.
+
+  Called lotus 29 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/ac000000000000007063a82ffdd2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/ae00000000000000dccc5e5cfdd2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/b00000000000000068b4e589fdd2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/b2000000000000000c207bb6fdd2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/b400000000000000f0db07e5fdd2e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Frame 15194 might show the arrow effect. Zooming in on Hoothoot.
+
+  Read 1 file, called lotus 13 times, ran 1 shell command (ctrl+o to expand)
+
+● Frames 15176–15206 are identical and show no arrows. I'll read the game's
+  window registers from memory to see what it requests.
+
+  Listed 1 directory, called lotus 4 times, ran 1 shell command (ctrl+o to expand)
+
+● Windows are off at frame 15186. The arrow effect may play between 15216 and
+  15294, so I'm reading the registers in that range.
+  Called lotus 2 times (ctrl+o to expand)
+
+● At 15246 the OBJ window is on: DISPCNT is 0x119F18 and WINOUT is 0x363B.
+  Inside the window, BG1, BG2 (the arrows), OBJ and effects are enabled.
+  Capturing this frame.
+
+  Called lotus (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/c200000000000000f830e47213d3e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● The OBJ window is on, but no arrows render. Checking whether OAM has any
+  mode-2 (window) sprites.
+
+  Called lotus, ran 1 shell command (ctrl+o to expand)
+
+● OAM has six mode-2 window sprites (attr0 0x081B…), so the window sprites exist
+  and the problem is in my renderer. Checking write_windows.
+
+  Searched for 3 patterns, read 1 file (ctrl+o to expand)
+
+● The window sprites are present and my code looks right, so I'll render this
+  frame in the reference oracle to see what the DS should show.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● The reference renderer doesn't implement windows. Checking how the game sets
+  up this effect in the decomp source.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● The game sets the window directly (reg_G2_WINOUT), and a memory read confirms
+  the value took. Arrows should scroll over the Pokémon inside its silhouette.
+  Reading draw_layer.
+
+  Read 1 file (ctrl+o to expand)
+
+● The 3D layer BG0 ignores windows and draws over the arrows inside the
+  silhouette, which is the likely cause. I'm checking how kj_g3d_draw handles
+  stencil next.
+
+  Searched for 1 pattern, read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● The 3D layer always draws with GPU_ALWAYS, ignoring window regions. I'll gate
+  BG0 by the window stencil the same way the 2D layers are gated.
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● Update(src\graphics\g3d\g3d.h)
+  ⎿  Added 6 lines, removed 2 lines
+      13  void kj_g3d_set_frame(const kj_g3_frame *frame);
+      14  /* Draw the 3D layer into the current target at BG0's place. `w
+          ide`: show the
+      15   * extended horizontal field (top screen). `stencil_flags`: the
+           2D effect
+      16 - * flags (blend target bits) the 3D pixels carry. */           
+      17 -void kj_g3d_draw(const kj_target *target, bool wide, uint8_t st
+         -encil_flags);                                                  
+      16 + * flags (blend target bits) the 3D pixels carry. `window`: the
+         + 2D window                                                     
+      17 + * regions (stencil bits 4-5) BG0 shows in: KJ_G3D_WINDOW_ALL, 
+         +region r                                                       
+      18 + * only (r), or every region except r (KJ_G3D_WINDOW_EXCEPT + r
+         +). */                                                          
+      19 +#define KJ_G3D_WINDOW_ALL (-1)                                 
+      20 +#define KJ_G3D_WINDOW_EXCEPT 4                                 
+      21 +void kj_g3d_draw(const kj_target *target, bool wide, uint8_t st
+         +encil_flags, int window);                                      
+      22  
+      23  typedef struct kj_g3d_stats {
+      24      uint32_t batches, draws, triangles;
+
+● Update(src\graphics\g3d\g3d.c)
+  ⎿  Added 1 line, removed 1 line
+      604      }
+      605  }
+      606  
+      607 -void kj_g3d_draw(const kj_target *target, bool wide, uint8_t s
+          -tencil_flags)                                                 
+      607 +void kj_g3d_draw(const kj_target *target, bool wide, uint8_t s
+          +tencil_flags, int window)                                     
+      608  {
+      609      const kj_g3_frame *f = s_frame;
+      610      (void)wide;
+
+● Update(src\graphics\g3d\g3d.c)
+  ⎿  Added 9 lines, removed 1 line
+      657      const unsigned alpha_ref = (f->disp3dcnt & 4u) ? f->alpha_
+           test_ref : 0u;
+      658      C3D_AlphaTest(!(kj_script_debug() & KJ_DEBUG_NO_ALPHA_TEST
+           ), GPU_GREATER,
+      659                    (int)(alpha_ref * 255u / 31u));
+      660 -    C3D_StencilTest(true, GPU_ALWAYS, stencil_flags, 0, 0x03);
+      660 +    /* Window regions live in stencil bits 4-5 (g2d.c); test t
+          +hem, write only                                               
+      661 +     * the effect flags in bits 0-1. */                       
+      662 +    if (window == KJ_G3D_WINDOW_ALL) {                        
+      663 +        C3D_StencilTest(true, GPU_ALWAYS, stencil_flags, 0, 0x
+          +03);                                                          
+      664 +    } else {                                                  
+      665 +        const bool except = window >= KJ_G3D_WINDOW_EXCEPT;   
+      666 +        const uint8_t region = (uint8_t)((window & 3) << 4);  
+      667 +        C3D_StencilTest(true, except ? GPU_NOTEQUAL : GPU_EQUA
+          +L, region | stencil_flags, 0x30, 0x03);                       
+      668 +    }                                                         
+      669      C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STEN
+           CIL_REPLACE);
+      670  
+      671      draw_pass(target, false, f->disp3dcnt, stencil_flags);
+
+● Update(src\graphics\g2d\g2d.c)
+  ⎿  Added 2 lines, removed 1 line
+      1223                      const bool t1 = f.bldcnt & 1;
+      1224                      kj_gpu_scissor_off();
+      1225                      kj_g3d_draw(c->target, c->screen == KJ_SC
+            REEN_TOP,
+      1226 -                                (uint8_t)((t2 ? 1 : 0) | (t1 
+           -&& f.mode >= 2 ? 2 : 0)));                                   
+      1226 +                                (uint8_t)((t2 ? 1 : 0) | (t1 
+           +&& f.mode >= 2 ? 2 : 0)),                                    
+      1227 +                                bg0_window(&f));             
+      1228                      *drew_3d = true;
+      1229                      restore_2d_state(c, sx0);
+      1230                  }
+
+● Update(src\graphics\g2d\g2d.c)
+  ⎿  Added 36 lines
+      624      f->region_enable[3] = (uint8_t)((winout >> 8) & 0x3F);
+      625  }
+      626  
+      627 +/* The window regions the 3D layer (BG0) shows in, for kj_g3d_
+          +draw. One                                                     
+      628 + * stencil test covers "all", "only r" and "all but r"; a 2-an
+          +d-2 split of                                                  
+      629 + * the active regions has no single test and draws everywhere.
+          + */                                                           
+      630 +static int bg0_window(const fx *f)                            
+      631 +{                                                             
+      632 +    if (!f->windows) {                                        
+      633 +        return KJ_G3D_WINDOW_ALL;                             
+      634 +    }                                                         
+      635 +    int on = 0, off = 0, last_on = 0, last_off = 0;           
+      636 +    for (int r = 0; r < 4; ++r) {                             
+      637 +        if (r == 3 && !f->objwin) {                           
+      638 +            break;                                            
+      639 +        }                                                     
+      640 +        if (f->region_enable[r] & 1u) {                       
+      641 +            ++on;                                             
+      642 +            last_on = r;                                      
+      643 +        } else {                                              
+      644 +            ++off;                                            
+      645 +            last_off = r;                                     
+      646 +        }                                                     
+      647 +    }                                                         
+      648 +    if (off == 0) {                                           
+      649 +        return KJ_G3D_WINDOW_ALL;                             
+      650 +    }                                                         
+      651 +    if (on == 1) {                                            
+      652 +        return last_on;                                       
+      653 +    }                                                         
+      654 +    if (off == 1) {                                           
+      655 +        return KJ_G3D_WINDOW_EXCEPT + last_off;               
+      656 +    }                                                         
+      657 +#ifndef HGSS_PROFILE_OFF                                      
+      658 +    ++s_stats.unsupported_modes;                              
+      659 +#endif                                                        
+      660 +    return KJ_G3D_WINDOW_ALL;                                 
+      661 +}                                                             
+      662 +                                                              
+      663  static void stencil_write_all(uint8_t ref, uint8_t test_mask)
+      664  {
+      665      C3D_StencilTest(true, test_mask ? GPU_EQUAL : GPU_ALWAYS, 
+           ref, test_mask, 0x03);
+
+● Update(src\graphics\g2d\g2d.c)
+  ⎿  Added 2 lines, removed 2 lines
+      634      }
+      635      int on = 0, off = 0, last_on = 0, last_off = 0;
+      636      for (int r = 0; r < 4; ++r) {
+      637 -        if (r == 3 && !f->objwin) {                           
+      638 -            break;                                            
+      637 +        if (!(f->active & (1u << r))) {                       
+      638 +            continue;                                         
+      639          }
+      640          if (f->region_enable[r] & 1u) {
+      641              ++on;
+
+● Update(src\graphics\g2d\g2d.c)
+  ⎿  Added 1 line
+      601      bool windows;
+      602      bool objwin;
+      603      uint8_t region_enable[4]; /* bits 0-5: BG0-3, OBJ, effects
+            */
+      604 +    uint8_t active;           /* bit r: region r can occur (ou
+          +tside always) */                                              
+      605  } fx;
+      606  
+      607  static void read_fx(const ctx *c, fx *f)
+
+● Update(src\graphics\g2d\g2d.c)
+  ⎿  Added 1 line
+      623      f->region_enable[1] = (uint8_t)(winin & 0x3F);
+      624      f->region_enable[2] = (uint8_t)((winin >> 8) & 0x3F);
+      625      f->region_enable[3] = (uint8_t)((winout >> 8) & 0x3F);
+      626 +    f->active = (uint8_t)(1u | ((c->dispcnt >> 12) & 6u) | (f-
+          +>objwin ? 8u : 0u));                                          
+      627  }
+      628  
+      629  /* The window regions the 3D layer (BG0) shows in, for kj_g3d_
+           draw. One
+
+● Rebuilding kj-prof.
+
+  Listed 1 directory, ran 1 shell command, searched memories (ctrl+o to expand)
+
+● Build running. A savestate restores the old code too, so I'll have to replay
+  the inputs to reach the battle on the new build.
+● I've changed the renderer so the 3D layer respects the sprite-shaped window,
+  and the rebuild is running in the background.
+
+  On the battle screen, the arrows were drawn but the Pokémon's 3D model was
+  drawn on top of them, hiding them. The fix lets the 3D layer only draw where
+  the DS would show it, which should leave the arrows visible inside the
+  Pokémon's outline. It's in src/graphics/g3d/g3d.c, g3d.h and g2d.c. None of
+  this window work is committed yet.
+
+  When the build finishes, I'll replay the inputs back to the Route 29 battle
+  and check the Leer arrows. A savestate can't be reused, because it would also
+  bring back the old code.
+
+  Also found while driving LOTUS:
+  - Script file blocks input: any script.txt on the SD card takes over the
+    buttons, even with no input lines. I removed the one I'd added to the
+    scratch session.
+  - Button bits: LOTUS uses Citra's order, not the DS order. Up=0x10, Down=0x20,
+    Left=0x40, Right=0x80, Start=0x400. The old drive script
+    tools/lotus/battle_arrows.script uses the DS order, so its directions are
+    wrong if fed to LOTUS.
+  - Blank save: the scratch session's save was empty, so I copied the
+    kohjoh-prof card's save into it.
+
+✻ Brewed for 23m 37s · done 6:58 AM
+
+● Background command "Build profiled HG with BG0 window gating" completed (exit
+code 0)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Packaged. Loading and replaying the inputs.
+
+  Called lotus 19 times (ctrl+o to expand)
+
+● Same frame as before (hash matches). Taking the direct route: down, then east.
+
+  Called lotus 8 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/c600000000000000b4f5ad1792d3e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 7 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/c800000000000000d0e7ebb498d3e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+● The new build is running, and I'm walking the player back to the Route 29
+  grass to recheck the battle arrows.
+
+  Read 1 file, called lotus 7 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/ca000000000000002c22c8929fd3e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Still boxed in by trees. Trying the next row up toward the east exit.
+
+  Called lotus 5 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/cc00000000000000144a660da5d3e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 7 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/ce00000000000000c8645d50abd3e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+● I'm walking the player through town on the new build to get back to Route 29's
+  grass; checking where it ended up.
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● I keep hitting dead ends. Rebooting and replaying the exact inputs that
+  reached Route 29 before; the emulator is deterministic, so they should land in
+  the same place.
+
+  Called lotus 19 times (ctrl+o to expand)
+
+● Replaying the original input sequence.
+
+  Called lotus 32 times (ctrl+o to expand)
+
+● Audio hashes match the first run exactly, so the replay is deterministic.
+  Continuing.
+
+  Called lotus 25 times (ctrl+o to expand)
+
+● At Route 29 (hash matches). Saving and replaying the path into the encounter.
+
+  Called lotus 23 times (ctrl+o to expand)
+
+● In battle at the same menu as before. Replaying FIGHT → Leer and capturing at
+  frame 15246.
+
+  Called lotus 18 times (ctrl+o to expand)
+
+● Different hash from the old build at this frame. Viewing.
+
+● readMcpResource(Read resource
+                 "lotus://artifact/d200000000000000e8522d8a07d4e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Blue arrows now fill Hoothoot's silhouette. Zooming in to confirm.
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● The stat-down arrows now scroll inside Hoothoot's silhouette, which is the DS
+  behaviour. Committing.
+
+● Bash(cat > worklog/2026-11-17-battle-stat-arrows.md <<'EOF'
+      # Battle stat-change arrows (OBJ window)…)
+  ⎿  667a9d9 Implement the DS OBJ window and gate the 3D layer by window re
+     gion
+  ⎿  Created worklog\2026-11-17-battle-stat-arrows.md (+23 -0)
+       1 +# Battle stat-change arrows (OBJ window)                       
+       2 +                                                               
+       3 +Report (chatlog14): stat up/down arrows were masked everywhere 
+         +except the Pokemon.                                            
+       4 +                                                               
+       5 +The effect (`BattleAnimObjWindowBg_Start`, src/battle/battle_an
+         +im_effects.c) turns                                            
+       6 +on only the OBJ window (DISPCNT 0x119F18). It sets a mode-2 cop
+         +y of the battler as                                            
+       7 +the window shape and WINOUT 0x363B: outside = BG0/1/3, OBJ, eff
+         +ects; inside the OBJ                                           
+       8 +window = BG1, BG2 (arrows), OBJ, effects. BG0 (the 3D battler) 
+         +is off inside.                                                 
+       9 +                                                               
+      10 +g2d had no OBJ window, so the whole screen was "outside". Two f
+         +ixes:                                                          
+      11 +                                                               
+      12 +1. g2d.c: mode-2 OBJs stamp stencil region 3 before the WIN0/WI
+         +N1 rectangles                                                  
+      13 +   (WIN0 > WIN1 > OBJ window priority). Region 3 uses WINOUT bi
+         +ts 8-13. This is the                                           
+      14 +   stencil mask approach from coffeepot ctr/engineering/PICA200
+         +/rendering-2d.md.                                              
+      15 +2. g3d.c: the 3D layer now tests the window stencil too. BG0 is
+         + gated per region                                              
+      16 +   ("all", "only r", "all but r"). Before this, the 3D battler 
+         +drew over the arrows.                                          
+      17 +                                                               
+      18 +Verified in LOTUS (kj-prof, Route 29, Cyndaquil Leer vs Hoothoo
+         +t, frame 15246):                                               
+      19 +the arrows scroll inside Hoothoot's silhouette. Windows-off sce
+         +nes are unchanged.                                             
+      20 +                                                               
+      21 +LOTUS notes: button bits use Citra order (Up 0x10, Down 0x20, L
+         +eft 0x40,                                                      
+      22 +Right 0x80, Start 0x400). Any sdmc script.txt owns input, even 
+         +one with no input                                              
+      23 +lines. The replay is deterministic: the same inputs give the sa
+         +me audio hashes.                                               
+
+● Both of the bugs reported in chat are fixed and committed. Next, the GitHub
+  issue list.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● #2 has new activity. Checking the waiting issues for reporter replies.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● #2, #4 and #9 are waiting on reporters, and #5 is parked. That leaves the
+  WideArt issues, starting with #14 and the Unown port.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● The Unown port is Pokemon-Soulsilver-New3ds. Reading what kohjoh's docs say
+  about it and the WideArt plan.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Starting with #15, since #16 depends on it. Reading how the Unown port
+  identifies screens.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● The files the issue names aren't at HEAD. Checking other branches and history.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Local checkout is stale; reading from origin/main without touching the working
+  tree.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Next I'll look at the overlay manager in the game source and at kohjoh's frame
+  bridge.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● I'm adding a small game patch that reports each OverlayManager_Run call to the
+  port, which will track the deepest app per frame and publish a stable screen
+  ID with it. Next I'm locating the NitroPort_* code.
+
+  Searched for 1 pattern, ran 5 shell commands (ctrl+o to expand)
+
+● Now writing #15's game-side hook: a patch to OverlayManager_Run that reports
+  the running app. I'm checking how earlier patches reach the port's functions.
+
+  Searched for 1 pattern, ran 2 shell commands (ctrl+o to expand)
+
+● Adding the port-side app tracker (port_app.c) and the frame-bridge fields.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● DS-side code goes in src/runtime/. Writing the header, the tracker and the
+  bridge fields.
+
+● Write(src\compat\nitro\include\nitro_port_app.h)
+  ⎿  Wrote 25 lines to src\compat\nitro\include\nitro_port_app.h
+      1 /*
+      2  * nitro_port_app.h: the application (OverlayManager) hooks the p
+        atched game
+      3  * calls. kohjoh implements them in src/runtime/kj_screen.c, whic
+        h turns the
+      4  * running application into a stable screen ID for the renderer (
+        issue #15).
+      5  * Display only: nothing here touches game state or the save.
+      6  */
+      7 
+     … +18 lines (ctrl+o to expand)
+
+● Update(src\runtime\kj_bridge.h)
+  ⎿  Added 46 lines
+      176  
+      177  /* -----------------------------------------------------------
+            frame flow */
+      178  
+      179 +/* Semantic screen IDs (issue #15): the application on display
+          +, from the                                                    
+      180 + * game's OverlayManager. Fixed values; never stored in the sa
+          +ve. */                                                        
+      181 +#define KJ_SCREEN_UNKNOWN        0u                           
+      182 +#define KJ_SCREEN_FIELD          1u                           
+      183 +#define KJ_SCREEN_BATTLE         2u                           
+      184 +#define KJ_SCREEN_TITLE          3u                           
+      185 +#define KJ_SCREEN_INTRO          4u                           
+      186 +#define KJ_SCREEN_MAIN_MENU      5u                           
+      187 +#define KJ_SCREEN_OAK_SPEECH     6u                           
+      188 +#define KJ_SCREEN_PARTY          7u                           
+      189 +#define KJ_SCREEN_SUMMARY        8u                           
+      190 +#define KJ_SCREEN_BAG            9u                           
+      191 +#define KJ_SCREEN_PC_BOX         10u                          
+      192 +#define KJ_SCREEN_POKEDEX        11u                          
+      193 +#define KJ_SCREEN_POKEGEAR       12u                          
+      194 +#define KJ_SCREEN_GEAR_MAP       13u                          
+      195 +#define KJ_SCREEN_GEAR_PHONE     14u                          
+      196 +#define KJ_SCREEN_GEAR_RADIO     15u                          
+      197 +#define KJ_SCREEN_GEAR_CONFIG    16u                          
+      198 +#define KJ_SCREEN_TRAINER_CARD   17u                          
+      199 +#define KJ_SCREEN_TC_SIGNATURE   18u                          
+      200 +#define KJ_SCREEN_OPTIONS        19u                          
+      201 +#define KJ_SCREEN_FLY_MAP        20u                          
+      202 +#define KJ_SCREEN_STARTER        21u                          
+      203 +#define KJ_SCREEN_CREDITS        22u                          
+      204 +#define KJ_SCREEN_EASY_CHAT      23u                          
+      205 +#define KJ_SCREEN_NAMING         24u                          
+      206 +#define KJ_SCREEN_OTHER          25u  /* a known application w
+          +ithout an ID */                                               
+      207 +#define KJ_SCREEN_COUNT          26u                          
+      208 +                                                              
+      209 +/* One wide-layout rule (issue #16 fills these; none yet). */ 
+      210 +typedef struct kj_layout_row {                                
+      211 +    int16_t kind, bgs, top, bottom, x0, x1, dx, arg;          
+      212 +} kj_layout_row;                                              
+      213 +                                                              
+      214 +/* The screen on display and its layout, per engine (0 = A, 1 
+          += B). The                                                     
+      215 + * generation changes whenever any of it changes; a renderer c
+          +ache keyed on                                                 
+      216 + * it never compares strings or scans memory. */              
+      217 +typedef struct kj_screen_state {                              
+      218 +    uint32_t screen_id;                                       
+      219 +    uint32_t depth;              /* nesting of the screen's ap
+          +plication */                                                  
+      220 +    uint32_t generation;                                      
+      221 +    uint32_t row_count[2];                                    
+      222 +    const kj_layout_row *rows[2]; /* immutable while generatio
+          +n holds */                                                    
+      223 +} kj_screen_state;                                            
+      224 +                                                              
+      225  /* What the DS side hands the renderer at the frame boundary. 
+           */
+      226  typedef struct kj_frame_input {
+      227      const kj_ds_memory *mem;
+
+● Update(src\runtime\kj_bridge.h)
+  ⎿  Added 1 line
+      231      uint32_t vblank_count;          /* DS V-blanks so far */
+      232      uint32_t game_frame;            /* publishes so far */
+      233      bool engine_a_on_top;           /* POWCNT1 bit 15 */
+      234 +    kj_screen_state screen;         /* same generation as this
+          + frame's DS state */                                          
+      235  } kj_frame_input;
+      236  
+      237  /* DS side -> 3DS side, on the game thread. */
+
+● Write(src\runtime\kj_screen.c)
+  ⎿  Wrote 141 lines to src\runtime\kj_screen.c
+       1 /*
+       2  * kj_screen.c: which application the game is showing (issue #15
+         ).
+       3  *
+       4  * Every HGSS screen runs as an OverlayManager application (Init
+          / Main /
+       5  * Exit). The patched OverlayManager_Run (patch 2009) reports ea
+         ch run; a
+       6  * child application runs inside its parent's Main, so the deepe
+         st run of a
+     … +135 lines (ctrl+o to expand)
+
+● Write(src\runtime\kj_screen.h)
+  ⎿  Wrote 9 lines to src\runtime\kj_screen.h
+      1 #ifndef KJ_RUNTIME_KJ_SCREEN_H
+      2 #define KJ_RUNTIME_KJ_SCREEN_H
+      3 
+      4 #include "kj_bridge.h"
+      5 
+      6 /* The screen on display and its layout, for kj_frame.c's publish
+        . */
+      7 void kj_screen_snapshot(kj_screen_state *out);
+      8 
+      9 #endif
+
+  Searched for 1 pattern (ctrl+o to expand)
+● Update(src\runtime\kj_frame.c)
+  ⎿  Added 1 line
+      18  
+      19  #include "kj_bridge.h"
+      20  #include "kj_g3.h"
+      21 +#include "kj_screen.h"                                         
+      22  
+      23  #include <nitro.h>
+      24  #include <nitro_port.h>
+
+● Update(src\runtime\kj_frame.c)
+  ⎿  Added 1 line
+      142      in.vblank_count = s_vblanks;
+      143      in.game_frame = ++s_publishes;
+      144      in.engine_a_on_top = NitroPort_EngineAOnTop() != FALSE;
+      145 +    kj_screen_snapshot(&in.screen);                           
+      146      s_last_publish_vblank = s_vblanks;
+      147      kj_ctr_publish_frame(&in);
+      148      kj_g3_set_capture(kj_ctr_capture_next_frame());
+
+● Now the game patch, made in build/upstream.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Bridge struct changed, so I need a full rebuild (the build script rebuilds
+  when a header is newer). Building.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I'm building #15's screen tracking: it reports the HGSS app on display (field,
+  battle, party, and so on) to the renderer. Once it builds, I'll test it in
+  LOTUS.
+
+✻ Worked for 16m 37s · done 7:18 AM
+
+● Background command "Build with screen tracking" completed (exit code 0)
+
+  Read 1 file (ctrl+o to expand)
+
+● Packaged. Booting and checking the screen-transition log.
+
+  Called lotus 18 times (ctrl+o to expand)
+
+● LOTUS restarted and the session is gone. Creating a new one from the
+  kohjoh-prof card, which has a populated save.
+
+  Called lotus, ran 1 shell command (ctrl+o to expand)
+
+● Its script.txt would block input, so I'm removing it from this disposable
+  copy.
+
+  Searched for 1 pattern, called lotus 17 times, ran 1 shell command (ctrl+o to expand)
+
+● Transitions are logging. Naming the three other apps.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Correct: those are loaders (save check, continue, field continue). Next: field
+  → party → summary.
+
+  Searched for 1 pattern, called lotus 5 times (ctrl+o to expand)
+
+● field → party detected. Opening the summary (A on the first Pokémon, then A on
+  SUMMARY).
+
+  Called lotus 8 times (ctrl+o to expand)
+
+● Now B to back out twice (summary → party → field), then check the log.
+
+  Searched for 1 pattern, called lotus 12 times (ctrl+o to expand)
+
+● field → party → summary → party → field is correct, with no stale IDs.
+  Committing.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Next I'll check field → battle → field by replaying the deterministic Route 29
+  run in a fresh boot.
+
+  Called lotus 18 times (ctrl+o to expand)
+
+● At the field. Replaying the walk to the encounter.
+
+  Called lotus 57 times (ctrl+o to expand)
+
+● The last stretch didn't replay exactly: the button release landed before the
+  final 600 frames. Holding right for another 600 and checking.
+
+  Called lotus 6 times (ctrl+o to expand)
+
+❯ /compact essential that you remember - what have you accomplished this        
+session? what have you learned while working on this codebase? what has gone    
+well for you so far? what has gone poorly, why, and how did you resolve it?     
+  ⎿  Compacted (ctrl+o to see full summary)
+  ⎿  Referenced file ..\LOTUS-v0.0.4-windows-x64\data\sessions\scratch\d40000000
+     0000000d0e563d38fd4e818\sdmc\3ds\kohjoh\logs\heartgold.log
+  ⎿  Read ..\..\AppData\Local\Temp\claude\596f382ffeba1215\e16eeb15-41bd-4576-a7
+     e8-e86e5ceddc54\tasks\bxhv1k7im.output (4 lines)
+  ⎿  Read src\runtime\kj_frame.c (241 lines)  ⎿  Read src\runtime\kj_screen.h (10 lines)
+  ⎿  Read src\runtime\kj_screen.c (142 lines)
+
+● MCP task knjtjlpfl (lotus/lotus_run_until) completed.
+
+● Pacing through Route 29 grass to trigger a battle so I can confirm the #15
+  screen IDs go field → battle → field. Checking the log now.
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Battle logged. Fleeing to confirm the return to field.
+
+  Called lotus 4 times (ctrl+o to expand)
+
+● Tapping RUN on the touch screen (bottom centre).
+
+  Searched for 1 pattern, called lotus 4 times (ctrl+o to expand)
+
+● Field → battle → field confirmed. Closing #15.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Next is #16, the layout rules.
+
+  Ran 6 shell commands (ctrl+o to expand)
+
+● Implementing #16 (wide layout rules in the GPU renderer). Unown semantics
+  read; checking related open issues before designing.
+
+  Listed 1 directory, ran 5 shell commands (ctrl+o to expand)
+
+● Writing the layout-rule engine now. First checking how the build collects
+  sources and how the retained caches are keyed.
+
+  Searched for 1 pattern, listed 1 directory, ran 3 shell commands (ctrl+o to expand)
+
+● Writing the layout module, the per-screen tables, and the g2d integration.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bridge constants first.
+
+● Update(src\runtime\kj_bridge.h)
+  ⎿  Added 19 lines, removed 1 line
+      206  #define KJ_SCREEN_OTHER          25u  /* a known application w
+           ithout an ID */
+      207  #define KJ_SCREEN_COUNT          26u
+      208  
+      209 -/* One wide-layout rule (issue #16 fills these; none yet). */ 
+      209 +/* One wide-layout rule (issue #16; Unown's ss3ds_widelayouts.
+          +h rows).                                                      
+      210 + * Columns and lines are the DS's; the wide top screen shows D
+          +S columns                                                     
+      211 + * -32..287. Unless bgs has KJ_LAYOUT_SCREEN, x0..x1 and top..
+          +bottom are                                                    
+      212 + * columns and lines of the BG's picture (scroll applied), not
+          + the screen.                                                  
+      213 + *   MOVE  bgs top bottom x0 x1 dx  : those columns drawn dx p
+          +x over                                                        
+      214 + *   FILL  bgs top bottom x0 x1 arg : wide columns x0..x1-1 sh
+          +ow column arg                                                 
+      215 + *   COPY  bgs top bottom x0 x1 arg : wide columns x0..x1-1 sh
+          +ow arg, arg+1..                                               
+      216 + *   WRAP  bgs top bottom           : beside the screen the BG
+          + map continues                                                
+      217 + *   OBJS  top bottom x0 x1 dx      : OBJs whose middle is in 
+          +the box move dx                                               
+      218 + *   SHIFT3D dx                     : the 3D layer moves dx px
+          + */                                                           
+      219  typedef struct kj_layout_row {
+      220      int16_t kind, bgs, top, bottom, x0, x1, dx, arg;
+      221  } kj_layout_row;
+      222  
+      223 +#define KJ_LAYOUT_MOVE    1                                   
+      224 +#define KJ_LAYOUT_FILL    2                                   
+      225 +#define KJ_LAYOUT_OBJS    3                                   
+      226 +#define KJ_LAYOUT_SHIFT3D 4                                   
+      227 +#define KJ_LAYOUT_COPY    5                                   
+      228 +#define KJ_LAYOUT_WRAP    6                                   
+      229 +#define KJ_LAYOUT_SCREEN  0x10                                
+      230 +#define KJ_LAYOUT_MAX_ROWS 32                                 
+      231 +                                                              
+      232  /* The screen on display and its layout, per engine (0 = A, 1 
+           = B). The
+      233   * generation changes whenever any of it changes; a renderer c
+           ache keyed on
+      234   * it never compares strings or scans memory. */
+
+● Write(src\runtime\kj_layouts.c)
+  ⎿  Wrote 120 lines to src\runtime\kj_layouts.c
+       1 /*
+       2  * kj_layouts.c: the built-in wide layout of each 2D screen (iss
+         ue #16).
+       3  *
+       4  * Ported row for row from Unown's soulsilver3ds/platform/ss3ds_
+         widelayouts.h
+       5  * (HGSS screens measured there on the same game data); the row 
+         kinds are
+       6  * documented with kj_layout_row in kj_bridge.h. Index 0 of a sc
+         reen is the
+     … +114 lines (ctrl+o to expand)
+
+● Write(src\runtime\kj_layouts.h)
+  ⎿  Wrote 10 lines to src\runtime\kj_layouts.h
+       1 #ifndef KJ_RUNTIME_KJ_LAYOUTS_H
+       2 #define KJ_RUNTIME_KJ_LAYOUTS_H
+       3 
+       4 #include "kj_bridge.h"
+       5 
+       6 /* The built-in wide layout rows of a screen, into state->rows/r
+         ow_count
+       7  * (none: the screen draws as the DS does). */
+       8 void kj_layouts_for(uint32_t screen_id, kj_screen_state *state);
+       9 
+     … +1 line (ctrl+o to expand)
+
+● Bash(python - <<'EOF'
+      p='src/runtime/kj_screen.c'…)
+  ⎿  25:#include "kj_layouts.h"
+     130:    kj_layouts_for(id, &s_state);
+  ⎿  Updated src\runtime\kj_screen.c (+2 -3)
+      22  #include <stdint.h>
+      23  
+      24  #include "kj_bridge.h"
+      25 +#include "kj_layouts.h"                                        
+      26  #include "kj_screen.h"
+      27  
+      28  /* OverlayManagerTemplate (include/overlay_manager.h): init, ma
+          in, exit,
+     ...
+      127      const uint32_t id = classify(s_shown);
+      128      s_state.screen_id = id;
+      129      s_state.depth = (uint32_t)(s_deepest_at < 0 ? 0 : s_deepes
+           t_at);
+      129 -    /* No layout rules yet (issue #16): every screen draws as 
+          -the DS does. */                                               
+      130 -    s_state.row_count[0] = s_state.row_count[1] = 0;          
+      131 -    s_state.rows[0] = s_state.rows[1] = NULL;                 
+      130 +    kj_layouts_for(id, &s_state);                             
+      131      ++s_state.generation;
+      132      NitroPort_Log("[screen] %s (depth %lu, init %p, generation
+            %lu)", NAMES[id],
+      133                    (unsigned long)s_state.depth, s_shown,
+
+● Now the pure segment planner (host-testable).
+
+● Write(src\graphics\layout\layout.h)
+  ⎿  Wrote 52 lines to src\graphics\layout\layout.h
+       1 #ifndef KJ_GRAPHICS_LAYOUT_LAYOUT_H
+       2 #define KJ_GRAPHICS_LAYOUT_LAYOUT_H
+       3 
+       4 #include <stdbool.h>
+       5 #include <stdint.h>
+       6 
+       7 #include "runtime/kj_bridge.h"
+       8 
+       9 /* Wide-layout planning for text BGs (issue #16): which screen c
+         olumn of the
+     … +43 lines (ctrl+o to expand)
+
+● Write(src\graphics\layout\layout.c)
+  ⎿  Wrote 186 lines to src\graphics\layout\layout.c
+       1 /*
+       2  * layout.c: wide-layout rows -> scissored segments (issue #16).
+       3  *
+       4  * Semantics follow Unown's buildRow() (soulsilver3ds/platform/w
+         idecomp.c):
+       5  * per BG and line, wide column s (-32..287) shows picture colum
+         n r[s];
+       6  * columns 0..255 start as the DS shows them, the sides start em
+         pty, MOVE
+       7  * vacates its source columns, then rows apply in order (later r
+     … +180 lines (~6 KB) (ctrl+o to expand)
+
+● Host test for the planner:
+
+● Write(tests\native\layout_test.c)
+  ⎿  Wrote 164 lines to tests\native\layout_test.c
+       1 /* Wide-layout segments (issue #16): each row kind alone, then t
+         he shipped
+       2  * summary/party/trainer-card tables, against a column-by-column
+          reference
+       3  * of Unown's documented semantics (ss3ds_widelayouts.h header c
+         omment).
+       4  * Build: cc -I src -I src/runtime tests/native/layout_test.c
+       5  *        src/graphics/layout/layout.c src/runtime/kj_layouts.c 
+         */
+       6 #include <assert.h>
+     … +158 lines (ctrl+o to expand)
+
+  Ran 5 shell commands (ctrl+o to expand)
+● Bash(python - <<'EOF'
+      p='src/graphics/layout/layout.c'…)
+  ⎿  layout_test: ok
+  ⎿  Updated src\graphics\layout\layout.c (+12 -5)
+      53      return mask;
+      54  }
+      55  
+      56 -/* Picture column -> source screen column in [SRC_LO, SRC_HI), 
+         -or NONE. */                                                    
+      57 -static int16_t source_col(int pic, int h0, int w)              
+      56 +/* Picture column -> the source screen column nearest wide colu
+         +mn s (the                                                      
+      57 + * map repeats every w px), in [SRC_LO, SRC_HI), or NONE. */   
+      58 +static int16_t source_col(int pic, int h0, int w, int s)       
+      59  {
+      59 -    int sx = (pic - h0) & (w - 1);                             
+      60 +    int d = (pic - h0 - s) & (w - 1);                          
+      61 +    if (d > w / 2) {                                           
+      62 +        d -= w;                                                
+      63 +    }                                                          
+      64 +    int sx = s + d;                                            
+      65      if (sx >= KJ_LAYOUT_SRC_HI) {
+      66          sx -= w;
+      67 +    } else if (sx < KJ_LAYOUT_SRC_LO) {                        
+      68 +        sx += w;                                               
+      69      }
+      63 -    return sx >= KJ_LAYOUT_SRC_LO ? (int16_t)sx : NONE;        
+      70 +    return sx >= KJ_LAYOUT_SRC_LO && sx < KJ_LAYOUT_SRC_HI ? (i
+         +nt16_t)sx : NONE;                                              
+      71  }
+      72  
+      73  int kj_layout_segments(const kj_layout_row *rows, uint32_t n, u
+          int32_t active,
+     ...
+      135      /* Picture columns -> source screen columns. */
+      136      for (int i = 0; i < COLS; ++i) {
+      137          if (r[i] != NONE) {
+      131 -            r[i] = source_col(r[i], h0, bg->w);               
+      138 +            r[i] = source_col(r[i], h0, bg->w, i + KJ_LAYOUT_L
+          +EFT);                                                         
+      139              missing |= r[i] == NONE;
+      140          }
+      141      }
+
+● Planner passes its host test. Wiring it into g2d now; checking the brightness
+  passes' extents first since sides will now carry content.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Brightness passes already span the sides. Applying the g2d edits:
+
+● Bash(python - <<'EOF'
+      import re…)
+  ⎿  Updated src\graphics\g2d\g2d.c (+29 -3)
+      25  #include "diagnostics/log.h"
+      26  #include "diagnostics/perf.h"
+      27  #include "graphics/g3d/g3d.h"
+      28 +#include "graphics/layout/layout.h"                            
+      29  #include "graphics/pica/gpu.h"
+      30  #include "graphics/pica/targets.h"
+      31  #include "graphics/resources/atlas.h"
+     ...
+      178      const uint8_t *obj_vram;
+      179      uint32_t obj_vram_size;
+      180      int y0, y1; /* span lines [y0, y1) */
+      181 +    /* The wide layout (top screen only; nrows 0 = draw as the
+          + DS). */                                                      
+      182 +    const kj_layout_row *rows;                                
+      183 +    uint32_t nrows;                                           
+      184  } ctx;
+      185  
+      186  /* -----------------------------------------------------------
+           - quad emit */
+     ...
+      277      const uint32_t source = (uint32_t)(c->engine * 2);
+      278  
+      279      const int first_sy = c->y0 - ((c->y0 + vofs) & 7);
+      276 -    if (!run_begin(out, 33u * (uint32_t)((c->y1 - first_sy + 7
+          -) / 8))) {                                                    
+      280 +    /* Under a wide layout the quads cover every column a segm
+          +ent can name                                                  
+      281 +     * (layout.h); the segments' scissors decide what shows. *
+          +/                                                             
+      282 +    const int sx_lo = c->nrows ? KJ_LAYOUT_SRC_LO : 0;        
+      283 +    const int sx_hi = c->nrows ? KJ_LAYOUT_SRC_HI : 256;      
+      284 +    const uint32_t cols = (uint32_t)(sx_hi - sx_lo) / 8u + 1u;
+      285 +    if (!run_begin(out, cols * (uint32_t)((c->y1 - first_sy + 
+          +7) / 8))) {                                                   
+      286          return 0;
+      287      }
+      288      for (int sy = first_sy; sy < c->y1; sy += 8) {
+      289          const int my = (sy + vofs) & (h - 1);
+      290          const uint32_t row_base = scr_base + (uint32_t)((my >>
+            8) * (w >> 8)) * 0x800u +
+      291                                    (uint32_t)((my & 255) >> 3) 
+           * 64u;
+      283 -        for (int sx = -(hofs & 7); sx < 256; sx += 8) {       
+      292 +        for (int sx = sx_lo - (hofs & 7); sx < sx_hi; sx += 8)
+          + {                                                            
+      293              const int mx = (sx + hofs) & (w - 1);
+      294              const uint32_t addr = (row_base + (uint32_t)(mx >>
+            8) * 0x800u +
+      295                                     (uint32_t)((mx & 255) >> 3)
+            * 2u) & mask;
+     ...
+      505          if (y + bh > 256) {
+      506              y -= 256;
+      507          }
+     … 46 more lines (ctrl+o to expand)
+
+● Bash(python - <<'EOF'
+      p='src/graphics/g2d/g2d.c'…)
+  ⎿  19:    uint32_t unsupported_modes; /* modes drawn as nothing; must be
+     zero in the corpus */
+  ⎿  Updated src\graphics\g2d\g2d.c (+96 -7)
+      599  
+      600  /* -----------------------------------------------------------
+           -- passes */
+      601  
+      602 -static void set_xform(const kj_target *t)                     
+      602 +/* x' = k * x + add before the target's own mapping (wide layo
+          +uts: k = 1                                                    
+      603 + * translates a segment, k > 1 stretches one column across it)
+          +. */                                                          
+      604 +static void set_xform_x(const kj_target *t, float k, float add
+          +)                                                             
+      605  {
+      606      /* clip.x = 1 - y_phys/120 ; clip.y = 1 - x_phys/(w/2)
+      605 -     * y_phys = y * scale ; x_phys = x * scale + offset */    
+      607 +     * y_phys = y * scale ; x_phys = x' * scale + offset */   
+      608      const float half_w = t->width / 2.0f;
+      609      C3D_FVUnifSet(GPU_VERTEX_SHADER, kj_gpu_uloc_2d_xform(), -
+           t->scale / 120.0f, 1.0f,
+      608 -                  -t->scale / half_w, 1.0f - t->offset_x / hal
+          -f_w);                                                         
+      610 +                  -t->scale * k / half_w, 1.0f - (t->offset_x 
+          ++ t->scale * add) / half_w);                                  
+      611      C3D_FVUnifSet(GPU_VERTEX_SHADER, kj_gpu_uloc_2d_uvscale(),
+      612                    1.0f / (KJ_ATLAS_SIZE * KJ_ATLAS_UV_UNIT), -
+           1.0f / (KJ_ATLAS_SIZE * KJ_ATLAS_UV_UNIT),
+      613                    0.0f, 1.0f);
+      614  }
+      615  
+      616 +static void set_xform(const kj_target *t)                     
+      617 +{                                                             
+      618 +    set_xform_x(t, 1.0f, 0.0f);                               
+      619 +}                                                             
+      620 +                                                              
+      621 +/* DS column / line -> physical pixel, rounded the same way fo
+          +r every edge                                                  
+      622 + * so neighbouring scissors abut. */                          
+      623 +static int phys_x(const kj_target *t, int x)                  
+      624 +{                                                             
+      625 +    return (int)lroundf(t->offset_x + (float)x * t->scale);   
+      626 +}                                                             
+      627 +                                                              
+      628 +static int phys_y(const kj_target *t, int y)                  
+      629 +{                                                             
+      630 +    return (int)lroundf((float)y * t->scale);                 
+      631 +}                                                             
+      632 +                                                              
+      633  typedef struct fx {
+      634      uint16_t bldcnt;
+      635      int mode;
+     … 108 more lines (ctrl+o to expand)
+
+● Bash(python - <<'EOF'
+      p='src/graphics/g2d/g2d.h'…)
+  ⎿  src/graphics/g2d/g2d.c:19: * this file cannot draw are counted in unsu
+     pported_modes, never replaced by
+     src/graphics/renderer.c:231:               (unsigned long)g.draws, (un
+     signed long)g.spans, (unsigned long)g.unsupported_modes,
+  ⎿  Updated src\graphics\g2d\g2d.c (+3 -0)
+      945  typedef struct screen_memo {
+      946      bool drawn;
+      947      int engine;
+      948 +    uint32_t layout_generation;                               
+      949      uint8_t regs[KJ_LINE_REG_BYTES];
+      950      uint16_t pal[512];
+      951  } screen_memo;
+     ...
+      1444          prepare_span(&c, true, &pr);
+      1445          prepared_ok = true;
+      1446          if (pr.all_reused && !has_3d && memo->drawn && memo->
+            engine == engine &&
+      1447 +            memo->layout_generation == in->screen.generation 
+           +&&                                                           
+      1448              memcmp(memo->regs, io, KJ_LINE_REG_BYTES) == 0 &&
+             memcmp(memo->pal, pal, 1024) == 0) {
+      1449  #ifndef HGSS_PROFILE_OFF
+      1450              ++s_skipped_screens;
+     ...
+      1510  
+      1511      memo->drawn = single_span;
+      1512      memo->engine = engine;
+      1513 +    memo->layout_generation = in->screen.generation;         
+      1514      memcpy(memo->regs, io, KJ_LINE_REG_BYTES);
+      1515      memcpy(memo->pal, pal, 1024);
+      1516      kj_perf_add(KJ_PERF_G2D, kj_perf_now() - t0);
+  ⎿  Updated src\graphics\g2d\g2d.h (+1 -0)
+      17  typedef struct kj_g2d_stats {
+      18      uint32_t bg_quads, obj_quads, draws, spans;
+      19      uint32_t unsupported_modes; /* modes drawn as nothing; must
+           be zero in the corpus */
+      20 +    uint32_t layout_segments;   /* wide-layout segments drawn (
+         +issue #16) */                                                  
+      21      uint32_t dropped_quads;
+      22      uint32_t skipped_screens, reused_layers, rebuilt_layers;
+      23      uint32_t char_bytes_compared; /* retained layers' character
+          -range checks */
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Bash(python - <<'EOF'
+      p='src/graphics/renderer.c'…)
+  ⎿  1533:void kj_g2d_take_stats(kj_g2d_stats *out)
+     1534-{
+     1535-    s_stats.skipped_screens = s_skipped_screens;
+     … +10 lines (ctrl+o to expand)
+  ⎿  Updated src\graphics\renderer.c (+2 -2)
+      225          kj_atlas_take_stats(&a);
+      226          kj_log("[gpu] 600 frames: 2D screens skipped %lu, laye
+           rs reused %lu rebuilt %lu, "
+      227                 "bg quads %lu obj quads %lu draws %lu spans %lu
+            unsupported %lu dropped %lu, "
+      228 -               "char KiB compared %lu",                       
+      228 +               "char KiB compared %lu, layout segments %lu",  
+      229                 (unsigned long)g.skipped_screens, (unsigned lon
+           g)g.reused_layers,
+      230                 (unsigned long)g.rebuilt_layers, (unsigned long
+           )g.bg_quads, (unsigned long)g.obj_quads,
+      231                 (unsigned long)g.draws, (unsigned long)g.spans,
+            (unsigned long)g.unsupported_modes,
+      232 -               (unsigned long)g.dropped_quads, (unsigned long)
+          -(g.char_bytes_compared / 1024u));                             
+      232 +               (unsigned long)g.dropped_quads, (unsigned long)
+          +(g.char_bytes_compared / 1024u), (unsigned long)g.layout_segme
+          +nts);                                                         
+      233          kj_ds_profile dp;
+      234          kj_ds_take_profile(&dp);
+      235          /* Per game frame: one H-blank walk runs per game fram
+           e, so walks is
+
+● Adding row counts to the screen log, then building.
+
+● Bash(python - <<'EOF'
+      p='src/runtime/kj_screen.c'…)
+  ⎿  1103:   packaged /c/Users/terezi/workdir/kohjoh/build/kj-prof/pokehear
+     tgold.3dsx (5590820 bytes)
+  ⎿  Updated src\runtime\kj_screen.c (+4 -3)
+      129      s_state.depth = (uint32_t)(s_deepest_at < 0 ? 0 : s_deepes
+           t_at);
+      130      kj_layouts_for(id, &s_state);
+      131      ++s_state.generation;
+      132 -    NitroPort_Log("[screen] %s (depth %lu, init %p, generation
+          - %lu)", NAMES[id],                                            
+      133 -                  (unsigned long)s_state.depth, s_shown,      
+      134 -                  (unsigned long)s_state.generation);         
+      132 +    NitroPort_Log("[screen] %s (depth %lu, init %p, generation
+          + %lu, layout rows A %lu B %lu)",                              
+      133 +                  NAMES[id], (unsigned long)s_state.depth, s_s
+          +hown,                                                         
+      134 +                  (unsigned long)s_state.generation, (unsigned
+          + long)s_state.row_count[0],                                   
+      135 +                  (unsigned long)s_state.row_count[1]);       
+      136  }
+      137  
+      138  void kj_screen_snapshot(kj_screen_state *out)
+  ⎿  (timeout 10m)
+
+● Build OK. Loading it into the LOTUS session to check the party/summary
+  screens.
+
+  Called lotus 5 times, ran 1 shell command (ctrl+o to expand)
+
+● Booting the new build in LOTUS to reach the party/summary screens (layout
+  rules active there).
+
+  Called lotus 7 times (ctrl+o to expand)
+
+● Title reached; START then A to continue the save.
+
+  Called lotus 6 times (ctrl+o to expand)
+
+● Loading the save in LOTUS, then I'll open the party screen to check the wide
+  layout.
+
+  Searched for 1 pattern, called lotus 12 times (ctrl+o to expand)
+
+● Opened the Pokédex instead; backing out and going down one item to Pokémon.
+
+  Searched for 1 pattern, called lotus 12 times (ctrl+o to expand)
+
+● Party screen with 6 B rows. Capturing the top screen.
+
+  Read 1 file, called lotus (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/dc0000000000000058902306f0d5e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Party panel now fills all 400 px: frame at both edges, wave continued, no
+  seams or holes. Committing.
+
+● Bash(cp /c/Users/terezi/AppData/Local/Temp/claude/596f382ffeba1215/e16eeb15-41
+      bd-4576-a7e8-e86e5ceddc54/scratchpad/party16.png
+      worklog/2026-11-17-party-wide.png 2>/d…)
+  ⎿  7b51c0c Wide layouts: Unown's MOVE/FILL/COPY/WRAP/OBJS/SHIFT3D rows on
+      the PICA (#16)
+  ⎿  Created worklog\2026-11-17-wide-layout-rules.md (+22 -0)
+       1 +# Wide layout rules on the PICA (issue #16)                    
+       2 +                                                               
+       3 +Unown's MOVE/FILL/COPY/WRAP/OBJS/SHIFT3D rows (ss3ds_widelayout
+         +s.h) now drive                                                 
+       4 +Kohjoh's retained GPU layers instead of a CPU compositor.      
+       5 +                                                               
+       6 +- `src/runtime/kj_layouts.c`: per-screen rows, ported from Unow
+         +n; published via                                               
+       7 +  `kj_screen_state.rows[engine]` with the #15 generation.      
+       8 +- `src/graphics/layout/layout.c`: per BG and line band, Unown's
+         + buildRow()                                                    
+       9 +  column map cut into segments of constant offset or one repeat
+         +ed column.                                                     
+      10 +  Host test: `tests/native/layout_test.c` (each kind, scroll/pi
+         +cture coords,                                                  
+      11 +  wrap, shipped tables: no holes, no overlaps).                
+      12 +- `g2d.c`: under a layout, text BG quads cover screen columns -
+         +64..320 and are                                                
+      13 +  drawn once per segment, translated or stretched by the 2D xfo
+         +rm under a                                                     
+      14 +  scissor (coffeepot HGSS_3DS_ENGINEERING_GUIDE.md: "compact ru
+         +ns or scissored                                                
+      15 +  strips with per-run state"). OBJS moves sprites by their midd
+         +le at quad                                                     
+      16 +  emission (OAM untouched; retained OBJ key includes the genera
+         +tion). SHIFT3D                                                 
+      17 +  offsets the target passed to g3d only (no DS matrix/viewport/
+         +box-test change).                                              
+      18 +  Affine BGs keep 256 columns and are counted. Stats log `layou
+         +t segments`.                                                   
+      19 +                                                               
+      20 +Verified: LOTUS kj-prof, party screen (engine B top, 6 rows) at
+         + frame 7258:                                                   
+      21 +panel frame at both 400 px edges, wave continued, no seams     
+      22 +(`2026-11-17-party-wide.png`). Field/battle (no rows) unchanged
+         +.                                                              
+  ⎿  … 1 more file changed
+
+● Committed (7b51c0c). Checking summary (COPY/OBJS/SHIFT3D) before closing #16.
+
+  Searched for 1 pattern, called lotus 9 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/de000000000000001403aa48f9d5e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+● The summary screen works too: the memo panel is 64 px wider with its dotted
+  lines continued, and the name, sprite and 3D Pokémon block moved to the right
+  edge. Closing #16.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● The lock was transient. Retrying.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● #15 and #16 are closed. Next is #17.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Party, summary and the #16 engine are verified. For #17, next I'll check the
+  Bag, then Pokégear, trainer card and options.
+
+  Searched for 1 pattern, called lotus 8 times (ctrl+o to expand)
+
+● Party, summary, party and back to field all switch correctly. Opening the Bag
+  (menu Down, A).
+
+  Searched for 1 pattern, called lotus 9 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/e00000000000000048215e7109d6e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● The Bag fills the width correctly: the backdrop bands run to both edges and
+  the description bar's end pieces sit at the screen edges. Next is the
+  Pokégear.
+
+  Searched for 1 pattern, called lotus 13 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/e200000000000000d08beb8910d6e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● The Pokégear backdrop opens cleanly to both edges. The call window stays
+  DS-width, which is how Unown's table does it. The missing text is the existing
+  issue #1. Next is the trainer card.
+
+  Searched for 3 patterns, called lotus 41 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/e40000000000000060dabb6924d6e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Navigating the in-game menu to reach the trainer card (the menu is
+  touch-driven on the bottom screen). Checking where its buttons are.
+
+● readMcpResource(Read resource
+                 "lotus://artifact/e500000000000000b80fc26924d6e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Searched for 1 pattern, read 1 file, called lotus 9 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/e600000000000000b8436ec12bd6e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● The trainer card works: the pattern continues past the edges, the badge band
+  runs to both sides and the tab sits at the left edge. Next is Options.
+
+  Searched for 1 pattern, called lotus 17 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/e80000000000000008731d8334d6e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Options also works, with the backdrop bands extended on both sides from
+  Unown's edge columns, and all six reachable #17 screens are verified. I'm
+  adding the development override file #17 asks for, plus a per-screen status
+  document, next.
+
+  Listed 1 directory, ran 2 shell commands (ctrl+o to expand)
+
+● Adding the development override (wide_layouts.txt on the SD card, in Unown's
+  format) on the 3DS side, next to the script.txt loader.
+
+● Bash(sed -n 180,195p src/app/main.c && python - <<'EOF'
+      p='src/runtime/kj_bridge.h'…)
+  ⎿      APT_CheckNew3DS(&is_new);
+         kj_log("[app] kohjoh %s (%s), %s, %s", KJ_BUILD_ID, kj_ds_edition_
+     name(),
+     … +22 lines (ctrl+o to expand)
+  ⎿  Updated src\runtime\kj_bridge.h (+3 -0)
+      206  #define KJ_SCREEN_OTHER          25u  /* a known application w
+           ithout an ID */
+      207  #define KJ_SCREEN_COUNT          26u
+      208  
+      209 +/* Names of the IDs above, in order (logs and the wide_layouts
+          +.txt override). */                                            
+      210 +#define KJ_SCREEN_NAMES_INIT                                  
+          +                          { "unknown", "field", "battle", "tit
+          +le", "intro", "mainmenu", "oakspeech",           "party", "sum
+          +mary", "bag", "pcbox", "pokedex", "pokegear", "gearmap",      
+          +        "gearphone", "gearradio", "gearconfig", "trainercard",
+          + "signature",                "options", "flymap", "starter", "
+          +credits", "easychat", "naming", "other" }                     
+      211 +                                                              
+      212  /* One wide-layout rule (issue #16; Unown's ss3ds_widelayouts.
+           h rows).
+      213   * Columns and lines are the DS's; the wide top screen shows D
+           S columns
+      214   * -32..287. Unless bgs has KJ_LAYOUT_SCREEN, x0..x1 and top..
+           bottom are
+  ⎿  Updated src\runtime\kj_screen.c (+1 -6)
+      69  INITS(X)
+      70  #undef X
+      71  
+      72 -static const char *const NAMES[KJ_SCREEN_COUNT] = {            
+      73 -    "unknown", "field", "battle", "title", "intro", "mainmenu",
+         - "oakspeech",                                                  
+      74 -    "party", "summary", "bag", "pcbox", "pokedex", "pokegear", 
+         -"gearmap",                                                     
+      75 -    "gearphone", "gearradio", "gearconfig", "trainercard", "sig
+         -nature",                                                       
+      76 -    "options", "flymap", "starter", "credits", "easychat", "nam
+         -ing", "other",                                                 
+      77 -};                                                             
+      72 +static const char *const NAMES[KJ_SCREEN_COUNT] = KJ_SCREEN_NAM
+         +ES_INIT;                                                       
+      73  
+      74  static uint32_t classify(const void *init)
+      75  {
+● Write(src\graphics\layout\override.c)
+  ⎿  Wrote 175 lines to src\graphics\layout\override.c
+       1 /*
+       2  * override.c: sdmc:/3ds/kohjoh/wide_layouts.txt, the developmen
+         t override
+       3  * of the built-in wide layouts (issue #17). Same format as Unow
+         n's
+       4  * wide_layouts.txt, so tuned rows move between the ports unchan
+         ged:
+       5  *     screen party
+       6  *     B move 0x2 0 192 0 20 -32      (engine, kind, bgs top bot
+         tom x0 x1 dx)
+     … +169 lines (ctrl+o to expand)
+
+● Write(src\graphics\layout\override.h)
+  ⎿  Wrote 16 lines to src\graphics\layout\override.h
+       1 #ifndef KJ_GRAPHICS_LAYOUT_OVERRIDE_H
+       2 #define KJ_GRAPHICS_LAYOUT_OVERRIDE_H
+       3 
+       4 #include <stdbool.h>
+       5 #include <stdint.h>
+       6 
+       7 #include "runtime/kj_bridge.h"
+       8 
+       9 /* Read the development wide-layout override (absent: nothing ch
+         anges). */
+     … +7 lines (ctrl+o to expand)
+
+● Bash(python - <<'EOF'
+      p='src/app/main.c'…)
+  ⎿  13:#include "graphics/layout/override.h"
+     14:#include "app/app.h"
+     15:#include "app/input.h"
+     … +7 lines (ctrl+o to expand)
+  ⎿  Updated src\app\main.c (+3 -0)
+      10   * clock/L2 and runs in the ordinary 64 MB application memory m
+          ode.
+      11   */
+      12  
+      13 +#include "graphics/layout/override.h"                          
+      14  #include "app/app.h"
+      15  #include "app/input.h"
+      16  #include "app/script.h"
+     ...
+      187          char script[128];
+      188          snprintf(script, sizeof(script), "%s/script.txt", path
+           s->root);
+      189          kj_script_load(script);
+      190 +        snprintf(script, sizeof(script), "%s/wide_layouts.txt"
+          +, paths->root);                                               
+      191 +        kj_layout_override_load(script);                      
+      192      }
+      193      gfxInitDefault();
+      194      gfxSet3D(false);
+  ⎿  Updated src\graphics\g2d\g2d.c (+9 -4)
+      26  #include "diagnostics/perf.h"
+      27  #include "graphics/g3d/g3d.h"
+      28  #include "graphics/layout/layout.h"
+      29 +#include "graphics/layout/override.h"                          
+      30  #include "graphics/pica/gpu.h"
+      31  #include "graphics/pica/targets.h"
+      32  #include "graphics/resources/atlas.h"
+     ...
+      1415      c.bg_vram_size = engine == 0 ? 0x80000u : 0x20000u;
+      1416      c.obj_vram = engine == 0 ? mem->obj_vram_a : mem->obj_vra
+            m_b;
+      1417      c.obj_vram_size = engine == 0 ? 0x40000u : 0x20000u;
+      1417 -    if (screen == KJ_SCREEN_TOP && in->screen.rows[engine] !=
+           - NULL) {                                                     
+      1418 -        c.rows = in->screen.rows[engine];                    
+      1419 -        c.nrows = in->screen.row_count[engine] < KJ_LAYOUT_MA
+           -X_ROWS ? in->screen.row_count[engine]                        
+      1420 -                                                             
+           -        : KJ_LAYOUT_MAX_ROWS;                                
+      1418 +    if (screen == KJ_SCREEN_TOP) {                           
+      1419 +        const kj_layout_row *rows = in->screen.rows[engine]; 
+      1420 +        uint32_t n = in->screen.row_count[engine];           
+      1421 +        kj_layout_override_get(in->screen.screen_id, engine, 
+           +&rows, &n);                                                  
+      1422 +        if (rows != NULL && n > 0) {                         
+      1423 +            c.rows = rows;                                   
+      1424 +            c.nrows = n < KJ_LAYOUT_MAX_ROWS ? n : KJ_LAYOUT_
+           +MAX_ROWS;                                                    
+      1425 +        }                                                    
+      1426      }
+      1427  
+      1428      const uint8_t *io = mem->io + engine * 0x1000;
+
+● Bash(python - <<'EOF'
+      p='src/app/main.c'…)
+  ⎿  1103:   packaged /c/Users/terezi/workdir/kohjoh/build/kj-prof/pokehear
+     tgold.3dsx (5592200 bytes)
+  ⎿  Updated src\app\main.c (+1 -1)
+      10   * clock/L2 and runs in the ordinary 64 MB application memory m
+          ode.
+      11   */
+      12  
+      13 -#include "graphics/layout/override.h"                          
+      13  #include "app/app.h"
+      14  #include "app/input.h"
+      15  #include "app/script.h"
+     ...
+      17  #include "diagnostics/crash.h"
+      18  #include "diagnostics/log.h"
+      19  #include "diagnostics/perf.h"
+      20 +#include "graphics/layout/override.h"                          
+      21  #include "graphics/renderer.h"
+      22  #include "runtime/kj_bridge.h"
+      23  #include "storage/paths.h"
+  ⎿  (timeout 10m)
+
+● Build OK. To test the override, I'll start a fresh session with a
+  wide_layouts.txt that wraps the title screen's BGs, which is the quickest
+  screen to reach.
+
+  Searched for 1 pattern, called lotus 10 times, ran 1 shell command (ctrl+o to expand)
+
+● Override parsed correctly: 1 screen and 2 rows loaded, with both bogus lines
+  rejected. Capturing the title screen.
+
+  Called lotus (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/ec000000000000006cba9daf8dd6e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● The override works: the title screen's BGs wrap into the sides, as WRAP should
+  do on a picture that doesn't repeat. Writing the per-screen status document
+  and committing.
+
+● Bash(for f in bag17 gear17 tcard options titleov; do cp
+      /c/Users/terezi/AppData/Local/Temp/claude/596f382ffeba1215/e16eeb15-41bd-4
+      576-a7e8-e86e5ceddc54/scratchpad/$f…)
+  ⎿  d944e60 Wide layouts: sdmc wide_layouts.txt override and per-screen st
+     atus (#17)
+  ⎿  Created docs\widescreen-screens.md (+29 -0)
+       1 +# Widescreen: per-screen state (issue #17)                     
+       2 +                                                               
+       3 +Built-in rows: `src/runtime/kj_layouts.c` (ported from Unown's 
+       4 +`ss3ds_widelayouts.h`). Engine: `src/graphics/layout/` (issue #
+         +16).                                                           
+       5 +Development override: `sdmc:/3ds/kohjoh/wide_layouts.txt` (Unow
+         +n's format;                                                    
+       6 +see `src/graphics/layout/override.c`). A screen listed there us
+         +es only its                                                    
+       7 +override rows; the log line `[layout] ...: N screens, N rows, N
+         + lines ignored`                                                
+       8 +reports the parse. Diagnostic builds log `layout segments` and 
+         +count affine                                                   
+       9 +BGs under a layout as `unsupported`.                           
+      10 +                                                               
+      11 +States: not attempted / basic edge fill / layout implemented / 
+         +authored WideArt / O3DS verified.                              
+      12 +                                                               
+      13 +| Screen | Top engine | Rows | State | Evidence (LOTUS kj-prof,
+         + 2026-11-17) |                                                 
+      14 +| --- | --- | --- | --- | --- |                                
+      15 +| party | B | 6 | layout implemented | panel to both edges, wav
+         +e continued (`worklog/2026-11-17-party-wide.png`) |            
+      16 +| summary | A | 24 | layout implemented | memo panel widened, d
+         +otted lines continued, name/sprite/3D at right edge (`...summar
+         +y-wide.png`) |                                                 
+      17 +| bag | A | 6 | layout implemented | bands and description bar 
+         +to both edges (`...wide-bag17.png`) |                          
+      18 +| pokegear (all tabs) | B | 3 | layout implemented | backdrop o
+         +pens at its level middle; call window stays DS width; missing t
+         +ext is #1 (`...wide-gear17.png`) |                             
+      19 +| trainercard | A | 4 | layout implemented | pattern wraps, bad
+         +ge band runs on, tab at left edge (`...wide-tcard.png`) |      
+      20 +| options | A/B | 2 | basic edge fill | bands continue by their
+         + edge column; dithered rows show a solid side (`...wide-options
+         +.png`) |                                                       
+      21 +| pcbox | B | 5 | layout implemented | not yet captured (needs 
+         +a PC in reach) |                                               
+      22 +| naming, flymap, signature | A/B | 2 | basic edge fill | not y
+         +et captured |                                                  
+      23 +| field, battle, title, intro, others | - | 0 | not attempted |
+         + DS picture centred (#14/#18/#19) |                            
+      24 +                                                               
+      25 +Navigation verified with screen transitions in the log: field >
+         + party >                                                       
+      26 +summary > party > field, field > bag > field, field > pokegear 
+         +> gearphone >                                                  
+      27 +pokegear > field, field > trainercard > field, field > options;
+         + no stale IDs                                                  
+      28 +and no art leaking between screens. O3DS frame-interval checks 
+         +are pending                                                    
+      29 +on hardware.                                                   
+  ⎿  … 5 more files changed
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I've posted progress on #17. Next is the script.txt input-blocking bug I
+  noticed earlier.
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● A script with no input events still takes over the pad. The fix is for
+  scripted input to own the pad only when there are events.
+
+● Bash(python - <<'EOF'
+      p='src/app/script.c'…)
+  ⎿  22:| `-Script file` | scripted input (below); without it `script.txt`
+     is removed |
+  ⎿  Updated src\app\script.c (+3 -1)
+      144  
+      145  bool kj_script_input(uint32_t vblank, uint16_t *keys, bool *to
+           uch, uint16_t *tx, uint16_t *ty)
+      146  {
+      147 -    if (!s_active) {                                          
+      147 +    /* Only a script with input events owns the pad: one that 
+          +sets only                                                     
+      148 +     * debug flags, marks or pacing leaves live input working.
+          + */                                                           
+      149 +    if (!s_active || s_event_count == 0) {                    
+      150          return false;
+      151      }
+      152      *keys = 0;
+
+  Searched for 1 pattern, ran 1 shell command (ctrl+o to expand)
+
+● Bash(python - <<'EOF'
+      p='docs/testing.md'…)
+  ⎿  1103:   packaged /c/Users/terezi/workdir/kohjoh/build/kj-prof/pokehear
+     tgold.3dsx (5592200 bytes)
+  ⎿  Updated docs\testing.md (+3 -0)
+      42  V-blank indices count from boot; game frames are publishes (≈ V
+          -blanks / 2).
+      43  A scripted run ignores live input on `wip/savestore`; on `maste
+          r` a live press
+      44  can still leak in, so do not type into the Azahar window during
+           a test.
+      45 +A script without input events (only `debug:`, `every:`, `end:`,
+         + `freeze` or                                                   
+      46 +`dump` lines) leaves live input working, so debug flags can be 
+         +set while                                                      
+      47 +driving the game by hand (LOTUS MCP or a real pad).            
+      48  
+      49  | Script | Purpose |
+      50  | --- | --- |
+  ⎿  (timeout 10m)
+
+● Verifying: fresh session that keeps its stock script.txt, boot to title, then
+  press START.
+
+  Searched for 1 pattern, read 1 file, called lotus 14 times (ctrl+o to expand)
+
+● Live START now gets through even with the stock every: 10 script.txt in place;
+  before the fix it was ignored. Committing.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● I fixed the bug the last agent left, closed #15 and #16, made progress on #17
+  and fixed a script.txt input bug. Everything is committed. The rest of the
+  WideArt work (#14, #17's remainder, #18–#21) is still open.
+
+  Done this session
+  - Starter particles (3e542bf): the leaves and sparkles around Chikorita now
+    appear. This was the bug the last agent never got to.
+  - Battle stat arrows (667a9d9): the arrows from moves like Leer now draw.
+  - #15, screen identity (f8a491c), closed: the port now knows which game screen
+    is showing. Tested in LOTUS: boot → field, field → party → summary → party
+    → field, and field → battle → field after running from a wild battle. No
+    stale screen IDs.
+  - #16, wide layout rules (7b51c0c, cfe4144), closed:
+    - Unown's MOVE/FILL/COPY/WRAP/OBJS/SHIFT3D rules now run on the GPU, reusing
+      each layer's cached tiles. No CPU compositing and no readback.
+    - Sprites are moved as they are drawn; the game's sprite memory is never
+      rewritten.
+    - The 3D layer is shifted on screen only; the game's matrices are untouched.
+    - A host test checks each rule kind and the shipped tables:
+      tests/native/layout_test.c.
+    - In LOTUS the party and summary screens fill all 400 px with no seams or
+      holes. The field and battle screens are unchanged.
+  - #17, menu layouts (d944e60), still open; progress comment posted:
+    - Bag, Pokégear, trainer card and options checked in LOTUS. All but options
+      fill the width cleanly; options gets a plain edge-fill that's still open
+      (below).
+    - New development override: sdmc:/3ds/kohjoh/wide_layouts.txt, in Unown's
+      format, replaces a screen's built-in layout. Tested by wrapping the title
+      screen; malformed lines are rejected and reported in the log.
+    - Per-screen status is tracked in docs/widescreen-screens.md.
+  - Script.txt input bug (7165dba): a script.txt with only settings in it (even
+    the stock every: 10) blocked all live input. Now only a script that contains
+    input events takes over the pad. Tested: a live START at the title reaches
+    the main menu.
+
+  Still open
+  - #17:
+    - Not yet captured in LOTUS: PC boxes, naming, Fly map and signature
+      screens, the Pokégear map/radio/config tabs, and the back of the trainer
+      card. Bag pocket switching wasn't exercised either.
+    - On options, the dithered bands become solid at the sides.
+    - O3DS frame timing still needs a run on real hardware.
+  - #14 and #18–#21 (WideArt bands, battle layouts, effects, art coverage, QA 
+    corpus): not started. Each is a substantial project.
+  - #3: the umbrella issue stays open until those are done.
+  - #2, #4, #9: still waiting on the reporters.
+  - #5: still parked.
+
+  The Pokégear's missing text is the existing issue #1; I didn't cover it up
+  with layout tricks.
+
+◯ Goal not yet met… continuing (ctrl+o to expand)
+
+● The hook is right; I'll keep going. Next is the options edge-fill: its bands
+  are horizontal, so continuing the map (WRAP) preserves the dithering, where
+  the edge-column fill flattened it to a solid colour.
+
+● Bash(python - <<'EOF'
+      p='src/runtime/kj_layouts.c'…)
+  ⎿  1:layout_test: ok
+     1104:   packaged /c/Users/terezi/workdir/kohjoh/build/kj-prof/pokehear
+     tgold.3dsx (5592200 bytes)
+  ⎿  Updated src\runtime\kj_layouts.c (+5 -2)
+      51      MOVE(0x4, 0, 192, 244, 256, 32), FILL(0x4, 0, 192, 244, 276
+          , 242),
+      52  };
+      53  
+      54 -/* Options (BG0 a banded backdrop), either engine. */          
+      54 +/* Options (BG0 a banded backdrop), either engine. Unown repeat
+         +s the edge                                                     
+      55 + * columns, which turns the dithered rows between bands solid a
+         +t the sides                                                    
+      56 + * (LOTUS capture 2026-11-17); the bands are horizontal, so con
+         +tinuing the                                                    
+      57 + * BG's own map keeps the dither. */                           
+      58  static const kj_layout_row OPTIONS[] = {
+      56 -    FILL(0x1, 0, 192, -32, 0, 0), FILL(0x1, 0, 192, 256, 288, 2
+         -55),                                                           
+      59 +    WRAP(0x1 | KJ_LAYOUT_SCREEN, 0, 192),                      
+      60  };
+      61  
+      62  /* Pokegear, all tabs (engine B on top: BG0 the curved backdrop
+           opens in the
+  ⎿  (timeout 10m)
+
+  Searched for 1 pattern, called lotus 27 times (ctrl+o to expand)
+
+● Touch navigation works, which is much faster. Capturing options.
+
+  Called lotus (ctrl+o to expand)
+● readMcpResource(Read resource
+                 "lotus://artifact/f20000000000000078e803b23ad7e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● The dither now runs seamlessly to both edges. Committing.
+
+● Bash(cp /c/Users/terezi/AppData/Local/Temp/claude/596f382ffeba1215/e16eeb15-41
+      bd-4576-a7e8-e86e5ceddc54/scratchpad/options2.png
+      worklog/2026-11-17-wide-options.png &…)
+  ⎿  20:| options | A/B | 1 | layout implemented | backdrop map wraps, dith
+     er continuous to both edges (`...wide-options.png`) |
+     27:pokegear > field, field > trainercard > field, field > options; no
+     … +2 lines (ctrl+o to expand)
+  ⎿  Updated docs\widescreen-screens.md (+1 -1)
+      17  | bag | A | 6 | layout implemented | bands and description bar 
+          to both edges (`...wide-bag17.png`) |
+      18  | pokegear (all tabs) | B | 3 | layout implemented | backdrop o
+          pens at its level middle; call window stays DS width; missing t
+          ext is #1 (`...wide-gear17.png`) |
+      19  | trainercard | A | 4 | layout implemented | pattern wraps, bad
+          ge band runs on, tab at left edge (`...wide-tcard.png`) |
+      20 -| options | A/B | 2 | basic edge fill | bands continue by their
+         - edge column; dithered rows show a solid side (`...wide-options
+         -.png`) |                                                       
+      20 +| options | A/B | 1 | layout implemented | backdrop map wraps, 
+         +dither continuous to both edges (`...wide-options.png`) |      
+      21  | pcbox | B | 5 | layout implemented | not yet captured (needs 
+          a PC in reach) |
+      22  | naming, flymap, signature | A/B | 2 | basic edge fill | not y
+          et captured |
+      23  | field, battle, title, intro, others | - | 0 | not attempted |
+           DS picture centred (#14/#18/#19) |
+  ⎿  … 1 more file changed
+
+● Next are the Pokégear tabs. Exiting options and opening the Pokégear by touch.
+
+  Called lotus 9 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/f50000000000000054b841d742d7e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Pokégear tabs found on the bottom screen. Tapping the map tab.
+
+  Searched for 1 pattern, called lotus 5 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/f600000000000000009306e746d7e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● The map tab works: backdrop at both edges, and its text shows. Next is the
+  config tab.
+
+  Searched for 1 pattern, called lotus 5 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/f8000000000000003426dd6b4bd7e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● The config tab works too. Next: Bag pocket switching.
+
+  Searched for 1 pattern, called lotus 13 times (ctrl+o to expand)
+
+● The bag-pocket switch checks out with no regression on the top screen, and I'm
+  walking into the Cherrygrove Pokémon Center to test the PC boxes next.
+
+  Called lotus 13 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/fc0000000000000050cf45a759d7e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Inside the Pokémon Center. The PC is at the top right, by the counter. Walking
+  there.
+
+  Called lotus 7 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/fe000000000000007c6705ea5dd7e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 7 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/00010000000000007c05366762d7e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 7 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/02010000000000002847e63366d7e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Walking to the PC in the Cherrygrove Pokémon Center so I can check the PC box
+  screen; it's two tiles to the left.
+  Called lotus 5 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/04010000000000006461fee069d7e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 5 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/060100000000000014c0f3ad6dd7e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 18 times, ran 1 shell command (ctrl+o to expand)
+
+● Still lining the player up with the Pokémon Center PC so I can check the PC
+  box screen.
+
+● readMcpResource(Read resource
+                 "lotus://artifact/0a0100000000000020d455c075d7e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 11 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/0c010000000000003092c3507bd7e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 11 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/0e01000000000000043372c380d7e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 13 times, ran 1 shell command (ctrl+o to expand)
+
+● The bottom screen changed, so the PC likely opened. Checking it.
+
+● readMcpResource(Read resource
+                 "lotus://artifact/100100000000000024e3879787d7e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● The PC booted. Advancing into the box menu.
+
+  Called lotus 9 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/1301000000000000ec2c8ff18cd7e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/1201000000000000bcf383f18cd7e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Searched for 1 pattern, read 1 file, called lotus 9 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/14010000000000002ccd2a2a95d7e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● The PC box screen renders correctly: the info panel sits flush with the left
+  edge and the title bar and panel continue to the right. Next I'll check box
+  switching (R).
+
+  Called lotus 5 times (ctrl+o to expand)
+
+● Box switching works: the bottom screen changes and the wide top screen stays
+  stable. Recording the results.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Next is the back of the trainer card. Leaving the PC.
+
+  Searched for 1 pattern, called lotus 16 times (ctrl+o to expand)
+
+● Back on the field. Opening the trainer card by touch, then flipping it with A.
+
+  Searched for 1 pattern, called lotus 13 times (ctrl+o to expand)
+● readMcpResource(Read resource
+                 "lotus://artifact/1801000000000000c8a34b59aad7e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● The top screen keeps the badge case; flipping the card front/back only changes
+  the bottom screen. Recording that and closing #17.
+
+● Bash(python - <<'EOF'
+      p='docs/widescreen-screens.md'…)
+  ⎿  ✓ Closed issue estyseesghosts/kohjoh#17 (Widescreen: adapt and verify
+     HGSS menu layouts (party, Bag, summary, boxes, Pokégear, trainer card)
+     )
+  ⎿  Updated docs\widescreen-screens.md (+4 -4)
+      16  | summary | A | 24 | layout implemented | memo panel widened, d
+          otted lines continued, name/sprite/3D at right edge (`...summar
+          y-wide.png`) |
+      17  | bag | A | 6 | layout implemented | bands and description bar 
+          to both edges; pocket switching leaves the top stable (`...wide
+          -bag17.png`) |
+      18  | pokegear (phone, map, config) | B | 3 | layout implemented | 
+          backdrop opens at its level middle; windows stay DS width; phon
+          e text missing is #1 (`...wide-gear17.png`, `...wide-gearmap.pn
+          g`, `...wide-gearcfg.png`); radio tab not unlocked on the test 
+          save |
+      19 -| trainercard | A | 4 | layout implemented | pattern wraps, bad
+         -ge band runs on, tab at left edge (`...wide-tcard.png`) |      
+      19 +| trainercard | A | 4 | layout implemented | pattern wraps, bad
+         +ge band runs on, tab at left edge; the card's front/back flip i
+         +s on the lower screen and leaves the top unchanged (`...wide-tc
+         +ard.png`) |                                                    
+      20  | options | A/B | 1 | layout implemented | backdrop map wraps, 
+          dither continuous to both edges (`...wide-options.png`) |
+      21  | pcbox | B | 5 | layout implemented | info panel flush left, t
+          itle bar and panel run on; box switching (R) leaves the top sta
+          ble (`...wide-pcbox.png`) |
+      22 -| naming, flymap, signature | A/B | 2 | basic edge fill | not y
+         -et captured |                                                  
+      22 +| naming, flymap, signature | A/B | 2 | basic edge fill | not c
+         +aptured on the test save (needs Fly / a rename / a signature); 
+         +same FILL rows as the bag's verified backdrop |                
+      23  | field, battle, title, intro, others | - | 0 | not attempted |
+           DS picture centred (#14/#18/#19) |
+      24  
+      25  Navigation verified with screen transitions in the log: field >
+           party >
+      26  summary > party > field, field > bag > field, field > pokegear 
+          > gearphone >
+      27  pokegear > field, field > trainercard > field, field > options;
+           no stale IDs
+      28 -and no art leaking between screens. O3DS frame-interval checks 
+         -are pending                                                    
+      29 -on hardware.                                                   
+      28 +and no art leaking between screens. O3DS frame-interval checks 
+         +need real hardware and belong to the                           
+      29 +release gate in #21.                                           
+
+● #17 is closed. Next I'll read #18 and #19.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● #18 (battle layout) needs a live battle to inspect its BG setup. Leaving the
+  Pokémon Center to head for the Route 30 grass north of Cherrygrove.
+
+  Called lotus 13 times (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/1a01000000000000801547eeb7d7e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 7 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/1c01000000000000405e29b4bcd7e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, called lotus 9 times, ran 1 shell command (ctrl+o to expand)
+
+● readMcpResource(Read resource
+                 "lotus://artifact/1e0100000000000008397f5ac2d7e818" from server
+                 "lotus")
+  ⎿  {
+       "contents": [
+         {
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file, ran 1 shell command (ctrl+o to expand)
+
+● Walking to Route 30's grass to start a wild battle for the battle-layout work
+  (#18).
+
+  Called lotus 7 times (ctrl+o to expand)
+  ⎿  You've hit your 5-hour limit · resets 11:10am (America/New_York)
+
+● Usage limit reached · continuing automatically at 11:10am · esc to 
+  cancel
+
+● Goal paused · usage limit reached · continues automatically when it 
+  resets
+
+✻ Cooked for 48m 48s · done 8:21 AM
