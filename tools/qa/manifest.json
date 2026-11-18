@@ -168,7 +168,7 @@
   },
   {
    "id": "app-start-menu",
-   "title": "Start menu and first application",
+   "title": "Start menu, then the Pokedex (first menu entry)",
    "class": "application",
    "edition": "HG",
    "save_sha256": "6f70eb0ee066b6a108de7c0d586f844f59bf81ec2cf8a580c9bdfc1bf8008eaf",
@@ -183,7 +183,9 @@
      "note": "application opened"
     }
    ],
-   "expect_log": []
+   "expect_log": [
+    "\\[screen\\] pokedex"
+   ]
   }
  ]
 }
