@@ -3,6 +3,8 @@
 a native homebrew port of pokemon heartgold and soulsilver for the original 3DS.
 this is more of a proof-of-concept than a playable game. expect issues.
 
+![kohjoh](kohjoh.png)
+
 uses the WideArt system from [pokeplatinum-3ds](https://github.com/gabesud0/pokeplatinum-3ds) with modifications pulled from [unowncollectables port](https://github.com/unowncollectables/Pokemon-HeartGold-SoulSilver-New3ds)
 
 should run full speed on real hardware. if you find any bugs, file an issue here or complain on discord.
