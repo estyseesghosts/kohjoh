@@ -100,8 +100,9 @@ static const kj_layout_row PC_BOX_B[] = {
  * Lines and columns measured in LOTUS (Route 29 wild battle, 2026-11-17). */
 static const kj_layout_row BATTLE_A[] = {
     FILL(0x8 | KJ_LAYOUT_SCREEN, 0, 192, -32, 0, 0), FILL(0x8 | KJ_LAYOUT_SCREEN, 0, 192, 256, 288, 255),
-    MOVE(0x2, 144, 192, 0, 12, -32), FILL(0x2, 144, 192, -20, 12, 12),
-    MOVE(0x2, 144, 192, 244, 256, 32), FILL(0x2, 144, 192, 244, 276, 243),
+    /* The message box (BG1, lines 144-191) keeps the DS columns: a
+     * pillarboxed box reads better than one stretched to 400 px
+     * (maintainer's call, 2026-11-17; Unown widened it). */
     OBJS(8, 60, -64, 160, -32), OBJS(84, 144, 120, 320, 32),
 };
 
