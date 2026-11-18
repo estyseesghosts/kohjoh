@@ -9,6 +9,7 @@ and Goldenrod field in Azahar; Old 3DS speed is not yet established.
 | [Status](status.md) | What works, at what evidence level; open work |
 | [Architecture](architecture.md) | Frame flow, 2D and 3D renderers, the bridge |
 | [Build on Windows](building-windows.md) | Bootstrap, build, data pack, run |
+| [Releasing](releasing.md) | Version number, the four builds, CI, tag and GitHub release |
 | [Testing and profiling](testing.md) | Azahar harness, scripts, oracle, PC sampler |
 | [Troubleshooting](troubleshooting.md) | Build-chain and runtime failures with causes |
 | [Lessons](lessons.md) | What went right, what went wrong, working rules |
