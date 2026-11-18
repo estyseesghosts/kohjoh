@@ -111,6 +111,12 @@ static const kj_layout_row EDGE_SIDES[] = {
     FILL(0xF, 0, 192, -32, 0, 0), FILL(0xF, 0, 192, 256, 288, 255),
 };
 
+/* Pokedex (both engines): column 255 is a dark border strip, so the right
+ * side continues column 250 to match the left's red instead of the border. */
+static const kj_layout_row DEX_SIDES[] = {
+    FILL(0xF, 0, 192, -32, 0, 0), FILL(0xF, 0, 192, 256, 288, 250),
+};
+
 /* Field top (#19): the overworld's 2D (BG1-3) is empty at the screen edges
  * except while an encounter effect covers it (the wild wipe's rectangles,
  * a Gym Leader's VS band) - its edge columns continue over the wide 3D.
@@ -142,6 +148,7 @@ static const screen_layout LAYOUTS[] = {
     { KJ_SCREEN_NAMING, { EDGE_SIDES, EDGE_SIDES }, { N(EDGE_SIDES), N(EDGE_SIDES) } },
     { KJ_SCREEN_FLY_MAP, { EDGE_SIDES, EDGE_SIDES }, { N(EDGE_SIDES), N(EDGE_SIDES) } },
     { KJ_SCREEN_TC_SIGNATURE, { EDGE_SIDES, EDGE_SIDES }, { N(EDGE_SIDES), N(EDGE_SIDES) } },
+    { KJ_SCREEN_POKEDEX, { DEX_SIDES, DEX_SIDES }, { N(DEX_SIDES), N(DEX_SIDES) } },
     { KJ_SCREEN_PC_BOX, { NULL, PC_BOX_B }, { 0, N(PC_BOX_B) } },
     { KJ_SCREEN_TRAINER_CARD, { TRAINER_CARD_A, NULL }, { N(TRAINER_CARD_A), 0 } },
 };

@@ -24,6 +24,7 @@ States: not attempted / basic edge fill / layout implemented / authored WideArt 
 | field | A | 2 | layout implemented | 3D drawn wide; BG1-3 edge columns continue (encounter wipes, VS band) |
 | title | B | 1 | layout implemented | BG3 sunburst drawn 5/4 wide (SCALE row; its tiles/palette animate, so no WideArt key can match), logo in the DS columns (`...wide-title.png`) |
 | intro | A | 0 | WideArt (placeholder) | opening shot's three layers have test pictures (`...wideart-intro.png`); other intro shots centred |
+| pokedex | A/B | 1 | basic edge fill | left continues column 0, right column 250 (column 255 is a dark border strip); centre unchanged, margins red both sides, right slightly darker (`2026-11-17-wide-pokedex.png`); list and detail pages not captured |
 | others | - | 0 | not attempted | DS picture centred |
 
 Field encounter wipes (#19): the field's 3D runs wide but its 2D is the DS's
