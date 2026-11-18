@@ -20,9 +20,11 @@ States: not attempted / basic edge fill / layout implemented / authored WideArt 
 | options | A/B | 1 | layout implemented | backdrop map wraps, dither continuous to both edges (`...wide-options.png`) |
 | pcbox | B | 5 | layout implemented | info panel flush left, title bar and panel run on; box switching (R) leaves the top stable (`...wide-pcbox.png`) |
 | naming, flymap, signature | A/B | 2 | basic edge fill | not captured on the test save (needs Fly / a rename / a signature); same FILL rows as the bag's verified backdrop |
-| battle (wild, single) | A | 8 | layout implemented | HP boxes to the outer edges (OBJs moved at emission, DS OAM untouched), dialogue frame and terrain to both edges; a Tackle turn and the return to the field leave no stale panel (`...wide-battle.png`, `...wide-battle-turn.png`); trainer intro, double battle (opponent panels at the left edge, player panels at the right), cave and water backdrops captured via the `battle:` script line (`...wide-battle-trainer.png`, `...-double.png`, `...-cave.png`, `...-water.png`); a Gym Leader and an end-to-end switch/faint/capture run not yet captured |
+| battle (wild, single) | A | 8 | layout implemented | HP boxes to the outer edges (OBJs moved at emission, DS OAM untouched), dialogue frame and terrain to both edges; a Tackle turn and the return to the field leave no stale panel (`...wide-battle.png`, `...wide-battle-turn.png`); trainer intro, double battle (opponent panels at the left edge, player panels at the right), cave and water backdrops captured via the `battle:` script line (`...wide-battle-trainer.png`, `...-double.png`, `...-cave.png`, `...-water.png`), Gym Leader (`...-gymleader.png`), Elite Four Will VS band and battle (`...wide-elite4-vs.png`, `...-elite4-battle.png`), Rocket intro dark phase (`...wide-rocket-dark.png`), Kimono Girl shoji wipe closing across 400 px (`...wide-kimono-wipe.png`) |
 | field | A | 2 | layout implemented | 3D drawn wide; BG1-3 edge columns continue (encounter wipes, VS band) |
-| title, intro, others | - | 0 | not attempted | DS picture centred (#14/#19) |
+| title | B | 1 | layout implemented | BG3 sunburst drawn 5/4 wide (SCALE row; its tiles/palette animate, so no WideArt key can match), logo in the DS columns (`...wide-title.png`) |
+| intro | A | 0 | WideArt (placeholder) | opening shot's three layers have test pictures (`...wideart-intro.png`); other intro shots centred |
+| others | - | 0 | not attempted | DS picture centred |
 
 Field encounter wipes (#19): the field's 3D runs wide but its 2D is the DS's
 256 columns. Window wipes (trainer effects, `encounter_effect_wipe.c`) now
