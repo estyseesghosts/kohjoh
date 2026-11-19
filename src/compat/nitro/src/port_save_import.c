@@ -11,10 +11,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #define MAX_IMPORT_BYTES (2u * 1024u * 1024u)
 #define MAX_BACKUPS 1000u
+
+static const char *s_import_failure;
+static int s_import_errno;
+
+const char *port_save_import_failure(void)
+{
+    return s_import_failure;
+}
+
+int port_save_import_errno(void)
+{
+    return s_import_errno;
+}
 
 static uint32_t read_u32(const unsigned char *p)
 {
@@ -190,13 +204,29 @@ static FILE *create_unique(char *name, size_t cap, const char *path, const char 
         if (fd >= 0) {
             FILE *file = fdopen(fd, "wb");
             if (file == NULL) {
+                int saved_errno = errno;
                 close(fd);
                 unlink(name);
+                errno = saved_errno;
             }
             return file;
         }
-        if (errno != EEXIST) {
-            return NULL;
+        /* Some filesystem implementations translate a collision to a
+         * generic errno.  Only skip a candidate confirmed to exist; never
+         * reopen or truncate it, and retain exclusive creation for the next. */
+        int open_error = errno;
+#ifdef PORT_SAVE_IMPORT_TEST
+        const char *fault = getenv("PORT_SAVE_IMPORT_TEST_FAULT");
+        if (open_error == EEXIST && fault != NULL && strcmp(fault, "collision_errno") == 0) {
+            open_error = EIO;
+        }
+#endif
+        if (open_error != EEXIST) {
+            struct stat info;
+            if (stat(name, &info) != 0) {
+                errno = open_error;
+                return NULL;
+            }
         }
     }
     return NULL;
@@ -251,6 +281,9 @@ bool port_save_import(const char *path, unsigned char *image, const char **kind)
     bool ok = false;
     long length;
 
+    s_import_failure = "read or decode input";
+    s_import_errno = 0;
+    errno = 0;
     *kind = NULL;
     if (backup == NULL || temp == NULL || (input = fopen(path, "rb")) == NULL ||
         fseek(input, 0, SEEK_END) != 0 || (length = ftell(input)) <= 0 ||
@@ -260,30 +293,44 @@ bool port_save_import(const char *path, unsigned char *image, const char **kind)
         !port_save_decode(bytes, (size_t)length, image, kind)) {
         goto done;
     }
+    s_import_failure = "close input";
+    errno = 0;
     if (fclose(input) != 0) {
         input = NULL;
         goto done;
     }
     input = NULL;
+    s_import_failure = "create backup";
+    errno = 0;
     file = create_unique(backup, cap, path, ".orig");
     if (file == NULL) {
         goto done;
     }
+    s_import_failure = "write or verify backup";
+    errno = 0;
     if (!write_checked(file, bytes, (size_t)length, "backup") ||
         !verify_file(backup, bytes, (size_t)length)) {
         goto done;
     }
+    s_import_failure = "create temporary image";
+    errno = 0;
     file = create_unique(temp, cap, path, ".tmp");
     if (file == NULL) {
         goto done;
     }
+    s_import_failure = "write or verify temporary image";
+    errno = 0;
     if (!write_checked(file, image, PORT_SAVE_BYTES, "temp") ||
         !verify_file(temp, image, PORT_SAVE_BYTES)) {
+        int saved_errno = errno;
         unlink(temp);
+        errno = saved_errno;
         goto done;
     }
     /* libctru may remove the destination before renaming. The independently
      * verified backup is retained even if this operation fails or power is lost. */
+    s_import_failure = "replace active save";
+    errno = 0;
     int rename_result;
 #ifdef PORT_SAVE_IMPORT_TEST
     const char *fault = getenv("PORT_SAVE_IMPORT_TEST_FAULT");
@@ -297,11 +344,17 @@ bool port_save_import(const char *path, unsigned char *image, const char **kind)
         rename_result = rename(temp, path);
     }
     if (rename_result != 0) {
+        int saved_errno = errno;
         unlink(temp);
+        errno = saved_errno;
         goto done;
     }
     ok = true;
+    s_import_failure = NULL;
 done:
+    if (!ok) {
+        s_import_errno = errno;
+    }
     if (input != NULL) {
         fclose(input);
     }

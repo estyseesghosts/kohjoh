@@ -21,7 +21,8 @@ a temporary raw image. Existing backups are not overwritten. Conversion happens
 once; the resulting active file is raw and the original remains alongside it.
 
 If storage is full, read-only, or an operation fails, conversion stops and the
-log reports failure. The original remains at the active path or in a verified
+log reports the failed stage and errno (zero if no system error was reported).
+The original remains at the active path or in a verified
 `.orig` backup. An incomplete backup or temporary file may also remain; do not
 assume every backup is complete. If interruption leaves the active file missing
 but a backup or temporary file exists, Kohjoh refuses to create a blank save.

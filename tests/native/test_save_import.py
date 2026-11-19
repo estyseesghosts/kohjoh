@@ -31,6 +31,8 @@ class SaveImportTests(unittest.TestCase):
         cls.lib.port_save_import.argtypes = [ctypes.c_char_p, ctypes.c_void_p,
                                              ctypes.POINTER(ctypes.c_char_p)]
         cls.lib.port_save_import.restype = ctypes.c_bool
+        cls.lib.port_save_import_failure.restype = ctypes.c_char_p
+        cls.lib.port_save_import_errno.restype = ctypes.c_int
         cls.lib.port_save_has_backup.argtypes = [ctypes.c_char_p]
         cls.lib.port_save_has_backup.restype = ctypes.c_bool
         cls.raw = bytes(range(256)) * (SIZE // 256)
@@ -157,6 +159,26 @@ class SaveImportTests(unittest.TestCase):
                                                            ctypes.byref(kind)))
                 self.assertEqual(path.read_bytes(), raw)
 
+    def test_collision_with_non_eexist_errno(self):
+        directory = Path(self.temp.name) / "collision-errno"
+        directory.mkdir()
+        path = directory / "heartgold.sav"
+        original = self.dsv(self.raw)
+        path.write_bytes(original)
+        backup = Path(str(path) + ".orig")
+        backup.write_bytes(b"existing backup")
+        out = ctypes.create_string_buffer(SIZE)
+        kind = ctypes.c_char_p()
+        os.environ["PORT_SAVE_IMPORT_TEST_FAULT"] = "collision_errno"
+        try:
+            self.assertTrue(self.lib.port_save_import(os.fsencode(path), out, ctypes.byref(kind)))
+        finally:
+            del os.environ["PORT_SAVE_IMPORT_TEST_FAULT"]
+        self.assertEqual(backup.read_bytes(), b"existing backup")
+        self.assertEqual(Path(str(path) + ".orig.1").read_bytes(), original)
+        self.assertEqual(path.read_bytes(), self.raw)
+        self.assertIsNone(self.lib.port_save_import_failure())
+
     def test_backup_creation_failure_leaves_input(self):
         directory = Path(self.temp.name) / "full"
         directory.mkdir()
@@ -186,6 +208,10 @@ class SaveImportTests(unittest.TestCase):
                 try:
                     self.assertFalse(self.lib.port_save_import(os.fsencode(path), out,
                                                                ctypes.byref(kind)))
+                    expected_stage = {"backup": b"write or verify backup",
+                                      "temp": b"write or verify temporary image",
+                                      "rename": b"replace active save"}
+                    self.assertEqual(self.lib.port_save_import_failure(), expected_stage[fault])
                 finally:
                     del os.environ["PORT_SAVE_IMPORT_TEST_FAULT"]
                 backup = Path(str(path) + ".orig")

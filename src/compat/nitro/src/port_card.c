@@ -141,8 +141,9 @@ static BOOL open_save(void)
             const char *kind = NULL;
             close_save();
             if (!port_save_import(sSavePath, sImage, &kind)) {
-                NitroPort_Log("[save] %s: %ld bytes, %s; import failed; original retained",
-                              sSavePath, size, kind ? kind : "unrecognized or invalid format");
+                NitroPort_Log("[save] %s: %ld bytes, %s; import failed at %s (errno %d); original retained",
+                              sSavePath, size, kind ? kind : "unrecognized or invalid format",
+                              port_save_import_failure(), port_save_import_errno());
                 return FALSE;
             }
             NitroPort_Log("[save] imported %s (%ld bytes); original retained as .orig",
