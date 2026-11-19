@@ -67,7 +67,8 @@ class SaveImportTests(unittest.TestCase):
         header = bytearray(0x50)
         header[:len(MAGIC)] = MAGIC
         header[0x40:0x44] = b"SRAM"
-        struct.pack_into("<III", header, 0x44, 1, len(body), declared)
+        # The length at 0x48 counts from 0x4c: the size word plus the body.
+        struct.pack_into("<III", header, 0x44, 1, 4 + len(body), declared)
         return bytes(header) + body
 
     def test_supported_formats(self):
@@ -80,6 +81,27 @@ class SaveImportTests(unittest.TestCase):
             self.assertTrue(ok)
             self.assertEqual(output, raw)
             self.assertIsNotNone(kind)
+
+    def test_trailing_chunks_after_sram_block(self):
+        # Real No$GBA exports (a Platinum and a HeartGold packed save) end
+        # with a LIFF block and a STOP marker after the SRAM block's
+        # declared length; those bytes are not save data.
+        tail = (b"LIFF" + bytes([1, 0, 0, 0, 9, 0, 0, 0, 0, 0, 1, 0, 0, 0x80, 0, 0, 1, 0])
+                + b"STOP" + bytes(10))
+        body = b"\x03ABC\x82Z" + b"\x80\xff\xff\xff" * 8 + b"\x80\xff\x03\x00\x00"
+        expected = b"ABCZZ" + b"\xff" * (SIZE - 5)
+        for data, raw in ((self.packed(body) + tail, expected),
+                          (self.nocash(self.raw) + tail, self.raw)):
+            ok, output, kind = self.decode(data)
+            self.assertTrue(ok)
+            self.assertEqual(output, raw)
+        # The terminator must still end exactly the declared packed data.
+        early = self.packed(body + b"\x00")
+        self.assertFalse(self.decode(early[:0x48] + (4 + len(body) + 1).to_bytes(4, "little")
+                                     + early[0x4c:] + tail)[0])
+        short = bytearray(self.packed(body) + tail)
+        short[0x48:0x4c] = (4 + len(body) - 1).to_bytes(4, "little")
+        self.assertFalse(self.decode(bytes(short))[0])
 
     def test_packed_container_can_equal_raw_image_size(self):
         # A legal compressed file can have the same length as a raw image.

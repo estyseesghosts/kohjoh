@@ -67,8 +67,12 @@ bool port_save_decode(const unsigned char *input, size_t size, unsigned char *ou
         memcmp(input + 0x40, "SRAM", 4) != 0) {
         return false;
     }
+    /* Real No$GBA exports carry further chunks after the SRAM block (a
+     * "LIFF" block and a "STOP" marker in the Platinum and HeartGold
+     * exports tested): the SRAM block's own length bounds its data, not
+     * the file's end. Bytes after it are not part of the save. */
     if (read_u32(input + 0x44) == 0) {
-        if (read_u32(input + 0x48) != PORT_SAVE_BYTES || size != 0x4c + PORT_SAVE_BYTES) {
+        if (read_u32(input + 0x48) != PORT_SAVE_BYTES || size - 0x4c < PORT_SAVE_BYTES) {
             return false;
         }
         memcpy(output, input + 0x4c, PORT_SAVE_BYTES);
@@ -77,14 +81,18 @@ bool port_save_decode(const unsigned char *input, size_t size, unsigned char *ou
     }
     if (size < 0x50 || read_u32(input + 0x44) != 1 ||
         read_u32(input + 0x4c) != PORT_SAVE_BYTES ||
-        read_u32(input + 0x48) != size - 0x50) {
+        read_u32(input + 0x48) > size - 0x4c) {
         return false;
     }
-    while (src < size) {
+    /* The SRAM block length at 0x48 counts from 0x4c: it covers the
+     * uncompressed-size word as well as the packed data (both authentic
+     * packed exports tested end their terminator exactly there). */
+    const size_t limit = 0x4c + (size_t)read_u32(input + 0x48);
+    while (src < limit) {
         unsigned code = input[src++];
         size_t run;
         if (code == 0) {
-            if (dst != PORT_SAVE_BYTES || src != size) {
+            if (dst != PORT_SAVE_BYTES || src != limit) {
                 return false;
             }
             *kind = "No$GBA packed";
@@ -92,18 +100,18 @@ bool port_save_decode(const unsigned char *input, size_t size, unsigned char *ou
         }
         if (code < 0x80) {
             run = code;
-            if (run > size - src || run > PORT_SAVE_BYTES - dst) {
+            if (run > limit - src || run > PORT_SAVE_BYTES - dst) {
                 return false;
             }
             memcpy(output + dst, input + src, run);
             src += run;
         } else {
-            if (src >= size) {
+            if (src >= limit) {
                 return false;
             }
             unsigned char value = input[src++];
             if (code == 0x80) {
-                if (size - src < 2) {
+                if (limit - src < 2) {
                     return false;
                 }
                 run = (size_t)input[src] | (size_t)input[src + 1] << 8;
