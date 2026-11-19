@@ -32,8 +32,11 @@ import zlib
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DEFAULT_LOTUS = r"C:\Users\terezi\workdir\LOTUS-v0.0.1-windows-x64"
 SD_ROOT = "3ds/kohjoh"
-BUTTONS = {"A": 1, "B": 2, "SELECT": 4, "START": 8, "RIGHT": 16, "LEFT": 32,
-           "UP": 64, "DOWN": 128, "R": 256, "L": 512, "X": 1024, "Y": 2048}
+# lotus_input uses Azahar NativeButton bits, not the DS keypad register bits.
+# LOTUS v0.0.6 docs/37-user-guide.md, "MCP tools".
+BUTTONS = {"A": 1, "B": 2, "X": 4, "Y": 8, "UP": 16, "DOWN": 32,
+           "LEFT": 64, "RIGHT": 128, "L": 256, "R": 512,
+           "START": 1024, "SELECT": 2048}
 
 
 def write_png(path: str, pixels: bytes, width: int, height: int) -> None:
