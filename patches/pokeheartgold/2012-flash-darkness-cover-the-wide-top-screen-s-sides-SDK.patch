@@ -1,0 +1,75 @@
+From ae6b48c41f14a173dd2d791596a17968f53aec06 Mon Sep 17 00:00:00 2001
+From: terezi <jules@foxtails.me>
+Date: Thu, 19 Nov 2026 12:08:03 -0500
+Subject: [PATCH] flash darkness: cover the wide top screen's sides
+ (SDK_PORT_3DS)
+
+---
+ src/field/field_flash_darkness.c | 46 ++++++++++++++++++++++++++++++++
+ 1 file changed, 46 insertions(+)
+
+diff --git a/src/field/field_flash_darkness.c b/src/field/field_flash_darkness.c
+index 8a5076f..d42c845 100644
+--- a/src/field/field_flash_darkness.c
++++ b/src/field/field_flash_darkness.c
+@@ -48,6 +48,9 @@ static BOOL FlashDarknessEffect_Init(FieldEffect *effect, void *state);
+ static void FlashDarknessEffect_Destroy(FieldEffect *effect, void *state);
+ static void FlashDarknessEffect_Update(FieldEffect *effect, void *state);
+ static void FlashDarknessEffect_Draw(FieldEffect *effect, void *state);
++#ifdef SDK_PORT_3DS
++static void FlashDarkness_DrawWideSides(void);
++#endif
+ 
+ static const FieldEffectBasicTemplate sFlashDarknessTemplate = {
+     sizeof(FlashDarknessEffect),
+@@ -145,4 +148,47 @@ static void FlashDarknessEffect_Draw(FieldEffect *effect, void *state) {
+     scale.z = (fx32)(FX32_ONE * work->args.darkness->scale);
+     FieldEffect_GetPosition(effect, &position);
+     GF3dRender_DrawModel(&work->args.darkness->renderObj, &position, &rotation, &scale);
++#ifdef SDK_PORT_3DS
++    FlashDarkness_DrawWideSides();
++#endif
+ }
++
++#ifdef SDK_PORT_3DS
++// The port shows 32 columns of field either side of the DS view (clip x out to 1.25), and the 240-row top screen shows
++// rows beyond the DS 192 (g3d.c make_fixup maps DS rows 1:1).
++// The darkness model is a 48x48 lit hole inside a ring of opaque black quads (vertex colour 0, alpha 31) that ends at
++// x = +-80, y = +-56, so cave tiles showed beyond it on the wide screen. Its SBC is NODEDESC, NODE, BB, POSSCALE, MAT,
++// SHP, inverse POSSCALE, RET: the model is a camera-facing billboard, and after NNS_G3dDraw the current matrix is still
++// that billboard matrix with the position scale undone. Continue the black outward in that space, so it stays in the
++// ring's plane, follows the player and grows with the Flash scale-up. Do not flush the global state here: that would
++// replace the billboard with the plain world matrix, and the camera tilt would foreshorten the quads.
++static void FlashDarkness_DrawWideSides(void) {
++    // VTX_16 is fx16 (under 8.0), so the vertices are in units of 32: 80 -> 2.5, 240 -> 7.5, 56 -> 1.75, 168 -> 5.25.
++    static const fx16 sQuads[4][4][2] = {
++        { { FX16_CONST(2.5), FX16_CONST(5.25) }, { FX16_CONST(2.5), FX16_CONST(-5.25) }, { FX16_CONST(7.5), FX16_CONST(-5.25) }, { FX16_CONST(7.5), FX16_CONST(5.25) } },
++        { { FX16_CONST(-7.5), FX16_CONST(5.25) }, { FX16_CONST(-7.5), FX16_CONST(-5.25) }, { FX16_CONST(-2.5), FX16_CONST(-5.25) }, { FX16_CONST(-2.5), FX16_CONST(5.25) } },
++        { { FX16_CONST(-2.5), FX16_CONST(5.25) }, { FX16_CONST(-2.5), FX16_CONST(1.75) }, { FX16_CONST(2.5), FX16_CONST(1.75) }, { FX16_CONST(2.5), FX16_CONST(5.25) } },
++        { { FX16_CONST(-2.5), FX16_CONST(-1.75) }, { FX16_CONST(-2.5), FX16_CONST(-5.25) }, { FX16_CONST(2.5), FX16_CONST(-5.25) }, { FX16_CONST(2.5), FX16_CONST(-1.75) } },
++    };
++    u32 scale[3] = { FX32_CONST(32), FX32_CONST(32), FX32_CONST(32) };
++    u32 attr = GX_PACK_POLYGONATTR_PARAM(0, GX_POLYGONMODE_MODULATE, GX_CULL_NONE, 0, 31, 0);
++    u32 tex = 0;
++    u32 color = GX_RGB(0, 0, 0);
++    u32 begin = GX_BEGIN_QUADS;
++
++    NNS_G3dGeBufferOP_N(G3OP_MTX_SCALE, scale, G3OP_MTX_SCALE_NPARAMS);
++    NNS_G3dGeBufferOP_N(G3OP_POLYGON_ATTR, &attr, G3OP_POLYGON_ATTR_NPARAMS);
++    NNS_G3dGeBufferOP_N(G3OP_TEXIMAGE_PARAM, &tex, G3OP_TEXIMAGE_PARAM_NPARAMS);
++    NNS_G3dGeBufferOP_N(G3OP_COLOR, &color, G3OP_COLOR_NPARAMS);
++    NNS_G3dGeBufferOP_N(G3OP_BEGIN, &begin, G3OP_BEGIN_NPARAMS);
++    for (int i = 0; i < 4; i++) {
++        for (int j = 0; j < 4; j++) {
++            u32 vtx[2];
++            vtx[0] = (u16)sQuads[i][j][0] | ((u32)(u16)sQuads[i][j][1] << 16);
++            vtx[1] = 0;
++            NNS_G3dGeBufferOP_N(G3OP_VTX_16, vtx, G3OP_VTX_16_NPARAMS);
++        }
++    }
++    NNS_G3dGeBufferOP_N(G3OP_END, NULL, G3OP_END_NPARAMS);
++}
++#endif
+-- 
+2.56.0.windows.4
+
