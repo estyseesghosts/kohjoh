@@ -269,7 +269,7 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
         s_skipped_presents = 0;
         kj_log("[gpu] 600 frames: atlas lookups %lu conversions %lu evictions %lu full %lu; "
                "3D batches %lu draws %lu tris %lu state skips %lu "
-               "joins %lu tried %lu joined %lu batches %lu declined %lu "
+               "join groups %lu joined %lu (batches %lu) declined %lu "
                "tex uploads %lu tex bytes compared %lu "
                "tex full %lu unsupported %lu; box tests %lu culled %lu (far only %lu) window passes %lu",
                (unsigned long)a.lookups, (unsigned long)a.conversions, (unsigned long)a.evictions,
