@@ -13,12 +13,12 @@ void kj_g3d_exit(void);
 void kj_g3d_set_frame(const kj_g3_frame *frame);
 /* Draw the 3D layer into the current target at BG0's place. `wide`: show the
  * extended horizontal field (top screen). `stencil_flags`: the 2D effect
- * flags (blend target bits) the 3D pixels carry. `window`: the 2D window
- * regions (stencil bits 4-5) BG0 shows in: KJ_G3D_WINDOW_ALL, region r
- * only (r), or every region except r (KJ_G3D_WINDOW_EXCEPT + r). */
-#define KJ_G3D_WINDOW_ALL (-1)
-#define KJ_G3D_WINDOW_EXCEPT 4
-void kj_g3d_draw(const kj_target *target, bool wide, uint8_t stencil_flags, int window);
+ * flags (blend target bits) the 3D pixels carry. Window regions are the
+ * 2D stencil bits 4-5 (0 outside, 1 WIN0, 2 WIN1, 3 OBJ window):
+ * `window_active` bit r is set when region r can occur (0: windows off,
+ * draw everywhere) and `window_on` bit r when BG0 shows in region r. */
+void kj_g3d_draw(const kj_target *target, bool wide, uint8_t stencil_flags, uint8_t window_on,
+                 uint8_t window_active);
 
 typedef struct kj_g3d_stats {
     uint32_t batches, draws, triangles;
@@ -27,6 +27,7 @@ typedef struct kj_g3d_stats {
     uint32_t tex_uploads, tex_bytes_compared, tex_cache_full;
     uint32_t unsupported;
     uint32_t box_tests, box_culled, box_culled_far;
+    uint32_t window_passes; /* BG0 passes gated to one window region */
 } kj_g3d_stats;
 
 void kj_g3d_take_stats(kj_g3d_stats *out);

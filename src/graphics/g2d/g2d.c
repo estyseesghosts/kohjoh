@@ -665,40 +665,17 @@ static void read_fx(const ctx *c, fx *f)
     f->active = (uint8_t)(1u | ((c->dispcnt >> 12) & 6u) | (f->objwin ? 8u : 0u));
 }
 
-/* The window regions the 3D layer (BG0) shows in, for kj_g3d_draw. One
- * stencil test covers "all", "only r" and "all but r"; a 2-and-2 split of
- * the active regions has no single test and draws everywhere. */
-static int bg0_window(const fx *f)
+/* The window regions BG0 (the 3D layer) shows in, as a bit per region for
+ * kj_g3d_draw; regions that cannot occur are left to `active`. */
+static uint8_t bg0_window_on(const fx *f)
 {
-    if (!f->windows) {
-        return KJ_G3D_WINDOW_ALL;
-    }
-    int on = 0, off = 0, last_on = 0, last_off = 0;
+    uint8_t on = 0;
     for (int r = 0; r < 4; ++r) {
-        if (!(f->active & (1u << r))) {
-            continue;
-        }
         if (f->region_enable[r] & 1u) {
-            ++on;
-            last_on = r;
-        } else {
-            ++off;
-            last_off = r;
+            on |= (uint8_t)(1u << r);
         }
     }
-    if (off == 0) {
-        return KJ_G3D_WINDOW_ALL;
-    }
-    if (on == 1) {
-        return last_on;
-    }
-    if (off == 1) {
-        return KJ_G3D_WINDOW_EXCEPT + last_off;
-    }
-#ifndef HGSS_PROFILE_OFF
-    ++s_stats.unsupported_modes;
-#endif
-    return KJ_G3D_WINDOW_ALL;
+    return on;
 }
 
 static void stencil_write_all(uint8_t ref, uint8_t test_mask)
@@ -1612,7 +1589,7 @@ static void draw_span(ctx *c, const prepared *pr, bool draw_3d, bool *drew_3d)
                     }
                     kj_g3d_draw(&shifted, c->screen == KJ_SCREEN_TOP,
                                 (uint8_t)((t2 ? 1 : 0) | (t1 && f.mode >= 2 ? 2 : 0)),
-                                bg0_window(&f));
+                                bg0_window_on(&f), f.windows ? f.active : 0);
                     *drew_3d = true;
                     restore_2d_state(c, sx0);
                 }
