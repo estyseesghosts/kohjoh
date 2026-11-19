@@ -1,5 +1,14 @@
 # Project status
 
+2026-11-18: HeartGold's debug build includes the blend-order and save-import
+repairs; the LOTUS live-button mapping is corrected. Native checks pass and
+the current HeartGold debug build booted in LOTUS. A cross-project LOTUS retest
+converted and saved a locally wrapped packed save with an existing `.orig`;
+HGSS import validation remains pending. Fly and dark cave widescreen issues are
+still open. See the
+[repair worklog](worklog/2026-11-18-resumed-repairs.md) for scope and evidence.
+**O3DS_UNTESTED** for this pass.
+
 As of 2026-11-13; audio updated 2026-11-15 ([audio worklog](worklog/2026-11-15-audio.md)). Evidence levels: **built** (compiles and links), **run**
 (boots in Azahar), **verified** (checked in Azahar against an expectation),
 **O3DS** (measured on an Old 3DS). Hardware logs below supply O3DS observations; sustained deadline certification remains open.
