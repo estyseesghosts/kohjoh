@@ -38,9 +38,31 @@ static uint32_t s_end;
 static bool s_active;
 static uint32_t s_debug;
 static uint32_t s_now;
+static uint64_t s_input_end; /* exclusive; wider than a V-blank counter */
 static uint32_t s_battle_frame; /* 0: no `battle:` request */
 static unsigned s_battle_t1, s_battle_t2;
 static int s_battle_bg = -1, s_battle_terrain = -1; /* -1: the map's */
+
+/* Parse decimal fields without accepting signs, junk or uint32_t overflow. */
+static bool parse_decimal(const char *text, const char **end, uint32_t *value)
+{
+    uint32_t n = 0;
+    const char *p = text;
+    if (*p < '0' || *p > '9') {
+        return false;
+    }
+    while (*p >= '0' && *p <= '9') {
+        const uint32_t digit = (uint32_t)(*p - '0');
+        if (n > (UINT32_MAX - digit) / 10u) {
+            return false;
+        }
+        n = n * 10u + digit;
+        ++p;
+    }
+    *value = n;
+    *end = p;
+    return true;
+}
 
 static uint16_t key_bit(const char *k)
 {
@@ -96,7 +118,13 @@ void kj_script_load(const char *path)
         }
         if (strcmp(tok, "every:") == 0) {
             tok = strtok(NULL, " \t\r\n");
-            s_every = tok ? (uint32_t)strtoul(tok, NULL, 10) : s_every;
+            const char *end;
+            uint32_t value;
+            if (tok != NULL && parse_decimal(tok, &end, &value) && *end == '\0' && value != 0) {
+                s_every = value;
+            } else {
+                kj_log("[script] ignored invalid every duration");
+            }
         } else if (strcmp(tok, "debug:") == 0) {
             while ((tok = strtok(NULL, " \t\r\n")) != NULL) {
                 s_debug |= (uint32_t)strtoul(tok, NULL, 0);
@@ -132,27 +160,56 @@ void kj_script_load(const char *path)
                 }
             }
         } else if (s_event_count < MAX_EVENTS) {
-            event *e = &s_events[s_event_count++];
-            memset(e, 0, sizeof(*e));
-            char *dash = NULL;
-            e->vblank = (uint32_t)strtoul(tok, &dash, 10);
-            if (dash != NULL && *dash == '-' && dash[1] != '\0') {
-                const uint32_t last = (uint32_t)strtoul(dash + 1, NULL, 10);
-                e->length = last > e->vblank ? last - e->vblank : 1u;
+            event parsed = { 0 };
+            const char *end;
+            if (!parse_decimal(tok, &end, &parsed.vblank)) {
+                kj_log("[script] ignored invalid input event");
+                continue;
             }
+            if (*end == '-') {
+                uint32_t last;
+                if (!parse_decimal(end + 1, &end, &last) || *end != '\0' ||
+                    last <= parsed.vblank) {
+                    kj_log("[script] ignored invalid input interval");
+                    continue;
+                }
+                parsed.length = last - parsed.vblank;
+            } else if (*end != '\0') {
+                kj_log("[script] ignored invalid input event");
+                continue;
+            }
+            bool has_input = false;
             while ((tok = strtok(NULL, " \t\r\n")) != NULL) {
                 unsigned x, y;
                 if (sscanf(tok, "TOUCH:%u,%u", &x, &y) == 2) {
-                    e->touch = true;
-                    e->tx = (uint16_t)x;
-                    e->ty = (uint16_t)y;
+                    parsed.touch = true;
+                    parsed.tx = (uint16_t)x;
+                    parsed.ty = (uint16_t)y;
+                    has_input = true;
                 } else {
-                    e->keys |= key_bit(tok);
+                    const uint16_t bit = key_bit(tok);
+                    parsed.keys |= bit;
+                    has_input |= bit != 0 || strcmp(tok, "-") == 0;
                 }
+            }
+            if (has_input) {
+                s_events[s_event_count++] = parsed;
+            } else {
+                kj_log("[script] ignored input event without keys or touch");
             }
         }
     }
     fclose(f);
+    /* `every:` applies to all default-length events, even if it came later. */
+    s_input_end = 0;
+    for (unsigned i = 0; i < s_event_count; ++i) {
+        const event *e = &s_events[i];
+        const uint32_t len = e->length != 0 ? e->length : s_every;
+        const uint64_t end = (uint64_t)e->vblank + len;
+        if (end > s_input_end) {
+            s_input_end = end;
+        }
+    }
     kj_log("[script] %u input events, %u frame marks, every %lu, end %lu, debug 0x%lx",
            s_event_count, s_mark_count, (unsigned long)s_every, (unsigned long)s_end,
            (unsigned long)s_debug);
@@ -173,14 +230,7 @@ bool kj_script_input(uint32_t vblank, uint16_t *keys, bool *touch, uint16_t *tx,
     }
     /* After its last event the script hands the pad back, so a scripted
      * drive to a scene can be continued by hand or over LOTUS MCP. */
-    uint32_t last = 0;
-    for (unsigned i = 0; i < s_event_count; ++i) {
-        const uint32_t len = s_events[i].length != 0 ? s_events[i].length : s_every;
-        if (s_events[i].vblank + len > last) {
-            last = s_events[i].vblank + len;
-        }
-    }
-    if (vblank >= last) {
+    if ((uint64_t)vblank >= s_input_end) {
         return false;
     }
     *keys = 0;
@@ -188,7 +238,7 @@ bool kj_script_input(uint32_t vblank, uint16_t *keys, bool *touch, uint16_t *tx,
     for (unsigned i = 0; i < s_event_count; ++i) {
         const event *e = &s_events[i];
         const uint32_t len = e->length != 0 ? e->length : s_every;
-        if (vblank >= e->vblank && vblank < e->vblank + len) {
+        if (vblank >= e->vblank && (uint64_t)vblank < (uint64_t)e->vblank + len) {
             *keys |= e->keys;
             if (e->touch) {
                 *touch = true;
