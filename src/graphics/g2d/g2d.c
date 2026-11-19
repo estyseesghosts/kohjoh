@@ -821,30 +821,40 @@ static void write_windows(const ctx *c)
         if (y2 > 192 || (y2 == 0 && y1 != 0)) {
             y2 = 192;
         }
-        int xs[2][2], ys[2][2], nx = 0, ny = 0;
+        int xs[4][2], ys[2][2], nx = 0, ny = 0;
         if (x1 <= x2) { xs[nx][0] = x1; xs[nx++][1] = x2; }
         else { xs[nx][0] = x1; xs[nx++][1] = 256; xs[nx][0] = 0; xs[nx++][1] = x2; }
         if (y1 <= y2) { ys[ny][0] = y1; ys[ny++][1] = y2; }
         else { ys[ny][0] = y1; ys[ny++][1] = 192; ys[ny][0] = 0; ys[ny++][1] = y2; }
-        /* Wide layout (#19): a window that reaches a DS screen edge runs on
-         * across the side columns, so wipes and covers that close in from
-         * the edges hide the widened picture too. The DS registers are
-         * untouched; only the presentation mask grows. The field has no
-         * layout rows but its 3D (BG0) is drawn wide on the top screen, so
-         * the encounter wipe there needs the same extension. */
+        /* Wide top screen: a window that reaches a DS screen edge runs on
+         * across the side columns, so wipes and covers closing in from the
+         * edges hide the widened picture too. The side columns get their
+         * own rectangles. A right edge of 255 counts as reaching the edge:
+         * the Fly cut-in (field_move_cut_in.c) opens WIN0 from 254 to 255
+         * and leaves only DS column 255 outside, a one-pixel edge column on
+         * the DS that would otherwise become a strip of field mid-picture. */
         open_wide_3d_scissor(c);
         if (c->nrows || wide_3d(c)) {
-            for (int i = 0; i < nx; ++i) {
+            const int n = nx;
+            for (int i = 0; i < n; ++i) {
                 if (xs[i][0] >= xs[i][1]) {
                     continue;
                 }
                 if (xs[i][0] == 0) {
-                    xs[i][0] = -64;
+                    xs[nx][0] = -64;
+                    xs[nx++][1] = 0;
                 }
-                if (xs[i][1] == 256) {
-                    xs[i][1] = 320;
+                if (xs[i][1] >= 255) {
+                    /* Column 255 is the DS screen's last column; wide, it
+                     * sits mid-picture, so close the seam with the side. */
+                    xs[i][1] = 256;
+                    xs[nx][0] = 256;
+                    xs[nx++][1] = 320;
                 }
             }
+#ifndef HGSS_PROFILE_OFF
+            s_stats.wide_windows += (uint32_t)(nx - n);
+#endif
         }
         C3D_StencilTest(true, GPU_ALWAYS, (u8)((w + 1) << 4), 0, 0x30);
         C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_REPLACE);

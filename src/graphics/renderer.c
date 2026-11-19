@@ -225,11 +225,12 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
         kj_atlas_take_stats(&a);
         kj_log("[gpu] 600 frames: 2D screens skipped %lu, layers reused %lu rebuilt %lu, "
                "bg quads %lu obj quads %lu draws %lu spans %lu unsupported %lu dropped %lu, "
-               "char KiB compared %lu, layout segments %lu",
+               "char KiB compared %lu, layout segments %lu, wide window sides %lu",
                (unsigned long)g.skipped_screens, (unsigned long)g.reused_layers,
                (unsigned long)g.rebuilt_layers, (unsigned long)g.bg_quads, (unsigned long)g.obj_quads,
                (unsigned long)g.draws, (unsigned long)g.spans, (unsigned long)g.unsupported_modes,
-               (unsigned long)g.dropped_quads, (unsigned long)(g.char_bytes_compared / 1024u), (unsigned long)g.layout_segments);
+               (unsigned long)g.dropped_quads, (unsigned long)(g.char_bytes_compared / 1024u), (unsigned long)g.layout_segments,
+               (unsigned long)g.wide_windows);
         kj_ds_profile dp;
         kj_ds_take_profile(&dp);
         /* Per game frame: one H-blank walk runs per game frame, so walks is

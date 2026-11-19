@@ -17,6 +17,7 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in);
 typedef struct kj_g2d_stats {
     uint32_t bg_quads, obj_quads, draws, spans;
     uint32_t unsupported_modes; /* modes drawn as nothing; must be zero in the corpus */
+    uint32_t wide_windows;      /* window side rectangles over the wide columns */
     uint32_t layout_segments;   /* wide-layout segments drawn (issue #16) */
     uint32_t dropped_quads;
     uint32_t skipped_screens, reused_layers, rebuilt_layers;
