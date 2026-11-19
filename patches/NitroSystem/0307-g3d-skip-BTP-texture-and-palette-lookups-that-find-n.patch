@@ -9,13 +9,13 @@ NNS_G3dGetResDataByName without a check. A null result reads address 0,
 which is mapped on the DS and aborts on the 3DS (issue #9: data abort,
 FAR 0, R0 0, in SetTexParamaters_ during the Whirl Islands event).
 ---
- lib/NitroSystem/src/g3d_anm_btp.c | 10 ++++++++++
+ src/g3d_anm_btp.c | 10 ++++++++++
  1 file changed, 10 insertions(+)
 
-diff --git a/lib/NitroSystem/src/g3d_anm_btp.c b/lib/NitroSystem/src/g3d_anm_btp.c
+diff --git a/src/g3d_anm_btp.c b/src/g3d_anm_btp.c
 index c2aff96..bc0f3f1 100644
---- a/lib/NitroSystem/src/g3d_anm_btp.c
-+++ b/lib/NitroSystem/src/g3d_anm_btp.c
+--- a/src/g3d_anm_btp.c
++++ b/src/g3d_anm_btp.c
 @@ -16,6 +16,11 @@ void SetTexParamaters_(const NNSG3dResTex *pTex, const NNSG3dResName *pTexName,
      G3dResTexData *pTexData = pTex ? NNS_G3dGetResDataByName(&pTex->dict, pTexName) : NULL;
      u32 width, height;
