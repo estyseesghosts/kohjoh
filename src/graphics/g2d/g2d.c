@@ -769,16 +769,24 @@ static void draw_layer(const fx *f, int layer, const drawable *d, bool force_sem
 #endif
             continue;
         }
-        /* blended over 2nd targets */
-        blend_alpha(f->eva, f->evb);
-        C3D_StencilTest(true, GPU_EQUAL, region | 1u, rmask | 1u, 0x03);
-        C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, t2 ? GPU_STENCIL_KEEP : GPU_STENCIL_INVERT);
-        draw_quads(d);
-        /* opaque elsewhere */
-        blend_off();
-        C3D_StencilTest(true, GPU_EQUAL, region, rmask | 1u, 0x01);
-        C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, t2 ? GPU_STENCIL_INVERT : GPU_STENCIL_KEEP);
-        draw_quads(d);
+        /* A pass that changes bit 0 must run last, or the other pass will
+         * draw those same pixels again. The current layer's t2 selects which
+         * pass changes it: opaque when t2 is set, blended otherwise. */
+        for (int pass = 0; pass < 2; ++pass) {
+            const bool blended = (pass == 0) == t2;
+            if (blended) {
+                blend_alpha(f->eva, f->evb);
+                C3D_StencilTest(true, GPU_EQUAL, region | 1u, rmask | 1u, 0x03);
+                C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP,
+                              t2 ? GPU_STENCIL_KEEP : GPU_STENCIL_INVERT);
+            } else {
+                blend_off();
+                C3D_StencilTest(true, GPU_EQUAL, region, rmask | 1u, 0x01);
+                C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP,
+                              t2 ? GPU_STENCIL_INVERT : GPU_STENCIL_KEEP);
+            }
+            draw_quads(d);
+        }
 #ifndef HGSS_PROFILE_OFF
         s_stats.draws += 2;
 #endif
