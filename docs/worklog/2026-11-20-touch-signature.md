@@ -68,12 +68,15 @@ Gold normal (uninstrumented) HeartGold:
 `python tools/game/build_variants.py --only gold-normal -j 32`.
 
 - Artifact: `build/kj-gold-normal/pokeheartgold.3dsx`, 5,777,648 bytes,
-  SHA-256 `74dc39e1b6bc4a2c4812e435132cbc2336ef546102267a28a450f10d4a89cf8a`.
+  SHA-256 `e3a30119f00d8937338632340ffa62f43960b1e73f69765436b52f35b47e2e51`.
 - Log: `build/kj-gold-normal-build.log`, 0 lines matching `error:` or
   `vendored library build failed`.
-- `pokeheartgold.build-info.txt` records `profiling: off`, `defines: (none)`
-  and `build: 877a2be-dirty`: the artifact was built from `877a2be` plus this
-  fix in the working tree, before the commit below.
+- `pokeheartgold.build-info.txt` records `profiling: off`, `defines: (none)`,
+  `build: d5bc0f2-dirty` and `dirty: yes`. The tracked tree is `d5bc0f2`; the
+  only untracked entries are the pre-existing `kohjoh*.zip` archives in the
+  repository root, which are not part of the build. Two builds of the same
+  sources produced the same size and different SHA-256 values, so the
+  `.3dsx` packaging is not byte-reproducible.
 
 The change was not exercised on a physical Old 3DS in this pass:
 **O3DS_UNTESTED**. The emulator/host evidence covers the sample encoding and
