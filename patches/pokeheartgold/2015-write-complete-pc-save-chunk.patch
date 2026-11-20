@@ -1,0 +1,39 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: terezi <jules@foxtails.me>
+Date: Fri, 20 Nov 2026 15:00:00 -0500
+Subject: [PATCH] Write complete PC chunk to the alternate save slot on 3DS
+
+Imported saves can contain different PC contents in their two valid slots.
+The dirty-box optimization can then write a footer for the current PC data
+over older boxes in the alternate slot, invalidating the newly saved slot.
+
+Write the complete PC chunk on 3DS before the existing footer commit. Keep
+the existing PC bookkeeping and asynchronous completion state machine, which
+are shared by synchronous and asynchronous saves.
+
+---
+diff --git a/src/save.c b/src/save.c
+--- a/src/save.c
++++ b/src/save.c
+@@ -1309,11 +1309,19 @@
+ 
+     switch (writeMan->state_sub) {
+     case 0:
++#ifdef SDK_PORT_3DS
++        // Imported saves can have different PC data in the two valid slots.
++        // Write the entire destination chunk before committing its footer.
++        writeMan->lockId = Save_WriteSlotAsync(saveData, writeMan->curSector, saveData->lastGoodSector == 0);
++        writeMan->waitingAsync = 1;
++        writeMan->state_sub = 4;
++#else
+         if (saveData->nextBoxToWrite >= saveData->numModifiedBoxes) {
+             writeMan->state_sub = 3;
+         } else {
+             writeMan->state_sub++;
+         }
++#endif
+         break;
+     case 1:
+         writeMan->lockId = Save_WriteNextPCBox(saveData, &saveData->saveSlotSpecs[writeMan->curSector], saveData->lastGoodSector == 0);
+-- 
+2.50.0
