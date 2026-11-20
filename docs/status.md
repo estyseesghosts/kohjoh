@@ -1,5 +1,16 @@
 # Project status
 
+2026-11-20: the virtual touch panel now reports a released stylus as the
+ARM7 does (`touch=OFF`, `validity=INVALID_XY`), not as a valid `(0,0)`
+sample. HGSS's `TouchOutput_CollectValid` selects by validity, so the old
+pen-up sample entered the Trainer Card signature stroke as an origin point
+and drew the diagonal strokes of
+[#28](https://github.com/estyseesghosts/kohjoh/issues/28). A host test
+compiles the real `port_tp.c` and checks release semantics, calibration,
+clamping and stroke continuity. Gold normal is rebuilt (5,777,648 bytes).
+See the [touch worklog](worklog/2026-11-20-touch-signature.md).
+**O3DS_UNTESTED** for this pass.
+
 2026-11-18: HeartGold's debug build includes the blend-order and save-import
 repairs; the LOTUS live-button mapping is corrected. Native checks pass and
 the current HeartGold debug build booted in LOTUS. A cross-project LOTUS retest

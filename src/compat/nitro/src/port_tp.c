@@ -24,7 +24,15 @@ static void publish_touch(BOOL down, u16 x, u16 y)
     sample.e.touch = down ? SPI_TP_TOUCH_ON : SPI_TP_TOUCH_OFF;
     sample.e.x = down ? (u16)((x > 255 ? 255 : x) * NITRO_PORT_TP_RAW_SCALE) : 0;
     sample.e.y = down ? (u16)((y > 191 ? 191 : y) * NITRO_PORT_TP_RAW_SCALE) : 0;
-    sample.e.validity = SPI_TP_VALIDITY_VALID;
+    /* The ARM7 driver reports a released panel as x=0, y=0, touch=OFF and
+     * INVALID_XY (touch_panel_driver.c, TP_ExecSampling's !touch path). The
+     * validity bits are not a touch status: NitroSDK's TP_GetCalibratedPoint
+     * keeps them while zeroing x/y for touch=OFF, and HGSS's
+     * TouchOutput_CollectValid selects samples by validity alone. Publishing
+     * VALID coordinates at (0,0) for pen-up therefore fed a false origin
+     * point into the Trainer Card signature strokes. */
+    sample.e.validity = down ? SPI_TP_VALIDITY_VALID
+                             : SPI_TP_VALIDITY_INVALID_XY;
     memcpy((void *)OS_GetSystemWork()->touch_panel, sample.bytes, sizeof(sample.bytes));
 }
 

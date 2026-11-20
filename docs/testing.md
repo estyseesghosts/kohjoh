@@ -258,6 +258,12 @@ State-only `[dltop]` replay hits now include command-layout reuse with live
 parameters: those hits still execute matrix/light/state commands and copy
 zero vertices. They are distinct from retained vertex-block replay.
 
+Run `python tests/native/test_touch_tp.py` for the virtual touch panel's
+sample encoding. It compiles the real `src/compat/nitro/src/port_tp.c` against
+SDK stubs, replays pen-down / drag / pen-up / re-down through the calibration
+and validity filter HGSS uses, and checks that a release contributes no
+drawable point and breaks stroke continuity (issue #28).
+
 Run `python tests/native/visibility_test.py` for the offline clip-plane checks.
 `python tools/capture/g3_visibility.py dump.kjd --csv batches.csv` classifies
 offscreen triangles and whole batches without adding CPU culling to the game.
