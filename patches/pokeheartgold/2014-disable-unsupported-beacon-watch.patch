@@ -1,0 +1,54 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: terezi <jules@foxtails.me>
+Date: Fri, 20 Nov 2026 14:00:00 -0500
+Subject: [PATCH] Keep unsupported beacon watch offline on 3DS
+
+The main menu starts passive DS wireless discovery even in offline play.
+The wireless stubs reject the scan and reset, leaving its shutdown waiting
+and the communication state and status icon alive. Trainer Card then sees
+a connected state and disables signing.
+
+Skip this unsupported watcher on 3DS, report no discovered games, and make
+its stop operation inert. Main menu saved Mystery Gift flags remain handled
+by the menu itself. Other communication entry points keep their behavior.
+
+---
+diff --git a/src/comm_state.c b/src/comm_state.c
+--- a/src/comm_state.c
++++ b/src/comm_state.c
+@@ -957,22 +957,33 @@
+ }
+ 
+ void CommState_StartBeaconWatch(SaveData *saveData) {
++#ifdef SDK_PORT_3DS
++    // DS wireless beacon scanning is unavailable on the 3DS port.
++    (void)saveData;
++#else
+     if (!Comm_IsActive()) {
+         Heap_CreateAtEnd(HEAP_ID_3, HEAP_ID_15, 0x7000);
+         CommState_Init(saveData, 17);
+         sCommState->beaconId = 0;
+         CommState_SetState(CommState_BeaconWatchInit, 0);
+     }
++#endif
+ }
+ 
+ void CommState_StopBeaconWatch(void) {
++#ifndef SDK_PORT_3DS
+     if (sCommState) {
+         CommState_SetState(CommState_ShutdownWaitStopped, 5);
+     }
++#endif
+ }
+ 
+ u8 CommState_GetSeenGames(void) {
++#ifdef SDK_PORT_3DS
++    return 0;
++#else
+     return sCommState->seenGames;
++#endif
+ }
+ 
+ BOOL CommState_StopForReset(void) {
+-- 
+2.50.0
