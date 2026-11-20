@@ -9,6 +9,8 @@
  */
 
 #include <nitro/types.h>
+#include <nitro_port.h>
+#include <string.h>
 
 #define ALIGNED __attribute__((aligned(32)))
 
@@ -32,6 +34,77 @@ unsigned char NitroPort_Pltt[0x800] ALIGNED;
 
 /* OAM: engine A then engine B, 0x400 bytes each. */
 unsigned char NitroPort_Oam[0x800] ALIGNED;
+
+static int8_t s_oam_pending[2][128];
+static int8_t s_oam_active[256];
+static u8 s_oam_attrs[2][128][6];
+static int s_oam_draw_dx;
+
+void NitroPort_WideObjScope(int dx)
+{
+    s_oam_draw_dx = dx;
+}
+
+void NitroPort_WideObjEntry(unsigned engine, unsigned slot)
+{
+    if (engine < 2 && slot < 128) {
+        s_oam_pending[engine][slot] = (int8_t)s_oam_draw_dx;
+    }
+}
+
+void NitroPort_WideObjCommit(unsigned engine, unsigned first, unsigned last)
+{
+    if (engine >= 2 || first > last || last >= 128) {
+        return;
+    }
+    for (unsigned i = first; i <= last; ++i) {
+        s_oam_active[engine * 128 + i] = s_oam_pending[engine][i];
+        s_oam_pending[engine][i] = 0;
+        memcpy(s_oam_attrs[engine][i], NitroPort_Oam + engine * 0x400 + i * 8, 6);
+    }
+}
+
+void NitroPort_WideObjReset(unsigned engine, unsigned first, unsigned last)
+{
+    if (engine < 2 && first <= last && last < 128) {
+        memset(&s_oam_pending[engine][first], 0, last - first + 1);
+    }
+}
+
+void NitroPort_WideObjInvalidate(const void *dest, unsigned size)
+{
+    uintptr_t begin = (uintptr_t)dest;
+    uintptr_t base = (uintptr_t)NitroPort_Oam;
+    uintptr_t end = begin + size;
+    if (size == 0 || end < begin || end <= base || begin >= base + 0x800) {
+        return;
+    }
+    if (begin < base) {
+        begin = base;
+    }
+    if (end > base + 0x800) {
+        end = base + 0x800;
+    }
+    for (uintptr_t p = (begin - base) / 8; p <= (end - base - 1) / 8; ++p) {
+        if ((begin - base) < p * 8 + 6 && end - base > p * 8) {
+            s_oam_active[p] = 0;
+        }
+    }
+}
+
+const int8_t *NitroPort_WideObjOffsets(void)
+{
+    for (unsigned engine = 0; engine < 2; ++engine) {
+        for (unsigned slot = 0; slot < 128; ++slot) {
+            unsigned index = engine * 128 + slot;
+            if (s_oam_active[index] &&
+                memcmp(s_oam_attrs[engine][slot], NitroPort_Oam + engine * 0x400 + slot * 8, 6)) {
+                s_oam_active[index] = 0;
+            }
+        }
+    }
+    return s_oam_active;
+}
 
 /* CPU views of VRAM (see the note in mmap_global.h). */
 unsigned char NitroPort_BgVram[0x80000] ALIGNED;

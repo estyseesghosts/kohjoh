@@ -1,0 +1,54 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: terezi <jules@foxtails.me>
+Date: Fri, 20 Nov 2026 12:00:00 -0500
+Subject: [PATCH] Track wide HP objects through OAM transfers
+
+---
+diff --git a/src/g2d_oam.c b/src/g2d_oam.c
+--- a/src/g2d_oam.c
++++ b/src/g2d_oam.c
+@@ -1,6 +1,12 @@
+ #include <nitro.h>
+ #include <nnsys/g2d_internal.h>
+ #include <stddef.h>
++
++#ifdef SDK_PORT_3DS
++void NitroPort_WideObjEntry(unsigned engine, unsigned slot);
++void NitroPort_WideObjCommit(unsigned engine, unsigned first, unsigned last);
++void NitroPort_WideObjReset(unsigned engine, unsigned first, unsigned last);
++#endif
+ 
+ void CpuLoadOAMSub_(const void *pSrc, u32 offset, u32 szByte) {
+     MIi_CpuCopy16(pSrc, (void *)(offset + HW_DB_OAM), szByte);
+@@ -117,6 +123,9 @@
+                 attr->rsParam = affineIndex & 31;
+             }
+         }
++#ifdef SDK_PORT_3DS
++        NitroPort_WideObjEntry(pMan->type, pMan->oam.next);
++#endif
+         ++pMan->oam.next;
+         return TRUE;
+     }
+@@ -198,6 +207,9 @@
+             LoadAffine(pMan);
+         }
+     }
++#ifdef SDK_PORT_3DS
++    NitroPort_WideObjCommit(pMan->type, pMan->oam.first, pMan->oam.last);
++#endif
+ }
+ 
+ #ifdef SDK_PORT_3DS
+@@ -233,6 +245,9 @@
+             ((GXOamAttr *)oam)->attr0 = OAM_SETTING_INVISIBLE;
+         }
+     }
++#ifdef SDK_PORT_3DS
++    NitroPort_WideObjReset(pMan->type, pMan->oam.first, pMan->oam.last);
++#endif
+     pMan->oam.next = pMan->oam.first;
+     pMan->affine.next = pMan->affine.first;
+ }
+-- 
+2.50.0

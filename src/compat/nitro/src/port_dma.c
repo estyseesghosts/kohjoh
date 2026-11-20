@@ -75,6 +75,13 @@ static void Transfer(u32 dmaNo, u32 cnt)
         count = (REG_MI_DMA0CNT_WORDCNT_MASK >> REG_MI_DMA0CNT_WORDCNT_SHIFT) + 1;
     }
 
+    /* Invalidate metadata for the address range touched by this DMA. */
+    if (destStep < 0) {
+        NitroPort_WideObjInvalidate((const void *)(dest - (count - 1) * unit), count * unit);
+    } else {
+        NitroPort_WideObjInvalidate((const void *)dest, destStep == 0 ? unit : count * unit);
+    }
+
     /* One unit at a time, in order, like the hardware: a fixed destination
      * (an I/O port such as the 3D FIFO) sees every value, and overlapping
      * copies behave as on the DS. */

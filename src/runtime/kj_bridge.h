@@ -59,6 +59,7 @@ typedef struct kj_ds_memory {
     const uint8_t *io;            /* 0x04000000.. I/O registers (engine A at +0, B at +0x1000) */
     const uint8_t *pltt;          /* 0x800: BG A, OBJ A, BG B, OBJ B */
     const uint8_t *oam;           /* 0x800: engine A, engine B */
+    const int8_t *oam_wide_dx;    /* 128 per engine, coherent with OAM */
     const uint8_t *bg_vram_a;     /* 0x80000 engine A BG view */
     const uint8_t *bg_vram_b;     /* 0x20000 engine B BG view */
     const uint8_t *obj_vram_a;    /* 0x40000 engine A OBJ view */

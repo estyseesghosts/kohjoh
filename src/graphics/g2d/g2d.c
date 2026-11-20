@@ -184,6 +184,7 @@ typedef struct ctx {
     /* The wide layout (top screen only; nrows 0 = draw as the DS). */
     const kj_layout_row *rows;
     uint32_t nrows;
+    bool battle_obj_anchors;
 } ctx;
 
 /* ------------------------------------------------------------ quad emit */
@@ -512,7 +513,11 @@ static uint32_t objs(const ctx *c, int prio, bool semi, run *out)
         if (c->nrows) {
             /* OBJS rows move a sprite by its middle; the wide screen shows
              * DS columns -32..287. OAM itself is never rewritten. */
-            x += kj_layout_obj_dx(c->rows, c->nrows, x + bw / 2, y + bh / 2);
+            if (c->battle_obj_anchors && c->in->mem->oam_wide_dx) {
+                x += c->in->mem->oam_wide_dx[c->engine * 128 + i];
+            } else {
+                x += kj_layout_obj_dx(c->rows, c->nrows, x + bw / 2, y + bh / 2);
+            }
             x_lo = KJ_LAYOUT_LEFT;
             x_hi = KJ_LAYOUT_RIGHT;
         }
@@ -992,6 +997,7 @@ typedef struct layer_cache {
     /* OBJ: per (priority, semi) sub-ranges of quads */
     uint32_t sub_first[9], sub_count[9];
     uint8_t oam[0x400];
+    int8_t oam_wide_dx[128];
     /* text BG on the top screen: its wide-art bands (at most 2 quads) */
     kj_v2d *band;
     uint32_t band_count;
@@ -1334,7 +1340,11 @@ static bool objs_retained(const ctx *c, drawable sub[9])
         key[5] = 1;
         memcpy(key + 8, &gen, 4);
     }
+    const int8_t *wide_dx = c->in->mem->oam_wide_dx;
+    const bool use_wide_dx = c->battle_obj_anchors && wide_dx != NULL;
+    key[6] = use_wide_dx;
     if (lc->valid && memcmp(lc->key, key, 16) == 0 && memcmp(lc->oam, oam, 0x400) == 0 &&
+        (!use_wide_dx || memcmp(lc->oam_wide_dx, wide_dx + c->engine * 128, 128) == 0) &&
         memcmp(lc->pal, pal, 512) == 0 && lc->ext_src == ext &&
         (ext == NULL || memcmp(lc->ext, ext, 0x2000) == 0) && chars_same(lc, c->obj_vram)) {
         for (int i = 0; i < 9; ++i) {
@@ -1369,6 +1379,9 @@ static bool objs_retained(const ctx *c, drawable sub[9])
     lc->valid = true;
     memcpy(lc->key, key, 16);
     memcpy(lc->oam, oam, 0x400);
+    if (use_wide_dx) {
+        memcpy(lc->oam_wide_dx, wide_dx + c->engine * 128, 128);
+    }
     memcpy(lc->pal, pal, 512);
     lc->ext_src = ext;
     if (ext != NULL) {
@@ -1671,7 +1684,10 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
     if (screen == KJ_SCREEN_TOP) {
         const kj_layout_row *rows = in->screen.rows[engine];
         uint32_t n = in->screen.row_count[engine];
-        kj_layout_override_get(in->screen.screen_id, engine, &rows, &n);
+        bool overridden = kj_layout_override_get(in->screen.screen_id, engine, &rows, &n);
+        c.battle_obj_anchors = !overridden && engine == 0 &&
+                               in->screen.screen_id == KJ_SCREEN_BATTLE &&
+                               !(kj_script_debug() & KJ_DEBUG_NO_LAYOUT);
         if (rows != NULL && n > 0 && !(kj_script_debug() & KJ_DEBUG_NO_LAYOUT)) {
             c.rows = rows;
             c.nrows = n < KJ_LAYOUT_MAX_ROWS ? n : KJ_LAYOUT_MAX_ROWS;

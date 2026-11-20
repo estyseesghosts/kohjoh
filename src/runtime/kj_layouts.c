@@ -103,7 +103,6 @@ static const kj_layout_row BATTLE_A[] = {
     /* The message box (BG1, lines 144-191) keeps the DS columns: a
      * pillarboxed box reads better than one stretched to 400 px
      * (maintainer's call, 2026-11-17; Unown widened it). */
-    OBJS(8, 60, -64, 160, -32), OBJS(84, 144, 120, 320, 32),
 };
 
 /* Plain or gradient tops: the picture's own edge columns continue. */

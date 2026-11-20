@@ -133,6 +133,7 @@ static void publish(void)
 
     memset(&in, 0, sizeof(in));
     in.mem = kj_ds_get_memory();
+    s_memory.oam_wide_dx = NitroPort_WideObjOffsets();
     decode_banks(in.banks);
     in.lines.active = NitroPort_LineRegs.active != 0;
     in.lines.regs = in.lines.active

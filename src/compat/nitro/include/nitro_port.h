@@ -130,6 +130,15 @@ int NitroPort_Render2DIfChanged(int engine, u16 *out);
 /* Whether engine A's picture is on the upper screen (POWCNT1 bit 15). */
 BOOL NitroPort_EngineAOnTop(void);
 
+/* Track per-OAM-entry offsets for wide-layout sprites. The returned array
+ * contains 128 entries for engine A followed by 128 for engine B. */
+void NitroPort_WideObjScope(int dx);
+void NitroPort_WideObjEntry(unsigned engine, unsigned slot);
+void NitroPort_WideObjCommit(unsigned engine, unsigned first, unsigned last);
+void NitroPort_WideObjReset(unsigned engine, unsigned first, unsigned last);
+void NitroPort_WideObjInvalidate(const void *dest, unsigned size);
+const int8_t *NitroPort_WideObjOffsets(void);
+
 /* Both screens, each 256x192: what the DS's upper and lower screens show. */
 void NitroPort_RenderScreens(u16 *top, u16 *bottom);
 

@@ -15,11 +15,13 @@
 #include <nitro/types.h>
 #include <nitro/mi/memory.h>
 #include <nitro.h>
+#include <nitro_port.h>
 #include <nitro_port_gx3d.h>
 #include <stdint.h>
 
 void MIi_CpuClear16(u16 data, void *destp, u32 size)
 {
+    NitroPort_WideObjInvalidate(destp, size);
     u16 *d = destp;
     u32 i;
 
@@ -30,6 +32,7 @@ void MIi_CpuClear16(u16 data, void *destp, u32 size)
 
 void MIi_CpuCopy16(const void *srcp, void *destp, u32 size)
 {
+    NitroPort_WideObjInvalidate(destp, size);
     const u16 *s = srcp;
     u16 *d = destp;
     u32 i;
@@ -52,6 +55,7 @@ void MIi_CpuSend16(const void *srcp, volatile void *destp, u32 size)
 
 void MIi_CpuClear32(u32 data, void *destp, u32 size)
 {
+    NitroPort_WideObjInvalidate(destp, size);
     u32 *d = destp;
     u32 i;
 
@@ -62,6 +66,7 @@ void MIi_CpuClear32(u32 data, void *destp, u32 size)
 
 void MIi_CpuCopy32(const void *srcp, void *destp, u32 size)
 {
+    NitroPort_WideObjInvalidate(destp, size);
     const u32 *s = srcp;
     u32 *d = destp;
     u32 i;
@@ -106,6 +111,7 @@ void MIi_CpuClearFast(u32 data, void *destp, u32 size)
 
 void MIi_CpuCopyFast(const void *srcp, void *destp, u32 size)
 {
+    NitroPort_WideObjInvalidate(destp, size);
     const u32 *s = srcp;
     u32 *d = destp;
     u32 blocks = size >> 5;
@@ -130,6 +136,7 @@ void MIi_CpuCopyFast(const void *srcp, void *destp, u32 size)
 
 void MI_CpuFill8(void *dest, u8 data, u32 size)
 {
+    NitroPort_WideObjInvalidate(dest, size);
     u8 *d = dest;
 
     while (size--) {
@@ -139,6 +146,7 @@ void MI_CpuFill8(void *dest, u8 data, u32 size)
 
 void MI_CpuCopy8(const void *src, void *dest, u32 size)
 {
+    NitroPort_WideObjInvalidate(dest, size);
     const u8 *s = src;
     u8 *d = dest;
 
@@ -151,6 +159,7 @@ void MI_CpuCopy8(const void *src, void *dest, u32 size)
 
 static void copyWords(const void *src, void *dest, u32 words)
 {
+    NitroPort_WideObjInvalidate(dest, words * 4);
     const u32 *s = src;
     u32 *d = dest;
     u32 tmp[32];

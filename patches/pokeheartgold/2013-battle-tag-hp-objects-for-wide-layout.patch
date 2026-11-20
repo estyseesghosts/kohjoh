@@ -1,0 +1,86 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: terezi <jules@foxtails.me>
+Date: Fri, 20 Nov 2026 12:00:00 -0500
+Subject: [PATCH] Tag battle HP sprites for the wide layout
+
+---
+diff --git a/include/sprite.h b/include/sprite.h
+--- a/include/sprite.h
++++ b/include/sprite.h
+@@ -87,6 +87,9 @@
+     NNS_G2D_VRAM_TYPE type;                              // 0f8
+     struct Sprite *prev;                                 // 0fc
+     struct Sprite *next;                                 // 100
++#ifdef SDK_PORT_3DS
++    s8 wideHpOffset;
++#endif
+ } Sprite;
+ 
+ typedef struct ManagedSprite {
+diff --git a/src/sprite.c b/src/sprite.c
+--- a/src/sprite.c
++++ b/src/sprite.c
+@@ -4,6 +4,10 @@
+ 
+ #include "math_util.h"
+ #include "system.h"
++
++#ifdef SDK_PORT_3DS
++void NitroPort_WideObjScope(int dx);
++#endif
+ 
+ static void SpriteList_Init(SpriteList *spriteList);
+ static void Sprite_Init(Sprite *sprite);
+@@ -609,6 +613,9 @@
+ 
+ static void SpriteList_DrawSprite_Active(SpriteList *spriteList, Sprite *sprite) {
+     VecFx32 matrix = sprite->matrix;
++#ifdef SDK_PORT_3DS
++    NitroPort_WideObjScope(sprite->wideHpOffset);
++#endif
+     NNS_G2dSetRendererImageProxy(spriteList->renderer, &sprite->imageProxy, &sprite->paletteProxy);
+     NNS_G2dBeginRendering(spriteList->renderer);
+     NNS_G2dPushMtx();
+@@ -641,6 +648,9 @@
+     }
+     NNS_G2dPopMtx();
+     NNS_G2dEndRendering();
++#ifdef SDK_PORT_3DS
++    NitroPort_WideObjScope(0);
++#endif
+ }
+ 
+ static void SpriteList_DrawSprite_Inactive(SpriteList *spriteList, Sprite *sprite) {
+diff --git a/src/battle/battle_hp_bar.c b/src/battle/battle_hp_bar.c
+--- a/src/battle/battle_hp_bar.c
++++ b/src/battle/battle_hp_bar.c
+@@ -644,8 +644,27 @@
+ 
+     BattleHpBar_LoadBoxResources(spriteSystem, spriteManager, narc, plttData, hpBar->type);
+     hpBar->boxObj = BattleHpBar_CreateBoxSprite(spriteSystem, spriteManager, hpBar->type);
++#ifdef SDK_PORT_3DS
++    switch (hpBar->type) {
++    case HP_BAR_TYPE_SINGLE_ENEMY:
++    case HP_BAR_TYPE_DOUBLE_ENEMY_LHS:
++    case HP_BAR_TYPE_DOUBLE_ENEMY_RHS:
++        hpBar->boxObj->sprite->wideHpOffset = -32;
++        break;
++    case HP_BAR_TYPE_SINGLE_PLAYER:
++    case HP_BAR_TYPE_DOUBLE_PLAYER_LHS:
++    case HP_BAR_TYPE_DOUBLE_PLAYER_RHS:
++    case HP_BAR_TYPE_SAFARI:
++    case HP_BAR_TYPE_PALPARK:
++        hpBar->boxObj->sprite->wideHpOffset = 32;
++        break;
++    }
++#endif
+ 
+     BattleHpBar_LoadArrowResources(spriteSystem, spriteManager, narc, plttData, hpBar->type);
+     if (hpBar->arrowObj) {
++#ifdef SDK_PORT_3DS
++        hpBar->arrowObj->sprite->wideHpOffset = hpBar->boxObj->sprite->wideHpOffset;
++#endif
+         Sprite_SetPositionXY(hpBar->arrowObj->sprite, tmplate->x - sHpBarArrowXOffsets[hpBar->type], tmplate->y + 0);
+     }
+-- 
+2.50.0
