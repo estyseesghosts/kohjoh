@@ -1,4 +1,8 @@
 # Title screen (no input): the lower screen should show Ho-Oh (HG) flying in 3D.
+# Issue #27: compare held bottom-screen captures with a second run using
+# debug: 0x20 (direct draws). Frame 2085 caught the detached neck and torso.
+dump 2085
+freeze 2085 3
 dump 2300
 freeze 2300 3
 dump 2500

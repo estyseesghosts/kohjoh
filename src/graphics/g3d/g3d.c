@@ -32,6 +32,13 @@
 static const kj_g3_frame *s_frame;
 static kj_g3d_stats s_stats;
 
+#define KJ_JOIN_MAX_VERTS 8192
+#define KJ_JOIN_MAX_INDICES 16384
+
+static kj_g3_vertex *s_join_verts;
+static uint16_t *s_join_indices;
+static uint32_t s_join_verts_used, s_join_indices_used;
+
 /* Redundant-state filter for one kj_g3d_draw (reset at its start, after the
  * program bind). Consecutive DS batches usually share TEV mode, texture and
  * clip matrices; re-sending them dirtied all six TEV stages, the texture
@@ -57,17 +64,40 @@ static bool s_shininess_valid;
 bool kj_g3d_init(void)
 {
     kj_tex_init();
+    s_join_verts = linearAlloc(KJ_JOIN_MAX_VERTS * sizeof(*s_join_verts));
+    s_join_indices = linearAlloc(KJ_JOIN_MAX_INDICES * sizeof(*s_join_indices));
+    if (s_join_verts == NULL || s_join_indices == NULL) {
+        if (s_join_verts != NULL) {
+            linearFree(s_join_verts);
+            s_join_verts = NULL;
+        }
+        if (s_join_indices != NULL) {
+            linearFree(s_join_indices);
+            s_join_indices = NULL;
+        }
+    }
     return true;
 }
 
 void kj_g3d_exit(void)
 {
+    if (s_join_verts != NULL) {
+        linearFree(s_join_verts);
+        s_join_verts = NULL;
+    }
+    if (s_join_indices != NULL) {
+        linearFree(s_join_indices);
+        s_join_indices = NULL;
+    }
     kj_tex_exit();
 }
 
 void kj_g3d_set_frame(const kj_g3_frame *frame)
 {
     s_frame = frame;
+    /* The caller has waited for the previous frame's GPU work. */
+    s_join_verts_used = 0;
+    s_join_indices_used = 0;
 }
 
 void kj_g3d_take_stats(kj_g3d_stats *out)
@@ -258,11 +288,6 @@ static GPU_TEXTURE_WRAP_PARAM wrap_mode(bool repeat, bool flip)
  * than the shader's, scratch space) falls back to the direct path, which
  * is the #10-verified code. */
 
-#define KJ_JOIN_MAX_VERTS 8192
-#define KJ_JOIN_MAX_INDICES 16384
-
-static kj_g3_vertex s_join_verts[KJ_JOIN_MAX_VERTS];
-static uint16_t s_join_indices[KJ_JOIN_MAX_INDICES];
 static uint16_t s_join_map[KJ_G3_MAX_VERTS];
 static uint8_t s_join_src[KJ_G3_MAX_VERTS];
 static uint32_t s_join_epoch[KJ_G3_MAX_VERTS];
@@ -446,6 +471,16 @@ static bool draw_joined(const kj_g3_frame *f, const kj_g3_batch **members, unsig
     kj_g3_matrix u[KJ_G3_PALETTE];
     unsigned ucount = 0;
 
+    if (s_join_verts == NULL || s_join_indices == NULL) {
+        return false;
+    }
+    /* Start each slice on a cache line so flushing it cannot affect another
+     * queued draw. The vertex is 16 bytes and indices are 2 bytes. */
+    const uint32_t vstart = (s_join_verts_used + 1u) & ~1u;
+    const uint32_t istart = (s_join_indices_used + 15u) & ~15u;
+    kj_g3_vertex *verts = s_join_verts + vstart;
+    uint16_t *indices = s_join_indices + istart;
+
     for (unsigned i = 0; i < b0->matrix_count; ++i) {
         if (union_find_or_add(u, &ucount, cap, &f->matrices[b0->first_matrix + i]) < 0) {
             return false;
@@ -453,6 +488,10 @@ static bool draw_joined(const kj_g3_frame *f, const kj_g3_batch **members, unsig
     }
     uint32_t vused = 0, iused = 0;
     ++s_join_stamp;
+    if (s_join_stamp == 0) {
+        memset(s_join_epoch, 0, sizeof(s_join_epoch));
+        ++s_join_stamp;
+    }
     for (unsigned m = 0; m < n; ++m) {
         const kj_g3_batch *b = members[m];
         uint8_t pal[KJ_G3_PALETTE];
@@ -476,21 +515,21 @@ static bool draw_joined(const kj_g3_frame *f, const kj_g3_batch **members, unsig
             const unsigned in = lit ? (ov->mtx & 7u) : ov->mtx;
             const uint8_t out = lit ? (uint8_t)((ov->mtx & 0xF8u) | pal[in]) : pal[in];
             if (s_join_epoch[v] != s_join_stamp || s_join_src[v] != ov->mtx ||
-                s_join_verts[s_join_map[v]].mtx != out) {
-                if (vused >= KJ_JOIN_MAX_VERTS) {
+                verts[s_join_map[v]].mtx != out) {
+                if (vstart + vused >= KJ_JOIN_MAX_VERTS) {
                     return false;
                 }
                 kj_g3_vertex nv = *ov;
                 nv.mtx = out;
                 s_join_map[v] = (uint16_t)vused;
                 s_join_src[v] = ov->mtx;
-                s_join_verts[vused++] = nv;
+                verts[vused++] = nv;
                 s_join_epoch[v] = s_join_stamp;
             }
-            if (iused >= KJ_JOIN_MAX_INDICES) {
+            if (istart + iused >= KJ_JOIN_MAX_INDICES) {
                 return false;
             }
-            s_join_indices[iused++] = s_join_map[v];
+            indices[iused++] = s_join_map[v];
         }
     }
 
@@ -514,12 +553,17 @@ static bool draw_joined(const kj_g3_frame *f, const kj_g3_batch **members, unsig
     s_last_pal_count = ucount;
     s_last_pal_vp = b0->viewport;
 
-    GSPGPU_FlushDataCache(s_join_verts, vused * sizeof(kj_g3_vertex));
-    GSPGPU_FlushDataCache(s_join_indices, iused * sizeof(uint16_t));
+    s_join_verts_used = vstart + vused;
+    s_join_indices_used = istart + iused;
+    GSPGPU_FlushDataCache(verts, vused * sizeof(kj_g3_vertex));
+    GSPGPU_FlushDataCache(indices, iused * sizeof(uint16_t));
     C3D_BufInfo *bi = C3D_GetBufInfo();
     BufInfo_Init(bi);
-    BufInfo_Add(bi, s_join_verts, sizeof(kj_g3_vertex), 4, 0x2130);
-    C3D_DrawElements(GPU_TRIANGLES, (int)iused, C3D_UNSIGNED_SHORT, s_join_indices);
+    BufInfo_Add(bi, verts, sizeof(kj_g3_vertex), 4, 0x2130);
+    C3D_DrawElements(GPU_TRIANGLES, (int)iused, C3D_UNSIGNED_SHORT, indices);
+    /* The draw consumed the dirty flag. Mark the restored binding dirty so
+     * the next direct draw uses the captured vertices on the GPU as well. */
+    bi = C3D_GetBufInfo();
     BufInfo_Init(bi);
     BufInfo_Add(bi, f->verts, sizeof(kj_g3_vertex), 4, 0x2130);
 #ifndef HGSS_PROFILE_OFF
