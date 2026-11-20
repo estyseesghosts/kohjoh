@@ -17,5 +17,5 @@ all:
 	$(BANNERTOOL) makebanner -i $(EDITION)-banner.png -a silence.wav -o $(OUT)/banner.bnr
 	$(BANNERTOOL) makesmdh -s "kohjoh $(EDITION)" -l "kohjoh $(EDITION)" -p kohjoh -i $(EDITION)-icon.png -o $(OUT)/icon.smdh
 	sed -e 's/0xD7101/$(ID_$(EDITION))/' -e 's/KJGH/$(CODE_$(EDITION))/' forwarder.rsf > $(OUT)/forwarder.rsf
-	$(MAKEROM) -f cia -o $(OUT)/kohjoh-$(EDITION).cia -target t -exefslogo -rsf $(OUT)/forwarder.rsf -elf $(OUT)/forwarder.elf -banner $(OUT)/banner.bnr -icon $(OUT)/icon.smdh -major 0 -minor 0 -micro 4
+	$(MAKEROM) -f cia -o $(OUT)/kohjoh-$(EDITION).cia -target t -exefslogo -rsf $(OUT)/forwarder.rsf -elf $(OUT)/forwarder.elf -banner $(OUT)/banner.bnr -icon $(OUT)/icon.smdh -major 0 -minor 0 -micro 5
 .PHONY: all
