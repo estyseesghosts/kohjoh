@@ -345,7 +345,7 @@ const kj_input *kj_ctr_input(void);
 
 /* DS-side profile since the last call (ARM11 ticks / counts). */
 typedef struct kj_ds_profile {
-    uint64_t g3_fifo_ticks;
+    uint32_t g3_fifo_calls;
     uint32_t g3_fifo_words, g3_direct_words, g3_commands;
     uint64_t timer_sync_calls, timer_sync_ticks;
     uint64_t sound_pump_ticks;

@@ -44,8 +44,12 @@ typedef struct kj_g3_stats {
 } kj_g3_stats;
 
 void kj_g3_get_stats(kj_g3_stats *out);
-void kj_g3_dl_stats(uint32_t *hits, uint32_t *misses, uint32_t *uncacheable, uint32_t *bytes);
-void kj_g3_take_profile(uint64_t *fifo_ticks, uint32_t *fifo_words, uint32_t *direct_words,
+/* Reports the display-list hit/miss/uncacheable counts and the arena's used
+ * bytes. Despite reading like a getter, it logs the profile report and resets
+ * every counter it reports. */
+void kj_g3_dl_take_stats_and_log(uint32_t *hits, uint32_t *misses, uint32_t *uncacheable,
+                                 uint32_t *bytes);
+void kj_g3_take_profile(uint32_t *fifo_calls, uint32_t *fifo_words, uint32_t *direct_words,
                         uint32_t *commands);
 
 #endif

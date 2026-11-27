@@ -1619,7 +1619,6 @@ static void execute_body(unsigned op, const uint32_t *p) {
 }
 
 extern u64 svcGetSystemTick(void);
-static u64 s_fifo_ticks;
 static u32 s_fifo_words, s_direct_words;
 
 /* Direct writes: parameters arrive one word per call. */
@@ -3333,9 +3332,6 @@ static void dl_verify(const dl_entry *e, const frame_buf *fb) {
 #endif
 
 static void decode_words_impl(const uint32_t *words, size_t count) {
-#ifdef KJ_G3_PROFILE
-    const u64 t0 = svcGetSystemTick();
-#endif
     size_t i = 0;
 
     while (i < count && s_fifo_need > 0) {
@@ -3374,9 +3370,6 @@ static void decode_words_impl(const uint32_t *words, size_t count) {
             i += s_param_count[op];
         }
     }
-#ifdef KJ_G3_PROFILE
-    s_fifo_ticks += svcGetSystemTick() - t0;
-#endif
 }
 
 static void decode_words(const uint32_t *words, size_t count) {
@@ -4056,7 +4049,11 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count) {
 #endif
 }
 
-void kj_g3_dl_stats(uint32_t *hits, uint32_t *misses, uint32_t *uncacheable, uint32_t *bytes) {
+/* Reports the display-list hit/miss/uncacheable counts and the arena's used
+ * bytes. Despite reading like a getter, it logs the profile report and resets
+ * every counter it reports. */
+void kj_g3_dl_take_stats_and_log(uint32_t *hits, uint32_t *misses, uint32_t *uncacheable,
+                                 uint32_t *bytes) {
 #ifndef HGSS_PROFILE_OFF
     NitroPort_Log("[g3sample] random 1/64 FIFO calls: samples %lu total_ticks %llu decode_ticks "
                   "%llu replay_ticks %llu (block_copy_ticks %llu nested, layout_ticks %llu "
@@ -4122,15 +4119,13 @@ void kj_g3_dl_stats(uint32_t *hits, uint32_t *misses, uint32_t *uncacheable, uin
     s_dl_hits = s_dl_misses = s_dl_uncacheable = 0;
 }
 
-void kj_g3_take_profile(uint64_t *fifo_ticks, uint32_t *fifo_words, uint32_t *direct_words,
+void kj_g3_take_profile(uint32_t *fifo_calls, uint32_t *fifo_words, uint32_t *direct_words,
                         uint32_t *verts) {
-    *fifo_ticks = (uint64_t)s_fifo_calls; /* calls; ticks only with KJ_G3_PROFILE */
+    *fifo_calls = s_fifo_calls;
     s_fifo_calls = 0;
-    (void)s_fifo_ticks;
     *fifo_words = s_fifo_words;
     *direct_words = s_direct_words;
     *verts = s_stats.commands;
-    s_fifo_ticks = 0;
     s_fifo_words = s_direct_words = 0;
     s_stats.commands = 0;
 }

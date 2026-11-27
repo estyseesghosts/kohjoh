@@ -212,7 +212,7 @@ void kj_ds_take_profile(kj_ds_profile *out) {
     u64 calls, ticks;
 
     memset(out, 0, sizeof(*out));
-    kj_g3_take_profile(&out->g3_fifo_ticks, &out->g3_fifo_words, &out->g3_direct_words,
+    kj_g3_take_profile(&out->g3_fifo_calls, &out->g3_fifo_words, &out->g3_direct_words,
                        &out->g3_commands);
     NitroPort_SyncTimersStats(&calls, &ticks);
     out->timer_sync_calls = calls - s_sync_calls_base;
@@ -223,7 +223,8 @@ void kj_ds_take_profile(kj_ds_profile *out) {
     out->sound_pump_calls = s_pump_calls;
     out->hblank_ticks = s_hblank_ticks;
     out->hblank_walks = s_hblank_walks;
-    kj_g3_dl_stats(&out->dl_hits, &out->dl_misses, &out->dl_uncacheable, &out->dl_bytes);
+    kj_g3_dl_take_stats_and_log(&out->dl_hits, &out->dl_misses, &out->dl_uncacheable,
+                                &out->dl_bytes);
     s_pump_ticks = s_hblank_ticks = 0;
     s_pump_calls = s_hblank_walks = 0;
 #ifndef HGSS_PROFILE_OFF

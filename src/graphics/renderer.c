@@ -317,10 +317,10 @@ static void renderer_report_window(const present_frame *f) {
          * the game-frame denominator even when pictures were skipped. */
         const uint32_t gf = dp.hblank_walks != 0u ? dp.hblank_walks : 600u;
         const double us = 1000000.0 / SYSCLOCK_ARM11 / (double)gf;
-        kj_log("[ds] per game frame (%lu game frames / 600 pictures): g3 fifo calls %llu "
+        kj_log("[ds] per game frame (%lu game frames / 600 pictures): g3 fifo calls %lu "
                "(%lu fifo words, %lu direct words, %lu cmds), timer sync %.0f us (%llu calls), "
                "sound pump %.0f us, hblank %.0f us",
-               (unsigned long)gf, (unsigned long long)(dp.g3_fifo_ticks / gf),
+               (unsigned long)gf, (unsigned long)(dp.g3_fifo_calls / gf),
                (unsigned long)(dp.g3_fifo_words / gf), (unsigned long)(dp.g3_direct_words / gf),
                (unsigned long)(dp.g3_commands / gf), dp.timer_sync_ticks * us,
                (unsigned long long)(dp.timer_sync_calls / gf), dp.sound_pump_ticks * us,
