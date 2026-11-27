@@ -31,6 +31,11 @@ typedef struct tex_entry {
     uint32_t shadow_len;
     uint8_t *pal_shadow;
     uint32_t pal_len;
+    uint32_t fmt;
+    /* Format 5 selects its palette range per 4x4 block, so it has no
+     * per-entry palette shadow. It is valid only while the mapped palette
+     * bytes are unchanged; see the palette-generation check below. */
+    uint32_t pal_gen;
     uint32_t last_frame;
     uint32_t checked_frame;
     uint32_t bytes;
@@ -42,6 +47,21 @@ static uint32_t s_cache_bytes;
 static uint32_t s_frame = 1;
 static const uint8_t *s_tex_slot[4];
 static const uint8_t *s_pal_slot[6];
+
+/* A format-5 block picks a palette address from its index word, so one
+ * entry can depend on bytes anywhere in the six mapped palette slots.
+ * Rather than pretend pal_len == 0 means "no palette dependency", compare
+ * the mapped slots with a snapshot once per frame and bump a generation
+ * when either a mapping or any mapped byte changes. A compressed entry
+ * records the generation it decoded under and is reconverted when that
+ * differs. This invalidates more than strictly necessary, but it is exact,
+ * bounded and has no per-block bookkeeping. The 96 KiB comparison runs once
+ * per frame in kj_tex_begin_frame. */
+#define PAL_SLOT_BYTES 0x4000u
+#define PAL_SLOT_COUNT 6u
+static uint32_t s_pal_gen = 1;
+static uint8_t s_pal_snapshot[PAL_SLOT_COUNT][PAL_SLOT_BYTES];
+static bool s_pal_snapshot_valid[PAL_SLOT_COUNT];
 static uint8_t s_morton[64];
 static kj_tex_stats s_stats;
 static int s_last_hit = -1;
@@ -71,6 +91,8 @@ void kj_tex_init(void)
 {
     memset(s_cache, 0, sizeof(s_cache));
     memset(s_hint, 0xFF, sizeof(s_hint));
+    memset(s_pal_snapshot_valid, 0, sizeof(s_pal_snapshot_valid));
+    s_pal_gen = 1;
     build_morton();
 }
 
@@ -90,6 +112,36 @@ void kj_tex_exit(void)
 {
     for (int i = 0; i < CACHE_ENTRIES; ++i) {
         entry_free(&s_cache[i]);
+    }
+}
+
+/* Snapshot the mapped palette slots once per frame. A mapping change or a
+ * content change bumps the generation; format-5 entries compare it. */
+static void palette_generation_update(void)
+{
+    bool changed = false;
+    for (unsigned s = 0; s < PAL_SLOT_COUNT; ++s) {
+        const uint8_t *slot = s_pal_slot[s];
+        if (slot == NULL) {
+            if (s_pal_snapshot_valid[s]) {
+                s_pal_snapshot_valid[s] = false;
+                changed = true;
+            }
+            continue;
+        }
+        if (!s_pal_snapshot_valid[s]) {
+            memcpy(s_pal_snapshot[s], slot, PAL_SLOT_BYTES);
+            s_pal_snapshot_valid[s] = true;
+            changed = true;
+            continue;
+        }
+        if (memcmp(s_pal_snapshot[s], slot, PAL_SLOT_BYTES) != 0) {
+            memcpy(s_pal_snapshot[s], slot, PAL_SLOT_BYTES);
+            changed = true;
+        }
+    }
+    if (changed) {
+        ++s_pal_gen;
     }
 }
 
@@ -121,11 +173,65 @@ void kj_tex_begin_frame(const kj_frame_input *in)
             s_pal_slot[SLOT[b[i].ofs & 3]] = lcdc + b[i].lcdc_offset;
         }
     }
+    palette_generation_update();
 }
 
-/* Gather `len` bytes at texture-VRAM address `addr` (0..0x7FFFF). */
+/* True when every texture-VRAM chunk of [addr, addr+len) has a mapped slot.
+ * Used as a preflight so a gather never stops halfway and leaves a shadow
+ * describing a mix of old and new bytes. */
+static bool tex_mapped(uint32_t addr, uint32_t len)
+{
+    while (len > 0) {
+        const unsigned slot = (addr >> 17) & 3u;
+        const uint32_t off = addr & 0x1FFFFu;
+        uint32_t n = 0x20000u - off;
+        if (n > len) {
+            n = len;
+        }
+        if (s_tex_slot[slot] == NULL) {
+            return false;
+        }
+        addr += n;
+        len -= n;
+    }
+    return true;
+}
+
+static bool pal_mapped(uint32_t addr, uint32_t len)
+{
+    while (len > 0) {
+        const unsigned slot = addr >> 14;
+        const uint32_t off = addr & 0x3FFFu;
+        uint32_t n = 0x4000u - off;
+        if (n > len) {
+            n = len;
+        }
+        if (slot >= PAL_SLOT_COUNT || s_pal_slot[slot] == NULL) {
+            return false;
+        }
+        addr += n;
+        len -= n;
+    }
+    return true;
+}
+
+/* One mapped VRAM byte, or -1 when the slot is unmapped. */
+static int tex_byte(uint32_t addr)
+{
+    const unsigned slot = (addr >> 17) & 3u;
+    if (s_tex_slot[slot] == NULL) {
+        return -1;
+    }
+    return s_tex_slot[slot][addr & 0x1FFFFu];
+}
+
+/* Gather `len` bytes at texture-VRAM address `addr` (0..0x7FFFF).
+ * Callers run after tex_mapped(), so this cannot stop halfway. */
 static bool gather(uint8_t *dst, uint32_t addr, uint32_t len)
 {
+    if (!tex_mapped(addr, len)) {
+        return false;
+    }
     while (len > 0) {
         const unsigned slot = (addr >> 17) & 3u;
         const uint32_t off = addr & 0x1FFFFu;
@@ -172,6 +278,9 @@ static int differs(const uint8_t *shadow, uint32_t addr, uint32_t len)
 
 static bool gather_pal(uint8_t *dst, uint32_t addr, uint32_t len)
 {
+    if (!pal_mapped(addr, len)) {
+        return false;
+    }
     while (len > 0) {
         const unsigned slot = addr >> 14;
         const uint32_t off = addr & 0x3FFFu;
@@ -235,6 +344,47 @@ static bool describe(uint32_t p, uint32_t pltt, desc *d)
     case 6: d->data_len = texels; d->pal_len = 16; break;
     case 7: d->data_len = texels * 2; d->pal_len = 0; break;
     default: return false;
+    }
+    return true;
+}
+
+/* Preflight a format-5 entry's per-block palette reads from the live index
+ * stream, without touching the entry's shadow. */
+static bool fmt5_pal_ready(const desc *d)
+{
+    const unsigned bw = d->w / 4u;
+    for (unsigned by = 0; by < d->h / 4u; ++by) {
+        for (unsigned bx = 0; bx < bw; ++bx) {
+            const unsigned b = by * bw + bx;
+            const int lo = tex_byte(d->index_addr + b * 2u);
+            const int hi = tex_byte(d->index_addr + b * 2u + 1u);
+            if (lo < 0 || hi < 0) {
+                return false;
+            }
+            const uint16_t ix = (uint16_t)(lo | (hi << 8));
+            if (!pal_mapped(d->pal_addr + (ix & 0x3FFFu) * 4u, 8)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+/* Everything decode() reads must be mapped before an entry's shadow or
+ * texture is modified. */
+static bool source_ready(const desc *d)
+{
+    if (!tex_mapped(d->addr, d->data_len)) {
+        return false;
+    }
+    if (d->index_len != 0 && !tex_mapped(d->index_addr, d->index_len)) {
+        return false;
+    }
+    if (d->pal_len != 0 && !pal_mapped(d->pal_addr, d->pal_len)) {
+        return false;
+    }
+    if (d->fmt == 5 && !fmt5_pal_ready(d)) {
+        return false;
     }
     return true;
 }
@@ -377,6 +527,12 @@ static int find_victim(void)
 /* Is the cached entry's source unchanged? (once per frame) */
 static bool still_valid(tex_entry *e, const desc *d)
 {
+    /* A compressed entry depends on palette bytes selected by its index
+     * words; the per-frame generation is the exact, bounded stand-in for a
+     * palette shadow. */
+    if (e->fmt == 5 && e->pal_gen != s_pal_gen) {
+        return false;
+    }
     if (e->checked_frame == s_frame) {
         return true;
     }
@@ -437,7 +593,11 @@ C3D_Tex *kj_tex_get(uint32_t tex_param, uint32_t pltt_base)
         if (still_valid(e, &d)) {
             return &e->tex;
         }
-        /* reconvert in place */
+        /* reconvert in place; preflight first so a failure leaves the old
+         * decoded texture and its shadow untouched */
+        if (!source_ready(&d)) {
+            return &e->tex;
+        }
         if (!gather(e->shadow, d.addr, d.data_len) ||
             (d.index_len && !gather(e->shadow + d.data_len, d.index_addr, d.index_len))) {
             return &e->tex;
@@ -445,12 +605,29 @@ C3D_Tex *kj_tex_get(uint32_t tex_param, uint32_t pltt_base)
         if (e->pal_len) {
             gather_pal(e->pal_shadow, d.pal_addr, e->pal_len);
         }
-        decode(&d, e->shadow, e->shadow + d.data_len, &e->tex);
+        if (!decode(&d, e->shadow, e->shadow + d.data_len, &e->tex)) {
+            /* Unreachable after source_ready(); if it happens, the shadow no
+             * longer describes the texture, so drop the entry rather than
+             * keep an incoherent one. */
+            entry_free(e);
+            s_last_hit = -1;
+            return NULL;
+        }
+        e->pal_gen = s_pal_gen;
 #ifndef HGSS_PROFILE_OFF
         ++s_stats.uploads;
 #endif
         kj_perf_count(KJ_COUNT_TEX_UPLOAD, 1);
         return &e->tex;
+    }
+
+    /* Preflight before evicting anything: a texture whose source or palette
+     * is unmapped has no coherent decode and must not disturb the cache. */
+    if (!source_ready(&d)) {
+#ifndef HGSS_PROFILE_OFF
+        ++s_stats.missing_bank;
+#endif
+        return NULL;
     }
 
     const int v = find_victim();
@@ -504,6 +681,8 @@ C3D_Tex *kj_tex_get(uint32_t tex_param, uint32_t pltt_base)
     e->key_pltt = pkey;
     e->shadow_len = total;
     e->bytes = bytes;
+    e->fmt = d.fmt;
+    e->pal_gen = s_pal_gen;
     e->last_frame = s_frame;
     e->checked_frame = s_frame;
     s_cache_bytes += bytes;
@@ -512,7 +691,7 @@ C3D_Tex *kj_tex_get(uint32_t tex_param, uint32_t pltt_base)
 #ifndef HGSS_PROFILE_OFF
     ++s_stats.uploads;
 #endif
-        kj_perf_count(KJ_COUNT_TEX_UPLOAD, 1);
+    kj_perf_count(KJ_COUNT_TEX_UPLOAD, 1);
     return &e->tex;
 }
 
