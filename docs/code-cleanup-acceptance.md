@@ -53,7 +53,7 @@ commit; its differential hashes (`e8bfdd766ba03a03` sound,
 ## Emulator correctness
 
 LOTUS (0.1.4, AZAHAR backend, Old 3DS configuration, software renderer) runs
-the cleanup artifact through the intro. The recorded capture at 1,608 guest
+the cleanup artifact through the intro. The recorded capture at 1,798 guest
 frames shows the widened New Bark scene and trainer, matching the baseline
 artifact run in the same session setup. The screenshot is
 `build/lotus/cleanup-intro/final-top.png`; the baseline comparison is
