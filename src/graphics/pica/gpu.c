@@ -43,34 +43,31 @@ static uint16_t *s_quad_indices;
 static uint32_t s_arena_used, s_arena_dropped;
 
 bool kj_gpu_init(void) {
-    static bool dvlb_ready[3], prog_ready[3];
     s_dvlb_2d = DVLB_ParseFile((u32 *)g2d_shbin, g2d_shbin_size);
-    dvlb_ready[0] = s_dvlb_2d != NULL;
     s_dvlb_3d = DVLB_ParseFile((u32 *)g3d_shbin, g3d_shbin_size);
-    dvlb_ready[1] = s_dvlb_3d != NULL;
     s_dvlb_lit = DVLB_ParseFile((u32 *)g3d_lit_shbin, g3d_lit_shbin_size);
-    dvlb_ready[2] = s_dvlb_lit != NULL;
-    if (!dvlb_ready[0] || !dvlb_ready[1] || !dvlb_ready[2]) {
+    if (s_dvlb_2d == NULL || s_dvlb_3d == NULL || s_dvlb_lit == NULL) {
         kj_log("[gpu] shader parse failed");
         goto fail;
     }
-    prog_ready[0] = shaderProgramInit(&s_prog_2d);
-    if (!prog_ready[0]) {
+    /* shaderProgramInit returns a Result (0 = success), not bool. */
+    s_prog_2d_ready = R_SUCCEEDED(shaderProgramInit(&s_prog_2d));
+    if (!s_prog_2d_ready) {
+        kj_log("[gpu] 2D shader program init failed");
         goto fail;
     }
-    s_prog_2d_ready = true;
     shaderProgramSetVsh(&s_prog_2d, &s_dvlb_2d->DVLE[0]);
-    prog_ready[1] = shaderProgramInit(&s_prog_3d);
-    if (!prog_ready[1]) {
+    s_prog_3d_ready = R_SUCCEEDED(shaderProgramInit(&s_prog_3d));
+    if (!s_prog_3d_ready) {
+        kj_log("[gpu] 3D shader program init failed");
         goto fail;
     }
-    s_prog_3d_ready = true;
     shaderProgramSetVsh(&s_prog_3d, &s_dvlb_3d->DVLE[0]);
-    prog_ready[2] = shaderProgramInit(&s_prog_lit);
-    if (!prog_ready[2]) {
+    s_prog_lit_ready = R_SUCCEEDED(shaderProgramInit(&s_prog_lit));
+    if (!s_prog_lit_ready) {
+        kj_log("[gpu] lit shader program init failed");
         goto fail;
     }
-    s_prog_lit_ready = true;
     shaderProgramSetVsh(&s_prog_lit, &s_dvlb_lit->DVLE[0]);
     s_lit_palette = shaderInstanceGetUniformLocation(s_prog_lit.vertexShader, "palette");
     s_lit_texscale = shaderInstanceGetUniformLocation(s_prog_lit.vertexShader, "texscale");
