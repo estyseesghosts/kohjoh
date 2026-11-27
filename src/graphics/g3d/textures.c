@@ -114,6 +114,9 @@ void kj_tex_exit(void) {
  * content change bumps the generation; format-5 entries compare it. */
 static void palette_generation_update(void) {
     bool changed = false;
+#ifndef HGSS_PROFILE_OFF
+    uint32_t bytes_compared = 0;
+#endif
     for (unsigned s = 0; s < PAL_SLOT_COUNT; ++s) {
         const uint8_t *slot = s_pal_slot[s];
         if (slot == NULL) {
@@ -125,17 +128,29 @@ static void palette_generation_update(void) {
         }
         if (!s_pal_snapshot_valid[s]) {
             memcpy(s_pal_snapshot[s], slot, PAL_SLOT_BYTES);
+#ifndef HGSS_PROFILE_OFF
+            bytes_compared += PAL_SLOT_BYTES;
+#endif
             s_pal_snapshot_valid[s] = true;
             changed = true;
             continue;
         }
         if (memcmp(s_pal_snapshot[s], slot, PAL_SLOT_BYTES) != 0) {
+#ifndef HGSS_PROFILE_OFF
+            bytes_compared += 2u * PAL_SLOT_BYTES; /* the compare and the refresh */
+#endif
             memcpy(s_pal_snapshot[s], slot, PAL_SLOT_BYTES);
             changed = true;
         }
     }
+#ifndef HGSS_PROFILE_OFF
+    s_stats.palette_bytes_compared += bytes_compared;
+#endif
     if (changed) {
         ++s_pal_gen;
+#ifndef HGSS_PROFILE_OFF
+        ++s_stats.palette_generation_bumps;
+#endif
     }
 }
 
@@ -704,5 +719,19 @@ C3D_Tex *kj_tex_get(uint32_t tex_param, uint32_t pltt_base) {
 
 void kj_tex_take_stats(kj_tex_stats *out) {
     *out = s_stats;
+#ifndef HGSS_PROFILE_OFF
+    uint32_t format5 = 0;
+    /* Once per 600 frames, so a full scan is cheap here. */
+    for (int i = 0; i < CACHE_ENTRIES; ++i) {
+        if (s_cache[i].used && s_cache[i].fmt == 5) {
+            ++format5;
+        }
+    }
+    out->format5_entries = format5;
+#endif
     memset(&s_stats, 0, sizeof(s_stats));
+}
+
+void kj_tex_peek_stats(kj_tex_stats *out) {
+    *out = s_stats;
 }

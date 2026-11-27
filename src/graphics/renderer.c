@@ -299,7 +299,9 @@ static void renderer_report_window(const present_frame *f) {
         kj_g2d_stats g;
         kj_g3d_stats d;
         kj_atlas_stats a;
+        kj_tex_stats ts;
         kj_g2d_take_stats(&g);
+        kj_tex_peek_stats(&ts);
         kj_g3d_take_stats(&d);
         kj_atlas_take_stats(&a);
         kj_log("[gpu] 600 frames: 2D screens skipped %lu, layers reused %lu rebuilt %lu, "
@@ -353,7 +355,7 @@ static void renderer_report_window(const present_frame *f) {
                "join groups %lu joined %lu (batches %lu) declined %lu "
                "tex uploads %lu tex bytes compared %lu "
                "tex full %lu unsupported %lu; box tests %lu culled %lu (far only %lu) window "
-               "passes %lu",
+               "passes %lu pal compare KiB %lu pal generation bumps %lu format5 entries %lu",
                (unsigned long)a.lookups, (unsigned long)a.conversions, (unsigned long)a.evictions,
                (unsigned long)a.full, (unsigned long)d.batches, (unsigned long)d.draws,
                (unsigned long)d.triangles, (unsigned long)d.state_skips,
@@ -362,7 +364,9 @@ static void renderer_report_window(const present_frame *f) {
                (unsigned long)d.tex_uploads, (unsigned long)d.tex_bytes_compared,
                (unsigned long)d.tex_cache_full, (unsigned long)d.unsupported,
                (unsigned long)d.box_tests, (unsigned long)d.box_culled,
-               (unsigned long)d.box_culled_far, (unsigned long)d.window_passes);
+               (unsigned long)d.box_culled_far, (unsigned long)d.window_passes,
+               (unsigned long)(ts.palette_bytes_compared / 1024u),
+               (unsigned long)ts.palette_generation_bumps, (unsigned long)ts.format5_entries);
         {
             GSPGPU_PerfLog now;
             unsigned long p3d = 0, ppf = 0, psc = 0;

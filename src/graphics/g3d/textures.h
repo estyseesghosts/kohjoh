@@ -18,7 +18,10 @@ C3D_Tex *kj_tex_get(uint32_t tex_param, uint32_t pltt_base);
 
 typedef struct kj_tex_stats {
     uint32_t uploads, compared_bytes, full, missing_bank;
+    uint32_t palette_bytes_compared, palette_generation_bumps, format5_entries;
 } kj_tex_stats;
 void kj_tex_take_stats(kj_tex_stats *out);
+/* Copy the counters without resetting them (diagnostics only). */
+void kj_tex_peek_stats(kj_tex_stats *out);
 
 #endif
