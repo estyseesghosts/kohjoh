@@ -148,7 +148,7 @@ static inline void put_quad(kj_v2d *v, int x, int y, int w, int h, uint16_t slot
     v[3] = (kj_v2d){(int16_t)(x + w), (int16_t)(y + h), u1, v1, 255, 255, 255, 255};
 }
 
-static bool run_begin(run *r, uint32_t cap) {
+bool run_begin(run *r, uint32_t cap) {
     r->count = 0;
     r->char_lo = UINT32_MAX;
     r->char_hi = 0;

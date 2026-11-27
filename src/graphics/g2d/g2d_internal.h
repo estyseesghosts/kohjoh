@@ -100,10 +100,39 @@ void kj_g2d_layer_cache_reset(layer_cache *lc);
 bool kj_g2d_chars_same(const layer_cache *lc, const uint8_t *vram);
 void kj_g2d_chars_keep(layer_cache *lc, const uint8_t *vram, uint32_t lo, uint32_t hi);
 
+/* g2d_effects.c: DS window/blend/brightness state and passes. */
+typedef struct fx {
+    uint16_t bldcnt;
+    int mode;
+    float eva, evb, evy;
+    bool windows;
+    bool objwin;
+    uint8_t region_enable[4]; /* bits 0-5: BG0-3, OBJ, effects */
+    uint8_t active;           /* bit r: region r can occur (outside always) */
+} fx;
+
+extern kj_g2d_stats s_stats;
+
+void set_xform_x(const kj_target *t, float k, float add);
+void set_xform(const kj_target *t);
+int phys_x(const kj_target *t, int x);
+int phys_y(const kj_target *t, int y);
+void read_fx(const ctx *c, fx *f);
+uint8_t bg0_window_on(const fx *f);
+void stencil_write_all(uint8_t ref, uint8_t test_mask);
+void blend_off(void);
+void blend_alpha(float eva, float evb);
+void open_wide_3d_scissor(const ctx *c);
+void write_windows(const ctx *c);
+void brightness_pass(const fx *f);
+void master_brightness(const ctx *c, uint16_t mb);
+void side_black(void);
+
 /* g2d_layers.c: palette/tile sources and decode helpers. */
 const uint16_t *pltt_ptr(const kj_ds_memory *mem, int engine, int kind);
 const uint8_t *ext_bg_slot(const kj_frame_input *in, int engine, int slot);
 const uint8_t *ext_obj(const kj_frame_input *in, int engine);
+bool run_begin(run *r, uint32_t cap);
 void run_end(run *r);
 
 /* g2d_layers.c: decode one BG/OAM kind into a quad run. */

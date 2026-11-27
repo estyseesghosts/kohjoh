@@ -88,9 +88,11 @@ types, no enums, `kj_ds_*` / `kj_ctr_*` functions.
 
 - Pure fixed-point matrix products and sign/vector helpers live in the
   private [`kj_g3_matrix.c`](../src/runtime/kj_g3_matrix.c) /
-  [`kj_g3_matrix.h`](../src/runtime/kj_g3_matrix.h). Command handlers, matrix
-  stacks and display-list replay stay in `kj_g3.c`: those are the measured
-  hot path and share live DS state.
+  [`kj_g3_matrix.h`](../src/runtime/kj_g3_matrix.h). The retained display-list
+  bump arena is owner-isolated in
+  [`kj_g3_arena.c`](../src/runtime/kj_g3_arena.c) (`alloc`/`reset`/`release`);
+  command handlers, matrix stacks and list replay stay in `kj_g3.c`: those are
+  the measured hot path and share live DS state.
 
 - The DS side interprets matrix stacks (20.12 fixed), texgen and readable
   box/position/vector tests on the CPU. NORMAL latches its transformed normal

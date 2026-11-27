@@ -44,7 +44,7 @@ with tempfile.TemporaryDirectory(prefix='kohjoh-test-') as tmp:
     (tmp/'nitro.h').write_text('#include <stdint.h>\ntypedef uint64_t u64; typedef uint32_t u32;\n')
     (tmp/'nitro_port.h').write_text('#include <stddef.h>\n#include <stdint.h>\nvoid NitroPort_Log(const char *, ...);\n')
     shutil.copy(root/'src/compat/nitro/include/nitro_port_gx3d.h',tmp)
-    common=[a.cc,'-O2','-fwrapv','-fno-strict-aliasing','-DKJ_G3_CPU_LIGHTING','-DKJ_G3_NO_CULL','-I',tmp,'-I',root/'src','-I',root/'src/runtime','-I',root/'src/compat/nitro/include',root/'tests/native/field_view_stubs.c',root/'src/runtime/kj_g3_matrix.c']
+    common=[a.cc,'-O2','-fwrapv','-fno-strict-aliasing','-DKJ_G3_CPU_LIGHTING','-DKJ_G3_NO_CULL','-I',tmp,'-I',root/'src','-I',root/'src/runtime','-I',root/'src/compat/nitro/include',root/'tests/native/field_view_stubs.c',root/'src/runtime/kj_g3_matrix.c',root/'src/runtime/kj_g3_arena.c']
     for name,path in [('sound','src/compat/nitro/src/port_sound_chip.c'),('g3','src/runtime/kj_g3.c')]:
         before=tmp/(name+'_before.c')
         before.write_text(run(['git','show',f'{a.reference}:{path}'])+'\n')

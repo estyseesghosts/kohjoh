@@ -44,8 +44,8 @@ commit; its differential hashes (`e8bfdd766ba03a03` sound,
 | 11 CI | native job, PR-base reference, texture/save/capacity tests |
 | 12 formatting | pinned clang-format 18.1.8, first-party files only, zero output change |
 | 13 frame phases | `kj_ctr_publish_frame` named phases, operation order unchanged |
-| 14 G2D | decoding moved to `g2d_layers.c`; retained caches/allocation/byte comparison moved to `g2d_retained.c`; `g2d_internal.h` is private to the subsystem; window/blend/brightness stay with the span orchestrator because they interleave its priority pass |
-| 15 G3 | pure matrix support moved to `kj_g3_matrix.c/.h`; hot decode, stacks and retained lists stay in one translation unit |
+| 14 G2D | decoding in `g2d_layers.c`, retained caches in `g2d_retained.c`, windows/blend/brightness/coordinate mapping in `g2d_effects.c`; `g2d_internal.h` private; wide-art key/band stays with the span that owns its tile snapshot |
+| 15 G3 | pure matrix support in `kj_g3_matrix.c/.h`, display-list bump arena in `kj_g3_arena.c/.h`; hot decode, stacks and retained list replay stay in one translation unit with the shared live state |
 | 16 boundaries | every 3DS and runtime header compiles standalone; new exports are in subsystem-private headers |
 | 17 reporter | `[perfrep]` window timing is profile-build only and not attributed to game/render |
 | 18 docs | current raw-save path, lifecycle ownership and split boundaries documented |

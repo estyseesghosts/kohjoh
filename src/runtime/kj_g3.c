@@ -22,6 +22,7 @@
 
 #include "kj_field_view.h"
 #include "kj_g3.h"
+#include "kj_g3_arena.h"
 #include "kj_g3_matrix.h"
 #include "kj_lighting.h"
 
@@ -1951,7 +1952,6 @@ static u32 s_fifo_calls;
 
 #define DL_SLOTS 1024u
 #define DL_MIN_WORDS 16u
-#define DL_BYTES_MAX (6u * 1024u * 1024u)
 #define DL_MAX_EVENTS 4096u
 
 typedef struct dl_key {
@@ -2086,29 +2086,15 @@ static dl_entry s_dl[DL_SLOTS];
 /* All recordings live in one bump arena, flushed wholesale when full: no
  * per-list heap traffic (thousands of small malloc/free pairs a frame), and
  * no per-entry ownership to get wrong. */
-static uint8_t *s_dl_arena;
-static uint32_t s_dl_arena_used;
 static uint32_t s_dl_flushes;
 
 static void *dl_alloc(uint32_t n) {
-    if (s_dl_arena == NULL) {
-        s_dl_arena = malloc(DL_BYTES_MAX);
-        if (s_dl_arena == NULL) {
-            return NULL;
-        }
-    }
-    n = (n + 3u) & ~3u;
-    if (n == 0 || s_dl_arena_used + n > DL_BYTES_MAX) {
-        return NULL;
-    }
-    void *ptr = s_dl_arena + s_dl_arena_used;
-    s_dl_arena_used += n;
-    return ptr;
+    return kj_g3_arena_alloc(n);
 }
 
 static void dl_flush_all(void) {
     memset(s_dl, 0, sizeof(s_dl));
-    s_dl_arena_used = 0;
+    kj_g3_arena_reset();
 #ifndef HGSS_PROFILE_OFF
     ++s_dl_flushes;
 #endif
@@ -2118,9 +2104,7 @@ void kj_g3_shutdown(void) {
     /* G3-owned storage only: the display-list arena. The two vertex/index
      * buffer pairs are allocated and owned by the renderer (kj_g3_storage)
      * and are only borrowed here, so clear the borrow rather than free it. */
-    free(s_dl_arena);
-    s_dl_arena = NULL;
-    s_dl_arena_used = 0;
+    kj_g3_arena_release();
     memset(s_dl, 0, sizeof(s_dl));
     for (int i = 0; i < 2; ++i) {
         s_buf[i].verts = NULL;
@@ -4117,7 +4101,7 @@ void kj_g3_dl_stats(uint32_t *hits, uint32_t *misses, uint32_t *uncacheable, uin
     *hits = s_dl_hits;
     *misses = s_dl_misses;
     *uncacheable = s_dl_uncacheable;
-    *bytes = s_dl_arena_used;
+    *bytes = kj_g3_arena_used();
     NitroPort_Log("[dlwhy] batch-in-block %lu shared-verts %lu straddle/drops %lu lit+matrix %lu "
                   "swap %lu open-prim %lu flushes %lu",
                   (unsigned long)s_dl_why[0], (unsigned long)s_dl_why[1],
