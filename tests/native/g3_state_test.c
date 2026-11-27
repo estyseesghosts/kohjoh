@@ -12,28 +12,27 @@
 #include "kj_lighting.h"
 
 unsigned char NitroPort_IoReg[0x1000];
-void NitroPort_Log(const char *fmt, ...) { assert(strstr(fmt, "MISMATCH") == NULL); }
+void NitroPort_Log(const char *fmt, ...) {
+    assert(strstr(fmt, "MISMATCH") == NULL);
+}
 static uint64_t hash = 1469598103934665603ull;
 static uint32_t rng = 0x3c6ef372u;
 
-static uint32_t next(void)
-{
+static uint32_t next(void) {
     rng ^= rng << 13;
     rng ^= rng >> 17;
     rng ^= rng << 5;
     return rng;
 }
 
-static void digest(const void *ptr, size_t count)
-{
+static void digest(const void *ptr, size_t count) {
     const unsigned char *bytes = ptr;
     while (count-- != 0) {
         hash = (hash ^ *bytes++) * 1099511628211ull;
     }
 }
 
-static void triangle_vertex(const kj_g3_frame *frame, const kj_g3_batch *batch, uint16_t index)
-{
+static void triangle_vertex(const kj_g3_frame *frame, const kj_g3_batch *batch, uint16_t index) {
     kj_g3_vertex v = frame->verts[index];
     if (v.pad & 128u) {
         uint32_t packed;
@@ -56,8 +55,7 @@ static void triangle_vertex(const kj_g3_frame *frame, const kj_g3_batch *batch, 
 /* The GLB layout: MTX_MODE, LOAD_4x4, MTX_MODE, LOAD_4x3; LIGHT_VECTOR x4;
  * DIF_AMB, SPE_EMI, POLYGON_ATTR, VIEWPORT; LIGHT_COLOR x4; MULT_4x3,
  * SCALE, TEXIMAGE_PARAM. 63 words. */
-static size_t make_glb(uint32_t *g, unsigned camera, unsigned lights, unsigned base)
-{
+static size_t make_glb(uint32_t *g, unsigned camera, unsigned lights, unsigned base) {
     size_t n = 0;
     g[n++] = 0x17101610u;
     g[n++] = 0;
@@ -70,7 +68,7 @@ static size_t make_glb(uint32_t *g, unsigned camera, unsigned lights, unsigned b
     }
     g[3 + 16 + 1] = 4096u - camera * 64u; /* camera rotation */
     g[3 + 16 + 2] = camera * 97u;
-    g[3 + 16 + 10] = camera * 4096u;      /* camera translation */
+    g[3 + 16 + 10] = camera * 4096u; /* camera translation */
     g[n++] = 0x32323232u;
     for (unsigned i = 0; i < 4; ++i) {
         g[n++] = (i << 30) | ((lights * 7919u + i * 104729u) & 0x3fffffffu);
@@ -90,7 +88,7 @@ static size_t make_glb(uint32_t *g, unsigned camera, unsigned lights, unsigned b
     }
     g[n++] = base * 4096u; /* NNS rewrites the base transform per model */
     g[n++] = 0;
-    g[n++] = (uint32_t)-(int32_t)(base * 2048u);
+    g[n++] = (uint32_t) - (int32_t)(base * 2048u);
     g[n++] = 4096;
     g[n++] = 4096;
     g[n++] = 4096;
@@ -98,8 +96,7 @@ static size_t make_glb(uint32_t *g, unsigned camera, unsigned lights, unsigned b
     return n;
 }
 
-int main(void)
-{
+int main(void) {
     kj_g3_storage storage;
     for (unsigned i = 0; i < 2; ++i) {
         storage.verts[i] = calloc(KJ_G3_MAX_VERTS, sizeof(kj_g3_vertex));
@@ -127,8 +124,9 @@ int main(void)
             NitroPort_GxFifoWords(glb, n);
             /* The model's own transform and material on top. */
             const uint32_t turn = model == 2u || model == 3u ? 0u : model; /* 2, 3: no rotation */
-            execute(0x19, (const uint32_t[]){4096, turn * 300u, 0, 0, 4096, turn * 200u, 0, 0, 4096,
-                                             model * 8192u, 0, (uint32_t)-(int32_t)(model * 4096u)});
+            execute(0x19,
+                    (const uint32_t[]){4096, turn * 300u, 0, 0, 4096, turn * 200u, 0, 0, 4096,
+                                       model * 8192u, 0, (uint32_t) - (int32_t)(model * 4096u)});
             /* One disturbance per even model, and a quiet model after it,
              * so each restore invalidation is observable on its own (the
              * next GLB must undo it, and nothing else invalidates). */
@@ -161,7 +159,8 @@ int main(void)
             /* Live (uncached) lit vertices: the normal cache and the PICA
              * lighting latch see only the generations a restore bumps. */
             execute(0x40, (const uint32_t[]){0});
-            execute(0x21, (const uint32_t[]){0x20100000u}); /* z = -511/512, facing the disturbed light */
+            execute(0x21,
+                    (const uint32_t[]){0x20100000u}); /* z = -511/512, facing the disturbed light */
             execute(0x23, (const uint32_t[]){0x00000000u, 0});
             execute(0x23, (const uint32_t[]){0x00001000u, 0});
             execute(0x23, (const uint32_t[]){0x10000000u, 0});
