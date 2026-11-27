@@ -22,6 +22,7 @@
 
 #include "kj_field_view.h"
 #include "kj_g3.h"
+#include "kj_g3_matrix.h"
 #include "kj_lighting.h"
 
 #include <nitro.h>
@@ -56,79 +57,17 @@ static uint32_t s_dl_key_logs;
 
 /* ------------------------------------------------------------- matrices */
 
-typedef struct mtx {
-    int32_t m[4][4]; /* 20.12, row-vector convention: v' = v * M */
-} mtx;
-
 #define POSVEC_STACK 32
-#define FX_ONE 4096
 
-static mtx s_proj, s_pos, s_vec, s_tex;
-static mtx s_proj_stack[1], s_tex_stack[1];
-static mtx s_pos_stack[POSVEC_STACK], s_vec_stack[POSVEC_STACK];
+static kj_g3_mtx s_proj, s_pos, s_vec, s_tex;
+static kj_g3_mtx s_proj_stack[1], s_tex_stack[1];
+static kj_g3_mtx s_pos_stack[POSVEC_STACK], s_vec_stack[POSVEC_STACK];
 static int s_proj_sp, s_tex_sp, s_posvec_sp;
 static int s_mtx_mode;
 static bool s_stack_error;
-static mtx s_clip;
+static kj_g3_mtx s_clip;
 static bool s_clip_dirty = true;
 static uint32_t s_clip_version = 1; /* bumps on every clip change */
-
-static void mtx_identity(mtx *m) {
-    memset(m, 0, sizeof(*m));
-    m->m[0][0] = m->m[1][1] = m->m[2][2] = m->m[3][3] = FX_ONE;
-}
-
-/* out = a * b (row-vector convention: apply a, then b). */
-static void mtx_mul(mtx *out, const mtx *a, const mtx *b) {
-    mtx r;
-
-    for (int i = 0; i < 4; ++i) {
-        for (int j = 0; j < 4; ++j) {
-            int64_t acc = 0;
-            for (int k = 0; k < 4; ++k) {
-                acc += (int64_t)a->m[i][k] * b->m[k][j];
-            }
-            r.m[i][j] = (int32_t)(acc >> 12);
-        }
-    }
-    *out = r;
-}
-
-/* Left operand from MTX_MULT_4x3/3x3 has an implicit affine column.
- * Preserve the single fixed-point rounding after each dot product, including
- * projective right operands. Repeated base transforms need 36/48 products
- * instead of 64, before the identity/translation fast paths below.
- * See Coffeepot cpu-optimization.md: reduce integer work before using SIMD. */
-static void mtx_mul_affine(mtx *out, const mtx *a, const mtx *b, bool rotation_only) {
-    mtx r;
-    const unsigned rows = rotation_only ? 3u : 4u;
-    for (unsigned i = 0; i < rows; ++i) {
-        for (unsigned j = 0; j < 4; ++j) {
-            int64_t acc = (int64_t)a->m[i][0] * b->m[0][j] + (int64_t)a->m[i][1] * b->m[1][j] +
-                          (int64_t)a->m[i][2] * b->m[2][j];
-            if (i == 3) {
-                acc += (int64_t)FX_ONE * b->m[3][j];
-            }
-            r.m[i][j] = (int32_t)(acc >> 12);
-        }
-    }
-    if (rotation_only) {
-        memcpy(r.m[3], b->m[3], sizeof(r.m[3]));
-    }
-    *out = r;
-}
-
-static bool rotation_is_identity(const mtx *m) {
-    return m->m[0][0] == FX_ONE && m->m[1][1] == FX_ONE && m->m[2][2] == FX_ONE &&
-           m->m[0][1] == 0 && m->m[0][2] == 0 && m->m[1][0] == 0 && m->m[1][2] == 0 &&
-           m->m[2][0] == 0 && m->m[2][1] == 0;
-}
-
-static int32_t sign_bits(uint32_t v, int bits) {
-    const uint32_t mask = 1u << (bits - 1);
-    v &= (1u << bits) - 1u;
-    return (int32_t)((v ^ mask) - mask);
-}
 
 static void normals_changed(void);
 static void vec_changed(void);
@@ -138,7 +77,7 @@ static void clip_changed(void) {
     ++s_clip_version;
 }
 
-static const mtx *clip_matrix(void) {
+static const kj_g3_mtx *clip_matrix(void) {
     if (s_clip_dirty) {
         mtx_mul(&s_clip, &s_pos, &s_proj);
         s_clip_dirty = false;
@@ -147,7 +86,7 @@ static const mtx *clip_matrix(void) {
 }
 
 /* The matrix MTX_LOAD/MULT/SCALE/TRANS act on, for mode 0/1/3. */
-static mtx *selected(void) {
+static kj_g3_mtx *selected(void) {
     switch (s_mtx_mode) {
     case 0:
         return &s_proj;
@@ -158,7 +97,7 @@ static mtx *selected(void) {
     }
 }
 
-static void read_matrix(mtx *m, unsigned op, const uint32_t *p) {
+static void read_matrix(kj_g3_mtx *m, unsigned op, const uint32_t *p) {
     mtx_identity(m);
     if (op == 0x16 || op == 0x18) {
         for (int i = 0; i < 16; ++i) {
@@ -175,7 +114,7 @@ static void read_matrix(mtx *m, unsigned op, const uint32_t *p) {
     }
 }
 
-static void load_matrix(const mtx *m) {
+static void load_matrix(const kj_g3_mtx *m) {
     if (s_mtx_mode == 2) {
         s_pos = *m;
         s_vec = *m;
@@ -190,7 +129,7 @@ static void load_matrix(const mtx *m) {
 
 static void translate_matrix(const uint32_t *p);
 
-static void mult_matrix(const mtx *m, unsigned op) {
+static void mult_matrix(const kj_g3_mtx *m, unsigned op) {
     if (op == 0x1A && rotation_is_identity(m)) {
         return;
     }
@@ -210,7 +149,7 @@ static void mult_matrix(const mtx *m, unsigned op) {
         }
         vec_changed();
     } else {
-        mtx *t = selected();
+        kj_g3_mtx *t = selected();
         if (op == 0x18) {
             mtx_mul(t, m, t);
         } else {
@@ -226,7 +165,7 @@ static void mult_matrix(const mtx *m, unsigned op) {
  * full product's other terms are exact multiples of 4096 (identical after
  * >> 12). Mode 2 scales the position matrix only (GBATEK). 12 products
  * instead of 64 (O3DS: 1.1 ms per game frame, o3ds-log-0). */
-static void scale_rows(mtx *t, const uint32_t *p) {
+static void scale_rows(kj_g3_mtx *t, const uint32_t *p) {
     for (int i = 0; i < 3; ++i) {
         const int64_t f = (int32_t)p[i];
         for (int j = 0; j < 4; ++j) {
@@ -246,7 +185,7 @@ static void scale_matrix(const uint32_t *p) {
 }
 
 /* MTX_TRANS: T * M changes row 3 only: row3 = t . rows0-2 + row3. */
-static void translate_rows(mtx *t, const uint32_t *p) {
+static void translate_rows(kj_g3_mtx *t, const uint32_t *p) {
     for (int j = 0; j < 4; ++j) {
         const int64_t acc = (int64_t)(int32_t)p[0] * t->m[0][j] +
                             (int64_t)(int32_t)p[1] * t->m[1][j] +
@@ -388,16 +327,6 @@ static void make_products(void) {
         }
     }
     s_products_made = true;
-}
-
-static void transform_vector(const int32_t in[3], const mtx *m, int32_t out[3]) {
-    for (int j = 0; j < 3; ++j) {
-        int64_t acc = 0;
-        for (int i = 0; i < 3; ++i) {
-            acc += (int64_t)in[i] * m->m[i][j];
-        }
-        out[j] = (int32_t)(acc >> 12);
-    }
 }
 
 /* Lighting results by raw normal: map geometry repeats a handful of
@@ -701,7 +630,7 @@ static bool current_gmtx(uint32_t *out) {
             return false;
         }
         if (s_capture_scene) {
-            const mtx *c = clip_matrix();
+            const kj_g3_mtx *c = clip_matrix();
             kj_g3_matrix *dst = &fb->pool[fb->pool_count];
             for (int i = 0; i < 4; ++i) {
                 for (int j = 0; j < 4; ++j) {
@@ -1067,7 +996,7 @@ static void submit_vertex(void) {
         }
     }
 
-    /* 16 bytes as four words: x|y, z|mtx, rgba, s|t (kj_g3_vertex layout) */
+    /* 16 bytes as four words: x|y, z|kj_g3_mtx, rgba, s|t (kj_g3_vertex layout) */
     const uint32_t n = fb->frame.vert_count++;
     uint32_t *w = (uint32_t *)&fb->verts[n];
     if (s_capture_scene) {
@@ -1140,7 +1069,7 @@ static uint32_t get32(unsigned offset) {
 }
 
 void NitroPort_Gx3dSyncResults(void) {
-    const mtx *c = clip_matrix();
+    const kj_g3_mtx *c = clip_matrix();
 
     for (int i = 0; i < 16; ++i) {
         put32(0x640 + 4 * i, (uint32_t)c->m[i / 4][i % 4]);
@@ -1209,7 +1138,7 @@ static void box_test(const uint32_t *p) {
     const int32_t x = sign_bits(p[0], 16), y = sign_bits(p[0] >> 16, 16);
     const int32_t z = sign_bits(p[1], 16), w = sign_bits(p[1] >> 16, 16);
     const int32_t h = sign_bits(p[2], 16), d = sign_bits(p[2] >> 16, 16);
-    const mtx *c = clip_matrix();
+    const kj_g3_mtx *c = clip_matrix();
     unsigned all_out = 0x3F;
     /* The corners are sums of the box origin's row and the three edge
      * rows: 16 products instead of 128, same exact 64-bit sums (O3DS: 5,300
@@ -1285,7 +1214,7 @@ static void pos_test(const uint32_t *p) {
     s_coord[0] = (int16_t)sign_bits(p[0], 16);
     s_coord[1] = (int16_t)sign_bits(p[0] >> 16, 16);
     s_coord[2] = (int16_t)sign_bits(p[1], 16);
-    const mtx *c = clip_matrix();
+    const kj_g3_mtx *c = clip_matrix();
     for (int j = 0; j < 4; ++j) {
         const int64_t o = ((int64_t)s_coord[0] * c->m[0][j] + (int64_t)s_coord[1] * c->m[1][j] +
                            (int64_t)s_coord[2] * c->m[2][j] + (int64_t)4096 * c->m[3][j]) >>
@@ -1454,7 +1383,7 @@ static void execute(unsigned op, const uint32_t *p)
     {
         /* Diagnostics: report the first commands that leave a zero matrix. */
         static unsigned reported;
-        static const mtx zero;
+        static const kj_g3_mtx zero;
         const bool pos_was = memcmp(&s_pos, &zero, sizeof(zero)) == 0;
         const bool proj_was = memcmp(&s_proj, &zero, sizeof(zero)) == 0;
         execute_body(op, p);
@@ -1483,14 +1412,14 @@ static void execute_body(unsigned op, const uint32_t *p) {
         stack_op(op, p[0]);
         break;
     case 0x15: {
-        mtx m;
+        kj_g3_mtx m;
         mtx_identity(&m);
         load_matrix(&m);
         break;
     }
     case 0x16:
     case 0x17: {
-        mtx m;
+        kj_g3_mtx m;
         read_matrix(&m, op, p);
         load_matrix(&m);
         break;
@@ -1498,7 +1427,7 @@ static void execute_body(unsigned op, const uint32_t *p) {
     case 0x18:
     case 0x19:
     case 0x1A: {
-        mtx m;
+        kj_g3_mtx m;
         read_matrix(&m, op, p);
         mult_matrix(&m, op);
         break;
@@ -2077,7 +2006,7 @@ typedef struct dl_state {
     uint32_t split;      /* words covered: up to the last packed command word */
     uint32_t first_tail; /* first event after the split */
     int mode;
-    mtx proj, pos, vec, tex;
+    kj_g3_mtx proj, pos, vec, tex;
     int32_t light_dir[4][3], light_half[4][3];
     uint16_t light_color[4];
     uint16_t diffuse, ambient, specular, emission, color;
@@ -2924,7 +2853,7 @@ static void cull_planes(void) {
     if (ky < 16) {
         ky = 16;
     }
-    const mtx *c = clip_matrix();
+    const kj_g3_mtx *c = clip_matrix();
     for (unsigned i = 0; i < 4; ++i) {
         const int64_t x = (int64_t)c->m[i][0] * 16, y = (int64_t)c->m[i][1] * 16;
         const int64_t wx = (int64_t)c->m[i][3] * kx, wy = (int64_t)c->m[i][3] * ky;
@@ -3276,10 +3205,10 @@ static void dl_state_verify(const dl_state *st, const uint32_t *words) {
     const uint32_t m = st->mask;
     bool same =
         (!(m & PS_MODE) || live.mode == st->mode) &&
-        (!(m & PS_PROJ) || memcmp(&live.proj, &st->proj, sizeof(mtx)) == 0) &&
-        (!(m & PS_POS) || memcmp(&live.pos, &st->pos, sizeof(mtx)) == 0) &&
-        (!(m & PS_VEC) || memcmp(&live.vec, &st->vec, sizeof(mtx)) == 0) &&
-        (!(m & PS_TEX) || memcmp(&live.tex, &st->tex, sizeof(mtx)) == 0) &&
+        (!(m & PS_PROJ) || memcmp(&live.proj, &st->proj, sizeof(kj_g3_mtx)) == 0) &&
+        (!(m & PS_POS) || memcmp(&live.pos, &st->pos, sizeof(kj_g3_mtx)) == 0) &&
+        (!(m & PS_VEC) || memcmp(&live.vec, &st->vec, sizeof(kj_g3_mtx)) == 0) &&
+        (!(m & PS_TEX) || memcmp(&live.tex, &st->tex, sizeof(kj_g3_mtx)) == 0) &&
         (!(m & PS_DIFAMB) || (live.diffuse == st->diffuse && live.ambient == st->ambient)) &&
         (!(m & PS_SPEEMI) || (live.specular == st->specular && live.emission == st->emission &&
                               live.use_shininess == st->use_shininess)) &&

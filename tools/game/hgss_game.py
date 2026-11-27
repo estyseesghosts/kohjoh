@@ -159,9 +159,11 @@ FIRST_PARTY_WARNINGS = ["-Wall", "-Wextra", "-Wshadow", "-Wundef",
                         "-Wpointer-arith", "-Wformat=2", "-Werror"]
 # src/runtime is first-party but must compile in the DS ABI with NitroSDK
 # headers, so the C-only prototype rules stay out. The rest is useful and is
-# checked separately from the decomp game objects.
+# checked separately from the decomp game objects. The NitroSDK headers use
+# `u32 const` returns, which -Wextra reports as ignored qualifiers; that is a
+# vendored-header exception, not a first-party finding.
 RUNTIME_WARNINGS = ["-Wall", "-Wextra", "-Wshadow", "-Wundef",
-                    "-Wpointer-arith", "-Wformat=2"]
+                    "-Wpointer-arith", "-Wformat=2", "-Wno-ignored-qualifiers"]
 SECTION_FLAGS = ["-ffunction-sections", "-fdata-sections"]
 
 HOST_FLAGS = ["-m32", "-malign-double", "-fno-pie",

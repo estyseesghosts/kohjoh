@@ -62,7 +62,7 @@ int main(void) {
         digest(&s_pos, sizeof(s_pos));
         digest(&s_vec, sizeof(s_vec));
         digest(&s_tex, sizeof(s_tex));
-        digest(clip_matrix(), sizeof(mtx));
+        digest(clip_matrix(), sizeof(s_proj));
         for (unsigned light = 0; light < 4; ++light) {
             execute(0x32, (const uint32_t[]){(next() & 0x3fffffffu) | light << 30});
         }

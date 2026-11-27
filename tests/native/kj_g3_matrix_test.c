@@ -9,9 +9,8 @@
 
 #include "kj_g3_matrix.h"
 
-static void test_identity_and_multiply(void)
-{
-    mtx a, b, out;
+static void test_identity_and_multiply(void) {
+    kj_g3_mtx a, b, out;
     mtx_identity(&a);
     mtx_identity(&b);
     a.m[0][3] = 3 * FX_ONE;
@@ -22,9 +21,8 @@ static void test_identity_and_multiply(void)
     assert(memcmp(&out, &a, sizeof(out)) == 0);
 }
 
-static void test_affine_matches_full(void)
-{
-    mtx rotation, translation, full, affine, affine_rot;
+static void test_affine_matches_full(void) {
+    kj_g3_mtx rotation, translation, full, affine, affine_rot;
     mtx_identity(&rotation);
     rotation.m[0][0] = 3328; /* cos(0.4) in 20.12 */
     rotation.m[0][2] = -1536;
@@ -49,9 +47,8 @@ static void test_affine_matches_full(void)
     }
 }
 
-static void test_identity_rotation(void)
-{
-    mtx m;
+static void test_identity_rotation(void) {
+    kj_g3_mtx m;
     mtx_identity(&m);
     assert(rotation_is_identity(&m));
     m.m[0][1] = 1;
@@ -61,15 +58,15 @@ static void test_identity_rotation(void)
     assert(rotation_is_identity(&m));
 }
 
-static void test_sign_and_vector(void)
-{
-    assert(sign_bits(0x3FFu, 10) == 1023);
+static void test_sign_and_vector(void) {
+    assert(sign_bits(0x1FFu, 10) == 511);
     assert(sign_bits(0x200u, 10) == -512);
+    assert(sign_bits(0x3FFu, 10) == -1);
     assert(sign_bits(0xFFFFu, 16) == -1);
     assert(sign_bits(0x7FFFu, 16) == 32767);
     assert(sign_bits(0xFFFF8000u, 16) == -32768);
 
-    mtx m;
+    kj_g3_mtx m;
     mtx_identity(&m);
     m.m[0][0] = FX_ONE / 2;
     m.m[1][1] = FX_ONE * 2;
@@ -81,8 +78,7 @@ static void test_sign_and_vector(void)
     assert(out[2] == 0);
 }
 
-int main(void)
-{
+int main(void) {
     test_identity_and_multiply();
     test_affine_matches_full();
     test_identity_rotation();

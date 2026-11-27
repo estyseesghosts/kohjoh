@@ -59,6 +59,16 @@ types, no enums, `kj_ds_*` / `kj_ctr_*` functions.
 
 ## 2D ([`g2d.c`](../src/graphics/g2d/g2d.c))
 
+- `g2d.c` is the screen compositor: it walks spans in DS priority order,
+  applies windows/blend/brightness and owns retained-layer reuse policy.
+  BG/OBJ palette and tile decoding lives in
+  [`g2d_layers.c`](../src/graphics/g2d/g2d_layers.c); the two share only the
+  private [`g2d_internal.h`](../src/graphics/g2d/g2d_internal.h) context and
+  run types. That header is included only inside `graphics/g2d`.
+- Retained-layer reuse stays next to the draw order because the cache records
+  exactly what the span pass consumed; the store/comparison helpers remain in
+  `g2d.c` rather than being split into a second state owner.
+
 - DS tiles are palette-expanded into a 1024×1024 RGBA5551 atlas
   ([`atlas.c`](../src/graphics/resources/atlas.c)), one DS tile per PICA 8×8
   tile. A slot is reused only if its tile bytes are byte-identical and its
@@ -74,6 +84,12 @@ types, no enums, `kj_ds_*` / `kj_ctr_*` functions.
   centre, 3D fills the width. Bottom: 1.25× to 320×240.
 
 ## 3D ([`kj_g3.c`](../src/runtime/kj_g3.c), [`g3d.c`](../src/graphics/g3d/g3d.c))
+
+- Pure fixed-point matrix products and sign/vector helpers live in the
+  private [`kj_g3_matrix.c`](../src/runtime/kj_g3_matrix.c) /
+  [`kj_g3_matrix.h`](../src/runtime/kj_g3_matrix.h). Command handlers, matrix
+  stacks and display-list replay stay in `kj_g3.c`: those are the measured
+  hot path and share live DS state.
 
 - The DS side interprets matrix stacks (20.12 fixed), texgen and readable
   box/position/vector tests on the CPU. NORMAL latches its transformed normal
