@@ -175,6 +175,14 @@ These are tracked honestly rather than claimed as complete:
   **24,000/24,000** uniform 2x2 blocks and **96,000/96,000** pixels identical
   to the 1x central crop. This confirms the mapping is not specific to
   Goldenrod.
+- **Temporal stability (Task 12, integer-grid part)**: `goldenrod_walk.script`
+  was run in both modes and compared at frames 3700, 3800, 3900, 4000 and
+  4100 while the player walks south. At every frame: 24,000/24,000 uniform
+  2x2 blocks and 96,000/96,000 pixels identical to the independent 1x capture.
+  The exact mapping therefore holds during movement, not only on a still
+  frame. Because 2x is already pixel-identical to 1x scaled 2x, it introduces
+  no sprite distortion of its own; optional billboard snapping experiments
+  would change both modes together and have not been performed.
 - **Battle / menu isolation**: with the 2x config active, `trainer_battle.script`
   reaches a trainer battle at frame 4200. The top-screen capture is
   **byte-identical (0 / 384,000 bytes)** to the same script on the v0.0.5
