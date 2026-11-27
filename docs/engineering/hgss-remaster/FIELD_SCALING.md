@@ -183,6 +183,13 @@ These are tracked honestly rather than claimed as complete:
   frame. Because 2x is already pixel-identical to 1x scaled 2x, it introduces
   no sprite distortion of its own; optional billboard snapping experiments
   would change both modes together and have not been performed.
+- **Effect composition spot checks**: a storm/weather fixture (Cherrygrove,
+  snow) gives 24,000/24,000 uniform blocks and 96,000/96,000 pixels identical
+  to the same-frame 1x capture. A dark-cave fixture shows the Flash darkness
+  aperture centred, all four corners covered, and 24,000/24,000 uniform 2x2
+  blocks — the darkness is rasterized at world resolution, so its aperture is
+  larger in 2x than in 1x as expected for a world-aligned effect. These are
+  spot checks, not a proof for every weather/effect type.
 - **Battle / menu isolation**: with the 2x config active, `trainer_battle.script`
   reaches a trainer battle at frame 4200. The top-screen capture is
   **byte-identical (0 / 384,000 bytes)** to the same script on the v0.0.5
