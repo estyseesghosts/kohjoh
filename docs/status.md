@@ -1,5 +1,17 @@
 # Project status
 
+2026-11-27: cleanup pass 2 landed on the `cleanup-2` worktree branch (`b28165c`
+through `cb9f534`), started from `de26b3c` so the uncommitted work in the main
+checkout stayed untouched. It makes the format/native CI gates trustworthy,
+builds the differential "before" side from the reference tree, makes wide-art
+init transactional, bounds the profile probe line and the arena arithmetic,
+prefixes G2D and matrix private names, and adds palette-snapshot measurement
+only. Every commit passed `check_format.py` and `run_host.py`; hot-path hashes
+and hot-function sizes are unchanged; both editions and `HGSS_PROFILE=on`
+build. CI confirmation needs a push, and the O3DS palette measurement is
+**pending: no O3DS run**, so performance neutrality is not claimed on hardware.
+See [code-cleanup-acceptance.md](code-cleanup-acceptance.md#cleanup-pass-2-branch-cleanup-2-from-de26b3c).
+
 2026-11-20: the virtual touch panel now reports a released stylus as the
 ARM7 does (`touch=OFF`, `validity=INVALID_XY`), not as a valid `(0,0)`
 sample. HGSS's `TouchOutput_CollectValid` selects by validity, so the old
