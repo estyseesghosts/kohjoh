@@ -23,12 +23,16 @@ void *kj_g3_arena_alloc(uint32_t bytes) {
             return NULL;
         }
     }
-    bytes = (bytes + 3u) & ~3u;
-    if (bytes == 0 || s_used + bytes > KJ_G3_ARENA_BYTES) {
+    if (bytes == 0 || bytes > UINT32_MAX - 3u) {
+        return NULL;
+    }
+    const uint32_t aligned = (bytes + 3u) & ~3u;
+    /* s_used <= KJ_G3_ARENA_BYTES is the arena's invariant. */
+    if (aligned > KJ_G3_ARENA_BYTES - s_used) {
         return NULL;
     }
     void *ptr = s_arena + s_used;
-    s_used += bytes;
+    s_used += aligned;
     return ptr;
 }
 

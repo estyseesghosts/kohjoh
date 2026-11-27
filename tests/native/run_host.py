@@ -70,6 +70,9 @@ def main():
     build_and_run("kj_g3_matrix_test",
                   ["tests/native/kj_g3_matrix_test.c", "src/runtime/kj_g3_matrix.c"],
                   ["src", "src/runtime"])
+    build_and_run("kj_g3_arena_test",
+                  ["tests/native/kj_g3_arena_test.c", "src/runtime/kj_g3_arena.c"],
+                  ["src", "src/runtime"])
     build_and_run("layout_test",
                   ["tests/native/layout_test.c", "src/graphics/layout/layout.c",
                    "src/runtime/kj_layouts.c"], ["src", "src/runtime"])
