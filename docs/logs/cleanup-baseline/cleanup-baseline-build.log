@@ -1,0 +1,2590 @@
+== build id: 1044438
++ /usr/bin/python /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/tools/game/prepare_game_headers.py --root /home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream --ids-output /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-gold/gen/overlay_ids.ld --header /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-gold/gen/overlay_ids.h
+fx_const: lib/include/nitro/fx/fx_const.h (unchanged)
+trname: files/msgdata/msg/msg_0729.gmm (unchanged)
+msg headers: 829 (0 updated)
+nitroarc naix: 38 (0 updated)
+o2narc naix: 14 (0 updated)
+csv2bin naix: 3 (0 updated)
+alias naix: 2 (0 updated)
+overlay ids: /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-gold/gen/overlay_ids.ld (unchanged)
+overlay ids: /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-gold/gen/overlay_ids.h (unchanged)
+done: 890 files, 0 updated under /home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream
+== heartgold 3ds: 1036 C, 56 C++, 150 .s
+== compiling C/C++ (1092 files, -j32)
+   1092 compiled, 0 failed
+== assembling ARM9 .s (150 files)
+   150 assembled, 0 failed
+== port libraries
++ /usr/bin/python /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/tools/game/hgss_nitro.py make --target 3ds --out /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-gold/sdk --subproject nitro lib -k -j 32
++ make -C /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/nitro TARGET=3ds DEVKITPRO=/opt/devkitpro DEVKITARM=/opt/devkitpro/devkitARM OUT=../../../../cleanup-base-gold/sdk GEN=/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-gold/sdk/gen SDK=/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk SDK_SRCS=hgss/card/CARD_backup.c hgss/card/CARD_common.c hgss/card/CARD_pullOut.c hgss/card/CARD_request.c hgss/card/CARD_rom.c hgss/card/card_cache_flush_threshold.c hgss/card/card_identify_backup.c hgss/card/card_read_card.c hgss/card/card_request_stream_command.c hgss/card/card_spi_wait.c hgss/card/card_spi_wait_cycles.c hgss/card/card_spi_wait_init.c hgss/card/card_terminate_pulled_out.c hgss/card/card_try_read_dma.c hgss/cp/CP_context.c hgss/fs/FS_archive_prefix.c hgss/fs/FS_archive_suffix.c hgss/fs/FS_command.c hgss/fs/FS_command_default.c hgss/fs/FS_file.c hgss/fs/FS_overlay.c hgss/fs/FS_rom.c hgss/fs/fs_send_command.c hgss/fx/fx.c hgss/fx/fx_atanidx.c hgss/fx/fx_cp.c hgss/fx/fx_mtx22.c hgss/fx/fx_mtx33_identity.c hgss/fx/fx_mtx33_inverse_concat.c hgss/fx/fx_mtx33_rot_yz.c hgss/fx/fx_mtx33_scale_rot_x.c hgss/fx/fx_mtx43_identity.c hgss/fx/fx_mtx43_inverse_concat.c hgss/fx/fx_mtx43_rot.c hgss/fx/fx_mtx43_scale.c hgss/fx/fx_mtx43_scale_apply.c hgss/fx/fx_mtx43_trans_apply.c hgss/fx/fx_mtx44_concat.c hgss/fx/fx_mtx44_identity.c hgss/fx/fx_mtx44_ortho.c hgss/fx/fx_mtx44_perspective.c hgss/fx/fx_mtx44_rot.c hgss/fx/fx_mtx44_trans_apply.c hgss/fx/fx_trig.c hgss/fx/fx_trig_internal.c hgss/fx/fx_vec.c hgss/fx/fx_vec_mult_add.c hgss/fx/fx_vec_normalize.c hgss/gx/g2.c hgss/gx/g3.c hgss/gx/g3_util.c hgss/gx/g3b.c hgss/gx/g3imm.c hgss/gx/g3x.c hgss/gx/g3x_nop_clear_fifo.c hgss/gx/gx.c hgss/gx/gx_bgcnt.c hgss/gx/gx_load2d.c hgss/gx/gx_load3d.c hgss/gx/gx_vramcnt.c hgss/gx/gxasm.c hgss/gx/gxstate.c hgss/math/MATH_crc.c hgss/math/MATH_dgt.c hgss/math/MATH_pop.c hgss/math/math_qsort.c hgss/mi/mi_compress.c hgss/mi/mi_compress_search.c hgss/mi/mi_dma.c hgss/mi/mi_dma_card.c hgss/mi/mi_dma_gxcommand.c hgss/mi/mi_dma_hblank.c hgss/mi/mi_init.c hgss/mi/mi_wram.c hgss/mic.c hgss/os/os_alarm_after_handler.c hgss/os/os_alarm_before_handler.c hgss/os/os_alarm_irq_handler.c hgss/os/os_alloc.c hgss/os/os_arena.c hgss/os/os_context.c hgss/os/os_emulator.c hgss/os/os_entropy.c hgss/os/os_init.c hgss/os/os_init_system.c hgss/os/os_interrupt.c hgss/os/os_irqHandler.c hgss/os/os_irqTable.c hgss/os/os_message.c hgss/os/os_mutex.c hgss/os/os_ownerInfo.c hgss/os/os_printf.c hgss/os/os_spinLock.c hgss/os/os_spin_lock_card.c hgss/os/os_spin_lock_cartridge.c hgss/os/os_spin_lock_id.c hgss/os/os_spin_lock_word.c hgss/os/os_system.c hgss/os/os_terminate_proc.c hgss/os/os_thread.c hgss/os/os_thread_available.c hgss/os/os_tick.c hgss/os/os_timer.c hgss/os/os_valarm.c hgss/os/os_vramExclusive.c hgss/os/os_vram_exclusive_clz.c hgss/os/os_wait_irq.c hgss/os/os_wait_vblank.c hgss/pm.c hgss/rtc/rtc_api.c hgss/rtc/rtc_convert_date_time_to_second.c hgss/rtc/rtc_convert_post.c hgss/rtc/rtc_convert_pre.c hgss/rtc/rtc_internal.c hgss/snd/SND_alarm.c hgss/snd/SND_bank.c hgss/snd/SND_command.c hgss/snd/SND_main.c hgss/snd/SND_util.c hgss/snd/SND_work.c hgss/snd/snd_destroy_bank.c hgss/snd/snd_flush_command.c hgss/snd/snd_interface.c hgss/snd/snd_master_volume.c hgss/snd/snd_next_inst_data.c hgss/snd/snd_player_local_variable.c hgss/snd/snd_player_tempo_ratio.c hgss/snd/snd_read_channel_info.c hgss/snd/snd_read_driver_info.c hgss/snd/snd_read_track_info.c hgss/std_sprintf.c hgss/std_sprintf_writer.c hgss/std_string.c hgss/tp.c hgss/wm_core.c hgss/wm_data_sharing.c hgss/wm_requests.c hgss/wm_settings.c hgss_compat/sdk_data.c hgss_compat/sdk_standins.c hgss_compat/nns_data.c hgss_compat/nns_tables_gfd.c ARM7_SOUND_SRCS=hgss_sub/sound_main.c hgss_sub/sound_command.c hgss_sub/sound_ex_channel.c hgss_sub/sound_seq_player.c hgss_sub/sound_alarm.c hgss_sub/sound_bank.c hgss_sub/sound_channel.c hgss_sub/sound_driver.c hgss_sub/sound_shared_work.c hgss_compat/snd_arm7_data.c hgss_compat/ds_sound_tables.c SDK_INCLUDES=-I/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/nitro/include -I/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-gold/sdk/gen -I/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include -I/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/include -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/include/library -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include-mw -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include-pokediamond -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/sub/include -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/sub/lib/include -include /home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/include/assert.h -include /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/hgss_port_math.h -DHGSS_PROFILE_OFF NNS=/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns NNS_INCLUDES=-I/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/include lib -k -j 32
+make: Entering directory '/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/nitro'
+python3 /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/gen/nitro/fx/gen_fx_const.py /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/gen/nitro/fx/fx_const.csv /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-gold/sdk/gen/nitro/fx/fx_const.h
+  CC  platform/3ds.c
+  CC  libpak reader
+  CC  CARD_backup.c
+  CC  CARD_pullOut.c
+  CC  CARD_common.c
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/PAD_pad.h:5,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/card/CARD_pullOut.c:7:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:12:9: warning: 'HW_ITCM_IMAGE' redefined
+   12 | #define HW_ITCM_IMAGE 0x01000000
+      |         ^~~~~~~~~~~~~
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/nitro/hw/ARM9/mmap.h:16,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/mmap.h:10,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/MI_dma.h:19,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/CARD_common.h:7,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/CARD_common.h:33,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/card/CARD_pullOut.c:1:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:151:9: note: this is the location of the previous definition
+  151 | #define HW_ITCM_IMAGE           ((u32)NitroPort_Itcm)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:13:9: warning: 'HW_ITCM' redefined
+   13 | #define HW_ITCM                 0x01FF8000
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:152:9: note: this is the location of the previous definition
+  152 | #define HW_ITCM                 ((u32)NitroPort_Itcm)
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:17:9: warning: 'HW_IOREG' redefined
+   17 | #define HW_IOREG                0x04000000
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:145:9: note: this is the location of the previous definition
+  145 | #define HW_IOREG                ((u32)NitroPort_IoReg)
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:69:9: warning: 'HW_BG_PLTT' redefined
+   69 | #define HW_BG_PLTT              0x05000000
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:169:9: note: this is the location of the previous definition
+  169 | #define HW_BG_PLTT              ((u32)NitroPort_Pltt)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:70:9: warning: 'HW_BG_PLTT_END' redefined
+   70 | #define HW_BG_PLTT_END          0x05000200
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:170:9: note: this is the location of the previous definition
+  170 | #define HW_BG_PLTT_END          (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:72:9: warning: 'HW_OBJ_PLTT' redefined
+   72 | #define HW_OBJ_PLTT             0x05000200
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:171:9: note: this is the location of the previous definition
+  171 | #define HW_OBJ_PLTT             (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:73:9: warning: 'HW_OBJ_PLTT_END' redefined
+   73 | #define HW_OBJ_PLTT_END         0x05000400
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:172:9: note: this is the location of the previous definition
+  172 | #define HW_OBJ_PLTT_END         (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:78:9: warning: 'HW_DB_BG_PLTT' redefined
+   78 | #define HW_DB_BG_PLTT           0x05000400
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:173:9: note: this is the location of the previous definition
+  173 | #define HW_DB_BG_PLTT           (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:79:9: warning: 'HW_DB_BG_PLTT_END' redefined
+   79 | #define HW_DB_BG_PLTT_END       0x05000600
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:174:9: note: this is the location of the previous definition
+  174 | #define HW_DB_BG_PLTT_END       (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:81:9: warning: 'HW_DB_OBJ_PLTT' redefined
+   81 | #define HW_DB_OBJ_PLTT          0x05000600
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:175:9: note: this is the location of the previous definition
+  175 | #define HW_DB_OBJ_PLTT          (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:82:9: warning: 'HW_DB_OBJ_PLTT_END' redefined
+   82 | #define HW_DB_OBJ_PLTT_END      0x05000800
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:176:9: note: this is the location of the previous definition
+  176 | #define HW_DB_OBJ_PLTT_END      (HW_BG_PLTT + 0x800)
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:87:9: warning: 'HW_LCDC_VRAM' redefined
+   87 | #define HW_LCDC_VRAM            0x6800000
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:196:9: note: this is the location of the previous definition
+  196 | #define HW_LCDC_VRAM            ((u32)NitroPort_LcdcVram)
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:88:9: warning: 'HW_LCDC_VRAM_END' redefined
+   88 | #define HW_LCDC_VRAM_END        0x68a4000
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:197:9: note: this is the location of the previous definition
+  197 | #define HW_LCDC_VRAM_END        (HW_LCDC_VRAM + 0xA4000)
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:90:9: warning: 'HW_OAM' redefined
+   90 | #define HW_OAM                  0x07000000
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:203:9: note: this is the location of the previous definition
+  203 | #define HW_OAM                  ((u32)NitroPort_Oam)
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:91:9: warning: 'HW_OAM_END' redefined
+   91 | #define HW_OAM_END              0x07000400
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:204:9: note: this is the location of the previous definition
+  204 | #define HW_OAM_END              (HW_OAM + 0x400)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:93:9: warning: 'HW_DB_OAM' redefined
+   93 | #define HW_DB_OAM               0x07000400
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:205:9: note: this is the location of the previous definition
+  205 | #define HW_DB_OAM               (HW_OAM + 0x400)
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:94:9: warning: 'HW_DB_OAM_END' redefined
+   94 | #define HW_DB_OAM_END           0x07000800
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:206:9: note: this is the location of the previous definition
+  206 | #define HW_DB_OAM_END           (HW_OAM + 0x800)
+      |         ^~~~~~~~~~~~~
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/card/CARD_common.c:10:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:12:9: warning: 'HW_ITCM_IMAGE' redefined
+   12 | #define HW_ITCM_IMAGE 0x01000000
+      |         ^~~~~~~~~~~~~
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/nitro/hw/ARM9/mmap.h:16,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/mmap.h:10,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/MI_dma.h:19,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/CARD_common.h:7,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/CARD_common.h:33,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/card/CARD_common.c:1:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:151:9: note: this is the location of the previous definition
+  151 | #define HW_ITCM_IMAGE           ((u32)NitroPort_Itcm)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:13:9: warning: 'HW_ITCM' redefined
+   13 | #define HW_ITCM                 0x01FF8000
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:152:9: note: this is the location of the previous definition
+  152 | #define HW_ITCM                 ((u32)NitroPort_Itcm)
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:17:9: warning: 'HW_IOREG' redefined
+   17 | #define HW_IOREG                0x04000000
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:145:9: note: this is the location of the previous definition
+  145 | #define HW_IOREG                ((u32)NitroPort_IoReg)
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:69:9: warning: 'HW_BG_PLTT' redefined
+   69 | #define HW_BG_PLTT              0x05000000
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:169:9: note: this is the location of the previous definition
+  169 | #define HW_BG_PLTT              ((u32)NitroPort_Pltt)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:70:9: warning: 'HW_BG_PLTT_END' redefined
+   70 | #define HW_BG_PLTT_END          0x05000200
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:170:9: note: this is the location of the previous definition
+  170 | #define HW_BG_PLTT_END          (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:72:9: warning: 'HW_OBJ_PLTT' redefined
+   72 | #define HW_OBJ_PLTT             0x05000200
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:171:9: note: this is the location of the previous definition
+  171 | #define HW_OBJ_PLTT             (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:73:9: warning: 'HW_OBJ_PLTT_END' redefined
+   73 | #define HW_OBJ_PLTT_END         0x05000400
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:172:9: note: this is the location of the previous definition
+  172 | #define HW_OBJ_PLTT_END         (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:78:9: warning: 'HW_DB_BG_PLTT' redefined
+   78 | #define HW_DB_BG_PLTT           0x05000400
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:173:9: note: this is the location of the previous definition
+  173 | #define HW_DB_BG_PLTT           (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:79:9: warning: 'HW_DB_BG_PLTT_END' redefined
+   79 | #define HW_DB_BG_PLTT_END       0x05000600
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:174:9: note: this is the location of the previous definition
+  174 | #define HW_DB_BG_PLTT_END       (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:81:9: warning: 'HW_DB_OBJ_PLTT' redefined
+   81 | #define HW_DB_OBJ_PLTT          0x05000600
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:175:9: note: this is the location of the previous definition
+  175 | #define HW_DB_OBJ_PLTT          (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:82:9: warning: 'HW_DB_OBJ_PLTT_END' redefined
+   82 | #define HW_DB_OBJ_PLTT_END      0x05000800
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:176:9: note: this is the location of the previous definition
+  176 | #define HW_DB_OBJ_PLTT_END      (HW_BG_PLTT + 0x800)
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:87:9: warning: 'HW_LCDC_VRAM' redefined
+   87 | #define HW_LCDC_VRAM            0x6800000
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:196:9: note: this is the location of the previous definition
+  196 | #define HW_LCDC_VRAM            ((u32)NitroPort_LcdcVram)
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:88:9: warning: 'HW_LCDC_VRAM_END' redefined
+   88 | #define HW_LCDC_VRAM_END        0x68a4000
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:197:9: note: this is the location of the previous definition
+  197 | #define HW_LCDC_VRAM_END        (HW_LCDC_VRAM + 0xA4000)
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:90:9: warning: 'HW_OAM' redefined
+   90 | #define HW_OAM                  0x07000000
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:203:9: note: this is the location of the previous definition
+  203 | #define HW_OAM                  ((u32)NitroPort_Oam)
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:91:9: warning: 'HW_OAM_END' redefined
+   91 | #define HW_OAM_END              0x07000400
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:204:9: note: this is the location of the previous definition
+  204 | #define HW_OAM_END              (HW_OAM + 0x400)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:93:9: warning: 'HW_DB_OAM' redefined
+   93 | #define HW_DB_OAM               0x07000400
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:205:9: note: this is the location of the previous definition
+  205 | #define HW_DB_OAM               (HW_OAM + 0x400)
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:94:9: warning: 'HW_DB_OAM_END' redefined
+   94 | #define HW_DB_OAM_END           0x07000800
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:206:9: note: this is the location of the previous definition
+  206 | #define HW_DB_OAM_END           (HW_OAM + 0x800)
+      |         ^~~~~~~~~~~~~
+  CC  CARD_request.c
+  CC  CARD_rom.c
+  CC  card_cache_flush_threshold.c
+  CC  card_identify_backup.c
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/CARD_rom.h:9,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/card/CARD_rom.c:3:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:12:9: warning: 'HW_ITCM_IMAGE' redefined
+   12 | #define HW_ITCM_IMAGE 0x01000000
+      |         ^~~~~~~~~~~~~
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/nitro/hw/ARM9/mmap.h:16,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/mmap.h:10,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/MI_dma.h:19,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/CARD_rom.h:6:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:151:9: note: this is the location of the previous definition
+  151 | #define HW_ITCM_IMAGE           ((u32)NitroPort_Itcm)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:13:9: warning: 'HW_ITCM' redefined
+   13 | #define HW_ITCM                 0x01FF8000
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:152:9: note: this is the location of the previous definition
+  152 | #define HW_ITCM                 ((u32)NitroPort_Itcm)
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:17:9: warning: 'HW_IOREG' redefined
+   17 | #define HW_IOREG                0x04000000
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:145:9: note: this is the location of the previous definition
+  145 | #define HW_IOREG                ((u32)NitroPort_IoReg)
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:69:9: warning: 'HW_BG_PLTT' redefined
+   69 | #define HW_BG_PLTT              0x05000000
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:169:9: note: this is the location of the previous definition
+  169 | #define HW_BG_PLTT              ((u32)NitroPort_Pltt)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:70:9: warning: 'HW_BG_PLTT_END' redefined
+   70 | #define HW_BG_PLTT_END          0x05000200
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:170:9: note: this is the location of the previous definition
+  170 | #define HW_BG_PLTT_END          (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:72:9: warning: 'HW_OBJ_PLTT' redefined
+   72 | #define HW_OBJ_PLTT             0x05000200
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:171:9: note: this is the location of the previous definition
+  171 | #define HW_OBJ_PLTT             (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:73:9: warning: 'HW_OBJ_PLTT_END' redefined
+   73 | #define HW_OBJ_PLTT_END         0x05000400
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:172:9: note: this is the location of the previous definition
+  172 | #define HW_OBJ_PLTT_END         (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:78:9: warning: 'HW_DB_BG_PLTT' redefined
+   78 | #define HW_DB_BG_PLTT           0x05000400
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:173:9: note: this is the location of the previous definition
+  173 | #define HW_DB_BG_PLTT           (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:79:9: warning: 'HW_DB_BG_PLTT_END' redefined
+   79 | #define HW_DB_BG_PLTT_END       0x05000600
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:174:9: note: this is the location of the previous definition
+  174 | #define HW_DB_BG_PLTT_END       (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:81:9: warning: 'HW_DB_OBJ_PLTT' redefined
+   81 | #define HW_DB_OBJ_PLTT          0x05000600
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:175:9: note: this is the location of the previous definition
+  175 | #define HW_DB_OBJ_PLTT          (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:82:9: warning: 'HW_DB_OBJ_PLTT_END' redefined
+   82 | #define HW_DB_OBJ_PLTT_END      0x05000800
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:176:9: note: this is the location of the previous definition
+  176 | #define HW_DB_OBJ_PLTT_END      (HW_BG_PLTT + 0x800)
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:87:9: warning: 'HW_LCDC_VRAM' redefined
+   87 | #define HW_LCDC_VRAM            0x6800000
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:196:9: note: this is the location of the previous definition
+  196 | #define HW_LCDC_VRAM            ((u32)NitroPort_LcdcVram)
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:88:9: warning: 'HW_LCDC_VRAM_END' redefined
+   88 | #define HW_LCDC_VRAM_END        0x68a4000
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:197:9: note: this is the location of the previous definition
+  197 | #define HW_LCDC_VRAM_END        (HW_LCDC_VRAM + 0xA4000)
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:90:9: warning: 'HW_OAM' redefined
+   90 | #define HW_OAM                  0x07000000
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:203:9: note: this is the location of the previous definition
+  203 | #define HW_OAM                  ((u32)NitroPort_Oam)
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:91:9: warning: 'HW_OAM_END' redefined
+   91 | #define HW_OAM_END              0x07000400
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:204:9: note: this is the location of the previous definition
+  204 | #define HW_OAM_END              (HW_OAM + 0x400)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:93:9: warning: 'HW_DB_OAM' redefined
+   93 | #define HW_DB_OAM               0x07000400
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:205:9: note: this is the location of the previous definition
+  205 | #define HW_DB_OAM               (HW_OAM + 0x400)
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:94:9: warning: 'HW_DB_OAM_END' redefined
+   94 | #define HW_DB_OAM_END           0x07000800
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:206:9: note: this is the location of the previous definition
+  206 | #define HW_DB_OAM_END           (HW_OAM + 0x800)
+      |         ^~~~~~~~~~~~~
+  CC  card_read_card.c
+  CC  card_request_stream_command.c
+  CC  card_spi_wait.c
+  CC  card_terminate_pulled_out.c
+  CC  card_spi_wait_init.c
+  CC  card_spi_wait_cycles.c
+  CC  card_try_read_dma.c
+  CC  FS_archive_prefix.c
+  CC  CP_context.c
+  CC  FS_archive_suffix.c
+  CC  FS_command.c
+  CC  FS_command_default.c
+  CC  FS_file.c
+  CC  FS_overlay.c
+  CC  FS_rom.c
+  CC  fs_send_command.c
+  CC  fx_atanidx.c
+  CC  fx.c
+  CC  fx_cp.c
+  CC  fx_mtx22.c
+  CC  fx_mtx33_inverse_concat.c
+  CC  fx_mtx33_identity.c
+  CC  fx_mtx33_rot_yz.c
+  CC  fx_mtx33_scale_rot_x.c
+  CC  fx_mtx43_rot.c
+  CC  fx_mtx43_inverse_concat.c
+  CC  fx_mtx43_identity.c
+  CC  fx_mtx43_scale.c
+  CC  fx_mtx43_scale_apply.c
+  CC  fx_mtx43_trans_apply.c
+  CC  fx_mtx44_concat.c
+  CC  fx_mtx44_ortho.c
+  CC  fx_mtx44_identity.c
+  CC  fx_mtx44_perspective.c
+  CC  fx_mtx44_trans_apply.c
+  CC  fx_mtx44_rot.c
+  CC  fx_trig.c
+  CC  fx_vec.c
+  CC  fx_trig_internal.c
+  CC  fx_vec_normalize.c
+  CC  fx_vec_mult_add.c
+  CC  g2.c
+  CC  g3.c
+  CC  g3b.c
+  CC  g3_util.c
+  CC  g3imm.c
+  CC  g3x.c
+  CC  g3x_nop_clear_fifo.c
+  CC  gx.c
+  CC  gx_load2d.c
+  CC  gx_bgcnt.c
+  CC  gx_load3d.c
+  CC  gx_vramcnt.c
+  CC  gxasm.c
+  CC  gxstate.c
+  CC  MATH_crc.c
+  CC  MATH_dgt.c
+  CC  MATH_pop.c
+  CC  math_qsort.c
+  CC  mi_compress.c
+  CC  mi_compress_search.c
+  CC  mi_dma.c
+  CC  mi_dma_card.c
+  CC  mi_dma_gxcommand.c
+  CC  mi_init.c
+  CC  mi_dma_hblank.c
+  CC  mic.c
+  CC  mi_wram.c
+  CC  os_alarm_after_handler.c
+  CC  os_alarm_irq_handler.c
+  CC  os_alarm_before_handler.c
+  CC  os_alloc.c
+  CC  os_context.c
+  CC  os_arena.c
+  CC  os_emulator.c
+  CC  os_init.c
+  CC  os_entropy.c
+  CC  os_init_system.c
+  CC  os_irqHandler.c
+  CC  os_interrupt.c
+  CC  os_irqTable.c
+  CC  os_mutex.c
+  CC  os_message.c
+  CC  os_ownerInfo.c
+  CC  os_spinLock.c
+  CC  os_printf.c
+  CC  os_spin_lock_card.c
+  CC  os_spin_lock_cartridge.c
+  CC  os_spin_lock_id.c
+  CC  os_spin_lock_word.c
+  CC  os_system.c
+  CC  os_terminate_proc.c
+  CC  os_thread.c
+  CC  os_thread_available.c
+  CC  os_tick.c
+  CC  os_timer.c
+  CC  os_vramExclusive.c
+  CC  os_valarm.c
+  CC  os_vram_exclusive_clz.c
+  CC  os_wait_irq.c
+  CC  os_wait_vblank.c
+  CC  pm.c
+  CC  rtc_api.c
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/os/os_thread.c: In function 'OS_DisableScheduler':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/os/os_thread.c:598:12: warning: 'count' may be used uninitialized [-Wmaybe-uninitialized]
+  598 |     return count;
+      |            ^~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/os/os_thread.c:593:9: note: 'count' was declared here
+  593 |     u32 count;
+      |         ^~~~~
+  CC  rtc_convert_date_time_to_second.c
+  CC  rtc_convert_post.c
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/spi.h:8,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro.h:18,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/pm.c:4:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/nitro/spi/ARM9/pm.h:63:9: warning: 'PM_GetBackLight' redefined
+   63 | #define PM_GetBackLight HGSSCompat_PM_GetBackLight
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/pm.c:3:9: note: this is the location of the previous definition
+    3 | #define PM_GetBackLight PM_GetBackLight_HeaderDeclaration
+      |         ^~~~~~~~~~~~~~~
+  CC  rtc_convert_pre.c
+  CC  SND_alarm.c
+  CC  rtc_internal.c
+  CC  SND_bank.c
+  CC  SND_command.c
+  CC  SND_main.c
+  CC  SND_work.c
+  CC  snd_flush_command.c
+  CC  SND_util.c
+  CC  snd_destroy_bank.c
+  CC  snd_interface.c
+  CC  snd_next_inst_data.c
+  CC  snd_master_volume.c
+  CC  snd_player_local_variable.c
+  CC  snd_player_tempo_ratio.c
+  CC  snd_read_channel_info.c
+  CC  snd_read_driver_info.c
+  CC  std_sprintf.c
+  CC  snd_read_track_info.c
+  CC  std_sprintf_writer.c
+  CC  std_string.c
+  CC  tp.c
+  CC  wm_core.c
+  CC  wm_data_sharing.c
+  CC  wm_requests.c
+  CC  wm_settings.c
+  CC  sdk_data.c
+  CC  sdk_standins.c
+  CC  nns_tables_gfd.c
+  CC  nns_data.c
+  CC  port_dma.c
+  CC  port_save_import.c
+  CC  port_rtc.c
+  CC  port_pm.c
+  CC  port_overlay.c
+  CC  port_os.c
+  CC  port_misc.c
+  CC  port_memory.c
+  CC  dgt.c
+  CC  ctrdg.c
+  CC  mi_memory.c
+  CC  port_log.c
+  CC  mi_swap.c
+  CC  port_gx.c
+  CC  port_fs.c
+  CC  port_snd.c
+  CC  port_cp.c
+  CC  port_card.c
+  CC  port_boot.c
+  CC  port_arm7.c
+  CC  mi_uncompress.c
+  CC  port_ioreg.c
+  CC  port_sound_chip.c
+  CC  port_timer.c
+  CC  port_thread.c
+  CC  pxi.c
+  CC  port_tp.c
+  ARM7 CC sound_main.c
+  CC  svc.c
+  ARM7 CC sound_command.c
+  ARM7 CC sound_ex_channel.c
+  ARM7 CC sound_seq_player.c
+  ARM7 CC sound_alarm.c
+  ARM7 CC sound_bank.c
+  ARM7 CC sound_channel.c
+  ARM7 CC sound_driver.c
+  ARM7 CC snd_arm7_data.c
+  ARM7 CC sound_shared_work.c
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss_sub/sound_seq_player.c: In function 'ReadArg':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss_sub/sound_seq_player.c:431:12: warning: 'result' may be used uninitialized [-Wmaybe-uninitialized]
+  431 |     return result;
+      |            ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss_sub/sound_seq_player.c:393:9: note: 'result' was declared here
+  393 |     int result;
+      |         ^~~~~~
+  ARM7 CC ds_sound_tables.c
+built ../../../../cleanup-base-gold/sdk/libnitro.a
+make: Leaving directory '/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/nitro'
++ /usr/bin/python /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/tools/game/hgss_nitro.py make --target 3ds --out /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-gold/sdk --subproject nitrosystem lib -k -j 32
++ make -C /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/nitrosystem TARGET=3ds DEVKITPRO=/opt/devkitpro DEVKITARM=/opt/devkitpro/devkitARM OUT=../../../../cleanup-base-gold/sdk GEN=/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-gold/sdk/gen SDK=/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk SDK_SRCS=hgss/card/CARD_backup.c hgss/card/CARD_common.c hgss/card/CARD_pullOut.c hgss/card/CARD_request.c hgss/card/CARD_rom.c hgss/card/card_cache_flush_threshold.c hgss/card/card_identify_backup.c hgss/card/card_read_card.c hgss/card/card_request_stream_command.c hgss/card/card_spi_wait.c hgss/card/card_spi_wait_cycles.c hgss/card/card_spi_wait_init.c hgss/card/card_terminate_pulled_out.c hgss/card/card_try_read_dma.c hgss/cp/CP_context.c hgss/fs/FS_archive_prefix.c hgss/fs/FS_archive_suffix.c hgss/fs/FS_command.c hgss/fs/FS_command_default.c hgss/fs/FS_file.c hgss/fs/FS_overlay.c hgss/fs/FS_rom.c hgss/fs/fs_send_command.c hgss/fx/fx.c hgss/fx/fx_atanidx.c hgss/fx/fx_cp.c hgss/fx/fx_mtx22.c hgss/fx/fx_mtx33_identity.c hgss/fx/fx_mtx33_inverse_concat.c hgss/fx/fx_mtx33_rot_yz.c hgss/fx/fx_mtx33_scale_rot_x.c hgss/fx/fx_mtx43_identity.c hgss/fx/fx_mtx43_inverse_concat.c hgss/fx/fx_mtx43_rot.c hgss/fx/fx_mtx43_scale.c hgss/fx/fx_mtx43_scale_apply.c hgss/fx/fx_mtx43_trans_apply.c hgss/fx/fx_mtx44_concat.c hgss/fx/fx_mtx44_identity.c hgss/fx/fx_mtx44_ortho.c hgss/fx/fx_mtx44_perspective.c hgss/fx/fx_mtx44_rot.c hgss/fx/fx_mtx44_trans_apply.c hgss/fx/fx_trig.c hgss/fx/fx_trig_internal.c hgss/fx/fx_vec.c hgss/fx/fx_vec_mult_add.c hgss/fx/fx_vec_normalize.c hgss/gx/g2.c hgss/gx/g3.c hgss/gx/g3_util.c hgss/gx/g3b.c hgss/gx/g3imm.c hgss/gx/g3x.c hgss/gx/g3x_nop_clear_fifo.c hgss/gx/gx.c hgss/gx/gx_bgcnt.c hgss/gx/gx_load2d.c hgss/gx/gx_load3d.c hgss/gx/gx_vramcnt.c hgss/gx/gxasm.c hgss/gx/gxstate.c hgss/math/MATH_crc.c hgss/math/MATH_dgt.c hgss/math/MATH_pop.c hgss/math/math_qsort.c hgss/mi/mi_compress.c hgss/mi/mi_compress_search.c hgss/mi/mi_dma.c hgss/mi/mi_dma_card.c hgss/mi/mi_dma_gxcommand.c hgss/mi/mi_dma_hblank.c hgss/mi/mi_init.c hgss/mi/mi_wram.c hgss/mic.c hgss/os/os_alarm_after_handler.c hgss/os/os_alarm_before_handler.c hgss/os/os_alarm_irq_handler.c hgss/os/os_alloc.c hgss/os/os_arena.c hgss/os/os_context.c hgss/os/os_emulator.c hgss/os/os_entropy.c hgss/os/os_init.c hgss/os/os_init_system.c hgss/os/os_interrupt.c hgss/os/os_irqHandler.c hgss/os/os_irqTable.c hgss/os/os_message.c hgss/os/os_mutex.c hgss/os/os_ownerInfo.c hgss/os/os_printf.c hgss/os/os_spinLock.c hgss/os/os_spin_lock_card.c hgss/os/os_spin_lock_cartridge.c hgss/os/os_spin_lock_id.c hgss/os/os_spin_lock_word.c hgss/os/os_system.c hgss/os/os_terminate_proc.c hgss/os/os_thread.c hgss/os/os_thread_available.c hgss/os/os_tick.c hgss/os/os_timer.c hgss/os/os_valarm.c hgss/os/os_vramExclusive.c hgss/os/os_vram_exclusive_clz.c hgss/os/os_wait_irq.c hgss/os/os_wait_vblank.c hgss/pm.c hgss/rtc/rtc_api.c hgss/rtc/rtc_convert_date_time_to_second.c hgss/rtc/rtc_convert_post.c hgss/rtc/rtc_convert_pre.c hgss/rtc/rtc_internal.c hgss/snd/SND_alarm.c hgss/snd/SND_bank.c hgss/snd/SND_command.c hgss/snd/SND_main.c hgss/snd/SND_util.c hgss/snd/SND_work.c hgss/snd/snd_destroy_bank.c hgss/snd/snd_flush_command.c hgss/snd/snd_interface.c hgss/snd/snd_master_volume.c hgss/snd/snd_next_inst_data.c hgss/snd/snd_player_local_variable.c hgss/snd/snd_player_tempo_ratio.c hgss/snd/snd_read_channel_info.c hgss/snd/snd_read_driver_info.c hgss/snd/snd_read_track_info.c hgss/std_sprintf.c hgss/std_sprintf_writer.c hgss/std_string.c hgss/tp.c hgss/wm_core.c hgss/wm_data_sharing.c hgss/wm_requests.c hgss/wm_settings.c hgss_compat/sdk_data.c hgss_compat/sdk_standins.c hgss_compat/nns_data.c hgss_compat/nns_tables_gfd.c ARM7_SOUND_SRCS=hgss_sub/sound_main.c hgss_sub/sound_command.c hgss_sub/sound_ex_channel.c hgss_sub/sound_seq_player.c hgss_sub/sound_alarm.c hgss_sub/sound_bank.c hgss_sub/sound_channel.c hgss_sub/sound_driver.c hgss_sub/sound_shared_work.c hgss_compat/snd_arm7_data.c hgss_compat/ds_sound_tables.c SDK_INCLUDES=-I/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/nitro/include -I/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-gold/sdk/gen -I/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include -I/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/include -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/include/library -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include-mw -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include-pokediamond -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/sub/include -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/sub/lib/include -include /home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/include/assert.h -include /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/hgss_port_math.h -DHGSS_PROFILE_OFF NNS=/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns NNS_INCLUDES=-I/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/include NNS_SRCS=hgss_nns/fnd_allocator.c hgss_nns/fnd_expheap.c hgss_nns/fnd_frameheap.c hgss_nns/fnd_heapcommon.c hgss_nns/fnd_list.c hgss_nns/fnd_unitheap.c hgss_nns/g2d_animation.c hgss_nns/g2d_canvas_arrange.c hgss_nns/g2d_cell_animation.c hgss_nns/g2d_cell_transfer_manager.c hgss_nns/g2d_char_canvas.c hgss_nns/g2d_char_canvas_letter.c hgss_nns/g2d_char_canvas_util.c hgss_nns/g2d_char_util.c hgss_nns/g2d_font.c hgss_nns/g2d_font_load.c hgss_nns/g2d_image.c hgss_nns/g2d_load.c hgss_nns/g2d_mc_animation.c hgss_nns/g2d_node.c hgss_nns/g2d_oam.c hgss_nns/g2d_oam_soft_emu.c hgss_nns/g2d_palette_table.c hgss_nns/g2d_renderer.c hgss_nns/g2d_renderer_core.c hgss_nns/g2d_renderer_identity.c hgss_nns/g2d_renderer_mtx_cache.c hgss_nns/g2d_renderer_mtx_stack.c hgss_nns/g2d_renderer_transform.c hgss_nns/g2d_softsprite.c hgss_nns/g2d_srt_control.c hgss_nns/g2d_text_canvas.c hgss_nns/g3d_1mat1shp.c hgss_nns/g3d_anm_bca.c hgss_nns/g3d_anm_bca_data.c hgss_nns/g3d_anm_bca_scale.c hgss_nns/g3d_anm_bca_trans.c hgss_nns/g3d_anm_bca_trans_ex.c hgss_nns/g3d_anm_blend.c hgss_nns/g3d_anm_bma.c hgss_nns/g3d_anm_bta.c hgss_nns/g3d_anm_bta_sincos.c hgss_nns/g3d_anm_bta_vector.c hgss_nns/g3d_anm_btp.c hgss_nns/g3d_anm_btp_init.c hgss_nns/g3d_anm_bva.c hgss_nns/g3d_cgtool_3dsmax.c hgss_nns/g3d_cgtool_3dsmax_texmtx.c hgss_nns/g3d_cgtool_basic.c hgss_nns/g3d_cgtool_maya_joint.c hgss_nns/g3d_cgtool_maya_tex.c hgss_nns/g3d_cgtool_maya_texmtx.c hgss_nns/g3d_cgtool_maya_texmtx_r.c hgss_nns/g3d_cgtool_maya_texmtx_s.c hgss_nns/g3d_cgtool_si3d.c hgss_nns/g3d_cgtool_xsi.c hgss_nns/g3d_cgtool_xsi_texmtx.c hgss_nns/g3d_cgtool_xsi_texmtx_sr.c hgss_nns/g3d_cgtool_xsi_texmtx_t.c hgss_nns/g3d_draw.c hgss_nns/g3d_gecom.c hgss_nns/g3d_glb.c hgss_nns/g3d_glb_state.c hgss_nns/g3d_kernel.c hgss_nns/g3d_mdl_bind.c hgss_nns/g3d_model.c hgss_nns/g3d_res_struct_accessor.c hgss_nns/g3d_res_struct_accessor_anm.c hgss_nns/g3d_sbc.c hgss_nns/g3d_util.c hgss_nns/gfd_frame_pltt_vram_man.c hgss_nns/gfd_frame_tex_vram_man.c hgss_nns/gfd_linked_list_pltt_vram_man.c hgss_nns/gfd_linked_list_pltt_vram_man_reset.c hgss_nns/gfd_linked_list_tex_vram_man.c hgss_nns/gfd_linked_list_tex_vram_man_reset.c hgss_nns/gfd_linked_list_vram_man.c hgss_nns/gfd_pltt_vram_man.c hgss_nns/gfd_tex_vram_man.c hgss_nns/gfd_vram_transfer_manager.c hgss_nns/snd_arc.c hgss_nns/snd_arc_loader.c hgss_nns/snd_arc_loader_wave.c hgss_nns/snd_arc_player.c hgss_nns/snd_arc_strm.c hgss_nns/snd_capture.c hgss_nns/snd_fader.c hgss_nns/snd_heap.c hgss_nns/snd_player.c hgss_nns/snd_resource_mgr.c hgss_nns/snd_seqarc.c hgss_nns/snd_stream.c hgss_nns/snd_system.c hgss_nns/snd_waveout.c hgss_nns_compat/nns_tables_nns.c NNS_INLINE_SYMS=/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-gold/sdk/gen/nns_inline.syms LIBNITRO=/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-gold/sdk/libnitro.a NM=/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-gold/sdk/nm-for-weaken.sh lib -k -j 32
+make: Entering directory '/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/nitrosystem'
+python3 /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/gen/nitro/fx/gen_fx_const.py /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/gen/nitro/fx/fx_const.csv /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-gold/sdk/gen/nitro/fx/fx_const.h
+  CC  CARD_backup.c
+  CC  CARD_common.c
+  CC  CARD_pullOut.c
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/card/CARD_common.c:10:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:12:9: warning: 'HW_ITCM_IMAGE' redefined
+   12 | #define HW_ITCM_IMAGE 0x01000000
+      |         ^~~~~~~~~~~~~
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/nitro/hw/ARM9/mmap.h:16,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/mmap.h:10,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/MI_dma.h:19,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/CARD_common.h:7,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/CARD_common.h:33,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/card/CARD_common.c:1:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:151:9: note: this is the location of the previous definition
+  151 | #define HW_ITCM_IMAGE           ((u32)NitroPort_Itcm)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:13:9: warning: 'HW_ITCM' redefined
+   13 | #define HW_ITCM                 0x01FF8000
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:152:9: note: this is the location of the previous definition
+  152 | #define HW_ITCM                 ((u32)NitroPort_Itcm)
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:17:9: warning: 'HW_IOREG' redefined
+   17 | #define HW_IOREG                0x04000000
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:145:9: note: this is the location of the previous definition
+  145 | #define HW_IOREG                ((u32)NitroPort_IoReg)
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:69:9: warning: 'HW_BG_PLTT' redefined
+   69 | #define HW_BG_PLTT              0x05000000
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:169:9: note: this is the location of the previous definition
+  169 | #define HW_BG_PLTT              ((u32)NitroPort_Pltt)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:70:9: warning: 'HW_BG_PLTT_END' redefined
+   70 | #define HW_BG_PLTT_END          0x05000200
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:170:9: note: this is the location of the previous definition
+  170 | #define HW_BG_PLTT_END          (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:72:9: warning: 'HW_OBJ_PLTT' redefined
+   72 | #define HW_OBJ_PLTT             0x05000200
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:171:9: note: this is the location of the previous definition
+  171 | #define HW_OBJ_PLTT             (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:73:9: warning: 'HW_OBJ_PLTT_END' redefined
+   73 | #define HW_OBJ_PLTT_END         0x05000400
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:172:9: note: this is the location of the previous definition
+  172 | #define HW_OBJ_PLTT_END         (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:78:9: warning: 'HW_DB_BG_PLTT' redefined
+   78 | #define HW_DB_BG_PLTT           0x05000400
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:173:9: note: this is the location of the previous definition
+  173 | #define HW_DB_BG_PLTT           (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:79:9: warning: 'HW_DB_BG_PLTT_END' redefined
+   79 | #define HW_DB_BG_PLTT_END       0x05000600
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:174:9: note: this is the location of the previous definition
+  174 | #define HW_DB_BG_PLTT_END       (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:81:9: warning: 'HW_DB_OBJ_PLTT' redefined
+   81 | #define HW_DB_OBJ_PLTT          0x05000600
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:175:9: note: this is the location of the previous definition
+  175 | #define HW_DB_OBJ_PLTT          (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:82:9: warning: 'HW_DB_OBJ_PLTT_END' redefined
+   82 | #define HW_DB_OBJ_PLTT_END      0x05000800
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:176:9: note: this is the location of the previous definition
+  176 | #define HW_DB_OBJ_PLTT_END      (HW_BG_PLTT + 0x800)
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:87:9: warning: 'HW_LCDC_VRAM' redefined
+   87 | #define HW_LCDC_VRAM            0x6800000
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:196:9: note: this is the location of the previous definition
+  196 | #define HW_LCDC_VRAM            ((u32)NitroPort_LcdcVram)
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:88:9: warning: 'HW_LCDC_VRAM_END' redefined
+   88 | #define HW_LCDC_VRAM_END        0x68a4000
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:197:9: note: this is the location of the previous definition
+  197 | #define HW_LCDC_VRAM_END        (HW_LCDC_VRAM + 0xA4000)
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:90:9: warning: 'HW_OAM' redefined
+   90 | #define HW_OAM                  0x07000000
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:203:9: note: this is the location of the previous definition
+  203 | #define HW_OAM                  ((u32)NitroPort_Oam)
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:91:9: warning: 'HW_OAM_END' redefined
+   91 | #define HW_OAM_END              0x07000400
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:204:9: note: this is the location of the previous definition
+  204 | #define HW_OAM_END              (HW_OAM + 0x400)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:93:9: warning: 'HW_DB_OAM' redefined
+   93 | #define HW_DB_OAM               0x07000400
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:205:9: note: this is the location of the previous definition
+  205 | #define HW_DB_OAM               (HW_OAM + 0x400)
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:94:9: warning: 'HW_DB_OAM_END' redefined
+   94 | #define HW_DB_OAM_END           0x07000800
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:206:9: note: this is the location of the previous definition
+  206 | #define HW_DB_OAM_END           (HW_OAM + 0x800)
+      |         ^~~~~~~~~~~~~
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/PAD_pad.h:5,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/card/CARD_pullOut.c:7:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:12:9: warning: 'HW_ITCM_IMAGE' redefined
+   12 | #define HW_ITCM_IMAGE 0x01000000
+      |         ^~~~~~~~~~~~~
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/nitro/hw/ARM9/mmap.h:16,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/mmap.h:10,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/MI_dma.h:19,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/CARD_common.h:7,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/CARD_common.h:33,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/card/CARD_pullOut.c:1:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:151:9: note: this is the location of the previous definition
+  151 | #define HW_ITCM_IMAGE           ((u32)NitroPort_Itcm)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:13:9: warning: 'HW_ITCM' redefined
+   13 | #define HW_ITCM                 0x01FF8000
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:152:9: note: this is the location of the previous definition
+  152 | #define HW_ITCM                 ((u32)NitroPort_Itcm)
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:17:9: warning: 'HW_IOREG' redefined
+   17 | #define HW_IOREG                0x04000000
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:145:9: note: this is the location of the previous definition
+  145 | #define HW_IOREG                ((u32)NitroPort_IoReg)
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:69:9: warning: 'HW_BG_PLTT' redefined
+   69 | #define HW_BG_PLTT              0x05000000
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:169:9: note: this is the location of the previous definition
+  169 | #define HW_BG_PLTT              ((u32)NitroPort_Pltt)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:70:9: warning: 'HW_BG_PLTT_END' redefined
+   70 | #define HW_BG_PLTT_END          0x05000200
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:170:9: note: this is the location of the previous definition
+  170 | #define HW_BG_PLTT_END          (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:72:9: warning: 'HW_OBJ_PLTT' redefined
+   72 | #define HW_OBJ_PLTT             0x05000200
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:171:9: note: this is the location of the previous definition
+  171 | #define HW_OBJ_PLTT             (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:73:9: warning: 'HW_OBJ_PLTT_END' redefined
+   73 | #define HW_OBJ_PLTT_END         0x05000400
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:172:9: note: this is the location of the previous definition
+  172 | #define HW_OBJ_PLTT_END         (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:78:9: warning: 'HW_DB_BG_PLTT' redefined
+   78 | #define HW_DB_BG_PLTT           0x05000400
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:173:9: note: this is the location of the previous definition
+  173 | #define HW_DB_BG_PLTT           (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:79:9: warning: 'HW_DB_BG_PLTT_END' redefined
+   79 | #define HW_DB_BG_PLTT_END       0x05000600
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:174:9: note: this is the location of the previous definition
+  174 | #define HW_DB_BG_PLTT_END       (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:81:9: warning: 'HW_DB_OBJ_PLTT' redefined
+   81 | #define HW_DB_OBJ_PLTT          0x05000600
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:175:9: note: this is the location of the previous definition
+  175 | #define HW_DB_OBJ_PLTT          (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:82:9: warning: 'HW_DB_OBJ_PLTT_END' redefined
+   82 | #define HW_DB_OBJ_PLTT_END      0x05000800
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:176:9: note: this is the location of the previous definition
+  176 | #define HW_DB_OBJ_PLTT_END      (HW_BG_PLTT + 0x800)
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:87:9: warning: 'HW_LCDC_VRAM' redefined
+   87 | #define HW_LCDC_VRAM            0x6800000
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:196:9: note: this is the location of the previous definition
+  196 | #define HW_LCDC_VRAM            ((u32)NitroPort_LcdcVram)
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:88:9: warning: 'HW_LCDC_VRAM_END' redefined
+   88 | #define HW_LCDC_VRAM_END        0x68a4000
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:197:9: note: this is the location of the previous definition
+  197 | #define HW_LCDC_VRAM_END        (HW_LCDC_VRAM + 0xA4000)
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:90:9: warning: 'HW_OAM' redefined
+   90 | #define HW_OAM                  0x07000000
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:203:9: note: this is the location of the previous definition
+  203 | #define HW_OAM                  ((u32)NitroPort_Oam)
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:91:9: warning: 'HW_OAM_END' redefined
+   91 | #define HW_OAM_END              0x07000400
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:204:9: note: this is the location of the previous definition
+  204 | #define HW_OAM_END              (HW_OAM + 0x400)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:93:9: warning: 'HW_DB_OAM' redefined
+   93 | #define HW_DB_OAM               0x07000400
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:205:9: note: this is the location of the previous definition
+  205 | #define HW_DB_OAM               (HW_OAM + 0x400)
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:94:9: warning: 'HW_DB_OAM_END' redefined
+   94 | #define HW_DB_OAM_END           0x07000800
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:206:9: note: this is the location of the previous definition
+  206 | #define HW_DB_OAM_END           (HW_OAM + 0x800)
+      |         ^~~~~~~~~~~~~
+  CC  card_cache_flush_threshold.c
+  CC  CARD_request.c
+  CC  CARD_rom.c
+  CC  card_identify_backup.c
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/CARD_rom.h:9,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/card/CARD_rom.c:3:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:12:9: warning: 'HW_ITCM_IMAGE' redefined
+   12 | #define HW_ITCM_IMAGE 0x01000000
+      |         ^~~~~~~~~~~~~
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/nitro/hw/ARM9/mmap.h:16,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/mmap.h:10,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/MI_dma.h:19,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/CARD_rom.h:6:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:151:9: note: this is the location of the previous definition
+  151 | #define HW_ITCM_IMAGE           ((u32)NitroPort_Itcm)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:13:9: warning: 'HW_ITCM' redefined
+   13 | #define HW_ITCM                 0x01FF8000
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:152:9: note: this is the location of the previous definition
+  152 | #define HW_ITCM                 ((u32)NitroPort_Itcm)
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:17:9: warning: 'HW_IOREG' redefined
+   17 | #define HW_IOREG                0x04000000
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:145:9: note: this is the location of the previous definition
+  145 | #define HW_IOREG                ((u32)NitroPort_IoReg)
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:69:9: warning: 'HW_BG_PLTT' redefined
+   69 | #define HW_BG_PLTT              0x05000000
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:169:9: note: this is the location of the previous definition
+  169 | #define HW_BG_PLTT              ((u32)NitroPort_Pltt)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:70:9: warning: 'HW_BG_PLTT_END' redefined
+   70 | #define HW_BG_PLTT_END          0x05000200
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:170:9: note: this is the location of the previous definition
+  170 | #define HW_BG_PLTT_END          (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:72:9: warning: 'HW_OBJ_PLTT' redefined
+   72 | #define HW_OBJ_PLTT             0x05000200
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:171:9: note: this is the location of the previous definition
+  171 | #define HW_OBJ_PLTT             (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:73:9: warning: 'HW_OBJ_PLTT_END' redefined
+   73 | #define HW_OBJ_PLTT_END         0x05000400
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:172:9: note: this is the location of the previous definition
+  172 | #define HW_OBJ_PLTT_END         (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:78:9: warning: 'HW_DB_BG_PLTT' redefined
+   78 | #define HW_DB_BG_PLTT           0x05000400
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:173:9: note: this is the location of the previous definition
+  173 | #define HW_DB_BG_PLTT           (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:79:9: warning: 'HW_DB_BG_PLTT_END' redefined
+   79 | #define HW_DB_BG_PLTT_END       0x05000600
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:174:9: note: this is the location of the previous definition
+  174 | #define HW_DB_BG_PLTT_END       (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:81:9: warning: 'HW_DB_OBJ_PLTT' redefined
+   81 | #define HW_DB_OBJ_PLTT          0x05000600
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:175:9: note: this is the location of the previous definition
+  175 | #define HW_DB_OBJ_PLTT          (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:82:9: warning: 'HW_DB_OBJ_PLTT_END' redefined
+   82 | #define HW_DB_OBJ_PLTT_END      0x05000800
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:176:9: note: this is the location of the previous definition
+  176 | #define HW_DB_OBJ_PLTT_END      (HW_BG_PLTT + 0x800)
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:87:9: warning: 'HW_LCDC_VRAM' redefined
+   87 | #define HW_LCDC_VRAM            0x6800000
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:196:9: note: this is the location of the previous definition
+  196 | #define HW_LCDC_VRAM            ((u32)NitroPort_LcdcVram)
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:88:9: warning: 'HW_LCDC_VRAM_END' redefined
+   88 | #define HW_LCDC_VRAM_END        0x68a4000
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:197:9: note: this is the location of the previous definition
+  197 | #define HW_LCDC_VRAM_END        (HW_LCDC_VRAM + 0xA4000)
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:90:9: warning: 'HW_OAM' redefined
+   90 | #define HW_OAM                  0x07000000
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:203:9: note: this is the location of the previous definition
+  203 | #define HW_OAM                  ((u32)NitroPort_Oam)
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:91:9: warning: 'HW_OAM_END' redefined
+   91 | #define HW_OAM_END              0x07000400
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:204:9: note: this is the location of the previous definition
+  204 | #define HW_OAM_END              (HW_OAM + 0x400)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:93:9: warning: 'HW_DB_OAM' redefined
+   93 | #define HW_DB_OAM               0x07000400
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:205:9: note: this is the location of the previous definition
+  205 | #define HW_DB_OAM               (HW_OAM + 0x400)
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:94:9: warning: 'HW_DB_OAM_END' redefined
+   94 | #define HW_DB_OAM_END           0x07000800
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:206:9: note: this is the location of the previous definition
+  206 | #define HW_DB_OAM_END           (HW_OAM + 0x800)
+      |         ^~~~~~~~~~~~~
+  CC  card_spi_wait.c
+  CC  card_read_card.c
+  CC  card_request_stream_command.c
+  CC  card_spi_wait_init.c
+  CC  card_spi_wait_cycles.c
+  CC  card_terminate_pulled_out.c
+  CC  card_try_read_dma.c
+  CC  FS_archive_prefix.c
+  CC  CP_context.c
+  CC  FS_command.c
+  CC  FS_archive_suffix.c
+  CC  FS_overlay.c
+  CC  FS_file.c
+  CC  FS_command_default.c
+  CC  FS_rom.c
+  CC  fs_send_command.c
+  CC  fx.c
+  CC  fx_atanidx.c
+  CC  fx_mtx22.c
+  CC  fx_cp.c
+  CC  fx_mtx33_rot_yz.c
+  CC  fx_mtx33_identity.c
+  CC  fx_mtx33_inverse_concat.c
+  CC  fx_mtx33_scale_rot_x.c
+  CC  fx_mtx43_inverse_concat.c
+  CC  fx_mtx43_identity.c
+  CC  fx_mtx43_rot.c
+  CC  fx_mtx43_scale_apply.c
+  CC  fx_mtx43_scale.c
+  CC  fx_mtx43_trans_apply.c
+  CC  fx_mtx44_concat.c
+  CC  fx_mtx44_identity.c
+  CC  fx_mtx44_ortho.c
+  CC  fx_mtx44_rot.c
+  CC  fx_mtx44_perspective.c
+  CC  fx_mtx44_trans_apply.c
+  CC  fx_trig_internal.c
+  CC  fx_trig.c
+  CC  fx_vec.c
+  CC  fx_vec_mult_add.c
+  CC  fx_vec_normalize.c
+  CC  g2.c
+  CC  g3.c
+  CC  g3_util.c
+  CC  g3b.c
+  CC  g3imm.c
+  CC  g3x_nop_clear_fifo.c
+  CC  g3x.c
+  CC  gx.c
+  CC  gx_bgcnt.c
+  CC  gx_load2d.c
+  CC  gx_load3d.c
+  CC  gx_vramcnt.c
+  CC  gxasm.c
+  CC  gxstate.c
+  CC  MATH_crc.c
+  CC  MATH_dgt.c
+  CC  MATH_pop.c
+  CC  mi_compress.c
+  CC  math_qsort.c
+  CC  mi_dma_card.c
+  CC  mi_dma_gxcommand.c
+  CC  mi_dma.c
+  CC  mi_compress_search.c
+  CC  mi_dma_hblank.c
+  CC  mi_init.c
+  CC  os_alarm_before_handler.c
+  CC  os_alarm_irq_handler.c
+  CC  mic.c
+  CC  os_alarm_after_handler.c
+  CC  mi_wram.c
+  CC  os_alloc.c
+  CC  os_context.c
+  CC  os_arena.c
+  CC  os_entropy.c
+  CC  os_init.c
+  CC  os_emulator.c
+  CC  os_irqTable.c
+  CC  os_irqHandler.c
+  CC  os_interrupt.c
+  CC  os_init_system.c
+  CC  os_mutex.c
+  CC  os_message.c
+  CC  os_ownerInfo.c
+  CC  os_printf.c
+  CC  os_spinLock.c
+  CC  os_spin_lock_cartridge.c
+  CC  os_spin_lock_card.c
+  CC  os_system.c
+  CC  os_terminate_proc.c
+  CC  os_thread.c
+  CC  os_spin_lock_word.c
+  CC  os_spin_lock_id.c
+  CC  os_thread_available.c
+  CC  os_valarm.c
+  CC  os_tick.c
+  CC  os_timer.c
+  CC  os_vramExclusive.c
+  CC  os_vram_exclusive_clz.c
+  CC  os_wait_irq.c
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/os/os_thread.c: In function 'OS_DisableScheduler':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/os/os_thread.c:598:12: warning: 'count' may be used uninitialized [-Wmaybe-uninitialized]
+  598 |     return count;
+      |            ^~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/os/os_thread.c:593:9: note: 'count' was declared here
+  593 |     u32 count;
+      |         ^~~~~
+  CC  os_wait_vblank.c
+  CC  rtc_api.c
+  CC  pm.c
+  CC  rtc_convert_post.c
+  CC  rtc_convert_pre.c
+  CC  rtc_convert_date_time_to_second.c
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/spi.h:8,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro.h:18,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/pm.c:4:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/nitro/spi/ARM9/pm.h:63:9: warning: 'PM_GetBackLight' redefined
+   63 | #define PM_GetBackLight HGSSCompat_PM_GetBackLight
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/pm.c:3:9: note: this is the location of the previous definition
+    3 | #define PM_GetBackLight PM_GetBackLight_HeaderDeclaration
+      |         ^~~~~~~~~~~~~~~
+  CC  SND_alarm.c
+  CC  rtc_internal.c
+  CC  SND_bank.c
+  CC  SND_command.c
+  CC  SND_main.c
+  CC  SND_util.c
+  CC  SND_work.c
+  CC  snd_destroy_bank.c
+  CC  snd_flush_command.c
+  CC  snd_interface.c
+  CC  snd_master_volume.c
+  CC  snd_next_inst_data.c
+  CC  snd_player_tempo_ratio.c
+  CC  snd_player_local_variable.c
+  CC  snd_read_channel_info.c
+  CC  snd_read_driver_info.c
+  CC  snd_read_track_info.c
+  CC  std_sprintf_writer.c
+  CC  std_sprintf.c
+  CC  tp.c
+  CC  std_string.c
+  CC  wm_data_sharing.c
+  CC  wm_core.c
+  CC  wm_requests.c
+  CC  wm_settings.c
+  CC  sdk_data.c
+  CC  nns_data.c
+  CC  sdk_standins.c
+  CC  ctrdg.c
+  CC  nns_tables_gfd.c
+  CC  mi_memory.c
+  CC  mi_swap.c
+  CC  mi_uncompress.c
+  CC  dgt.c
+  CC  port_arm7.c
+  CC  port_card.c
+  CC  port_boot.c
+  CC  port_cp.c
+  CC  port_fs.c
+  CC  port_dma.c
+  CC  port_gx.c
+  CC  port_ioreg.c
+  CC  port_log.c
+  CC  port_memory.c
+  CC  port_misc.c
+  CC  port_os.c
+  CC  port_overlay.c
+  CC  port_pm.c
+  CC  port_rtc.c
+  CC  port_snd.c
+  CC  port_save_import.c
+  CC  port_thread.c
+  CC  port_sound_chip.c
+  CC  port_timer.c
+  CC  pxi.c
+  CC  port_tp.c
+  CC  svc.c
+  ARM7 CC sound_command.c
+  ARM7 CC sound_ex_channel.c
+  ARM7 CC sound_main.c
+  ARM7 CC sound_seq_player.c
+  ARM7 CC sound_bank.c
+  ARM7 CC sound_alarm.c
+  ARM7 CC sound_channel.c
+  ARM7 CC sound_shared_work.c
+  ARM7 CC sound_driver.c
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss_sub/sound_seq_player.c: In function 'ReadArg':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss_sub/sound_seq_player.c:431:12: warning: 'result' may be used uninitialized [-Wmaybe-uninitialized]
+  431 |     return result;
+      |            ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss_sub/sound_seq_player.c:393:9: note: 'result' was declared here
+  393 |     int result;
+      |         ^~~~~~
+  ARM7 CC snd_arm7_data.c
+  ARM7 CC ds_sound_tables.c
+built ../../../../cleanup-base-gold/sdk/libnitro.a
+  1 NitroSystem header inline functions
+  CC  fnd_allocator.c
+  CC  fnd_frameheap.c
+  CC  fnd_expheap.c
+  CC  fnd_heapcommon.c
+  CC  fnd_unitheap.c
+  CC  fnd_list.c
+  CC  g2d_animation.c
+  CC  g2d_canvas_arrange.c
+  CC  g2d_cell_animation.c
+  CC  g2d_char_canvas_util.c
+  CC  g2d_char_canvas_letter.c
+  CC  g2d_cell_transfer_manager.c
+  CC  g2d_char_canvas.c
+  CC  g2d_char_util.c
+  CC  g2d_font_load.c
+  CC  g2d_font.c
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g2d_cell_transfer_manager.c: In function 'NNS_G2dInitCellTransferStateManager':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g2d_cell_transfer_manager.c:48:1: warning: control reaches end of non-void function [-Wreturn-type]
+   48 | }
+      | ^
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g2d_char_canvas.c: In function 'DrawGlyph1D':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g2d_char_canvas.c:7:58: warning: function called through a non-compatible type
+    7 | #define GetCharIndex1DInts(x, y, w, h, shiftW, shiftH) (((u32(*)(u32, u32, int, int, int, int))GetCharIndex1D)((x), (y), (w), (h), (shiftW), (shiftH)))
+      |                                                         ~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g2d_char_canvas.c:165:33: note: in expansion of macro 'GetCharIndex1DInts'
+  165 |                     int index = GetCharIndex1DInts(cx, cy, w, h, shiftW, shiftH);
+      |                                 ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g2d_char_canvas.c: In function 'ClearArea1D':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g2d_char_canvas.c:7:58: warning: function called through a non-compatible type
+    7 | #define GetCharIndex1DInts(x, y, w, h, shiftW, shiftH) (((u32(*)(u32, u32, int, int, int, int))GetCharIndex1D)((x), (y), (w), (h), (shiftW), (shiftH)))
+      |                                                         ~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g2d_char_canvas.c:307:21: note: in expansion of macro 'GetCharIndex1DInts'
+  307 |             index = GetCharIndex1DInts(charX, charY, areaWidth, areaHeight, shiftW, shiftH);
+      |                     ^~~~~~~~~~~~~~~~~~
+  CC  g2d_image.c
+  CC  g2d_load.c
+  CC  g2d_mc_animation.c
+  CC  g2d_node.c
+  CC  g2d_oam_soft_emu.c
+  CC  g2d_oam.c
+  CC  g2d_palette_table.c
+  CC  g2d_renderer.c
+  CC  g2d_renderer_core.c
+  CC  g2d_renderer_mtx_cache.c
+  CC  g2d_renderer_identity.c
+  CC  g2d_renderer_mtx_stack.c
+  CC  g2d_renderer_transform.c
+  CC  g2d_softsprite.c
+  CC  g2d_srt_control.c
+  CC  g2d_text_canvas.c
+  CC  g3d_anm_bca.c
+  CC  g3d_1mat1shp.c
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g2d_text_canvas.c: In function 'GetTextRect':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g2d_text_canvas.c:73:59: warning: function called through a non-compatible type
+   73 | #define FontGetTextRectRet(pFont, hSpace, vSpace, pTxt) (((G2dTextRect(*)(const G2dFont *, int, int, const void *))NNSi_G2dFontGetTextRect)((pFont), (hSpace), (vSpace), (pTxt)))
+      |                                                          ~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g2d_text_canvas.c:76:24: note: in expansion of macro 'FontGetTextRectRet'
+   76 |     G2dTextRect rect = FontGetTextRectRet(pTxn->pFont, pTxn->hSpace, pTxn->vSpace, pTxt);
+      |                        ^~~~~~~~~~~~~~~~~~
+  CC  g3d_anm_bca_scale.c
+  CC  g3d_anm_bca_trans.c
+  CC  g3d_anm_bca_data.c
+  CC  g3d_anm_bca_trans_ex.c
+  CC  g3d_anm_blend.c
+  CC  g3d_anm_bta.c
+  CC  g3d_anm_bma.c
+  CC  g3d_anm_bta_sincos.c
+  CC  g3d_anm_bta_vector.c
+  CC  g3d_anm_btp.c
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_anm_bma.c: In function 'NNSi_G3dAnmCalcNsBma':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_anm_bma.c:136:26: warning: function called through a non-compatible type
+  136 | #define GET_COLOR(info) ((GetMatColAnmValueFunc)GetMatColAnmValue_)(pMatCAnm, info, frame)
+      |                         ~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_anm_bma.c:153:12: note: in expansion of macro 'GET_COLOR'
+  153 |     col0 = GET_COLOR(pData[0] /* diffuse */);
+      |            ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_anm_bma.c:136:26: warning: function called through a non-compatible type
+  136 | #define GET_COLOR(info) ((GetMatColAnmValueFunc)GetMatColAnmValue_)(pMatCAnm, info, frame)
+      |                         ~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_anm_bma.c:154:12: note: in expansion of macro 'GET_COLOR'
+  154 |     col1 = GET_COLOR(pData[1] /* ambient */);
+      |            ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_anm_bma.c:136:26: warning: function called through a non-compatible type
+  136 | #define GET_COLOR(info) ((GetMatColAnmValueFunc)GetMatColAnmValue_)(pMatCAnm, info, frame)
+      |                         ~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_anm_bma.c:156:12: note: in expansion of macro 'GET_COLOR'
+  156 |     col0 = GET_COLOR(pData[3] /* emission */);
+      |            ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_anm_bma.c:136:26: warning: function called through a non-compatible type
+  136 | #define GET_COLOR(info) ((GetMatColAnmValueFunc)GetMatColAnmValue_)(pMatCAnm, info, frame)
+      |                         ~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_anm_bma.c:157:12: note: in expansion of macro 'GET_COLOR'
+  157 |     col1 = GET_COLOR(pData[2] /* specular */);
+      |            ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_anm_bma.c:137:26: warning: function called through a non-compatible type
+  137 | #define GET_ALPHA(info) ((GetMatColAnmValueFunc)GetMatColAnmuAlphaValue_)(pMatCAnm, info, frame)
+      |                         ~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_anm_bma.c:160:21: note: in expansion of macro 'GET_ALPHA'
+  160 |         u32 alpha = GET_ALPHA(pData[4] /* polygonAlpha */);
+      |                     ^~~~~~~~~
+  CC  g3d_anm_btp_init.c
+  CC  g3d_anm_bva.c
+  CC  g3d_cgtool_3dsmax.c
+  CC  g3d_cgtool_3dsmax_texmtx.c
+  CC  g3d_cgtool_basic.c
+  CC  g3d_cgtool_maya_joint.c
+  CC  g3d_cgtool_maya_tex.c
+  CC  g3d_cgtool_maya_texmtx_r.c
+  CC  g3d_cgtool_maya_texmtx.c
+  CC  g3d_cgtool_maya_texmtx_s.c
+  CC  g3d_cgtool_xsi.c
+  CC  g3d_cgtool_si3d.c
+  CC  g3d_cgtool_xsi_texmtx_sr.c
+  CC  g3d_cgtool_xsi_texmtx.c
+  CC  g3d_cgtool_xsi_texmtx_t.c
+  CC  g3d_draw.c
+  CC  g3d_gecom.c
+  CC  g3d_glb.c
+  CC  g3d_glb_state.c
+  CC  g3d_kernel.c
+  CC  g3d_mdl_bind.c
+  CC  g3d_model.c
+  CC  g3d_res_struct_accessor.c
+  CC  g3d_res_struct_accessor_anm.c
+  CC  g3d_sbc.c
+  CC  g3d_util.c
+  CC  gfd_frame_tex_vram_man.c
+  CC  gfd_frame_pltt_vram_man.c
+  CC  gfd_linked_list_pltt_vram_man.c
+  CC  gfd_linked_list_pltt_vram_man_reset.c
+  CC  gfd_linked_list_tex_vram_man.c
+  CC  gfd_linked_list_tex_vram_man_reset.c
+  CC  gfd_linked_list_vram_man.c
+  CC  gfd_pltt_vram_man.c
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_sbc.c: In function 'NNSi_G3dFuncSbc_NODEMIX':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_sbc.c:833:41: warning: 'pPrevDir' may be used uninitialized [-Wmaybe-uninitialized]
+  833 |     sum.dir._01 += (prevRatio * pPrevDir->_01) >> FX32_SHIFT;
+      |                                 ~~~~~~~~^~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_sbc.c:743:14: note: 'pPrevDir' was declared here
+  743 |     MtxFx33 *pPrevDir;
+      |              ^~~~~~~~
+  CC  gfd_tex_vram_man.c
+  CC  gfd_vram_transfer_manager.c
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/gfd_linked_list_tex_vram_man_reset.c: In function 'NNS_GfdResetLnkTexVramState':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/gfd_linked_list_tex_vram_man_reset.c:80:62: warning: array subscript 'LnkTexVramManager[0]' is partly outside array bounds of 'LnkVramBlock[0]' [-Warray-bounds=]
+   80 |     u32 rest4x4 = ((LnkTexVramManager *)&gLnkTexVramFreeList)->work.szByteFor4x4;
+      |                                                              ^~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/gfd_linked_list_tex_vram_man_reset.c:27:22: note: object 'gLnkTexVramFreeList' of size 4
+   27 | extern LnkVramBlock *gLnkTexVramFreeList;
+      |                      ^~~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/gfd_linked_list_tex_vram_man_reset.c:81:58: warning: array subscript 'LnkTexVramManager[0]' is partly outside array bounds of 'LnkVramBlock[0]' [-Warray-bounds=]
+   81 |     restNrm = ((LnkTexVramManager *)&gLnkTexVramFreeList)->work.szByte - (rest4x4 + rest4x4 / 2);
+      |                                                          ^~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/gfd_linked_list_tex_vram_man_reset.c:27:22: note: object 'gLnkTexVramFreeList' of size 4
+   27 | extern LnkVramBlock *gLnkTexVramFreeList;
+      |                      ^~~~~~~~~~~~~~~~~~~
+  CC  snd_arc.c
+  CC  snd_arc_loader_wave.c
+  CC  snd_arc_loader.c
+  CC  snd_arc_player.c
+  CC  snd_arc_strm.c
+  CC  snd_heap.c
+  CC  snd_capture.c
+  CC  snd_fader.c
+  CC  snd_player.c
+  CC  snd_seqarc.c
+  CC  snd_resource_mgr.c
+  CC  snd_system.c
+  CC  snd_stream.c
+  CC  snd_waveout.c
+  CC  nns_tables_nns.c
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/snd_waveout.c: In function 'NNS_SndWaveOutStart':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/snd_waveout.c:45:5: warning: 'loopStart' may be used uninitialized [-Wmaybe-uninitialized]
+   45 |     SND_SetupChannelPcm(handle->chNo, format, data, loopFlag ? SND_CHANNEL_LOOP_REPEAT : SND_CHANNEL_LOOP_1SHOT, loopStart, loopLen, volume, 0, (u32)timer, pan);
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/snd_waveout.c:28:9: note: 'loopStart' was declared here
+   28 |     int loopStart, loopLen;
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/snd_waveout.c:45:5: warning: 'loopLen' may be used uninitialized [-Wmaybe-uninitialized]
+   45 |     SND_SetupChannelPcm(handle->chNo, format, data, loopFlag ? SND_CHANNEL_LOOP_REPEAT : SND_CHANNEL_LOOP_1SHOT, loopStart, loopLen, volume, 0, (u32)timer, pan);
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/snd_waveout.c:28:20: note: 'loopLen' was declared here
+   28 |     int loopStart, loopLen;
+      |                    ^~~~~~~
+built ../../../../cleanup-base-gold/sdk/libnitrosystem.a
+make: Leaving directory '/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/nitrosystem'
+== overlay table
+  129 overlays (37 with data, 2 with static initializers), 828 objects (85 not in this build): sections grouped per overlay
+== duplicate symbols
+   0 symbols defined in more than one object (0 objects weakened)
+== Wi-Fi stand-ins
+  257 Wi-Fi SDK functions stood in for (online play is not ported)
+== compiling the DS-side runtime (15 files)
+== compiling the 3DS-side runtime (28 files)
+  wideart: 3 pictures -> /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-gold/wideart/wideart.bin (196720 bytes)
+== link -> /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-gold/pokeheartgold-3ds.elf
+   linked /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-gold/pokeheartgold-3ds.elf
+   [sound] _0210D750 -> nns_volume_table.c (512 bytes, [128] = 0)
+   packaged /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-gold/pokeheartgold.3dsx (5954504 bytes)
+   build info: pokeheartgold.build-info.txt
+   [fresh] newest object gen/overlay_table.o (2026-11-27 10:05:10 UTC), newest header src/storage/paths.h (2026-11-27 09:59:50 UTC)
+== build id: 1044438
++ /usr/bin/python /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/tools/game/prepare_game_headers.py --root /home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream --ids-output /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-silver/gen/overlay_ids.ld --header /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-silver/gen/overlay_ids.h
+fx_const: lib/include/nitro/fx/fx_const.h (unchanged)
+trname: files/msgdata/msg/msg_0729.gmm (unchanged)
+msg headers: 829 (0 updated)
+nitroarc naix: 38 (0 updated)
+o2narc naix: 14 (0 updated)
+csv2bin naix: 3 (0 updated)
+alias naix: 2 (0 updated)
+overlay ids: /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-silver/gen/overlay_ids.ld (updated)
+overlay ids: /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-silver/gen/overlay_ids.h (updated)
+done: 890 files, 2 updated under /home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream
+== soulsilver 3ds: 1036 C, 56 C++, 150 .s
+== compiling C/C++ (1092 files, -j32)
+   1092 compiled, 0 failed
+== assembling ARM9 .s (150 files)
+   150 assembled, 0 failed
+== port libraries
++ /usr/bin/python /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/tools/game/hgss_nitro.py make --target 3ds --out /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-silver/sdk --subproject nitro lib -k -j 32
++ make -C /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/nitro TARGET=3ds DEVKITPRO=/opt/devkitpro DEVKITARM=/opt/devkitpro/devkitARM OUT=../../../../cleanup-base-silver/sdk GEN=/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-silver/sdk/gen SDK=/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk SDK_SRCS=hgss/card/CARD_backup.c hgss/card/CARD_common.c hgss/card/CARD_pullOut.c hgss/card/CARD_request.c hgss/card/CARD_rom.c hgss/card/card_cache_flush_threshold.c hgss/card/card_identify_backup.c hgss/card/card_read_card.c hgss/card/card_request_stream_command.c hgss/card/card_spi_wait.c hgss/card/card_spi_wait_cycles.c hgss/card/card_spi_wait_init.c hgss/card/card_terminate_pulled_out.c hgss/card/card_try_read_dma.c hgss/cp/CP_context.c hgss/fs/FS_archive_prefix.c hgss/fs/FS_archive_suffix.c hgss/fs/FS_command.c hgss/fs/FS_command_default.c hgss/fs/FS_file.c hgss/fs/FS_overlay.c hgss/fs/FS_rom.c hgss/fs/fs_send_command.c hgss/fx/fx.c hgss/fx/fx_atanidx.c hgss/fx/fx_cp.c hgss/fx/fx_mtx22.c hgss/fx/fx_mtx33_identity.c hgss/fx/fx_mtx33_inverse_concat.c hgss/fx/fx_mtx33_rot_yz.c hgss/fx/fx_mtx33_scale_rot_x.c hgss/fx/fx_mtx43_identity.c hgss/fx/fx_mtx43_inverse_concat.c hgss/fx/fx_mtx43_rot.c hgss/fx/fx_mtx43_scale.c hgss/fx/fx_mtx43_scale_apply.c hgss/fx/fx_mtx43_trans_apply.c hgss/fx/fx_mtx44_concat.c hgss/fx/fx_mtx44_identity.c hgss/fx/fx_mtx44_ortho.c hgss/fx/fx_mtx44_perspective.c hgss/fx/fx_mtx44_rot.c hgss/fx/fx_mtx44_trans_apply.c hgss/fx/fx_trig.c hgss/fx/fx_trig_internal.c hgss/fx/fx_vec.c hgss/fx/fx_vec_mult_add.c hgss/fx/fx_vec_normalize.c hgss/gx/g2.c hgss/gx/g3.c hgss/gx/g3_util.c hgss/gx/g3b.c hgss/gx/g3imm.c hgss/gx/g3x.c hgss/gx/g3x_nop_clear_fifo.c hgss/gx/gx.c hgss/gx/gx_bgcnt.c hgss/gx/gx_load2d.c hgss/gx/gx_load3d.c hgss/gx/gx_vramcnt.c hgss/gx/gxasm.c hgss/gx/gxstate.c hgss/math/MATH_crc.c hgss/math/MATH_dgt.c hgss/math/MATH_pop.c hgss/math/math_qsort.c hgss/mi/mi_compress.c hgss/mi/mi_compress_search.c hgss/mi/mi_dma.c hgss/mi/mi_dma_card.c hgss/mi/mi_dma_gxcommand.c hgss/mi/mi_dma_hblank.c hgss/mi/mi_init.c hgss/mi/mi_wram.c hgss/mic.c hgss/os/os_alarm_after_handler.c hgss/os/os_alarm_before_handler.c hgss/os/os_alarm_irq_handler.c hgss/os/os_alloc.c hgss/os/os_arena.c hgss/os/os_context.c hgss/os/os_emulator.c hgss/os/os_entropy.c hgss/os/os_init.c hgss/os/os_init_system.c hgss/os/os_interrupt.c hgss/os/os_irqHandler.c hgss/os/os_irqTable.c hgss/os/os_message.c hgss/os/os_mutex.c hgss/os/os_ownerInfo.c hgss/os/os_printf.c hgss/os/os_spinLock.c hgss/os/os_spin_lock_card.c hgss/os/os_spin_lock_cartridge.c hgss/os/os_spin_lock_id.c hgss/os/os_spin_lock_word.c hgss/os/os_system.c hgss/os/os_terminate_proc.c hgss/os/os_thread.c hgss/os/os_thread_available.c hgss/os/os_tick.c hgss/os/os_timer.c hgss/os/os_valarm.c hgss/os/os_vramExclusive.c hgss/os/os_vram_exclusive_clz.c hgss/os/os_wait_irq.c hgss/os/os_wait_vblank.c hgss/pm.c hgss/rtc/rtc_api.c hgss/rtc/rtc_convert_date_time_to_second.c hgss/rtc/rtc_convert_post.c hgss/rtc/rtc_convert_pre.c hgss/rtc/rtc_internal.c hgss/snd/SND_alarm.c hgss/snd/SND_bank.c hgss/snd/SND_command.c hgss/snd/SND_main.c hgss/snd/SND_util.c hgss/snd/SND_work.c hgss/snd/snd_destroy_bank.c hgss/snd/snd_flush_command.c hgss/snd/snd_interface.c hgss/snd/snd_master_volume.c hgss/snd/snd_next_inst_data.c hgss/snd/snd_player_local_variable.c hgss/snd/snd_player_tempo_ratio.c hgss/snd/snd_read_channel_info.c hgss/snd/snd_read_driver_info.c hgss/snd/snd_read_track_info.c hgss/std_sprintf.c hgss/std_sprintf_writer.c hgss/std_string.c hgss/tp.c hgss/wm_core.c hgss/wm_data_sharing.c hgss/wm_requests.c hgss/wm_settings.c hgss_compat/sdk_data.c hgss_compat/sdk_standins.c hgss_compat/nns_data.c hgss_compat/nns_tables_gfd.c ARM7_SOUND_SRCS=hgss_sub/sound_main.c hgss_sub/sound_command.c hgss_sub/sound_ex_channel.c hgss_sub/sound_seq_player.c hgss_sub/sound_alarm.c hgss_sub/sound_bank.c hgss_sub/sound_channel.c hgss_sub/sound_driver.c hgss_sub/sound_shared_work.c hgss_compat/snd_arm7_data.c hgss_compat/ds_sound_tables.c SDK_INCLUDES=-I/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/nitro/include -I/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-silver/sdk/gen -I/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include -I/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/include -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/include/library -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include-mw -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include-pokediamond -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/sub/include -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/sub/lib/include -include /home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/include/assert.h -include /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/hgss_port_math.h -DHGSS_PROFILE_OFF NNS=/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns NNS_INCLUDES=-I/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/include lib -k -j 32
+make: Entering directory '/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/nitro'
+python3 /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/gen/nitro/fx/gen_fx_const.py /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/gen/nitro/fx/fx_const.csv /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-silver/sdk/gen/nitro/fx/fx_const.h
+  CC  platform/3ds.c
+  CC  libpak reader
+  CC  CARD_backup.c
+  CC  CARD_pullOut.c
+  CC  CARD_common.c
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/PAD_pad.h:5,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/card/CARD_pullOut.c:7:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:12:9: warning: 'HW_ITCM_IMAGE' redefined
+   12 | #define HW_ITCM_IMAGE 0x01000000
+      |         ^~~~~~~~~~~~~
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/nitro/hw/ARM9/mmap.h:16,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/mmap.h:10,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/MI_dma.h:19,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/CARD_common.h:7,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/CARD_common.h:33,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/card/CARD_pullOut.c:1:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:151:9: note: this is the location of the previous definition
+  151 | #define HW_ITCM_IMAGE           ((u32)NitroPort_Itcm)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:13:9: warning: 'HW_ITCM' redefined
+   13 | #define HW_ITCM                 0x01FF8000
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:152:9: note: this is the location of the previous definition
+  152 | #define HW_ITCM                 ((u32)NitroPort_Itcm)
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:17:9: warning: 'HW_IOREG' redefined
+   17 | #define HW_IOREG                0x04000000
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:145:9: note: this is the location of the previous definition
+  145 | #define HW_IOREG                ((u32)NitroPort_IoReg)
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:69:9: warning: 'HW_BG_PLTT' redefined
+   69 | #define HW_BG_PLTT              0x05000000
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:169:9: note: this is the location of the previous definition
+  169 | #define HW_BG_PLTT              ((u32)NitroPort_Pltt)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:70:9: warning: 'HW_BG_PLTT_END' redefined
+   70 | #define HW_BG_PLTT_END          0x05000200
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:170:9: note: this is the location of the previous definition
+  170 | #define HW_BG_PLTT_END          (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:72:9: warning: 'HW_OBJ_PLTT' redefined
+   72 | #define HW_OBJ_PLTT             0x05000200
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:171:9: note: this is the location of the previous definition
+  171 | #define HW_OBJ_PLTT             (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:73:9: warning: 'HW_OBJ_PLTT_END' redefined
+   73 | #define HW_OBJ_PLTT_END         0x05000400
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:172:9: note: this is the location of the previous definition
+  172 | #define HW_OBJ_PLTT_END         (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:78:9: warning: 'HW_DB_BG_PLTT' redefined
+   78 | #define HW_DB_BG_PLTT           0x05000400
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:173:9: note: this is the location of the previous definition
+  173 | #define HW_DB_BG_PLTT           (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:79:9: warning: 'HW_DB_BG_PLTT_END' redefined
+   79 | #define HW_DB_BG_PLTT_END       0x05000600
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:174:9: note: this is the location of the previous definition
+  174 | #define HW_DB_BG_PLTT_END       (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:81:9: warning: 'HW_DB_OBJ_PLTT' redefined
+   81 | #define HW_DB_OBJ_PLTT          0x05000600
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:175:9: note: this is the location of the previous definition
+  175 | #define HW_DB_OBJ_PLTT          (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:82:9: warning: 'HW_DB_OBJ_PLTT_END' redefined
+   82 | #define HW_DB_OBJ_PLTT_END      0x05000800
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:176:9: note: this is the location of the previous definition
+  176 | #define HW_DB_OBJ_PLTT_END      (HW_BG_PLTT + 0x800)
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:87:9: warning: 'HW_LCDC_VRAM' redefined
+   87 | #define HW_LCDC_VRAM            0x6800000
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:196:9: note: this is the location of the previous definition
+  196 | #define HW_LCDC_VRAM            ((u32)NitroPort_LcdcVram)
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:88:9: warning: 'HW_LCDC_VRAM_END' redefined
+   88 | #define HW_LCDC_VRAM_END        0x68a4000
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:197:9: note: this is the location of the previous definition
+  197 | #define HW_LCDC_VRAM_END        (HW_LCDC_VRAM + 0xA4000)
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:90:9: warning: 'HW_OAM' redefined
+   90 | #define HW_OAM                  0x07000000
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:203:9: note: this is the location of the previous definition
+  203 | #define HW_OAM                  ((u32)NitroPort_Oam)
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:91:9: warning: 'HW_OAM_END' redefined
+   91 | #define HW_OAM_END              0x07000400
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:204:9: note: this is the location of the previous definition
+  204 | #define HW_OAM_END              (HW_OAM + 0x400)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:93:9: warning: 'HW_DB_OAM' redefined
+   93 | #define HW_DB_OAM               0x07000400
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:205:9: note: this is the location of the previous definition
+  205 | #define HW_DB_OAM               (HW_OAM + 0x400)
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:94:9: warning: 'HW_DB_OAM_END' redefined
+   94 | #define HW_DB_OAM_END           0x07000800
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:206:9: note: this is the location of the previous definition
+  206 | #define HW_DB_OAM_END           (HW_OAM + 0x800)
+      |         ^~~~~~~~~~~~~
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/card/CARD_common.c:10:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:12:9: warning: 'HW_ITCM_IMAGE' redefined
+   12 | #define HW_ITCM_IMAGE 0x01000000
+      |         ^~~~~~~~~~~~~
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/nitro/hw/ARM9/mmap.h:16,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/mmap.h:10,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/MI_dma.h:19,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/CARD_common.h:7,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/CARD_common.h:33,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/card/CARD_common.c:1:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:151:9: note: this is the location of the previous definition
+  151 | #define HW_ITCM_IMAGE           ((u32)NitroPort_Itcm)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:13:9: warning: 'HW_ITCM' redefined
+   13 | #define HW_ITCM                 0x01FF8000
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:152:9: note: this is the location of the previous definition
+  152 | #define HW_ITCM                 ((u32)NitroPort_Itcm)
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:17:9: warning: 'HW_IOREG' redefined
+   17 | #define HW_IOREG                0x04000000
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:145:9: note: this is the location of the previous definition
+  145 | #define HW_IOREG                ((u32)NitroPort_IoReg)
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:69:9: warning: 'HW_BG_PLTT' redefined
+   69 | #define HW_BG_PLTT              0x05000000
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:169:9: note: this is the location of the previous definition
+  169 | #define HW_BG_PLTT              ((u32)NitroPort_Pltt)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:70:9: warning: 'HW_BG_PLTT_END' redefined
+   70 | #define HW_BG_PLTT_END          0x05000200
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:170:9: note: this is the location of the previous definition
+  170 | #define HW_BG_PLTT_END          (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:72:9: warning: 'HW_OBJ_PLTT' redefined
+   72 | #define HW_OBJ_PLTT             0x05000200
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:171:9: note: this is the location of the previous definition
+  171 | #define HW_OBJ_PLTT             (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:73:9: warning: 'HW_OBJ_PLTT_END' redefined
+   73 | #define HW_OBJ_PLTT_END         0x05000400
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:172:9: note: this is the location of the previous definition
+  172 | #define HW_OBJ_PLTT_END         (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:78:9: warning: 'HW_DB_BG_PLTT' redefined
+   78 | #define HW_DB_BG_PLTT           0x05000400
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:173:9: note: this is the location of the previous definition
+  173 | #define HW_DB_BG_PLTT           (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:79:9: warning: 'HW_DB_BG_PLTT_END' redefined
+   79 | #define HW_DB_BG_PLTT_END       0x05000600
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:174:9: note: this is the location of the previous definition
+  174 | #define HW_DB_BG_PLTT_END       (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:81:9: warning: 'HW_DB_OBJ_PLTT' redefined
+   81 | #define HW_DB_OBJ_PLTT          0x05000600
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:175:9: note: this is the location of the previous definition
+  175 | #define HW_DB_OBJ_PLTT          (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:82:9: warning: 'HW_DB_OBJ_PLTT_END' redefined
+   82 | #define HW_DB_OBJ_PLTT_END      0x05000800
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:176:9: note: this is the location of the previous definition
+  176 | #define HW_DB_OBJ_PLTT_END      (HW_BG_PLTT + 0x800)
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:87:9: warning: 'HW_LCDC_VRAM' redefined
+   87 | #define HW_LCDC_VRAM            0x6800000
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:196:9: note: this is the location of the previous definition
+  196 | #define HW_LCDC_VRAM            ((u32)NitroPort_LcdcVram)
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:88:9: warning: 'HW_LCDC_VRAM_END' redefined
+   88 | #define HW_LCDC_VRAM_END        0x68a4000
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:197:9: note: this is the location of the previous definition
+  197 | #define HW_LCDC_VRAM_END        (HW_LCDC_VRAM + 0xA4000)
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:90:9: warning: 'HW_OAM' redefined
+   90 | #define HW_OAM                  0x07000000
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:203:9: note: this is the location of the previous definition
+  203 | #define HW_OAM                  ((u32)NitroPort_Oam)
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:91:9: warning: 'HW_OAM_END' redefined
+   91 | #define HW_OAM_END              0x07000400
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:204:9: note: this is the location of the previous definition
+  204 | #define HW_OAM_END              (HW_OAM + 0x400)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:93:9: warning: 'HW_DB_OAM' redefined
+   93 | #define HW_DB_OAM               0x07000400
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:205:9: note: this is the location of the previous definition
+  205 | #define HW_DB_OAM               (HW_OAM + 0x400)
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:94:9: warning: 'HW_DB_OAM_END' redefined
+   94 | #define HW_DB_OAM_END           0x07000800
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:206:9: note: this is the location of the previous definition
+  206 | #define HW_DB_OAM_END           (HW_OAM + 0x800)
+      |         ^~~~~~~~~~~~~
+  CC  CARD_request.c
+  CC  card_cache_flush_threshold.c
+  CC  CARD_rom.c
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/CARD_rom.h:9,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/card/CARD_rom.c:3:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:12:9: warning: 'HW_ITCM_IMAGE' redefined
+   12 | #define HW_ITCM_IMAGE 0x01000000
+      |         ^~~~~~~~~~~~~
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/nitro/hw/ARM9/mmap.h:16,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/mmap.h:10,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/MI_dma.h:19,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/CARD_rom.h:6:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:151:9: note: this is the location of the previous definition
+  151 | #define HW_ITCM_IMAGE           ((u32)NitroPort_Itcm)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:13:9: warning: 'HW_ITCM' redefined
+   13 | #define HW_ITCM                 0x01FF8000
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:152:9: note: this is the location of the previous definition
+  152 | #define HW_ITCM                 ((u32)NitroPort_Itcm)
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:17:9: warning: 'HW_IOREG' redefined
+   17 | #define HW_IOREG                0x04000000
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:145:9: note: this is the location of the previous definition
+  145 | #define HW_IOREG                ((u32)NitroPort_IoReg)
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:69:9: warning: 'HW_BG_PLTT' redefined
+   69 | #define HW_BG_PLTT              0x05000000
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:169:9: note: this is the location of the previous definition
+  169 | #define HW_BG_PLTT              ((u32)NitroPort_Pltt)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:70:9: warning: 'HW_BG_PLTT_END' redefined
+   70 | #define HW_BG_PLTT_END          0x05000200
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:170:9: note: this is the location of the previous definition
+  170 | #define HW_BG_PLTT_END          (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:72:9: warning: 'HW_OBJ_PLTT' redefined
+   72 | #define HW_OBJ_PLTT             0x05000200
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:171:9: note: this is the location of the previous definition
+  171 | #define HW_OBJ_PLTT             (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:73:9: warning: 'HW_OBJ_PLTT_END' redefined
+   73 | #define HW_OBJ_PLTT_END         0x05000400
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:172:9: note: this is the location of the previous definition
+  172 | #define HW_OBJ_PLTT_END         (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:78:9: warning: 'HW_DB_BG_PLTT' redefined
+   78 | #define HW_DB_BG_PLTT           0x05000400
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:173:9: note: this is the location of the previous definition
+  173 | #define HW_DB_BG_PLTT           (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:79:9: warning: 'HW_DB_BG_PLTT_END' redefined
+   79 | #define HW_DB_BG_PLTT_END       0x05000600
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:174:9: note: this is the location of the previous definition
+  174 | #define HW_DB_BG_PLTT_END       (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:81:9: warning: 'HW_DB_OBJ_PLTT' redefined
+   81 | #define HW_DB_OBJ_PLTT          0x05000600
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:175:9: note: this is the location of the previous definition
+  175 | #define HW_DB_OBJ_PLTT          (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:82:9: warning: 'HW_DB_OBJ_PLTT_END' redefined
+   82 | #define HW_DB_OBJ_PLTT_END      0x05000800
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:176:9: note: this is the location of the previous definition
+  176 | #define HW_DB_OBJ_PLTT_END      (HW_BG_PLTT + 0x800)
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:87:9: warning: 'HW_LCDC_VRAM' redefined
+   87 | #define HW_LCDC_VRAM            0x6800000
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:196:9: note: this is the location of the previous definition
+  196 | #define HW_LCDC_VRAM            ((u32)NitroPort_LcdcVram)
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:88:9: warning: 'HW_LCDC_VRAM_END' redefined
+   88 | #define HW_LCDC_VRAM_END        0x68a4000
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:197:9: note: this is the location of the previous definition
+  197 | #define HW_LCDC_VRAM_END        (HW_LCDC_VRAM + 0xA4000)
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:90:9: warning: 'HW_OAM' redefined
+   90 | #define HW_OAM                  0x07000000
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:203:9: note: this is the location of the previous definition
+  203 | #define HW_OAM                  ((u32)NitroPort_Oam)
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:91:9: warning: 'HW_OAM_END' redefined
+   91 | #define HW_OAM_END              0x07000400
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:204:9: note: this is the location of the previous definition
+  204 | #define HW_OAM_END              (HW_OAM + 0x400)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:93:9: warning: 'HW_DB_OAM' redefined
+   93 | #define HW_DB_OAM               0x07000400
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:205:9: note: this is the location of the previous definition
+  205 | #define HW_DB_OAM               (HW_OAM + 0x400)
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:94:9: warning: 'HW_DB_OAM_END' redefined
+   94 | #define HW_DB_OAM_END           0x07000800
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:206:9: note: this is the location of the previous definition
+  206 | #define HW_DB_OAM_END           (HW_OAM + 0x800)
+      |         ^~~~~~~~~~~~~
+  CC  card_identify_backup.c
+  CC  card_request_stream_command.c
+  CC  card_read_card.c
+  CC  card_spi_wait.c
+  CC  card_spi_wait_cycles.c
+  CC  card_spi_wait_init.c
+  CC  card_terminate_pulled_out.c
+  CC  CP_context.c
+  CC  card_try_read_dma.c
+  CC  FS_command.c
+  CC  FS_archive_suffix.c
+  CC  FS_archive_prefix.c
+  CC  FS_overlay.c
+  CC  FS_file.c
+  CC  FS_command_default.c
+  CC  FS_rom.c
+  CC  fx.c
+  CC  fs_send_command.c
+  CC  fx_atanidx.c
+  CC  fx_cp.c
+  CC  fx_mtx33_identity.c
+  CC  fx_mtx22.c
+  CC  fx_mtx33_inverse_concat.c
+  CC  fx_mtx33_scale_rot_x.c
+  CC  fx_mtx33_rot_yz.c
+  CC  fx_mtx43_identity.c
+  CC  fx_mtx43_inverse_concat.c
+  CC  fx_mtx43_rot.c
+  CC  fx_mtx43_scale.c
+  CC  fx_mtx43_scale_apply.c
+  CC  fx_mtx43_trans_apply.c
+  CC  fx_mtx44_ortho.c
+  CC  fx_mtx44_identity.c
+  CC  fx_mtx44_concat.c
+  CC  fx_mtx44_perspective.c
+  CC  fx_mtx44_trans_apply.c
+  CC  fx_vec.c
+  CC  fx_trig_internal.c
+  CC  fx_vec_mult_add.c
+  CC  fx_mtx44_rot.c
+  CC  fx_trig.c
+  CC  g2.c
+  CC  g3.c
+  CC  fx_vec_normalize.c
+  CC  g3_util.c
+  CC  g3b.c
+  CC  g3imm.c
+  CC  g3x.c
+  CC  g3x_nop_clear_fifo.c
+  CC  gx.c
+  CC  gx_bgcnt.c
+  CC  gx_load2d.c
+  CC  gx_load3d.c
+  CC  gx_vramcnt.c
+  CC  gxasm.c
+  CC  gxstate.c
+  CC  MATH_dgt.c
+  CC  MATH_crc.c
+  CC  math_qsort.c
+  CC  MATH_pop.c
+  CC  mi_dma_card.c
+  CC  mi_compress.c
+  CC  os_message.c
+  CC  os_irqTable.c
+  CC  os_irqHandler.c
+  CC  os_interrupt.c
+  CC  os_init_system.c
+  CC  os_init.c
+  CC  mi_compress_search.c
+  CC  os_entropy.c
+  CC  os_emulator.c
+  CC  os_context.c
+  CC  os_arena.c
+  CC  os_alloc.c
+  CC  os_alarm_irq_handler.c
+  CC  os_alarm_after_handler.c
+  CC  mic.c
+  CC  os_alarm_before_handler.c
+  CC  mi_wram.c
+  CC  mi_dma_hblank.c
+  CC  mi_dma_gxcommand.c
+  CC  mi_dma.c
+  CC  mi_init.c
+  CC  os_mutex.c
+  CC  os_printf.c
+  CC  os_ownerInfo.c
+  CC  os_spinLock.c
+  CC  os_spin_lock_card.c
+  CC  os_spin_lock_id.c
+  CC  SND_alarm.c
+  CC  rtc_internal.c
+  CC  SND_bank.c
+  CC  rtc_convert_pre.c
+  CC  rtc_convert_post.c
+  CC  rtc_convert_date_time_to_second.c
+  CC  pm.c
+  CC  os_wait_vblank.c
+  CC  rtc_api.c
+  CC  os_wait_irq.c
+  CC  os_vram_exclusive_clz.c
+  CC  os_vramExclusive.c
+  CC  os_valarm.c
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/spi.h:8,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro.h:18,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/pm.c:4:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/nitro/spi/ARM9/pm.h:63:9: warning: 'PM_GetBackLight' redefined
+   63 | #define PM_GetBackLight HGSSCompat_PM_GetBackLight
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/pm.c:3:9: note: this is the location of the previous definition
+    3 | #define PM_GetBackLight PM_GetBackLight_HeaderDeclaration
+      |         ^~~~~~~~~~~~~~~
+  CC  os_spin_lock_cartridge.c
+  CC  os_spin_lock_word.c
+  CC  os_system.c
+  CC  os_timer.c
+  CC  os_tick.c
+  CC  os_thread_available.c
+  CC  os_thread.c
+  CC  os_terminate_proc.c
+  CC  SND_command.c
+  CC  SND_main.c
+  CC  SND_util.c
+  CC  SND_work.c
+  CC  snd_destroy_bank.c
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/os/os_thread.c: In function 'OS_DisableScheduler':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/os/os_thread.c:598:12: warning: 'count' may be used uninitialized [-Wmaybe-uninitialized]
+  598 |     return count;
+      |            ^~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/os/os_thread.c:593:9: note: 'count' was declared here
+  593 |     u32 count;
+      |         ^~~~~
+  CC  std_sprintf.c
+  CC  std_sprintf_writer.c
+  CC  snd_read_track_info.c
+  CC  snd_read_channel_info.c
+  CC  snd_read_driver_info.c
+  CC  snd_player_local_variable.c
+  CC  snd_player_tempo_ratio.c
+  CC  snd_next_inst_data.c
+  CC  snd_master_volume.c
+  CC  snd_flush_command.c
+  CC  snd_interface.c
+  CC  std_string.c
+  CC  tp.c
+  CC  wm_core.c
+  CC  wm_data_sharing.c
+  CC  wm_settings.c
+  CC  wm_requests.c
+  CC  sdk_data.c
+  CC  sdk_standins.c
+  CC  nns_data.c
+  CC  nns_tables_gfd.c
+  CC  ctrdg.c
+  CC  dgt.c
+  CC  mi_uncompress.c
+  CC  mi_memory.c
+  CC  mi_swap.c
+  CC  port_boot.c
+  CC  port_arm7.c
+  CC  port_card.c
+  CC  port_cp.c
+  CC  port_dma.c
+  CC  port_fs.c
+  CC  port_gx.c
+  CC  port_ioreg.c
+  CC  port_log.c
+  CC  port_misc.c
+  CC  port_memory.c
+  CC  port_overlay.c
+  CC  port_os.c
+  CC  port_pm.c
+  CC  port_rtc.c
+  CC  port_snd.c
+  CC  port_save_import.c
+  CC  port_sound_chip.c
+  CC  port_thread.c
+  CC  port_timer.c
+  CC  pxi.c
+  CC  port_tp.c
+  CC  svc.c
+  ARM7 CC sound_main.c
+  ARM7 CC sound_alarm.c
+  ARM7 CC sound_seq_player.c
+  ARM7 CC sound_ex_channel.c
+  ARM7 CC sound_command.c
+  ARM7 CC sound_bank.c
+  ARM7 CC sound_channel.c
+  ARM7 CC sound_shared_work.c
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss_sub/sound_seq_player.c: In function 'ReadArg':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss_sub/sound_seq_player.c:431:12: warning: 'result' may be used uninitialized [-Wmaybe-uninitialized]
+  431 |     return result;
+      |            ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss_sub/sound_seq_player.c:393:9: note: 'result' was declared here
+  393 |     int result;
+      |         ^~~~~~
+  ARM7 CC sound_driver.c
+  ARM7 CC snd_arm7_data.c
+  ARM7 CC ds_sound_tables.c
+built ../../../../cleanup-base-silver/sdk/libnitro.a
+make: Leaving directory '/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/nitro'
++ /usr/bin/python /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/tools/game/hgss_nitro.py make --target 3ds --out /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-silver/sdk --subproject nitrosystem lib -k -j 32
++ make -C /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/nitrosystem TARGET=3ds DEVKITPRO=/opt/devkitpro DEVKITARM=/opt/devkitpro/devkitARM OUT=../../../../cleanup-base-silver/sdk GEN=/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-silver/sdk/gen SDK=/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk SDK_SRCS=hgss/card/CARD_backup.c hgss/card/CARD_common.c hgss/card/CARD_pullOut.c hgss/card/CARD_request.c hgss/card/CARD_rom.c hgss/card/card_cache_flush_threshold.c hgss/card/card_identify_backup.c hgss/card/card_read_card.c hgss/card/card_request_stream_command.c hgss/card/card_spi_wait.c hgss/card/card_spi_wait_cycles.c hgss/card/card_spi_wait_init.c hgss/card/card_terminate_pulled_out.c hgss/card/card_try_read_dma.c hgss/cp/CP_context.c hgss/fs/FS_archive_prefix.c hgss/fs/FS_archive_suffix.c hgss/fs/FS_command.c hgss/fs/FS_command_default.c hgss/fs/FS_file.c hgss/fs/FS_overlay.c hgss/fs/FS_rom.c hgss/fs/fs_send_command.c hgss/fx/fx.c hgss/fx/fx_atanidx.c hgss/fx/fx_cp.c hgss/fx/fx_mtx22.c hgss/fx/fx_mtx33_identity.c hgss/fx/fx_mtx33_inverse_concat.c hgss/fx/fx_mtx33_rot_yz.c hgss/fx/fx_mtx33_scale_rot_x.c hgss/fx/fx_mtx43_identity.c hgss/fx/fx_mtx43_inverse_concat.c hgss/fx/fx_mtx43_rot.c hgss/fx/fx_mtx43_scale.c hgss/fx/fx_mtx43_scale_apply.c hgss/fx/fx_mtx43_trans_apply.c hgss/fx/fx_mtx44_concat.c hgss/fx/fx_mtx44_identity.c hgss/fx/fx_mtx44_ortho.c hgss/fx/fx_mtx44_perspective.c hgss/fx/fx_mtx44_rot.c hgss/fx/fx_mtx44_trans_apply.c hgss/fx/fx_trig.c hgss/fx/fx_trig_internal.c hgss/fx/fx_vec.c hgss/fx/fx_vec_mult_add.c hgss/fx/fx_vec_normalize.c hgss/gx/g2.c hgss/gx/g3.c hgss/gx/g3_util.c hgss/gx/g3b.c hgss/gx/g3imm.c hgss/gx/g3x.c hgss/gx/g3x_nop_clear_fifo.c hgss/gx/gx.c hgss/gx/gx_bgcnt.c hgss/gx/gx_load2d.c hgss/gx/gx_load3d.c hgss/gx/gx_vramcnt.c hgss/gx/gxasm.c hgss/gx/gxstate.c hgss/math/MATH_crc.c hgss/math/MATH_dgt.c hgss/math/MATH_pop.c hgss/math/math_qsort.c hgss/mi/mi_compress.c hgss/mi/mi_compress_search.c hgss/mi/mi_dma.c hgss/mi/mi_dma_card.c hgss/mi/mi_dma_gxcommand.c hgss/mi/mi_dma_hblank.c hgss/mi/mi_init.c hgss/mi/mi_wram.c hgss/mic.c hgss/os/os_alarm_after_handler.c hgss/os/os_alarm_before_handler.c hgss/os/os_alarm_irq_handler.c hgss/os/os_alloc.c hgss/os/os_arena.c hgss/os/os_context.c hgss/os/os_emulator.c hgss/os/os_entropy.c hgss/os/os_init.c hgss/os/os_init_system.c hgss/os/os_interrupt.c hgss/os/os_irqHandler.c hgss/os/os_irqTable.c hgss/os/os_message.c hgss/os/os_mutex.c hgss/os/os_ownerInfo.c hgss/os/os_printf.c hgss/os/os_spinLock.c hgss/os/os_spin_lock_card.c hgss/os/os_spin_lock_cartridge.c hgss/os/os_spin_lock_id.c hgss/os/os_spin_lock_word.c hgss/os/os_system.c hgss/os/os_terminate_proc.c hgss/os/os_thread.c hgss/os/os_thread_available.c hgss/os/os_tick.c hgss/os/os_timer.c hgss/os/os_valarm.c hgss/os/os_vramExclusive.c hgss/os/os_vram_exclusive_clz.c hgss/os/os_wait_irq.c hgss/os/os_wait_vblank.c hgss/pm.c hgss/rtc/rtc_api.c hgss/rtc/rtc_convert_date_time_to_second.c hgss/rtc/rtc_convert_post.c hgss/rtc/rtc_convert_pre.c hgss/rtc/rtc_internal.c hgss/snd/SND_alarm.c hgss/snd/SND_bank.c hgss/snd/SND_command.c hgss/snd/SND_main.c hgss/snd/SND_util.c hgss/snd/SND_work.c hgss/snd/snd_destroy_bank.c hgss/snd/snd_flush_command.c hgss/snd/snd_interface.c hgss/snd/snd_master_volume.c hgss/snd/snd_next_inst_data.c hgss/snd/snd_player_local_variable.c hgss/snd/snd_player_tempo_ratio.c hgss/snd/snd_read_channel_info.c hgss/snd/snd_read_driver_info.c hgss/snd/snd_read_track_info.c hgss/std_sprintf.c hgss/std_sprintf_writer.c hgss/std_string.c hgss/tp.c hgss/wm_core.c hgss/wm_data_sharing.c hgss/wm_requests.c hgss/wm_settings.c hgss_compat/sdk_data.c hgss_compat/sdk_standins.c hgss_compat/nns_data.c hgss_compat/nns_tables_gfd.c ARM7_SOUND_SRCS=hgss_sub/sound_main.c hgss_sub/sound_command.c hgss_sub/sound_ex_channel.c hgss_sub/sound_seq_player.c hgss_sub/sound_alarm.c hgss_sub/sound_bank.c hgss_sub/sound_channel.c hgss_sub/sound_driver.c hgss_sub/sound_shared_work.c hgss_compat/snd_arm7_data.c hgss_compat/ds_sound_tables.c SDK_INCLUDES=-I/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/nitro/include -I/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-silver/sdk/gen -I/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include -I/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/include -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/include/library -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include-mw -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include-pokediamond -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/sub/include -I/home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/sub/lib/include -include /home/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/include/assert.h -include /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/hgss_port_math.h -DHGSS_PROFILE_OFF NNS=/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns NNS_INCLUDES=-I/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/include NNS_SRCS=hgss_nns/fnd_allocator.c hgss_nns/fnd_expheap.c hgss_nns/fnd_frameheap.c hgss_nns/fnd_heapcommon.c hgss_nns/fnd_list.c hgss_nns/fnd_unitheap.c hgss_nns/g2d_animation.c hgss_nns/g2d_canvas_arrange.c hgss_nns/g2d_cell_animation.c hgss_nns/g2d_cell_transfer_manager.c hgss_nns/g2d_char_canvas.c hgss_nns/g2d_char_canvas_letter.c hgss_nns/g2d_char_canvas_util.c hgss_nns/g2d_char_util.c hgss_nns/g2d_font.c hgss_nns/g2d_font_load.c hgss_nns/g2d_image.c hgss_nns/g2d_load.c hgss_nns/g2d_mc_animation.c hgss_nns/g2d_node.c hgss_nns/g2d_oam.c hgss_nns/g2d_oam_soft_emu.c hgss_nns/g2d_palette_table.c hgss_nns/g2d_renderer.c hgss_nns/g2d_renderer_core.c hgss_nns/g2d_renderer_identity.c hgss_nns/g2d_renderer_mtx_cache.c hgss_nns/g2d_renderer_mtx_stack.c hgss_nns/g2d_renderer_transform.c hgss_nns/g2d_softsprite.c hgss_nns/g2d_srt_control.c hgss_nns/g2d_text_canvas.c hgss_nns/g3d_1mat1shp.c hgss_nns/g3d_anm_bca.c hgss_nns/g3d_anm_bca_data.c hgss_nns/g3d_anm_bca_scale.c hgss_nns/g3d_anm_bca_trans.c hgss_nns/g3d_anm_bca_trans_ex.c hgss_nns/g3d_anm_blend.c hgss_nns/g3d_anm_bma.c hgss_nns/g3d_anm_bta.c hgss_nns/g3d_anm_bta_sincos.c hgss_nns/g3d_anm_bta_vector.c hgss_nns/g3d_anm_btp.c hgss_nns/g3d_anm_btp_init.c hgss_nns/g3d_anm_bva.c hgss_nns/g3d_cgtool_3dsmax.c hgss_nns/g3d_cgtool_3dsmax_texmtx.c hgss_nns/g3d_cgtool_basic.c hgss_nns/g3d_cgtool_maya_joint.c hgss_nns/g3d_cgtool_maya_tex.c hgss_nns/g3d_cgtool_maya_texmtx.c hgss_nns/g3d_cgtool_maya_texmtx_r.c hgss_nns/g3d_cgtool_maya_texmtx_s.c hgss_nns/g3d_cgtool_si3d.c hgss_nns/g3d_cgtool_xsi.c hgss_nns/g3d_cgtool_xsi_texmtx.c hgss_nns/g3d_cgtool_xsi_texmtx_sr.c hgss_nns/g3d_cgtool_xsi_texmtx_t.c hgss_nns/g3d_draw.c hgss_nns/g3d_gecom.c hgss_nns/g3d_glb.c hgss_nns/g3d_glb_state.c hgss_nns/g3d_kernel.c hgss_nns/g3d_mdl_bind.c hgss_nns/g3d_model.c hgss_nns/g3d_res_struct_accessor.c hgss_nns/g3d_res_struct_accessor_anm.c hgss_nns/g3d_sbc.c hgss_nns/g3d_util.c hgss_nns/gfd_frame_pltt_vram_man.c hgss_nns/gfd_frame_tex_vram_man.c hgss_nns/gfd_linked_list_pltt_vram_man.c hgss_nns/gfd_linked_list_pltt_vram_man_reset.c hgss_nns/gfd_linked_list_tex_vram_man.c hgss_nns/gfd_linked_list_tex_vram_man_reset.c hgss_nns/gfd_linked_list_vram_man.c hgss_nns/gfd_pltt_vram_man.c hgss_nns/gfd_tex_vram_man.c hgss_nns/gfd_vram_transfer_manager.c hgss_nns/snd_arc.c hgss_nns/snd_arc_loader.c hgss_nns/snd_arc_loader_wave.c hgss_nns/snd_arc_player.c hgss_nns/snd_arc_strm.c hgss_nns/snd_capture.c hgss_nns/snd_fader.c hgss_nns/snd_heap.c hgss_nns/snd_player.c hgss_nns/snd_resource_mgr.c hgss_nns/snd_seqarc.c hgss_nns/snd_stream.c hgss_nns/snd_system.c hgss_nns/snd_waveout.c hgss_nns_compat/nns_tables_nns.c NNS_INLINE_SYMS=/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-silver/sdk/gen/nns_inline.syms LIBNITRO=/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-silver/sdk/libnitro.a NM=/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-silver/sdk/nm-for-weaken.sh lib -k -j 32
+make: Entering directory '/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/nitrosystem'
+python3 /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/gen/nitro/fx/gen_fx_const.py /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/gen/nitro/fx/fx_const.csv /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-silver/sdk/gen/nitro/fx/fx_const.h
+  CC  CARD_backup.c
+  CC  CARD_common.c
+  CC  CARD_pullOut.c
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/card/CARD_common.c:10:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:12:9: warning: 'HW_ITCM_IMAGE' redefined
+   12 | #define HW_ITCM_IMAGE 0x01000000
+      |         ^~~~~~~~~~~~~
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/nitro/hw/ARM9/mmap.h:16,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/mmap.h:10,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/MI_dma.h:19,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/CARD_common.h:7,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/CARD_common.h:33,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/card/CARD_common.c:1:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:151:9: note: this is the location of the previous definition
+  151 | #define HW_ITCM_IMAGE           ((u32)NitroPort_Itcm)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:13:9: warning: 'HW_ITCM' redefined
+   13 | #define HW_ITCM                 0x01FF8000
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:152:9: note: this is the location of the previous definition
+  152 | #define HW_ITCM                 ((u32)NitroPort_Itcm)
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:17:9: warning: 'HW_IOREG' redefined
+   17 | #define HW_IOREG                0x04000000
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:145:9: note: this is the location of the previous definition
+  145 | #define HW_IOREG                ((u32)NitroPort_IoReg)
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:69:9: warning: 'HW_BG_PLTT' redefined
+   69 | #define HW_BG_PLTT              0x05000000
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:169:9: note: this is the location of the previous definition
+  169 | #define HW_BG_PLTT              ((u32)NitroPort_Pltt)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:70:9: warning: 'HW_BG_PLTT_END' redefined
+   70 | #define HW_BG_PLTT_END          0x05000200
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:170:9: note: this is the location of the previous definition
+  170 | #define HW_BG_PLTT_END          (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:72:9: warning: 'HW_OBJ_PLTT' redefined
+   72 | #define HW_OBJ_PLTT             0x05000200
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:171:9: note: this is the location of the previous definition
+  171 | #define HW_OBJ_PLTT             (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:73:9: warning: 'HW_OBJ_PLTT_END' redefined
+   73 | #define HW_OBJ_PLTT_END         0x05000400
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:172:9: note: this is the location of the previous definition
+  172 | #define HW_OBJ_PLTT_END         (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:78:9: warning: 'HW_DB_BG_PLTT' redefined
+   78 | #define HW_DB_BG_PLTT           0x05000400
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:173:9: note: this is the location of the previous definition
+  173 | #define HW_DB_BG_PLTT           (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:79:9: warning: 'HW_DB_BG_PLTT_END' redefined
+   79 | #define HW_DB_BG_PLTT_END       0x05000600
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:174:9: note: this is the location of the previous definition
+  174 | #define HW_DB_BG_PLTT_END       (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:81:9: warning: 'HW_DB_OBJ_PLTT' redefined
+   81 | #define HW_DB_OBJ_PLTT          0x05000600
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:175:9: note: this is the location of the previous definition
+  175 | #define HW_DB_OBJ_PLTT          (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:82:9: warning: 'HW_DB_OBJ_PLTT_END' redefined
+   82 | #define HW_DB_OBJ_PLTT_END      0x05000800
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:176:9: note: this is the location of the previous definition
+  176 | #define HW_DB_OBJ_PLTT_END      (HW_BG_PLTT + 0x800)
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:87:9: warning: 'HW_LCDC_VRAM' redefined
+   87 | #define HW_LCDC_VRAM            0x6800000
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:196:9: note: this is the location of the previous definition
+  196 | #define HW_LCDC_VRAM            ((u32)NitroPort_LcdcVram)
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:88:9: warning: 'HW_LCDC_VRAM_END' redefined
+   88 | #define HW_LCDC_VRAM_END        0x68a4000
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:197:9: note: this is the location of the previous definition
+  197 | #define HW_LCDC_VRAM_END        (HW_LCDC_VRAM + 0xA4000)
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:90:9: warning: 'HW_OAM' redefined
+   90 | #define HW_OAM                  0x07000000
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:203:9: note: this is the location of the previous definition
+  203 | #define HW_OAM                  ((u32)NitroPort_Oam)
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:91:9: warning: 'HW_OAM_END' redefined
+   91 | #define HW_OAM_END              0x07000400
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:204:9: note: this is the location of the previous definition
+  204 | #define HW_OAM_END              (HW_OAM + 0x400)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:93:9: warning: 'HW_DB_OAM' redefined
+   93 | #define HW_DB_OAM               0x07000400
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:205:9: note: this is the location of the previous definition
+  205 | #define HW_DB_OAM               (HW_OAM + 0x400)
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:94:9: warning: 'HW_DB_OAM_END' redefined
+   94 | #define HW_DB_OAM_END           0x07000800
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:206:9: note: this is the location of the previous definition
+  206 | #define HW_DB_OAM_END           (HW_OAM + 0x800)
+      |         ^~~~~~~~~~~~~
+  CC  CARD_request.c
+  CC  card_cache_flush_threshold.c
+  CC  CARD_rom.c
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/PAD_pad.h:5,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/card/CARD_pullOut.c:7:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:12:9: warning: 'HW_ITCM_IMAGE' redefined
+   12 | #define HW_ITCM_IMAGE 0x01000000
+      |         ^~~~~~~~~~~~~
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/nitro/hw/ARM9/mmap.h:16,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/mmap.h:10,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/MI_dma.h:19,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/CARD_common.h:7,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/CARD_common.h:33,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/card/CARD_pullOut.c:1:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:151:9: note: this is the location of the previous definition
+  151 | #define HW_ITCM_IMAGE           ((u32)NitroPort_Itcm)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:13:9: warning: 'HW_ITCM' redefined
+   13 | #define HW_ITCM                 0x01FF8000
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:152:9: note: this is the location of the previous definition
+  152 | #define HW_ITCM                 ((u32)NitroPort_Itcm)
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:17:9: warning: 'HW_IOREG' redefined
+   17 | #define HW_IOREG                0x04000000
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:145:9: note: this is the location of the previous definition
+  145 | #define HW_IOREG                ((u32)NitroPort_IoReg)
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:69:9: warning: 'HW_BG_PLTT' redefined
+   69 | #define HW_BG_PLTT              0x05000000
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:169:9: note: this is the location of the previous definition
+  169 | #define HW_BG_PLTT              ((u32)NitroPort_Pltt)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:70:9: warning: 'HW_BG_PLTT_END' redefined
+   70 | #define HW_BG_PLTT_END          0x05000200
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:170:9: note: this is the location of the previous definition
+  170 | #define HW_BG_PLTT_END          (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:72:9: warning: 'HW_OBJ_PLTT' redefined
+   72 | #define HW_OBJ_PLTT             0x05000200
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:171:9: note: this is the location of the previous definition
+  171 | #define HW_OBJ_PLTT             (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:73:9: warning: 'HW_OBJ_PLTT_END' redefined
+   73 | #define HW_OBJ_PLTT_END         0x05000400
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:172:9: note: this is the location of the previous definition
+  172 | #define HW_OBJ_PLTT_END         (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:78:9: warning: 'HW_DB_BG_PLTT' redefined
+   78 | #define HW_DB_BG_PLTT           0x05000400
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:173:9: note: this is the location of the previous definition
+  173 | #define HW_DB_BG_PLTT           (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:79:9: warning: 'HW_DB_BG_PLTT_END' redefined
+   79 | #define HW_DB_BG_PLTT_END       0x05000600
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:174:9: note: this is the location of the previous definition
+  174 | #define HW_DB_BG_PLTT_END       (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:81:9: warning: 'HW_DB_OBJ_PLTT' redefined
+   81 | #define HW_DB_OBJ_PLTT          0x05000600
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:175:9: note: this is the location of the previous definition
+  175 | #define HW_DB_OBJ_PLTT          (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:82:9: warning: 'HW_DB_OBJ_PLTT_END' redefined
+   82 | #define HW_DB_OBJ_PLTT_END      0x05000800
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:176:9: note: this is the location of the previous definition
+  176 | #define HW_DB_OBJ_PLTT_END      (HW_BG_PLTT + 0x800)
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:87:9: warning: 'HW_LCDC_VRAM' redefined
+   87 | #define HW_LCDC_VRAM            0x6800000
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:196:9: note: this is the location of the previous definition
+  196 | #define HW_LCDC_VRAM            ((u32)NitroPort_LcdcVram)
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:88:9: warning: 'HW_LCDC_VRAM_END' redefined
+   88 | #define HW_LCDC_VRAM_END        0x68a4000
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:197:9: note: this is the location of the previous definition
+  197 | #define HW_LCDC_VRAM_END        (HW_LCDC_VRAM + 0xA4000)
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:90:9: warning: 'HW_OAM' redefined
+   90 | #define HW_OAM                  0x07000000
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:203:9: note: this is the location of the previous definition
+  203 | #define HW_OAM                  ((u32)NitroPort_Oam)
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:91:9: warning: 'HW_OAM_END' redefined
+   91 | #define HW_OAM_END              0x07000400
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:204:9: note: this is the location of the previous definition
+  204 | #define HW_OAM_END              (HW_OAM + 0x400)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:93:9: warning: 'HW_DB_OAM' redefined
+   93 | #define HW_DB_OAM               0x07000400
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:205:9: note: this is the location of the previous definition
+  205 | #define HW_DB_OAM               (HW_OAM + 0x400)
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:94:9: warning: 'HW_DB_OAM_END' redefined
+   94 | #define HW_DB_OAM_END           0x07000800
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:206:9: note: this is the location of the previous definition
+  206 | #define HW_DB_OAM_END           (HW_OAM + 0x800)
+      |         ^~~~~~~~~~~~~
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/CARD_rom.h:9,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/card/CARD_rom.c:3:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:12:9: warning: 'HW_ITCM_IMAGE' redefined
+   12 | #define HW_ITCM_IMAGE 0x01000000
+      |         ^~~~~~~~~~~~~
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/nitro/hw/ARM9/mmap.h:16,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/mmap.h:10,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/MI_dma.h:19,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/CARD_rom.h:6:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:151:9: note: this is the location of the previous definition
+  151 | #define HW_ITCM_IMAGE           ((u32)NitroPort_Itcm)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:13:9: warning: 'HW_ITCM' redefined
+   13 | #define HW_ITCM                 0x01FF8000
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:152:9: note: this is the location of the previous definition
+  152 | #define HW_ITCM                 ((u32)NitroPort_Itcm)
+      |         ^~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:17:9: warning: 'HW_IOREG' redefined
+   17 | #define HW_IOREG                0x04000000
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:145:9: note: this is the location of the previous definition
+  145 | #define HW_IOREG                ((u32)NitroPort_IoReg)
+      |         ^~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:69:9: warning: 'HW_BG_PLTT' redefined
+   69 | #define HW_BG_PLTT              0x05000000
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:169:9: note: this is the location of the previous definition
+  169 | #define HW_BG_PLTT              ((u32)NitroPort_Pltt)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:70:9: warning: 'HW_BG_PLTT_END' redefined
+   70 | #define HW_BG_PLTT_END          0x05000200
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:170:9: note: this is the location of the previous definition
+  170 | #define HW_BG_PLTT_END          (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:72:9: warning: 'HW_OBJ_PLTT' redefined
+   72 | #define HW_OBJ_PLTT             0x05000200
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:171:9: note: this is the location of the previous definition
+  171 | #define HW_OBJ_PLTT             (HW_BG_PLTT + 0x200)
+      |         ^~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:73:9: warning: 'HW_OBJ_PLTT_END' redefined
+   73 | #define HW_OBJ_PLTT_END         0x05000400
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:172:9: note: this is the location of the previous definition
+  172 | #define HW_OBJ_PLTT_END         (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:78:9: warning: 'HW_DB_BG_PLTT' redefined
+   78 | #define HW_DB_BG_PLTT           0x05000400
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:173:9: note: this is the location of the previous definition
+  173 | #define HW_DB_BG_PLTT           (HW_BG_PLTT + 0x400)
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:79:9: warning: 'HW_DB_BG_PLTT_END' redefined
+   79 | #define HW_DB_BG_PLTT_END       0x05000600
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:174:9: note: this is the location of the previous definition
+  174 | #define HW_DB_BG_PLTT_END       (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:81:9: warning: 'HW_DB_OBJ_PLTT' redefined
+   81 | #define HW_DB_OBJ_PLTT          0x05000600
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:175:9: note: this is the location of the previous definition
+  175 | #define HW_DB_OBJ_PLTT          (HW_BG_PLTT + 0x600)
+      |         ^~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:82:9: warning: 'HW_DB_OBJ_PLTT_END' redefined
+   82 | #define HW_DB_OBJ_PLTT_END      0x05000800
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:176:9: note: this is the location of the previous definition
+  176 | #define HW_DB_OBJ_PLTT_END      (HW_BG_PLTT + 0x800)
+      |         ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:87:9: warning: 'HW_LCDC_VRAM' redefined
+   87 | #define HW_LCDC_VRAM            0x6800000
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:196:9: note: this is the location of the previous definition
+  196 | #define HW_LCDC_VRAM            ((u32)NitroPort_LcdcVram)
+      |         ^~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:88:9: warning: 'HW_LCDC_VRAM_END' redefined
+   88 | #define HW_LCDC_VRAM_END        0x68a4000
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:197:9: note: this is the location of the previous definition
+  197 | #define HW_LCDC_VRAM_END        (HW_LCDC_VRAM + 0xA4000)
+      |         ^~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:90:9: warning: 'HW_OAM' redefined
+   90 | #define HW_OAM                  0x07000000
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:203:9: note: this is the location of the previous definition
+  203 | #define HW_OAM                  ((u32)NitroPort_Oam)
+      |         ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:91:9: warning: 'HW_OAM_END' redefined
+   91 | #define HW_OAM_END              0x07000400
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:204:9: note: this is the location of the previous definition
+  204 | #define HW_OAM_END              (HW_OAM + 0x400)
+      |         ^~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:93:9: warning: 'HW_DB_OAM' redefined
+   93 | #define HW_DB_OAM               0x07000400
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:205:9: note: this is the location of the previous definition
+  205 | #define HW_DB_OAM               (HW_OAM + 0x400)
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/upstream/lib/NitroSDK/include/mmap.h:94:9: warning: 'HW_DB_OAM_END' redefined
+   94 | #define HW_DB_OAM_END           0x07000800
+      |         ^~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/hw/ARM9/mmap.h:206:9: note: this is the location of the previous definition
+  206 | #define HW_DB_OAM_END           (HW_OAM + 0x800)
+      |         ^~~~~~~~~~~~~
+  CC  card_identify_backup.c
+  CC  card_request_stream_command.c
+  CC  card_read_card.c
+  CC  card_spi_wait_cycles.c
+  CC  card_spi_wait.c
+  CC  card_spi_wait_init.c
+  CC  card_terminate_pulled_out.c
+  CC  FS_archive_suffix.c
+  CC  FS_archive_prefix.c
+  CC  CP_context.c
+  CC  card_try_read_dma.c
+  CC  FS_command.c
+  CC  FS_command_default.c
+  CC  FS_file.c
+  CC  FS_overlay.c
+  CC  FS_rom.c
+  CC  fs_send_command.c
+  CC  fx.c
+  CC  fx_atanidx.c
+  CC  fx_cp.c
+  CC  fx_mtx22.c
+  CC  fx_mtx33_identity.c
+  CC  fx_mtx33_inverse_concat.c
+  CC  fx_mtx33_rot_yz.c
+  CC  fx_mtx33_scale_rot_x.c
+  CC  fx_mtx43_identity.c
+  CC  fx_mtx43_inverse_concat.c
+  CC  fx_mtx43_rot.c
+  CC  fx_mtx43_scale.c
+  CC  fx_mtx43_scale_apply.c
+  CC  fx_mtx43_trans_apply.c
+  CC  fx_mtx44_trans_apply.c
+  CC  fx_mtx44_perspective.c
+  CC  fx_mtx44_ortho.c
+  CC  fx_mtx44_rot.c
+  CC  fx_mtx44_concat.c
+  CC  fx_mtx44_identity.c
+  CC  fx_trig_internal.c
+  CC  fx_vec.c
+  CC  fx_trig.c
+  CC  fx_vec_mult_add.c
+  CC  fx_vec_normalize.c
+  CC  g2.c
+  CC  g3.c
+  CC  g3_util.c
+  CC  g3b.c
+  CC  g3imm.c
+  CC  g3x.c
+  CC  g3x_nop_clear_fifo.c
+  CC  gx.c
+  CC  gx_bgcnt.c
+  CC  gx_load2d.c
+  CC  gx_load3d.c
+  CC  gx_vramcnt.c
+  CC  gxasm.c
+  CC  gxstate.c
+  CC  MATH_crc.c
+  CC  MATH_dgt.c
+  CC  MATH_pop.c
+  CC  math_qsort.c
+  CC  mi_compress_search.c
+  CC  mi_compress.c
+  CC  mi_dma_card.c
+  CC  mi_dma.c
+  CC  mi_dma_gxcommand.c
+  CC  mi_dma_hblank.c
+  CC  mi_wram.c
+  CC  mic.c
+  CC  mi_init.c
+  CC  os_alarm_after_handler.c
+  CC  os_alarm_before_handler.c
+  CC  os_alarm_irq_handler.c
+  CC  os_alloc.c
+  CC  os_arena.c
+  CC  os_context.c
+  CC  os_emulator.c
+  CC  os_entropy.c
+  CC  os_init.c
+  CC  os_init_system.c
+  CC  os_interrupt.c
+  CC  os_irqHandler.c
+  CC  os_irqTable.c
+  CC  os_mutex.c
+  CC  os_message.c
+  CC  os_ownerInfo.c
+  CC  os_printf.c
+  CC  os_spinLock.c
+  CC  os_spin_lock_card.c
+  CC  os_spin_lock_cartridge.c
+  CC  os_spin_lock_word.c
+  CC  os_system.c
+  CC  os_spin_lock_id.c
+  CC  os_terminate_proc.c
+  CC  os_thread_available.c
+  CC  os_thread.c
+  CC  os_tick.c
+  CC  os_valarm.c
+  CC  os_timer.c
+  CC  os_vramExclusive.c
+  CC  rtc_convert_date_time_to_second.c
+  CC  os_vram_exclusive_clz.c
+  CC  rtc_api.c
+  CC  pm.c
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/os/os_thread.c: In function 'OS_DisableScheduler':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/os/os_thread.c:598:12: warning: 'count' may be used uninitialized [-Wmaybe-uninitialized]
+  598 |     return count;
+      |            ^~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/os/os_thread.c:593:9: note: 'count' was declared here
+  593 |     u32 count;
+      |         ^~~~~
+  CC  os_wait_irq.c
+  CC  os_wait_vblank.c
+  CC  rtc_convert_post.c
+  CC  rtc_convert_pre.c
+In file included from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro/spi.h:8,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/include/nitro.h:18,
+                 from C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/pm.c:4:
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/hgss/include/nitro/spi/ARM9/pm.h:63:9: warning: 'PM_GetBackLight' redefined
+   63 | #define PM_GetBackLight HGSSCompat_PM_GetBackLight
+      |         ^~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss/pm.c:3:9: note: this is the location of the previous definition
+    3 | #define PM_GetBackLight PM_GetBackLight_HeaderDeclaration
+      |         ^~~~~~~~~~~~~~~
+  CC  rtc_internal.c
+  CC  SND_alarm.c
+  CC  SND_bank.c
+  CC  SND_main.c
+  CC  SND_command.c
+  CC  SND_util.c
+  CC  snd_destroy_bank.c
+  CC  SND_work.c
+  CC  snd_flush_command.c
+  CC  snd_interface.c
+  CC  snd_next_inst_data.c
+  CC  snd_master_volume.c
+  CC  snd_player_local_variable.c
+  CC  snd_player_tempo_ratio.c
+  CC  snd_read_channel_info.c
+  CC  snd_read_driver_info.c
+  CC  snd_read_track_info.c
+  CC  std_sprintf_writer.c
+  CC  std_sprintf.c
+  CC  std_string.c
+  CC  wm_core.c
+  CC  wm_data_sharing.c
+  CC  tp.c
+  CC  wm_requests.c
+  CC  sdk_data.c
+  CC  wm_settings.c
+  CC  sdk_standins.c
+  CC  nns_tables_gfd.c
+  CC  nns_data.c
+  CC  ctrdg.c
+  CC  dgt.c
+  CC  mi_uncompress.c
+  CC  mi_memory.c
+  CC  mi_swap.c
+  CC  port_arm7.c
+  CC  port_cp.c
+  CC  port_boot.c
+  CC  port_card.c
+  CC  port_fs.c
+  CC  port_dma.c
+  CC  port_ioreg.c
+  CC  port_gx.c
+  CC  port_memory.c
+  CC  port_log.c
+  CC  port_misc.c
+  CC  port_os.c
+  CC  port_overlay.c
+  CC  port_pm.c
+  CC  port_rtc.c
+  CC  port_save_import.c
+  CC  port_sound_chip.c
+  CC  port_snd.c
+  CC  port_thread.c
+  CC  port_timer.c
+  CC  pxi.c
+  CC  svc.c
+  CC  port_tp.c
+  ARM7 CC sound_main.c
+  ARM7 CC sound_command.c
+  ARM7 CC sound_ex_channel.c
+  ARM7 CC sound_seq_player.c
+  ARM7 CC sound_alarm.c
+  ARM7 CC sound_channel.c
+  ARM7 CC sound_driver.c
+  ARM7 CC sound_bank.c
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss_sub/sound_seq_player.c: In function 'ReadArg':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss_sub/sound_seq_player.c:431:12: warning: 'result' may be used uninitialized [-Wmaybe-uninitialized]
+  431 |     return result;
+      |            ^~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-sdk/libraries/hgss_sub/sound_seq_player.c:393:9: note: 'result' was declared here
+  393 |     int result;
+      |         ^~~~~~
+  ARM7 CC sound_shared_work.c
+  ARM7 CC snd_arm7_data.c
+  ARM7 CC ds_sound_tables.c
+built ../../../../cleanup-base-silver/sdk/libnitro.a
+  1 NitroSystem header inline functions
+  CC  fnd_allocator.c
+  CC  fnd_expheap.c
+  CC  fnd_frameheap.c
+  CC  fnd_heapcommon.c
+  CC  fnd_unitheap.c
+  CC  fnd_list.c
+  CC  g2d_animation.c
+  CC  g2d_cell_animation.c
+  CC  g2d_canvas_arrange.c
+  CC  g2d_char_canvas.c
+  CC  g2d_cell_transfer_manager.c
+  CC  g2d_char_canvas_letter.c
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g2d_char_canvas.c: In function 'DrawGlyph1D':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g2d_char_canvas.c:7:58: warning: function called through a non-compatible type
+    7 | #define GetCharIndex1DInts(x, y, w, h, shiftW, shiftH) (((u32(*)(u32, u32, int, int, int, int))GetCharIndex1D)((x), (y), (w), (h), (shiftW), (shiftH)))
+      |                                                         ~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g2d_char_canvas.c:165:33: note: in expansion of macro 'GetCharIndex1DInts'
+  165 |                     int index = GetCharIndex1DInts(cx, cy, w, h, shiftW, shiftH);
+      |                                 ^~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g2d_char_canvas.c: In function 'ClearArea1D':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g2d_char_canvas.c:7:58: warning: function called through a non-compatible type
+    7 | #define GetCharIndex1DInts(x, y, w, h, shiftW, shiftH) (((u32(*)(u32, u32, int, int, int, int))GetCharIndex1D)((x), (y), (w), (h), (shiftW), (shiftH)))
+      |                                                         ~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g2d_char_canvas.c:307:21: note: in expansion of macro 'GetCharIndex1DInts'
+  307 |             index = GetCharIndex1DInts(charX, charY, areaWidth, areaHeight, shiftW, shiftH);
+      |                     ^~~~~~~~~~~~~~~~~~
+  CC  g2d_char_canvas_util.c
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g2d_cell_transfer_manager.c: In function 'NNS_G2dInitCellTransferStateManager':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g2d_cell_transfer_manager.c:48:1: warning: control reaches end of non-void function [-Wreturn-type]
+   48 | }
+      | ^
+  CC  g2d_char_util.c
+  CC  g2d_image.c
+  CC  g2d_font.c
+  CC  g2d_font_load.c
+  CC  g2d_load.c
+  CC  g2d_mc_animation.c
+  CC  g2d_node.c
+  CC  g2d_oam.c
+  CC  g2d_oam_soft_emu.c
+  CC  g2d_renderer.c
+  CC  g2d_palette_table.c
+  CC  g2d_renderer_core.c
+  CC  g2d_renderer_mtx_cache.c
+  CC  g2d_renderer_identity.c
+  CC  g2d_softsprite.c
+  CC  g2d_renderer_transform.c
+  CC  g2d_renderer_mtx_stack.c
+  CC  g2d_srt_control.c
+  CC  g3d_1mat1shp.c
+  CC  g2d_text_canvas.c
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g2d_text_canvas.c: In function 'GetTextRect':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g2d_text_canvas.c:73:59: warning: function called through a non-compatible type
+   73 | #define FontGetTextRectRet(pFont, hSpace, vSpace, pTxt) (((G2dTextRect(*)(const G2dFont *, int, int, const void *))NNSi_G2dFontGetTextRect)((pFont), (hSpace), (vSpace), (pTxt)))
+      |                                                          ~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g2d_text_canvas.c:76:24: note: in expansion of macro 'FontGetTextRectRet'
+   76 |     G2dTextRect rect = FontGetTextRectRet(pTxn->pFont, pTxn->hSpace, pTxn->vSpace, pTxt);
+      |                        ^~~~~~~~~~~~~~~~~~
+  CC  g3d_anm_bca.c
+  CC  g3d_anm_bca_data.c
+  CC  g3d_anm_bca_trans.c
+  CC  g3d_anm_bca_scale.c
+  CC  g3d_anm_bca_trans_ex.c
+  CC  g3d_anm_blend.c
+  CC  g3d_anm_bta_sincos.c
+  CC  g3d_anm_bma.c
+  CC  g3d_anm_bta.c
+  CC  g3d_anm_btp.c
+  CC  g3d_anm_bta_vector.c
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_anm_bma.c: In function 'NNSi_G3dAnmCalcNsBma':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_anm_bma.c:136:26: warning: function called through a non-compatible type
+  136 | #define GET_COLOR(info) ((GetMatColAnmValueFunc)GetMatColAnmValue_)(pMatCAnm, info, frame)
+      |                         ~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_anm_bma.c:153:12: note: in expansion of macro 'GET_COLOR'
+  153 |     col0 = GET_COLOR(pData[0] /* diffuse */);
+      |            ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_anm_bma.c:136:26: warning: function called through a non-compatible type
+  136 | #define GET_COLOR(info) ((GetMatColAnmValueFunc)GetMatColAnmValue_)(pMatCAnm, info, frame)
+      |                         ~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_anm_bma.c:154:12: note: in expansion of macro 'GET_COLOR'
+  154 |     col1 = GET_COLOR(pData[1] /* ambient */);
+      |            ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_anm_bma.c:136:26: warning: function called through a non-compatible type
+  136 | #define GET_COLOR(info) ((GetMatColAnmValueFunc)GetMatColAnmValue_)(pMatCAnm, info, frame)
+      |                         ~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_anm_bma.c:156:12: note: in expansion of macro 'GET_COLOR'
+  156 |     col0 = GET_COLOR(pData[3] /* emission */);
+      |            ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_anm_bma.c:136:26: warning: function called through a non-compatible type
+  136 | #define GET_COLOR(info) ((GetMatColAnmValueFunc)GetMatColAnmValue_)(pMatCAnm, info, frame)
+      |                         ~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_anm_bma.c:157:12: note: in expansion of macro 'GET_COLOR'
+  157 |     col1 = GET_COLOR(pData[2] /* specular */);
+      |            ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_anm_bma.c:137:26: warning: function called through a non-compatible type
+  137 | #define GET_ALPHA(info) ((GetMatColAnmValueFunc)GetMatColAnmuAlphaValue_)(pMatCAnm, info, frame)
+      |                         ~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_anm_bma.c:160:21: note: in expansion of macro 'GET_ALPHA'
+  160 |         u32 alpha = GET_ALPHA(pData[4] /* polygonAlpha */);
+      |                     ^~~~~~~~~
+  CC  g3d_anm_bva.c
+  CC  g3d_cgtool_3dsmax.c
+  CC  g3d_anm_btp_init.c
+  CC  g3d_cgtool_3dsmax_texmtx.c
+  CC  g3d_cgtool_maya_joint.c
+  CC  g3d_cgtool_basic.c
+  CC  g3d_cgtool_maya_tex.c
+  CC  g3d_cgtool_maya_texmtx.c
+  CC  g3d_cgtool_maya_texmtx_r.c
+  CC  g3d_cgtool_maya_texmtx_s.c
+  CC  g3d_cgtool_si3d.c
+  CC  g3d_cgtool_xsi_texmtx.c
+  CC  g3d_cgtool_xsi.c
+  CC  g3d_cgtool_xsi_texmtx_sr.c
+  CC  g3d_cgtool_xsi_texmtx_t.c
+  CC  g3d_draw.c
+  CC  g3d_gecom.c
+  CC  g3d_glb.c
+  CC  g3d_glb_state.c
+  CC  g3d_kernel.c
+  CC  g3d_mdl_bind.c
+  CC  g3d_res_struct_accessor.c
+  CC  g3d_model.c
+  CC  g3d_res_struct_accessor_anm.c
+  CC  g3d_sbc.c
+  CC  g3d_util.c
+  CC  gfd_frame_pltt_vram_man.c
+  CC  gfd_frame_tex_vram_man.c
+  CC  gfd_linked_list_pltt_vram_man.c
+  CC  gfd_linked_list_pltt_vram_man_reset.c
+  CC  gfd_linked_list_tex_vram_man.c
+  CC  gfd_linked_list_tex_vram_man_reset.c
+  CC  gfd_pltt_vram_man.c
+  CC  gfd_linked_list_vram_man.c
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_sbc.c: In function 'NNSi_G3dFuncSbc_NODEMIX':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_sbc.c:833:41: warning: 'pPrevDir' may be used uninitialized [-Wmaybe-uninitialized]
+  833 |     sum.dir._01 += (prevRatio * pPrevDir->_01) >> FX32_SHIFT;
+      |                                 ~~~~~~~~^~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/g3d_sbc.c:743:14: note: 'pPrevDir' was declared here
+  743 |     MtxFx33 *pPrevDir;
+      |              ^~~~~~~~
+  CC  gfd_tex_vram_man.c
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/gfd_linked_list_tex_vram_man_reset.c: In function 'NNS_GfdResetLnkTexVramState':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/gfd_linked_list_tex_vram_man_reset.c:80:62: warning: array subscript 'LnkTexVramManager[0]' is partly outside array bounds of 'LnkVramBlock[0]' [-Warray-bounds=]
+   80 |     u32 rest4x4 = ((LnkTexVramManager *)&gLnkTexVramFreeList)->work.szByteFor4x4;
+      |                                                              ^~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/gfd_linked_list_tex_vram_man_reset.c:27:22: note: object 'gLnkTexVramFreeList' of size 4
+   27 | extern LnkVramBlock *gLnkTexVramFreeList;
+      |                      ^~~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/gfd_linked_list_tex_vram_man_reset.c:81:58: warning: array subscript 'LnkTexVramManager[0]' is partly outside array bounds of 'LnkVramBlock[0]' [-Warray-bounds=]
+   81 |     restNrm = ((LnkTexVramManager *)&gLnkTexVramFreeList)->work.szByte - (rest4x4 + rest4x4 / 2);
+      |                                                          ^~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/gfd_linked_list_tex_vram_man_reset.c:27:22: note: object 'gLnkTexVramFreeList' of size 4
+   27 | extern LnkVramBlock *gLnkTexVramFreeList;
+      |                      ^~~~~~~~~~~~~~~~~~~
+  CC  gfd_vram_transfer_manager.c
+  CC  snd_arc_loader.c
+  CC  snd_arc.c
+  CC  snd_arc_strm.c
+  CC  snd_arc_loader_wave.c
+  CC  snd_arc_player.c
+  CC  snd_heap.c
+  CC  snd_capture.c
+  CC  snd_fader.c
+  CC  snd_resource_mgr.c
+  CC  snd_player.c
+  CC  snd_seqarc.c
+  CC  snd_system.c
+  CC  snd_stream.c
+  CC  snd_waveout.c
+  CC  nns_tables_nns.c
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/snd_waveout.c: In function 'NNS_SndWaveOutStart':
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/snd_waveout.c:45:5: warning: 'loopStart' may be used uninitialized [-Wmaybe-uninitialized]
+   45 |     SND_SetupChannelPcm(handle->chNo, format, data, loopFlag ? SND_CHANNEL_LOOP_REPEAT : SND_CHANNEL_LOOP_1SHOT, loopStart, loopLen, volume, 0, (u32)timer, pan);
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/snd_waveout.c:28:9: note: 'loopStart' was declared here
+   28 |     int loopStart, loopLen;
+      |         ^~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/snd_waveout.c:45:5: warning: 'loopLen' may be used uninitialized [-Wmaybe-uninitialized]
+   45 |     SND_SetupChannelPcm(handle->chNo, format, data, loopFlag ? SND_CHANNEL_LOOP_REPEAT : SND_CHANNEL_LOOP_1SHOT, loopStart, loopLen, volume, 0, (u32)timer, pan);
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/build/hgss-nns/libraries/hgss_nns/snd_waveout.c:28:20: note: 'loopLen' was declared here
+   28 |     int loopStart, loopLen;
+      |                    ^~~~~~~
+built ../../../../cleanup-base-silver/sdk/libnitrosystem.a
+make: Leaving directory '/c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-baseline-tree/src/compat/nitrosystem'
+== overlay table
+  129 overlays (37 with data, 2 with static initializers), 828 objects (85 not in this build): sections grouped per overlay
+== duplicate symbols
+   0 symbols defined in more than one object (0 objects weakened)
+== Wi-Fi stand-ins
+  257 Wi-Fi SDK functions stood in for (online play is not ported)
+== compiling the DS-side runtime (15 files)
+== compiling the 3DS-side runtime (28 files)
+  wideart: 3 pictures -> /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-silver/wideart/wideart.bin (196720 bytes)
+== link -> /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-silver/pokesoulsilver-3ds.elf
+   linked /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-silver/pokesoulsilver-3ds.elf
+   [sound] _0210D750 -> nns_volume_table.c (512 bytes, [128] = 0)
+   packaged /c/Users/terezi/workdir/nintendo-homebrew/kohjoh/build/cleanup-base-silver/pokesoulsilver.3dsx (5954496 bytes)
+   build info: pokesoulsilver.build-info.txt
+   [fresh] newest object gen/overlay_table.o (2026-11-27 10:08:41 UTC), newest header src/storage/paths.h (2026-11-27 09:59:50 UTC)
