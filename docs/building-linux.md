@@ -6,7 +6,10 @@
 
 The source pins are shared across platforms in [`upstream.lock`](../upstream.lock),
 but that alone does not prove the scripts work on Linux. Before calling Linux
-supported, record an actual clean build and the exact tool versions.
+supported, record an actual clean build and the exact tool versions. CI pins
+its devkitARM container to `devkitpro/devkitarm@sha256:116afba8df8453961de2936ffab20dd441edf4d682856c1ec8b0e53d7ed0bbf5`
+(the image from successful build run 45971280335); use that toolchain for a
+local Linux build as well.
 
 ## What a complete guide needs
 
