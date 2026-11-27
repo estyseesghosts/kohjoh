@@ -7,11 +7,13 @@ what was there before), otherwise HEAD (working-tree checks only). CI checks
 out full history so the base SHA is present.
 """
 import argparse
+import io
 import os
 from pathlib import Path
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
@@ -49,14 +51,45 @@ with tempfile.TemporaryDirectory(prefix='kohjoh-test-') as tmp:
     (tmp/'nitro.h').write_text('#include <stdint.h>\ntypedef uint64_t u64; typedef uint32_t u32;\n')
     (tmp/'nitro_port.h').write_text('#include <stddef.h>\n#include <stdint.h>\nvoid NitroPort_Log(const char *, ...);\n')
     shutil.copy(root/'src/compat/nitro/include/nitro_port_gx3d.h',tmp)
+    # A "before" build must use the reference revision's private G3 sources and
+    # headers too; otherwise a rename in a private header breaks the build
+    # instead of a differential check (§17). tarfile reads git archive's bytes
+    # directly, so this works on Windows as well as in the Linux CI container.
+    before_runtime = tmp/'before_tree'/'src'/'runtime'
+    archive = subprocess.check_output(['git','archive',a.reference,'src/runtime'], cwd=root)
+    with tarfile.open(fileobj=io.BytesIO(archive)) as tar:
+        tar.extractall(tmp/'before_tree')
     common=[a.cc,'-O2','-fwrapv','-fno-strict-aliasing','-DKJ_G3_CPU_LIGHTING','-DKJ_G3_NO_CULL','-I',tmp,'-I',root/'src','-I',root/'src/runtime','-I',root/'src/compat/nitro/include',root/'tests/native/field_view_stubs.c',root/'src/runtime/kj_g3_matrix.c',root/'src/runtime/kj_g3_arena.c']
+    common_before=[]
+    i=0
+    while i < len(common):
+        item=common[i]
+        if item == '-I' and common[i+1] == root/'src/runtime':
+            common_before += ['-I',before_runtime,'-I',root/'src']
+            i += 2
+            continue
+        if item == '-I' and common[i+1] == root/'src':
+            i += 2
+            continue
+        if isinstance(item,Path) and item.parent == root/'src/runtime' and item.suffix == '.c':
+            referenced = before_runtime/item.name
+            if referenced.is_file():
+                common_before.append(referenced)
+            i += 1
+            continue
+        common_before.append(item)
+        i += 1
+    dl_source = before_runtime/'kj_g3_dl.c'
+    if dl_source.is_file():
+        common_before.append(dl_source)
     for name,path in [('sound','src/compat/nitro/src/port_sound_chip.c'),('g3','src/runtime/kj_g3.c')]:
         before=tmp/(name+'_before.c')
         before.write_text(run(['git','show',f'{a.reference}:{path}'])+'\n')
         results=[]
         for variant,source in [('before',before),('after',root/path)]:
             exe=tmp/(name+'_'+variant+'.exe')
-            run([*common,'-DHGSS_PROFILE_OFF',f'-DSOURCE="{source.as_posix()}"',root/f'tests/native/{name}_diff.c','-o',exe])
+            flags = common_before if variant == 'before' and name == 'g3' else common
+            run([*flags,'-DHGSS_PROFILE_OFF',f'-DSOURCE="{source.as_posix()}"',root/f'tests/native/{name}_diff.c','-o',exe])
             results.append(run([exe]))
         assert results[0]==results[1], (name,results)
         print(f'PASS {name}: {results[0]}',flush=True)
@@ -73,7 +106,8 @@ with tempfile.TemporaryDirectory(prefix='kohjoh-test-') as tmp:
         hashes=[]
         for variant,source in [('before',tmp/'g3_before.c'),('after',root/'src/runtime/kj_g3.c')]:
             exe=tmp/(fixture+'_'+variant+'.exe')
-            run([*common,'-DHGSS_PROFILE_OFF',f'-DSOURCE="{source.as_posix()}"',root/f'tests/native/{fixture}.c','-o',exe])
+            flags = common_before if variant == 'before' else common
+            run([*flags,'-DHGSS_PROFILE_OFF',f'-DSOURCE="{source.as_posix()}"',root/f'tests/native/{fixture}.c','-o',exe])
             hashes.append(run([exe]))
         if fixture == 'matrix_diff':
             assert hashes[0]==hashes[1], (fixture,hashes)
@@ -81,7 +115,8 @@ with tempfile.TemporaryDirectory(prefix='kohjoh-test-') as tmp:
         if fixture == 'dl_dependencies_test':
             for variant,source in [('before',tmp/'g3_before.c'),('after',root/'src/runtime/kj_g3.c')]:
                 exe=tmp/(fixture+'_uncached_'+variant+'.exe')
-                run([*common,'-DHGSS_PROFILE_OFF','-DKJ_DL_NO_CACHE',f'-DSOURCE="{source.as_posix()}"',root/f'tests/native/{fixture}.c','-o',exe])
+                flags = common_before if variant == 'before' else common
+                run([*flags,'-DHGSS_PROFILE_OFF','-DKJ_DL_NO_CACHE',f'-DSOURCE="{source.as_posix()}"',root/f'tests/native/{fixture}.c','-o',exe])
                 oracle=run([exe])
                 print(f'{fixture} {variant} uncached {oracle}, cached {hashes[0 if variant == "before" else 1]}',flush=True)
                 assert oracle==hashes[1], (fixture,variant,'uncached oracle differs',oracle,hashes[1])
@@ -112,7 +147,8 @@ with tempfile.TemporaryDirectory(prefix='kohjoh-test-') as tmp:
         ('verify', root/'src/runtime/kj_g3.c', ['-DKJ_DL_VERIFY', '-DTEST_COMMAND_PLAN']),
     ]:
         exe=tmp/'dl_plan_test.exe'
-        run([*common,'-DHGSS_PROFILE_OFF',*mode,f'-DSOURCE="{source.as_posix()}"',root/'tests/native/dl_plan_test.c','-o',exe])
+        flags = common_before if variant == 'before' else common
+        run([*flags,'-DHGSS_PROFILE_OFF',*mode,f'-DSOURCE="{source.as_posix()}"',root/'tests/native/dl_plan_test.c','-o',exe])
         value = run([exe])
         if plan_hash is not None:
             assert plan_hash == value, ('lit plan/shading changed output', variant, plan_hash, value)
@@ -127,7 +163,8 @@ with tempfile.TemporaryDirectory(prefix='kohjoh-test-') as tmp:
         ('GPU verify', root/'src/runtime/kj_g3.c', ['-DKJ_DL_VERIFY']),
     ]:
         exe=tmp/'g3_lighting_test.exe'
-        flags = [x for x in common if x != '-DKJ_G3_CPU_LIGHTING']
+        base = common_before if variant == 'original' else common
+        flags = [x for x in base if x != '-DKJ_G3_CPU_LIGHTING']
         run([*flags,'-DHGSS_PROFILE_OFF',*mode,f'-DSOURCE="{source.as_posix()}"',root/'tests/native/g3_lighting_test.c','-o',exe])
         value = run([exe])
         if lighting_hash is not None:
