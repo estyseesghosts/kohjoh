@@ -334,10 +334,11 @@ static void renderer_report_window(const present_frame *f) {
              * the unattributed remainder. A window of zeros is not evidence
              * that nothing ran; check probe_calls and the scene content. */
             char line[160];
-            int n = 0;
-            n += snprintf(line, sizeof(line), "[probe] per game frame:");
-            for (unsigned i = 0; i < KJ_PROBE_SLOTS; ++i) {
-                n += snprintf(line + n, sizeof(line) - n, " %u: %.0f/%luus", i,
+            int n = snprintf(line, sizeof(line), "[probe] per game frame:");
+            /* A full line truncates here rather than overflowing: diagnostics
+             * must never corrupt the stack. */
+            for (unsigned i = 0; i < KJ_PROBE_SLOTS && n > 0 && n < (int)sizeof(line); ++i) {
+                n += snprintf(line + n, sizeof(line) - (size_t)n, " %u: %.0f/%luus", i,
                               dp.probe_ticks[i] * us, (unsigned long)(dp.probe_calls[i] / gf));
             }
             kj_log("%s", line);
