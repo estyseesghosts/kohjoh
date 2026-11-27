@@ -308,3 +308,11 @@ int NitroPort_DebugBattleBackdrop(int *bg, int *terrain)
     s_battle_bg = s_battle_terrain = -1;
     return 1;
 }
+
+int NitroPort_DebugPropVisibility(unsigned propIndex, int x, int y, int z, int boxResult)
+{
+    if (s_debug & KJ_DEBUG_PROPVIS_LOG) {
+        kj_log("[propvis] id=%u x=%d y=%d z=%d box=%d", (unsigned)propIndex, x, y, z, boxResult);
+    }
+    return (s_debug & KJ_DEBUG_PROPVIS_BYPASS) != 0;
+}

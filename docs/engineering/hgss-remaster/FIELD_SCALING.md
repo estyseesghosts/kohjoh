@@ -166,9 +166,16 @@ These are tracked honestly rather than claimed as complete:
   result**: a global bypass also changes game-side object decisions (the
   station sign and the fountain disappear), which is exactly why the spec
   requires a narrowly scoped, call-site-specific render-visibility bypass.
-  The correct next step is to log stable prop identifiers at each game-facing
-  `GF3d_ModelBoxTest()` call site rather than to draw conclusions from variant
-  C/D. Manual 1x play in the latest build showed no pop-in.
+  To resolve that confound, patch 2011 adds a narrowly scoped hook at the
+  `MapPropManager_DrawWithOffset()` call site only (`SDK_PORT_3DS`), carrying a
+  stable prop-slot id and world translation. With `debug: 0x2000` only those
+  render-visibility rejections are bypassed; with `debug: 0x4000` every
+  decision is logged (for example `id=15 x=5992 y=16 z=6112 box=0`). Re-running
+  the five walking frames with the narrow bypass gives **0 / 384,000**
+  differing bytes at every frame, so producer-side map-prop rejection is not
+  the source of Goldenrod pop-in either. Manual 1x play in the latest build
+  showed no pop-in; game-facing queries outside this call site remain
+  untouched.
 - **Second-location regression**: a Cianwood save was generated with
   `hgss-save location set` from the verified safe-spawn registry and staged in
   both LOTUS sessions. Same-frame captures at frame 4200 again give

@@ -21,6 +21,13 @@ int NitroPort_DebugBattle(unsigned *trainer1, unsigned *trainer2);
  * and 5 a cave, 1 and 7 water), with them. Otherwise returns 0. */
 int NitroPort_DebugBattleBackdrop(int *bg, int *terrain);
 
+/* Called once per active map prop's render-visibility BOX_TEST. Returns
+ * nonzero to bypass that one rejection (development-only, script.txt
+ * `debug: 0x2000`). With `debug: 0x4000` every decision is logged with a
+ * stable prop-slot identifier and its world translation, so a pop-in can be
+ * attributed to producer-side rejection rather than renderer culling. */
+int NitroPort_DebugPropVisibility(unsigned propIndex, int x, int y, int z, int boxResult);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,0 +1,53 @@
+From 242b4fc1e42a69b0ab04ffab662f2d7be5ec55f7 Mon Sep 17 00:00:00 2001
+From: terezi <jules@foxtails.me>
+Date: Thu, 26 Nov 2026 22:22:15 -0500
+Subject: [PATCH] field: expose map-prop render visibility decisions to the 3DS
+ port (SDK_PORT_3DS)
+
+---
+ src/field/map_prop_manager.c | 22 ++++++++++++++++++++--
+ 1 file changed, 20 insertions(+), 2 deletions(-)
+
+diff --git a/src/field/map_prop_manager.c b/src/field/map_prop_manager.c
+index 007a340..5cdda25 100644
+--- a/src/field/map_prop_manager.c
++++ b/src/field/map_prop_manager.c
+@@ -10,6 +10,10 @@
+ #include "geometry_math.h"
+ #include "safari_zone_encounters.h"
+ 
++#ifdef SDK_PORT_3DS
++#include <nitro_port_debug.h>
++#endif
++
+ typedef struct MapPropArcData {
+     int buildModel;
+     VecFx32 translation;
+@@ -195,8 +199,22 @@ void MapPropManager_DrawWithOffset(const VecFx32 *position, AreaDataManager *are
+         translation = mapProp->translation;
+         translation.x += position->x;
+         translation.z += position->z;
+-        if (!GF3d_ModelBoxTest(mapProp->render->model, &translation, &rotation, &mapProp->scale)) {
+-            continue;
++        {
++            const int box_result = GF3d_ModelBoxTest(mapProp->render->model, &translation,
++                                                      &rotation, &mapProp->scale);
++#ifdef SDK_PORT_3DS
++            /* Render-visibility decisions only: stable prop slot index and
++             * world translation let the port attribute a pop-in to producer
++             * rejection instead of renderer culling. Normal play unchanged. */
++            const int forced = NitroPort_DebugPropVisibility((unsigned)i, translation.x >> 12,
++                                                             translation.y >> 12,
++                                                             translation.z >> 12, box_result);
++#else
++            const int forced = 0;
++#endif
++            if (!box_result && !forced) {
++                continue;
++            }
+         }
+         BuildModelShapes *buildModelShapes = AreaDataManager_GetBuildModelShapes(areaDataManager);
+         if (applyAttributes == TRUE) {
+-- 
+2.49.0
+
