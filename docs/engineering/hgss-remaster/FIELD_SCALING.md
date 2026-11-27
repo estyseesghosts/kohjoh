@@ -217,6 +217,14 @@ These are tracked honestly rather than claimed as complete:
   blocks — the darkness is rasterized at world resolution, so its aperture is
   larger in 2x than in 1x as expected for a world-aligned effect. These are
   spot checks, not a proof for every weather/effect type.
+- **Both editions**: the field-scaling patches were rebuilt as
+  `pokesoulsilver.3dsx` (108/108 patches, `BUILD_EXIT=0`) and booted in LOTUS
+  from a fresh session with its own data pack. At frame 4200, SoulSilver 2x
+  gives 24,000/24,000 uniform blocks and 96,000/96,000 pixels identical to the
+  same-frame SoulSilver 1x capture. Its top screen is also byte-identical to
+  the HeartGold 2x capture for the same Goldenrod scene, so the mapping is
+  edition-independent. This is a smoke check of the second edition, not the
+  full Task 14 matrix.
 - **Battle / menu isolation**: with the 2x config active, `trainer_battle.script`
   reaches a trainer battle at frame 4200. The top-screen capture is
   **byte-identical (0 / 384,000 bytes)** to the same script on the v0.0.5
