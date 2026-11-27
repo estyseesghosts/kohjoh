@@ -18,6 +18,8 @@ HARNESS = r"""
 #include <stdlib.h>
 
 void kj_log(const char *fmt, ...) { (void)fmt; }
+void kj_field_view_set_vis_cull_enabled(bool enabled) { (void)enabled; }
+void kj_field_view_set_box_cull_enabled(bool enabled) { (void)enabled; }
 
 int main(int argc, char **argv)
 {
@@ -43,6 +45,8 @@ BATTLE_HARNESS = r"""
 #include <stdio.h>
 
 void kj_log(const char *fmt, ...) { (void)fmt; }
+void kj_field_view_set_vis_cull_enabled(bool enabled) { (void)enabled; }
+void kj_field_view_set_box_cull_enabled(bool enabled) { (void)enabled; }
 int NitroPort_DebugBattle(unsigned *trainer1, unsigned *trainer2);
 int NitroPort_DebugBattleBackdrop(int *bg, int *terrain);
 

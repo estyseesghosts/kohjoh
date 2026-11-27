@@ -4,6 +4,25 @@ on:
   pull_request:
   workflow_dispatch:
 jobs:
+  native:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitarm:latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # check_hotpaths compares against the PR base or the previous
+          # commit, so those objects must be present.
+          fetch-depth: 0
+      - name: Install host test prerequisites
+        run: apt-get update && apt-get install -y gcc python3 make
+      - name: Run native regression suite
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ -n "$BASE_SHA" ]; then
+            export KJ_REFERENCE="$BASE_SHA"
+          fi
+          python3 tests/native/run_host.py
   build:
     runs-on: ubuntu-latest
     container: devkitpro/devkitarm:latest

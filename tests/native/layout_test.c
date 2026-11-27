@@ -167,7 +167,8 @@ static void test_tables(void)
     }
 
     kj_layouts_for(KJ_SCREEN_FIELD, &st);
-    assert(st.row_count[0] == 0 && st.row_count[1] == 0);
+    /* The field continues its edge columns over the wide 3D (#19). */
+    assert(st.row_count[0] == 2 && st.row_count[1] == 0);
 }
 
 int main(void)

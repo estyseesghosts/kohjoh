@@ -1,15 +1,36 @@
 """Host differential checks against a git revision; no game assets required.
-Run: python tests/native/check_hotpaths.py [--reference HEAD] [--cc gcc]
+Run: python tests/native/check_hotpaths.py [--reference REV] [--cc gcc]
+
+The default reference is the PR base when KJ_REFERENCE or GITHUB_BASE_SHA is
+set, otherwise the previous commit when it exists (a push compares against
+what was there before), otherwise HEAD (working-tree checks only). CI checks
+out full history so the base SHA is present.
 """
 import argparse
+import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 
 root = Path(__file__).resolve().parents[2]
+
+
+def default_reference():
+    explicit = os.environ.get("KJ_REFERENCE") or os.environ.get("GITHUB_BASE_SHA")
+    if explicit:
+        return explicit
+    try:
+        subprocess.check_output(["git", "rev-parse", "--verify", "HEAD^"], cwd=root,
+                                stderr=subprocess.DEVNULL)
+        return "HEAD^"
+    except (subprocess.CalledProcessError, OSError):
+        return "HEAD"
+
+
 a = argparse.ArgumentParser()
-a.add_argument('--reference', default='HEAD')
+a.add_argument('--reference', default=default_reference())
 a.add_argument('--cc', default=shutil.which('gcc') or 'C:/devkitPro/msys2/usr/bin/gcc.exe')
 a = a.parse_args()
 
@@ -131,4 +152,4 @@ with tempfile.TemporaryDirectory(prefix='kohjoh-test-') as tmp:
     run([*common,'-I',root/'src',root/'tests/native/perf_test.c','-o',exe])
     print(run([exe]))
 
-print(run(['python', root/'tests/native/pica_lighting_test.py']), flush=True)
+print(run([sys.executable, root/'tests/native/pica_lighting_test.py']), flush=True)
