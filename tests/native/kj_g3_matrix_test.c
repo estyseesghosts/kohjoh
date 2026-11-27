@@ -11,34 +11,34 @@
 
 static void test_identity_and_multiply(void) {
     kj_g3_mtx a, b, out;
-    mtx_identity(&a);
-    mtx_identity(&b);
-    a.m[0][3] = 3 * FX_ONE;
-    a.m[1][3] = -2 * FX_ONE;
-    mtx_mul(&out, &a, &b);
+    kj_g3_mtx_identity(&a);
+    kj_g3_mtx_identity(&b);
+    a.m[0][3] = 3 * KJ_G3_FX_ONE;
+    a.m[1][3] = -2 * KJ_G3_FX_ONE;
+    kj_g3_mtx_mul(&out, &a, &b);
     assert(memcmp(&out, &a, sizeof(out)) == 0);
-    mtx_mul(&out, &b, &a);
+    kj_g3_mtx_mul(&out, &b, &a);
     assert(memcmp(&out, &a, sizeof(out)) == 0);
 }
 
 static void test_affine_matches_full(void) {
     kj_g3_mtx rotation, translation, full, affine, affine_rot;
-    mtx_identity(&rotation);
+    kj_g3_mtx_identity(&rotation);
     rotation.m[0][0] = 3328; /* cos(0.4) in 20.12 */
     rotation.m[0][2] = -1536;
     rotation.m[2][0] = 1536;
     rotation.m[2][2] = 3328;
-    mtx_identity(&translation);
-    translation.m[3][0] = 5 * FX_ONE;
-    translation.m[3][1] = -7 * FX_ONE;
-    translation.m[3][2] = 11 * FX_ONE;
+    kj_g3_mtx_identity(&translation);
+    translation.m[3][0] = 5 * KJ_G3_FX_ONE;
+    translation.m[3][1] = -7 * KJ_G3_FX_ONE;
+    translation.m[3][2] = 11 * KJ_G3_FX_ONE;
 
-    mtx_mul(&full, &rotation, &translation);
-    mtx_mul_affine(&affine, &rotation, &translation, false);
+    kj_g3_mtx_mul(&full, &rotation, &translation);
+    kj_g3_mtx_mul_affine(&affine, &rotation, &translation, false);
     assert(memcmp(&full, &affine, sizeof(full)) == 0);
 
     /* rotation_only ignores the left operand's bottom row and keeps b's. */
-    mtx_mul_affine(&affine_rot, &rotation, &translation, true);
+    kj_g3_mtx_mul_affine(&affine_rot, &rotation, &translation, true);
     assert(memcmp(affine_rot.m[3], translation.m[3], sizeof(affine_rot.m[3])) == 0);
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 4; ++j) {
@@ -49,13 +49,13 @@ static void test_affine_matches_full(void) {
 
 static void test_identity_rotation(void) {
     kj_g3_mtx m;
-    mtx_identity(&m);
-    assert(rotation_is_identity(&m));
+    kj_g3_mtx_identity(&m);
+    assert(kj_g3_mtx_is_rotation_identity(&m));
     m.m[0][1] = 1;
-    assert(!rotation_is_identity(&m));
+    assert(!kj_g3_mtx_is_rotation_identity(&m));
     m.m[0][1] = 0;
-    m.m[3][0] = 8 * FX_ONE; /* translation is not part of the test */
-    assert(rotation_is_identity(&m));
+    m.m[3][0] = 8 * KJ_G3_FX_ONE; /* translation is not part of the test */
+    assert(kj_g3_mtx_is_rotation_identity(&m));
 }
 
 static void test_sign_and_vector(void) {
@@ -67,14 +67,14 @@ static void test_sign_and_vector(void) {
     assert(sign_bits(0xFFFF8000u, 16) == -32768);
 
     kj_g3_mtx m;
-    mtx_identity(&m);
-    m.m[0][0] = FX_ONE / 2;
-    m.m[1][1] = FX_ONE * 2;
-    const int32_t in[3] = {FX_ONE, FX_ONE, 0};
+    kj_g3_mtx_identity(&m);
+    m.m[0][0] = KJ_G3_FX_ONE / 2;
+    m.m[1][1] = KJ_G3_FX_ONE * 2;
+    const int32_t in[3] = {KJ_G3_FX_ONE, KJ_G3_FX_ONE, 0};
     int32_t out[3];
     transform_vector(in, &m, out);
-    assert(out[0] == FX_ONE / 2);
-    assert(out[1] == FX_ONE * 2);
+    assert(out[0] == KJ_G3_FX_ONE / 2);
+    assert(out[1] == KJ_G3_FX_ONE * 2);
     assert(out[2] == 0);
 }
 

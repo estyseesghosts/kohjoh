@@ -9,18 +9,19 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define FX_ONE 4096
+#define KJ_G3_FX_ONE 4096
 
 typedef struct kj_g3_mtx {
     int32_t m[4][4]; /* 20.12, row-vector convention: v' = v * M */
 } kj_g3_mtx;
 
-void mtx_identity(kj_g3_mtx *m);
+void kj_g3_mtx_identity(kj_g3_mtx *m);
 /* out = a * b (row-vector convention: apply a, then b). */
-void mtx_mul(kj_g3_mtx *out, const kj_g3_mtx *a, const kj_g3_mtx *b);
+void kj_g3_mtx_mul(kj_g3_mtx *out, const kj_g3_mtx *a, const kj_g3_mtx *b);
 /* Left operand from MTX_MULT_4x3/3x3 has an implicit affine column. */
-void mtx_mul_affine(kj_g3_mtx *out, const kj_g3_mtx *a, const kj_g3_mtx *b, bool rotation_only);
-bool rotation_is_identity(const kj_g3_mtx *m);
+void kj_g3_mtx_mul_affine(kj_g3_mtx *out, const kj_g3_mtx *a, const kj_g3_mtx *b,
+                          bool rotation_only);
+bool kj_g3_mtx_is_rotation_identity(const kj_g3_mtx *m);
 
 /* Sign-extend `bits` of v. Both helpers run per vertex, so they stay in the
  * private header instead of adding a cross-translation-unit call to the hot

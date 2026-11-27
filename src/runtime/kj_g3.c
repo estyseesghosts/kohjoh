@@ -80,7 +80,7 @@ static void clip_changed(void) {
 
 static const kj_g3_mtx *clip_matrix(void) {
     if (s_clip_dirty) {
-        mtx_mul(&s_clip, &s_pos, &s_proj);
+        kj_g3_mtx_mul(&s_clip, &s_pos, &s_proj);
         s_clip_dirty = false;
     }
     return &s_clip;
@@ -99,7 +99,7 @@ static kj_g3_mtx *selected(void) {
 }
 
 static void read_matrix(kj_g3_mtx *m, unsigned op, const uint32_t *p) {
-    mtx_identity(m);
+    kj_g3_mtx_identity(m);
     if (op == 0x16 || op == 0x18) {
         for (int i = 0; i < 16; ++i) {
             m->m[i / 4][i % 4] = (int32_t)p[i];
@@ -131,10 +131,10 @@ static void load_matrix(const kj_g3_mtx *m) {
 static void translate_matrix(const uint32_t *p);
 
 static void mult_matrix(const kj_g3_mtx *m, unsigned op) {
-    if (op == 0x1A && rotation_is_identity(m)) {
+    if (op == 0x1A && kj_g3_mtx_is_rotation_identity(m)) {
         return;
     }
-    if (op == 0x19 && rotation_is_identity(m)) {
+    if (op == 0x19 && kj_g3_mtx_is_rotation_identity(m)) {
         const uint32_t translation[3] = {(uint32_t)m->m[3][0], (uint32_t)m->m[3][1],
                                          (uint32_t)m->m[3][2]};
         translate_matrix(translation);
@@ -142,19 +142,19 @@ static void mult_matrix(const kj_g3_mtx *m, unsigned op) {
     }
     if (s_mtx_mode == 2) {
         if (op == 0x18) {
-            mtx_mul(&s_pos, m, &s_pos);
-            mtx_mul(&s_vec, m, &s_vec);
+            kj_g3_mtx_mul(&s_pos, m, &s_pos);
+            kj_g3_mtx_mul(&s_vec, m, &s_vec);
         } else {
-            mtx_mul_affine(&s_pos, m, &s_pos, op == 0x1A);
-            mtx_mul_affine(&s_vec, m, &s_vec, op == 0x1A);
+            kj_g3_mtx_mul_affine(&s_pos, m, &s_pos, op == 0x1A);
+            kj_g3_mtx_mul_affine(&s_vec, m, &s_vec, op == 0x1A);
         }
         vec_changed();
     } else {
         kj_g3_mtx *t = selected();
         if (op == 0x18) {
-            mtx_mul(t, m, t);
+            kj_g3_mtx_mul(t, m, t);
         } else {
-            mtx_mul_affine(t, m, t, op == 0x1A);
+            kj_g3_mtx_mul_affine(t, m, t, op == 0x1A);
         }
     }
     if (s_mtx_mode != 3) {
@@ -176,7 +176,7 @@ static void scale_rows(kj_g3_mtx *t, const uint32_t *p) {
 }
 
 static void scale_matrix(const uint32_t *p) {
-    if (p[0] == FX_ONE && p[1] == FX_ONE && p[2] == FX_ONE) {
+    if (p[0] == KJ_G3_FX_ONE && p[1] == KJ_G3_FX_ONE && p[2] == KJ_G3_FX_ONE) {
         return;
     }
     scale_rows(s_mtx_mode == 2 ? &s_pos : selected(), p);
@@ -560,16 +560,16 @@ void kj_g3_init(const kj_g3_storage *storage) {
         s_buf[i].verts = storage->verts[i];
         s_buf[i].indices = storage->indices[i];
     }
-    mtx_identity(&s_proj);
-    mtx_identity(&s_pos);
-    mtx_identity(&s_vec);
-    mtx_identity(&s_tex);
+    kj_g3_mtx_identity(&s_proj);
+    kj_g3_mtx_identity(&s_pos);
+    kj_g3_mtx_identity(&s_vec);
+    kj_g3_mtx_identity(&s_tex);
     clip_changed();
     /* LIGHT_VECTOR derives the half vector only when the direction changes:
      * start from the half of the zero direction so half = f(direction)
      * always holds, whichever path (execution or snapshot) set it. */
     for (unsigned i = 0; i < 4; ++i) {
-        s_light_half[i][2] = -FX_ONE / 2;
+        s_light_half[i][2] = -KJ_G3_FX_ONE / 2;
     }
     if (!s_products_made) {
         make_products();
@@ -1414,7 +1414,7 @@ static void execute_body(unsigned op, const uint32_t *p) {
         break;
     case 0x15: {
         kj_g3_mtx m;
-        mtx_identity(&m);
+        kj_g3_mtx_identity(&m);
         load_matrix(&m);
         break;
     }
@@ -2875,7 +2875,7 @@ static int box_visibility(const int16_t lo[3], const int16_t hi[3]) {
     bool inside = true;
     for (unsigned p = 0; p < 4; ++p) {
         const int64_t *a = s_plane[p];
-        const int64_t centre = a[0] * c0 + a[1] * c1 + a[2] * c2 + a[3] * (2 * FX_ONE);
+        const int64_t centre = a[0] * c0 + a[1] * c1 + a[2] * c2 + a[3] * (2 * KJ_G3_FX_ONE);
         const int64_t extent = (a[0] < 0 ? -a[0] : a[0]) * e0 + (a[1] < 0 ? -a[1] : a[1]) * e1 +
                                (a[2] < 0 ? -a[2] : a[2]) * e2;
         if (centre + extent < 0) {

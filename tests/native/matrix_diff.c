@@ -7,6 +7,11 @@
 #include <string.h>
 #include SOURCE
 
+/* This fixture is compiled against both the reference and current private
+ * headers. Use the 20.12 fixed-point constant directly rather than a macro
+ * whose name differs between the two revisions. */
+#define MATRIX_DIFF_FX_ONE 4096u
+
 unsigned char NitroPort_IoReg[0x1000];
 void NitroPort_Log(const char *fmt, ...) {
     (void)fmt;
@@ -47,7 +52,7 @@ int main(void) {
         const unsigned op = 0x18 + trial % 3;
         if (trial % 5 == 0) {
             memset(left, 0, sizeof(left));
-            left[0] = left[4] = left[8] = FX_ONE;
+            left[0] = left[4] = left[8] = MATRIX_DIFF_FX_ONE;
             if (op == 0x19 && (trial & 1u)) {
                 left[9] = next();
                 left[10] = next();
@@ -56,7 +61,8 @@ int main(void) {
         }
         execute(op, left);
         execute(0x13, (const uint32_t[]){3});
-        execute(0x1B, (const uint32_t[]){FX_ONE, FX_ONE, FX_ONE});
+        execute(0x1B,
+                (const uint32_t[]){MATRIX_DIFF_FX_ONE, MATRIX_DIFF_FX_ONE, MATRIX_DIFF_FX_ONE});
         execute(0x1C, (const uint32_t[]){0, 0, 0});
         digest(&s_proj, sizeof(s_proj));
         digest(&s_pos, sizeof(s_pos));
@@ -69,7 +75,8 @@ int main(void) {
         digest(s_light_dir, sizeof(s_light_dir));
         digest(s_light_half, sizeof(s_light_half));
         execute(0x14, (const uint32_t[]){3});
-        execute(0x1A, (const uint32_t[]){FX_ONE, 0, 0, 0, FX_ONE, 0, 0, 0, FX_ONE});
+        execute(0x1A, (const uint32_t[]){MATRIX_DIFF_FX_ONE, 0, 0, 0, MATRIX_DIFF_FX_ONE, 0, 0, 0,
+                                         MATRIX_DIFF_FX_ONE});
         digest(&s_pos, sizeof(s_pos));
         digest(&s_vec, sizeof(s_vec));
     }
