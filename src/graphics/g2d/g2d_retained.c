@@ -14,20 +14,20 @@
 #include <stdlib.h>
 #include <string.h>
 
-layer_cache s_bg_cache[2][4];
-layer_cache s_obj_cache[2];
-screen_memo s_memo[2];
-uint32_t s_skipped_screens, s_reused_layers, s_rebuilt_layers;
-uint32_t s_char_bytes_compared;
+kj_g2d_layer_cache kj_g2d_bg_cache[2][4];
+kj_g2d_layer_cache kj_g2d_obj_cache[2];
+kj_g2d_screen_memo kj_g2d_memo[2];
+uint32_t kj_g2d_skipped_screens, kj_g2d_reused_layers, kj_g2d_rebuilt_layers;
+uint32_t kj_g2d_char_bytes_compared;
 
-bool kj_g2d_cache_alloc(layer_cache *lc) {
+bool kj_g2d_cache_alloc(kj_g2d_layer_cache *lc) {
     if (lc->quads == NULL) {
-        lc->quads = linearAlloc(CACHE_QUADS * 4u * sizeof(kj_v2d));
+        lc->quads = linearAlloc(KJ_G2D_CACHE_QUADS * 4u * sizeof(kj_v2d));
     }
     return lc->quads != NULL;
 }
 
-void kj_g2d_layer_cache_reset(layer_cache *lc) {
+void kj_g2d_layer_cache_reset(kj_g2d_layer_cache *lc) {
     /* chars is malloc'd; quads and band are PICA-visible linear memory.
      * Do not mix the allocator families. */
     free(lc->chars);
@@ -40,14 +40,14 @@ void kj_g2d_layer_cache_reset(layer_cache *lc) {
     memset(lc, 0, sizeof(*lc));
 }
 
-bool kj_g2d_chars_same(const layer_cache *lc, const uint8_t *vram) {
+bool kj_g2d_chars_same(const kj_g2d_layer_cache *lc, const uint8_t *vram) {
 #ifndef HGSS_PROFILE_OFF
-    s_char_bytes_compared += lc->char_len;
+    kj_g2d_char_bytes_compared += lc->char_len;
 #endif
     return lc->char_len == 0 || memcmp(lc->chars, vram + lc->char_lo, lc->char_len) == 0;
 }
 
-void kj_g2d_chars_keep(layer_cache *lc, const uint8_t *vram, uint32_t lo, uint32_t hi) {
+void kj_g2d_chars_keep(kj_g2d_layer_cache *lc, const uint8_t *vram, uint32_t lo, uint32_t hi) {
     if (hi <= lo) {
         lc->char_len = 0;
         return;

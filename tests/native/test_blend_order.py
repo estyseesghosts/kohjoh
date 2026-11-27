@@ -50,7 +50,7 @@ typedef struct {
     bool windows, objwin;
     int mode;
     float eva, evb;
-} fx;
+} kj_g2d_fx;
 typedef struct { unsigned count; } drawable;
 typedef struct { unsigned stencil; float colour; unsigned writes; } pixel;
 
@@ -70,9 +70,9 @@ static void C3D_StencilOp(unsigned sfail, unsigned dfail, unsigned pass)
     if (sfail != GPU_STENCIL_KEEP || dfail != GPU_STENCIL_KEEP) abort();
     pass_op = pass;
 }
-static void blend_off(void) { blending = false; }
-static void blend_alpha(float a, float b) { blending = true; eva = a; evb = b; }
-static void stencil_write_all(uint8_t ref, uint8_t mask)
+static void kj_g2d_blend_off(void) { blending = false; }
+static void kj_g2d_blend_alpha(float a, float b) { blending = true; eva = a; evb = b; }
+static void kj_g2d_stencil_write_all(uint8_t ref, uint8_t mask)
 {
     C3D_StencilTest(true, mask ? GPU_EQUAL : GPU_ALWAYS, ref, mask, 3);
     C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_REPLACE);
@@ -99,7 +99,7 @@ static void check(bool t1, bool t2, bool force, bool effects, bool windows)
 {
     const int layer = force ? LAYER_OBJ : 1;
     const drawable d = { 1 };
-    fx f = { 0 };
+    kj_g2d_fx f = { 0 };
     f.mode = 1; f.eva = 0.25f; f.evb = 0.5f;
     f.bldcnt = (uint16_t)((t1 ? 1u << layer : 0) | (t2 ? 1u << (8 + layer) : 0));
     f.windows = windows; f.objwin = windows;

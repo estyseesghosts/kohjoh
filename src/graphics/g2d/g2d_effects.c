@@ -3,7 +3,7 @@
  * mapping they share with the span orchestrator.
  *
  * These passes are PICA state plus full-screen/scissor quads. They consume
- * the per-span ctx/fx snapshot but do not own layer data, so they stay out
+ * the per-span kj_g2d_span/kj_g2d_fx snapshot but do not own layer data, so they stay out
  * of the decoder and retained-cache modules.
  */
 
@@ -17,7 +17,7 @@
 #include <math.h>
 #include <stdint.h>
 
-void set_xform_x(const kj_target *t, float k, float add) {
+void kj_g2d_set_xform_x(const kj_target *t, float k, float add) {
     /* clip.x = 1 - y_phys/120 ; clip.y = 1 - x_phys/(w/2)
      * y_phys = y * scale ; x_phys = x' * scale + offset */
     const float half_w = t->width / 2.0f;
@@ -28,19 +28,19 @@ void set_xform_x(const kj_target *t, float k, float add) {
                   -1.0f / (KJ_ATLAS_SIZE * KJ_ATLAS_UV_UNIT), 0.0f, 1.0f);
 }
 
-void set_xform(const kj_target *t) {
-    set_xform_x(t, 1.0f, 0.0f);
+void kj_g2d_set_xform(const kj_target *t) {
+    kj_g2d_set_xform_x(t, 1.0f, 0.0f);
 }
 
-int phys_x(const kj_target *t, int x) {
+int kj_g2d_phys_x(const kj_target *t, int x) {
     return (int)lroundf(t->offset_x + (float)x * t->scale);
 }
 
-int phys_y(const kj_target *t, int y) {
+int kj_g2d_phys_y(const kj_target *t, int y) {
     return (int)lroundf((float)y * t->scale);
 }
 
-void read_fx(const ctx *c, fx *f) {
+void kj_g2d_read_fx(const kj_g2d_span *c, kj_g2d_fx *f) {
     f->bldcnt = r16(c->regs, 0x50);
     f->mode = (f->bldcnt >> 6) & 3;
     const uint16_t alpha = r16(c->regs, 0x52);
@@ -61,7 +61,7 @@ void read_fx(const ctx *c, fx *f) {
     f->active = (uint8_t)(1u | ((c->dispcnt >> 12) & 6u) | (f->objwin ? 8u : 0u));
 }
 
-uint8_t bg0_window_on(const fx *f) {
+uint8_t kj_g2d_bg0_window_on(const kj_g2d_fx *f) {
     uint8_t on = 0;
     for (int r = 0; r < 4; ++r) {
         if (f->region_enable[r] & 1u) {
@@ -71,16 +71,16 @@ uint8_t bg0_window_on(const fx *f) {
     return on;
 }
 
-void stencil_write_all(uint8_t ref, uint8_t test_mask) {
+void kj_g2d_stencil_write_all(uint8_t ref, uint8_t test_mask) {
     C3D_StencilTest(true, test_mask ? GPU_EQUAL : GPU_ALWAYS, ref, test_mask, 0x03);
     C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_REPLACE);
 }
 
-void blend_off(void) {
+void kj_g2d_blend_off(void) {
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
 }
 
-void blend_alpha(float eva, float evb) {
+void kj_g2d_blend_alpha(float eva, float evb) {
     const uint32_t ka = (uint32_t)(eva * 255.0f + 0.5f), kb = (uint32_t)(evb * 255.0f + 0.5f);
     C3D_BlendingColor(ka | (ka << 8) | (ka << 16) | (kb << 24));
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_CONSTANT_COLOR, GPU_CONSTANT_ALPHA, GPU_ONE,
@@ -100,19 +100,19 @@ static bool rect_quad(int x0, int y0, int x1, int y1, uint32_t rgba, uint32_t *f
     return true;
 }
 
-static bool wide_3d(const ctx *c) {
+static bool wide_3d(const kj_g2d_span *c) {
     return c->screen == KJ_SCREEN_TOP && (c->dispcnt & 0x108u) == 0x108u;
 }
 
-void open_wide_3d_scissor(const ctx *c) {
+void kj_g2d_open_wide_3d_scissor(const kj_g2d_span *c) {
     if (wide_3d(c) && !c->nrows) {
-        kj_gpu_scissor(c->target->width, phys_x(c->target, KJ_LAYOUT_LEFT),
-                       phys_y(c->target, c->y0), phys_x(c->target, KJ_LAYOUT_RIGHT),
-                       phys_y(c->target, c->y1));
+        kj_gpu_scissor(c->target->width, kj_g2d_phys_x(c->target, KJ_LAYOUT_LEFT),
+                       kj_g2d_phys_y(c->target, c->y0), kj_g2d_phys_x(c->target, KJ_LAYOUT_RIGHT),
+                       kj_g2d_phys_y(c->target, c->y1));
     }
 }
 
-void write_windows(const ctx *c) {
+void kj_g2d_write_windows(const kj_g2d_span *c) {
     kj_gpu_tev_vertex_color();
     C3D_DepthTest(false, GPU_ALWAYS, 0); /* stencil only: no colour or depth writes */
     C3D_AlphaTest(false, GPU_ALWAYS, 0);
@@ -154,7 +154,7 @@ void write_windows(const ctx *c) {
          * the Fly cut-in (field_move_cut_in.c) opens WIN0 from 254 to 255
          * and leaves only DS column 255 outside, a one-pixel edge column on
          * the DS that would otherwise become a strip of field mid-picture. */
-        open_wide_3d_scissor(c);
+        kj_g2d_open_wide_3d_scissor(c);
         if (c->nrows || wide_3d(c)) {
             const int n = nx;
             for (int i = 0; i < n; ++i) {
@@ -174,7 +174,7 @@ void write_windows(const ctx *c) {
                 }
             }
 #ifndef HGSS_PROFILE_OFF
-            s_stats.wide_windows += (uint32_t)(nx - n);
+            kj_g2d_counters.wide_windows += (uint32_t)(nx - n);
 #endif
         }
         C3D_StencilTest(true, GPU_ALWAYS, (u8)((w + 1) << 4), 0, 0x30);
@@ -192,7 +192,7 @@ void write_windows(const ctx *c) {
     C3D_AlphaTest(true, GPU_GREATER, 0);
 }
 
-void brightness_pass(const fx *f) {
+void kj_g2d_brightness_pass(const kj_g2d_fx *f) {
     if (f->mode < 2 || f->evy <= 0.0f) {
         return;
     }
@@ -210,11 +210,11 @@ void brightness_pass(const fx *f) {
     C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_KEEP);
     kj_gpu_draw_quads(q, 1);
 #ifndef HGSS_PROFILE_OFF
-    ++s_stats.draws;
+    ++kj_g2d_counters.draws;
 #endif
 }
 
-void master_brightness(const ctx *c, uint16_t mb) {
+void kj_g2d_master_brightness(const kj_g2d_span *c, uint16_t mb) {
     const int mode = mb >> 14;
     int factor = mb & 31;
     if (factor > 16) {
@@ -237,11 +237,11 @@ void master_brightness(const ctx *c, uint16_t mb) {
     C3D_StencilTest(false, GPU_ALWAYS, 0, 0, 0);
     kj_gpu_draw_quads(q, 1);
 #ifndef HGSS_PROFILE_OFF
-    ++s_stats.draws;
+    ++kj_g2d_counters.draws;
 #endif
 }
 
-void side_black(void) {
+void kj_g2d_side_black(void) {
     uint32_t q;
     if (!rect_quad(-64, 0, 0, 192, 0xFF000000u, &q)) {
         return;
@@ -252,7 +252,7 @@ void side_black(void) {
     }
     kj_gpu_scissor_off();
     kj_gpu_tev_vertex_color();
-    blend_off();
+    kj_g2d_blend_off();
     C3D_StencilTest(false, GPU_ALWAYS, 0, 0, 0);
     kj_gpu_draw_quads(q, 1);
     kj_gpu_draw_quads(q2, 1);

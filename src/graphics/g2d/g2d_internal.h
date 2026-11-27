@@ -12,7 +12,7 @@
 #include <stdint.h>
 
 /* The context of one engine's span. */
-typedef struct ctx {
+typedef struct kj_g2d_span {
     const kj_frame_input *in;
     const kj_target *target;
     int screen;
@@ -28,13 +28,13 @@ typedef struct ctx {
     const kj_layout_row *rows;
     uint32_t nrows;
     bool battle_obj_anchors;
-} ctx;
+} kj_g2d_span;
 
-/* A run of quads: either in the frame arena (reserve a worst case, give the
+/* A kj_g2d_run of quads: either in the frame arena (reserve a worst case, give the
  * tail back) or in a retained layer's own buffer (ext = true). Retained runs
  * also record each quad's atlas slot and the range of character bytes read,
  * which is what their reuse check compares next frame. */
-typedef struct run {
+typedef struct kj_g2d_run {
     kj_v2d *v;
     uint32_t first;
     uint32_t count;
@@ -42,7 +42,7 @@ typedef struct run {
     bool ext;
     uint16_t *slots;
     uint32_t char_lo, char_hi;
-} run;
+} kj_g2d_run;
 
 static inline uint16_t r16(const uint8_t *regs, unsigned off) {
     return (uint16_t)(regs[off] | (regs[off + 1] << 8));
@@ -56,21 +56,21 @@ static inline uint32_t r32(const uint8_t *regs, unsigned off) {
 /* Retained-layer policy: a layer is reusable only when every byte it
  * consumed is byte-identical. g2d_retained.c owns the caches and their
  * persistent allocations; the orchestrator decides when to build. */
-#define CACHE_QUADS 2304u
-#define MAP_MAX 8192u
+#define KJ_G2D_CACHE_QUADS 2304u
+#define KJ_G2D_MAP_MAX 8192u
 
-typedef struct layer_cache {
+typedef struct kj_g2d_layer_cache {
     bool valid;
     uint8_t key[16];
     uint16_t pal[256]; /* the layer's palette (BG or OBJ) as built */
-    uint8_t map[MAP_MAX];
+    uint8_t map[KJ_G2D_MAP_MAX];
     uint32_t map_off, map_len;
     uint8_t *chars;
     uint32_t char_lo, char_len, char_cap;
     uint8_t ext[0x2000];
     const uint8_t *ext_src;
     kj_v2d *quads;
-    uint16_t slots[CACHE_QUADS];
+    uint16_t slots[KJ_G2D_CACHE_QUADS];
     uint32_t count;
     /* OBJ: per (priority, semi) sub-ranges of quads */
     uint32_t sub_first[9], sub_count[9];
@@ -79,29 +79,29 @@ typedef struct layer_cache {
     /* text BG on the top screen: its wide-art bands (at most 2 quads) */
     kj_v2d *band;
     uint32_t band_count;
-} layer_cache;
+} kj_g2d_layer_cache;
 
-typedef struct screen_memo {
+typedef struct kj_g2d_screen_memo {
     bool drawn;
     int engine;
     uint32_t layout_generation;
     uint8_t regs[KJ_LINE_REG_BYTES];
     uint16_t pal[512];
-} screen_memo;
+} kj_g2d_screen_memo;
 
-extern layer_cache s_bg_cache[2][4];
-extern layer_cache s_obj_cache[2];
-extern screen_memo s_memo[2];
-extern uint32_t s_skipped_screens, s_reused_layers, s_rebuilt_layers;
-extern uint32_t s_char_bytes_compared;
+extern kj_g2d_layer_cache kj_g2d_bg_cache[2][4];
+extern kj_g2d_layer_cache kj_g2d_obj_cache[2];
+extern kj_g2d_screen_memo kj_g2d_memo[2];
+extern uint32_t kj_g2d_skipped_screens, kj_g2d_reused_layers, kj_g2d_rebuilt_layers;
+extern uint32_t kj_g2d_char_bytes_compared;
 
-bool kj_g2d_cache_alloc(layer_cache *lc);
-void kj_g2d_layer_cache_reset(layer_cache *lc);
-bool kj_g2d_chars_same(const layer_cache *lc, const uint8_t *vram);
-void kj_g2d_chars_keep(layer_cache *lc, const uint8_t *vram, uint32_t lo, uint32_t hi);
+bool kj_g2d_cache_alloc(kj_g2d_layer_cache *lc);
+void kj_g2d_layer_cache_reset(kj_g2d_layer_cache *lc);
+bool kj_g2d_chars_same(const kj_g2d_layer_cache *lc, const uint8_t *vram);
+void kj_g2d_chars_keep(kj_g2d_layer_cache *lc, const uint8_t *vram, uint32_t lo, uint32_t hi);
 
 /* g2d_effects.c: DS window/blend/brightness state and passes. */
-typedef struct fx {
+typedef struct kj_g2d_fx {
     uint16_t bldcnt;
     int mode;
     float eva, evb, evy;
@@ -109,36 +109,36 @@ typedef struct fx {
     bool objwin;
     uint8_t region_enable[4]; /* bits 0-5: BG0-3, OBJ, effects */
     uint8_t active;           /* bit r: region r can occur (outside always) */
-} fx;
+} kj_g2d_fx;
 
-extern kj_g2d_stats s_stats;
+extern kj_g2d_stats kj_g2d_counters;
 
-void set_xform_x(const kj_target *t, float k, float add);
-void set_xform(const kj_target *t);
-int phys_x(const kj_target *t, int x);
-int phys_y(const kj_target *t, int y);
-void read_fx(const ctx *c, fx *f);
-uint8_t bg0_window_on(const fx *f);
-void stencil_write_all(uint8_t ref, uint8_t test_mask);
-void blend_off(void);
-void blend_alpha(float eva, float evb);
-void open_wide_3d_scissor(const ctx *c);
-void write_windows(const ctx *c);
-void brightness_pass(const fx *f);
-void master_brightness(const ctx *c, uint16_t mb);
-void side_black(void);
+void kj_g2d_set_xform_x(const kj_target *t, float k, float add);
+void kj_g2d_set_xform(const kj_target *t);
+int kj_g2d_phys_x(const kj_target *t, int x);
+int kj_g2d_phys_y(const kj_target *t, int y);
+void kj_g2d_read_fx(const kj_g2d_span *c, kj_g2d_fx *f);
+uint8_t kj_g2d_bg0_window_on(const kj_g2d_fx *f);
+void kj_g2d_stencil_write_all(uint8_t ref, uint8_t test_mask);
+void kj_g2d_blend_off(void);
+void kj_g2d_blend_alpha(float eva, float evb);
+void kj_g2d_open_wide_3d_scissor(const kj_g2d_span *c);
+void kj_g2d_write_windows(const kj_g2d_span *c);
+void kj_g2d_brightness_pass(const kj_g2d_fx *f);
+void kj_g2d_master_brightness(const kj_g2d_span *c, uint16_t mb);
+void kj_g2d_side_black(void);
 
 /* g2d_layers.c: palette/tile sources and decode helpers. */
-const uint16_t *pltt_ptr(const kj_ds_memory *mem, int engine, int kind);
-const uint8_t *ext_bg_slot(const kj_frame_input *in, int engine, int slot);
-const uint8_t *ext_obj(const kj_frame_input *in, int engine);
-bool run_begin(run *r, uint32_t cap);
-void run_end(run *r);
+const uint16_t *kj_g2d_pltt_ptr(const kj_ds_memory *mem, int engine, int kind);
+const uint8_t *kj_g2d_ext_bg_slot(const kj_frame_input *in, int engine, int slot);
+const uint8_t *kj_g2d_ext_obj(const kj_frame_input *in, int engine);
+bool kj_g2d_run_begin(kj_g2d_run *r, uint32_t cap);
+void kj_g2d_run_end(kj_g2d_run *r);
 
-/* g2d_layers.c: decode one BG/OAM kind into a quad run. */
-uint32_t text_bg(const ctx *c, int bg, run *out);
-uint32_t affine_bg(const ctx *c, int bg, bool ext16, run *out);
-uint32_t objs(const ctx *c, int prio, bool semi, run *out);
+/* g2d_layers.c: decode one BG/OAM kind into a quad kj_g2d_run. */
+uint32_t kj_g2d_text_bg(const kj_g2d_span *c, int bg, kj_g2d_run *out);
+uint32_t kj_g2d_affine_bg(const kj_g2d_span *c, int bg, bool ext16, kj_g2d_run *out);
+uint32_t kj_g2d_objs(const kj_g2d_span *c, int prio, bool semi, kj_g2d_run *out);
 
 /* Reset the per-engine palette snapshots. Called from kj_g2d_init. */
 void kj_g2d_layers_reset(void);

@@ -32,13 +32,13 @@ void kj_g2d_layers_reset(void) {
     memset(s_pal, 0, sizeof(s_pal));
 }
 
-const uint16_t *pltt_ptr(const kj_ds_memory *mem, int engine, int kind) {
+const uint16_t *kj_g2d_pltt_ptr(const kj_ds_memory *mem, int engine, int kind) {
     return (const uint16_t *)(mem->pltt + engine * 0x400 + kind * 0x200);
 }
 
 /* Find the LCDC-array address of an extended palette slot, from VRAMCNT.
  * NULL when no bank provides it. */
-const uint8_t *ext_bg_slot(const kj_frame_input *in, int engine, int slot) {
+const uint8_t *kj_g2d_ext_bg_slot(const kj_frame_input *in, int engine, int slot) {
     const kj_vram_bank *b = in->banks;
     const uint8_t *lcdc = in->mem->lcdc_vram;
 
@@ -62,7 +62,7 @@ const uint8_t *ext_bg_slot(const kj_frame_input *in, int engine, int slot) {
     return NULL;
 }
 
-const uint8_t *ext_obj(const kj_frame_input *in, int engine) {
+const uint8_t *kj_g2d_ext_obj(const kj_frame_input *in, int engine) {
     const kj_vram_bank *b = in->banks;
     const uint8_t *lcdc = in->mem->lcdc_vram;
 
@@ -84,7 +84,7 @@ static kj_palette *pal_4bpp(const kj_frame_input *in, int engine, int kind, int 
                             uint32_t *id) {
     *id = PAL_4BPP + engine * 32 + kind * 16 + bank;
     kj_palette *p = &s_pal[*id];
-    p->colors = pltt_ptr(in->mem, engine, kind) + bank * 16;
+    p->colors = kj_g2d_pltt_ptr(in->mem, engine, kind) + bank * 16;
     p->count = 16;
     kj_palette_check(p);
     return p;
@@ -93,7 +93,7 @@ static kj_palette *pal_4bpp(const kj_frame_input *in, int engine, int kind, int 
 static kj_palette *pal_256(const kj_frame_input *in, int engine, int kind, uint32_t *id) {
     *id = PAL_STD256 + engine * 2 + kind;
     kj_palette *p = &s_pal[*id];
-    p->colors = pltt_ptr(in->mem, engine, kind);
+    p->colors = kj_g2d_pltt_ptr(in->mem, engine, kind);
     p->count = 256;
     kj_palette_check(p);
     return p;
@@ -101,7 +101,7 @@ static kj_palette *pal_256(const kj_frame_input *in, int engine, int kind, uint3
 
 static kj_palette *pal_ext_bg(const kj_frame_input *in, int engine, int slot, int index,
                               uint32_t *id) {
-    const uint8_t *base = ext_bg_slot(in, engine, slot);
+    const uint8_t *base = kj_g2d_ext_bg_slot(in, engine, slot);
     if (base == NULL) {
         return pal_256(in, engine, 0, id);
     }
@@ -114,7 +114,7 @@ static kj_palette *pal_ext_bg(const kj_frame_input *in, int engine, int slot, in
 }
 
 static kj_palette *pal_ext_obj(const kj_frame_input *in, int engine, int index, uint32_t *id) {
-    const uint8_t *base = ext_obj(in, engine);
+    const uint8_t *base = kj_g2d_ext_obj(in, engine);
     if (base == NULL) {
         return pal_256(in, engine, 1, id);
     }
@@ -148,7 +148,7 @@ static inline void put_quad(kj_v2d *v, int x, int y, int w, int h, uint16_t slot
     v[3] = (kj_v2d){(int16_t)(x + w), (int16_t)(y + h), u1, v1, 255, 255, 255, 255};
 }
 
-bool run_begin(run *r, uint32_t cap) {
+bool kj_g2d_run_begin(kj_g2d_run *r, uint32_t cap) {
     r->count = 0;
     r->char_lo = UINT32_MAX;
     r->char_hi = 0;
@@ -161,13 +161,13 @@ bool run_begin(run *r, uint32_t cap) {
     return r->v != NULL;
 }
 
-void run_end(run *r) {
+void kj_g2d_run_end(kj_g2d_run *r) {
     if (!r->ext) {
         kj_gpu_quads_reset_to(r->first + r->count);
     }
 }
 
-static inline void run_note(run *r, uint16_t slot, uint32_t off, uint32_t bytes) {
+static inline void run_note(kj_g2d_run *r, uint16_t slot, uint32_t off, uint32_t bytes) {
     if (r->slots != NULL) {
         r->slots[r->count] = slot;
     }
@@ -181,7 +181,7 @@ static inline void run_note(run *r, uint16_t slot, uint32_t off, uint32_t bytes)
 
 /* ------------------------------------------------------------ text BGs */
 
-uint32_t text_bg(const ctx *c, int bg, run *out) {
+uint32_t kj_g2d_text_bg(const kj_g2d_span *c, int bg, kj_g2d_run *out) {
     const uint16_t cnt = r16(c->regs, 0x08 + 2 * bg);
     const int hofs = r16(c->regs, 0x10 + 4 * bg) & 0x1FF;
     const int vofs = r16(c->regs, 0x12 + 4 * bg) & 0x1FF;
@@ -207,7 +207,7 @@ uint32_t text_bg(const ctx *c, int bg, run *out) {
     const int sx_lo = c->nrows ? KJ_LAYOUT_SRC_LO : 0;
     const int sx_hi = c->nrows ? KJ_LAYOUT_SRC_HI : 256;
     const uint32_t cols = (uint32_t)(sx_hi - sx_lo) / 8u + 1u;
-    if (!run_begin(out, cols * (uint32_t)((c->y1 - first_sy + 7) / 8))) {
+    if (!kj_g2d_run_begin(out, cols * (uint32_t)((c->y1 - first_sy + 7) / 8))) {
         return 0;
     }
     for (int sy = first_sy; sy < c->y1; sy += 8) {
@@ -246,7 +246,7 @@ uint32_t text_bg(const ctx *c, int bg, run *out) {
             }
             if (out->count >= out->cap) {
 #ifndef HGSS_PROFILE_OFF
-                ++s_stats.dropped_quads;
+                ++kj_g2d_counters.dropped_quads;
 #endif
                 continue;
             }
@@ -263,7 +263,7 @@ uint32_t text_bg(const ctx *c, int bg, run *out) {
 /* Affine and extended-affine (16-bit entry) BGs: map tiles are placed by
  * the inverse of the BG's matrix; only tiles whose texture-space position
  * falls inside the screen's texture-space bounding box are emitted. */
-uint32_t affine_bg(const ctx *c, int bg, bool ext16, run *out) {
+uint32_t kj_g2d_affine_bg(const kj_g2d_span *c, int bg, bool ext16, kj_g2d_run *out) {
     const unsigned base = bg == 2 ? 0x20 : 0x30;
     const uint16_t cnt = r16(c->regs, 0x08 + 2 * bg);
     const float pa = (int16_t)r16(c->regs, base + 0) / 256.0f;
@@ -322,11 +322,11 @@ uint32_t affine_bg(const ctx *c, int bg, bool ext16, run *out) {
     uint32_t n = (uint32_t)((tx1 - tx0 + 1) * (ty1 - ty0 + 1));
     if (n > 8192u) {
 #ifndef HGSS_PROFILE_OFF
-        ++s_stats.unsupported_modes;
+        ++kj_g2d_counters.unsupported_modes;
 #endif
         return 0;
     }
-    if (!run_begin(out, n)) {
+    if (!kj_g2d_run_begin(out, n)) {
         return 0;
     }
     for (int ty = ty0; ty <= ty1; ++ty) {
@@ -393,7 +393,7 @@ static const uint8_t OBJ_H[4][4] = {{8, 16, 32, 64}, {8, 8, 16, 32}, {16, 32, 32
 
 /* Emit the OBJs of one priority and blend kind (semi = OBJ mode 1).
  * prio < 0 emits the OBJ-window OBJs (mode 2) of every priority. */
-uint32_t objs(const ctx *c, int prio, bool semi, run *out) {
+uint32_t kj_g2d_objs(const kj_g2d_span *c, int prio, bool semi, kj_g2d_run *out) {
     const uint8_t *oam = c->in->mem->oam + c->engine * 0x400;
     const bool map1d = (c->dispcnt & 0x10) != 0;
     const uint32_t boundary = 32u << ((c->dispcnt >> 20) & 3u);
@@ -401,7 +401,7 @@ uint32_t objs(const ctx *c, int prio, bool semi, run *out) {
     const uint32_t mask = c->obj_vram_size - 1u;
     const uint32_t source = (uint32_t)(c->engine * 2 + 1);
 
-    if (!run_begin(out, 2048)) {
+    if (!kj_g2d_run_begin(out, 2048)) {
         return 0;
     }
     if (!out->ext) {
@@ -424,7 +424,7 @@ uint32_t objs(const ctx *c, int prio, bool semi, run *out) {
             continue;
         } else if (mode == 3) {
 #ifndef HGSS_PROFILE_OFF
-            ++s_stats.unsupported_modes; /* bitmap OBJ */
+            ++kj_g2d_counters.unsupported_modes; /* bitmap OBJ */
 #endif
             continue;
         } else if ((mode == 1) != semi) {
@@ -491,7 +491,7 @@ uint32_t objs(const ctx *c, int prio, bool semi, run *out) {
         }
         if (out->count + (uint32_t)(tw * th) > out->cap) {
 #ifndef HGSS_PROFILE_OFF
-            ++s_stats.dropped_quads;
+            ++kj_g2d_counters.dropped_quads;
 #endif
             continue;
         }
@@ -507,7 +507,7 @@ uint32_t objs(const ctx *c, int prio, bool semi, run *out) {
                 off &= mask;
                 const kj_tile_ref t =
                     kj_atlas_tile(source, c->obj_vram + off, off, bpp8, pal, pal_id);
-                /* As in text_bg: track blank tiles too, or later OBJ tile
+                /* As in kj_g2d_text_bg: track blank tiles too, or later OBJ tile
                  * writes into them are invisible to the reuse check. */
                 run_note(out, t.slot, off, tile_bytes);
                 if (!t.valid || t.transparent) {

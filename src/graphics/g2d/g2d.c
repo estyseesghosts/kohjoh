@@ -56,7 +56,7 @@
 #define LAYER_OBJ 4
 #define LAYER_BD 5
 
-kj_g2d_stats s_stats;
+kj_g2d_stats kj_g2d_counters;
 
 /* ------------------------------------------------------------- passes */
 
@@ -84,7 +84,7 @@ static void draw_quads(const drawable *d) {
     }
 }
 
-static void draw_layer(const fx *f, int layer, const drawable *d, bool force_semi) {
+static void draw_layer(const kj_g2d_fx *f, int layer, const drawable *d, bool force_semi) {
     const uint32_t count = d->count;
     if (count == 0) {
         return;
@@ -108,26 +108,26 @@ static void draw_layer(const fx *f, int layer, const drawable *d, bool force_sem
         const bool alpha_blend = t1 && effects && (force_semi || f->mode == 1);
         if (!alpha_blend) {
             const uint8_t flags = (uint8_t)((t2 ? 1 : 0) | (t1 && effects && f->mode >= 2 ? 2 : 0));
-            blend_off();
-            stencil_write_all((uint8_t)(region | flags), rmask);
+            kj_g2d_blend_off();
+            kj_g2d_stencil_write_all((uint8_t)(region | flags), rmask);
             draw_quads(d);
 #ifndef HGSS_PROFILE_OFF
-            ++s_stats.draws;
+            ++kj_g2d_counters.draws;
 #endif
             continue;
         }
-        /* A pass that changes bit 0 must run last, or the other pass will
+        /* A pass that changes bit 0 must kj_g2d_run last, or the other pass will
          * draw those same pixels again. The current layer's t2 selects which
          * pass changes it: opaque when t2 is set, blended otherwise. */
         for (int pass = 0; pass < 2; ++pass) {
             const bool blended = (pass == 0) == t2;
             if (blended) {
-                blend_alpha(f->eva, f->evb);
+                kj_g2d_blend_alpha(f->eva, f->evb);
                 C3D_StencilTest(true, GPU_EQUAL, region | 1u, rmask | 1u, 0x03);
                 C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP,
                               t2 ? GPU_STENCIL_KEEP : GPU_STENCIL_INVERT);
             } else {
-                blend_off();
+                kj_g2d_blend_off();
                 C3D_StencilTest(true, GPU_EQUAL, region, rmask | 1u, 0x01);
                 C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP,
                               t2 ? GPU_STENCIL_INVERT : GPU_STENCIL_KEEP);
@@ -135,7 +135,7 @@ static void draw_layer(const fx *f, int layer, const drawable *d, bool force_sem
             draw_quads(d);
         }
 #ifndef HGSS_PROFILE_OFF
-        s_stats.draws += 2;
+        kj_g2d_counters.draws += 2;
 #endif
     }
 }
@@ -148,7 +148,7 @@ static void draw_layer(const fx *f, int layer, const drawable *d, bool force_sem
  * texture y. Undo that here, with a quarter-texel inset so each pair of
  * output rows/columns lands in one source texel. Transparency/stencil
  * coverage is still approximate -- see FIELD_SCALING.md limitations. */
-static void composite_world_2x(const ctx *c, uint8_t stencil_flags, uint8_t window_on,
+static void composite_world_2x(const kj_g2d_span *c, uint8_t stencil_flags, uint8_t window_on,
                                uint8_t window_active) {
     uint32_t first;
     kj_v2d *v = kj_gpu_quads_alloc(1, &first);
@@ -174,7 +174,7 @@ static void composite_world_2x(const ctx *c, uint8_t stencil_flags, uint8_t wind
     kj_gpu_tev_texture_modulate();
 
     for (int k = 0; k < 4; ++k) {
-        const float phys_x = ox + (float)xs[k] * scale;
+        const float kj_g2d_phys_x = ox + (float)xs[k] * scale;
         const float phys_row = (float)ys[k] * scale;
         /* Exact nearest-neighbour mapping, derived from the corrected
          * make_fixup(): offscreen texel (wx,wy) lives at texture (wy,wx).
@@ -184,7 +184,7 @@ static void composite_world_2x(const ctx *c, uint8_t stencil_flags, uint8_t wind
          * 200 rows of the 256-row backing texture and reverses the DS-y axis.
          * Undo both exactly: flip u, and offset v by the 56 padding rows. */
         const float u = 8.0f * (240.0f - phys_row);
-        const float vv = 8.0f * (phys_x + 112.0f);
+        const float vv = 8.0f * (kj_g2d_phys_x + 112.0f);
         v[k] = (kj_v2d){(int16_t)xs[k],
                         (int16_t)ys[k],
                         (int16_t)lroundf(u),
@@ -194,7 +194,7 @@ static void composite_world_2x(const ctx *c, uint8_t stencil_flags, uint8_t wind
                         255,
                         255};
     }
-    blend_off();
+    kj_g2d_blend_off();
     /* The composite covers the physical display; native window regions must
      * not reject parts of it. Reapplying windows/stencil to this quad is the
      * remaining Task 11 composition work. */
@@ -249,7 +249,7 @@ static int span_end(const kj_line_regs *lines, int engine, int y0) {
  */
 
 /* Registers a text BG's quads depend on. */
-static void text_key(const ctx *c, int bg, uint8_t key[16]) {
+static void text_key(const kj_g2d_span *c, int bg, uint8_t key[16]) {
     memset(key, 0, 16);
     memcpy(key, c->regs + 0x08 + 2 * bg, 2);
     memcpy(key + 2, c->regs + 0x10 + 4 * bg, 4);
@@ -260,7 +260,7 @@ static void text_key(const ctx *c, int bg, uint8_t key[16]) {
     key[12] = c->screen == KJ_SCREEN_TOP ? 1 : 0; /* wide-art bands: top only */
 }
 
-static void text_map_range(const ctx *c, int bg, uint32_t *off, uint32_t *len) {
+static void text_map_range(const kj_g2d_span *c, int bg, uint32_t *off, uint32_t *len) {
     const uint16_t cnt = r16(c->regs, 0x08 + 2 * bg);
     uint32_t scr = ((cnt >> 8) & 31u) * 0x800u;
     if (c->engine == 0) {
@@ -274,13 +274,13 @@ static void text_map_range(const ctx *c, int bg, uint32_t *off, uint32_t *len) {
     }
 }
 
-static const uint8_t *text_ext_src(const ctx *c, int bg) {
+static const uint8_t *text_ext_src(const kj_g2d_span *c, int bg) {
     const uint16_t cnt = r16(c->regs, 0x08 + 2 * bg);
     if (!(cnt & 0x80) || !(c->dispcnt & (1u << 30))) {
         return NULL;
     }
     const int slot = bg < 2 ? bg + (((cnt >> 13) & 1) ? 2 : 0) : bg;
-    return ext_bg_slot(c->in, c->engine, slot);
+    return kj_g2d_ext_bg_slot(c->in, c->engine, slot);
 }
 
 /* ------------------------------------------------------------ wide art */
@@ -318,7 +318,7 @@ static uint64_t art_key_add(uint64_t h, uint32_t v) {
     return h;
 }
 
-static uint64_t text_art_key(const ctx *c, int bg) {
+static uint64_t text_art_key(const kj_g2d_span *c, int bg) {
     const uint16_t cnt = r16(c->regs, 0x08 + 2 * bg);
     const bool bpp8 = (cnt & 0x80u) != 0;
     const uint32_t entries =
@@ -351,7 +351,7 @@ static uint64_t text_art_key(const ctx *c, int bg) {
             h = art_key_add(h, r32(c->bg_vram, (char_base + i * tile_bytes + k) & mask));
         }
     }
-    const uint16_t *pal = pltt_ptr(c->in->mem, c->engine, 0);
+    const uint16_t *pal = kj_g2d_pltt_ptr(c->in->mem, c->engine, 0);
     const uint8_t *ext = bpp8 ? text_ext_src(c, bg) : NULL;
     if (!bpp8) {
         for (uint32_t i = 0; i < 16; ++i) {
@@ -408,7 +408,7 @@ static uint32_t band_quads(const kj_wideart_pic *pic, int dx, kj_v2d *v) {
 }
 
 /* A rebuilt layer's bands: its key, logged once, and its picture's quads. */
-static uint32_t layer_bands(const ctx *c, int bg, kj_v2d *v) {
+static uint32_t layer_bands(const kj_g2d_span *c, int bg, kj_v2d *v) {
     const uint64_t key = text_art_key(c, bg);
     const kj_wideart_pic *pic = kj_wideart_find(key);
 
@@ -441,9 +441,9 @@ static uint32_t layer_bands(const ctx *c, int bg, kj_v2d *v) {
 }
 
 /* A text BG, retained when possible. */
-static bool text_bg_retained(const ctx *c, int bg, drawable *out, drawable *band) {
-    layer_cache *lc = &s_bg_cache[c->engine][bg];
-    const uint16_t *pal = pltt_ptr(c->in->mem, c->engine, 0);
+static bool text_bg_retained(const kj_g2d_span *c, int bg, drawable *out, drawable *band) {
+    kj_g2d_layer_cache *lc = &kj_g2d_bg_cache[c->engine][bg];
+    const uint16_t *pal = kj_g2d_pltt_ptr(c->in->mem, c->engine, 0);
     uint8_t key[16];
     uint32_t moff, mlen;
 
@@ -459,7 +459,7 @@ static bool text_bg_retained(const ctx *c, int bg, drawable *out, drawable *band
         band->base = lc->band;
         band->count = lc->band_count;
 #ifndef HGSS_PROFILE_OFF
-        ++s_reused_layers;
+        ++kj_g2d_reused_layers;
 #endif
         return true;
     }
@@ -478,13 +478,13 @@ static bool text_bg_retained(const ctx *c, int bg, drawable *out, drawable *band
     }
     band->base = lc->band;
     band->count = lc->band_count;
-    run r;
+    kj_g2d_run r;
     memset(&r, 0, sizeof(r));
     r.ext = true;
     r.v = lc->quads;
-    r.cap = CACHE_QUADS;
+    r.cap = KJ_G2D_CACHE_QUADS;
     r.slots = lc->slots;
-    text_bg(c, bg, &r);
+    kj_g2d_text_bg(c, bg, &r);
     lc->valid = true;
     memcpy(lc->key, key, 16);
     memcpy(lc->pal, pal, 512);
@@ -499,16 +499,16 @@ static bool text_bg_retained(const ctx *c, int bg, drawable *out, drawable *band
     lc->count = r.count;
     out->base = lc->quads;
     out->count = r.count;
-    ++s_rebuilt_layers;
+    ++kj_g2d_rebuilt_layers;
     return true;
 }
 
 /* The OBJ layer (all priorities), retained when possible. */
-static bool objs_retained(const ctx *c, drawable sub[9]) {
-    layer_cache *lc = &s_obj_cache[c->engine];
+static bool objs_retained(const kj_g2d_span *c, drawable sub[9]) {
+    kj_g2d_layer_cache *lc = &kj_g2d_obj_cache[c->engine];
     const uint8_t *oam = c->in->mem->oam + c->engine * 0x400;
-    const uint16_t *pal = pltt_ptr(c->in->mem, c->engine, 1);
-    const uint8_t *ext = (c->dispcnt & (1u << 31)) ? ext_obj(c->in, c->engine) : NULL;
+    const uint16_t *pal = kj_g2d_pltt_ptr(c->in->mem, c->engine, 1);
+    const uint8_t *ext = (c->dispcnt & (1u << 31)) ? kj_g2d_ext_obj(c->in, c->engine) : NULL;
     uint8_t key[16];
 
     memset(key, 0, sizeof(key));
@@ -533,7 +533,7 @@ static bool objs_retained(const ctx *c, drawable sub[9]) {
             sub[i].count = lc->sub_count[i];
         }
 #ifndef HGSS_PROFILE_OFF
-        ++s_reused_layers;
+        ++kj_g2d_reused_layers;
 #endif
         return true;
     }
@@ -542,13 +542,13 @@ static bool objs_retained(const ctx *c, drawable sub[9]) {
     }
     uint32_t used = 0, lo = UINT32_MAX, hi = 0;
     for (int i = 0; i < 9; ++i) {
-        run r;
+        kj_g2d_run r;
         memset(&r, 0, sizeof(r));
         r.ext = true;
         r.v = lc->quads + used * 4u;
-        r.cap = CACHE_QUADS - used;
+        r.cap = KJ_G2D_CACHE_QUADS - used;
         r.slots = lc->slots + used;
-        objs(c, i < 8 ? i >> 1 : -1, (i & 1) != 0, &r);
+        kj_g2d_objs(c, i < 8 ? i >> 1 : -1, (i & 1) != 0, &r);
         lc->sub_first[i] = used;
         lc->sub_count[i] = r.count;
         used += r.count;
@@ -574,7 +574,7 @@ static bool objs_retained(const ctx *c, drawable sub[9]) {
         sub[i].base = lc->quads + lc->sub_first[i] * 4u;
         sub[i].count = lc->sub_count[i];
     }
-    ++s_rebuilt_layers;
+    ++kj_g2d_rebuilt_layers;
     return true;
 }
 
@@ -583,12 +583,12 @@ void kj_g2d_begin_frame(void) {
      * allocation this frame can evict them. */
     for (int e = 0; e < 2; ++e) {
         for (int b = 0; b < 4; ++b) {
-            if (s_bg_cache[e][b].valid) {
-                kj_atlas_touch(s_bg_cache[e][b].slots, s_bg_cache[e][b].count);
+            if (kj_g2d_bg_cache[e][b].valid) {
+                kj_atlas_touch(kj_g2d_bg_cache[e][b].slots, kj_g2d_bg_cache[e][b].count);
             }
         }
-        if (s_obj_cache[e].valid) {
-            kj_atlas_touch(s_obj_cache[e].slots, s_obj_cache[e].count);
+        if (kj_g2d_obj_cache[e].valid) {
+            kj_atlas_touch(kj_g2d_obj_cache[e].slots, kj_g2d_obj_cache[e].count);
         }
     }
 }
@@ -605,11 +605,11 @@ typedef struct prepared {
     bool all_reused;
 } prepared;
 
-static void prepare_span(const ctx *c, bool retain, prepared *pr) {
+static void prepare_span(const kj_g2d_span *c, bool retain, prepared *pr) {
     const int bgmode = (int)(c->dispcnt & 7u);
     const uint32_t layers_on = (c->dispcnt >> 8) & 0x1Fu;
     const bool bg0_3d = c->engine == 0 && (c->dispcnt & 8u);
-    const uint32_t rebuilt_before = s_rebuilt_layers;
+    const uint32_t rebuilt_before = kj_g2d_rebuilt_layers;
 
     memset(pr, 0, sizeof(*pr));
     for (int bg = 0; bg < 4; ++bg) {
@@ -645,7 +645,7 @@ static void prepare_span(const ctx *c, bool retain, prepared *pr) {
         }
         if (unsupported) {
 #ifndef HGSS_PROFILE_OFF
-            ++s_stats.unsupported_modes;
+            ++kj_g2d_counters.unsupported_modes;
 #endif
             continue;
         }
@@ -653,24 +653,24 @@ static void prepare_span(const ctx *c, bool retain, prepared *pr) {
         if (!affine && !ext16 && retain) {
             pr->bg_ok[bg] = text_bg_retained(c, bg, &pr->bg[bg], &pr->band[bg]);
         } else {
-            run r;
+            kj_g2d_run r;
             memset(&r, 0, sizeof(r));
             if (affine || ext16) {
-                affine_bg(c, bg, ext16, &r);
+                kj_g2d_affine_bg(c, bg, ext16, &r);
             } else {
-                text_bg(c, bg, &r);
+                kj_g2d_text_bg(c, bg, &r);
             }
             if (r.v != NULL) {
-                run_end(&r);
+                kj_g2d_run_end(&r);
                 pr->bg[bg].base = NULL;
                 pr->bg[bg].first = r.first;
                 pr->bg[bg].count = r.count;
                 pr->bg_ok[bg] = true;
             }
-            ++s_rebuilt_layers;
+            ++kj_g2d_rebuilt_layers;
         }
 #ifndef HGSS_PROFILE_OFF
-        s_stats.bg_quads += pr->bg[bg].count;
+        kj_g2d_counters.bg_quads += pr->bg[bg].count;
 #endif
         kj_perf_count(KJ_COUNT_QUADS, pr->bg[bg].count);
     }
@@ -680,39 +680,39 @@ static void prepare_span(const ctx *c, bool retain, prepared *pr) {
         } else {
             pr->obj_ok = true;
             for (int i = 0; i < 9; ++i) {
-                run r;
+                kj_g2d_run r;
                 memset(&r, 0, sizeof(r));
-                objs(c, i < 8 ? i >> 1 : -1, (i & 1) != 0, &r);
+                kj_g2d_objs(c, i < 8 ? i >> 1 : -1, (i & 1) != 0, &r);
                 if (r.v != NULL) {
-                    run_end(&r);
+                    kj_g2d_run_end(&r);
                 }
                 pr->obj[i].base = NULL;
                 pr->obj[i].first = r.first;
                 pr->obj[i].count = r.v != NULL ? r.count : 0;
             }
-            ++s_rebuilt_layers;
+            ++kj_g2d_rebuilt_layers;
         }
         for (int i = 0; i < 9; ++i) {
 #ifndef HGSS_PROFILE_OFF
-            s_stats.obj_quads += pr->obj[i].count;
+            kj_g2d_counters.obj_quads += pr->obj[i].count;
 #endif
             kj_perf_count(KJ_COUNT_QUADS, pr->obj[i].count);
         }
     }
-    pr->all_reused = retain && s_rebuilt_layers == rebuilt_before;
+    pr->all_reused = retain && kj_g2d_rebuilt_layers == rebuilt_before;
 }
 
-static void restore_2d_state(const ctx *c, int sx0) {
+static void restore_2d_state(const kj_g2d_span *c, int sx0) {
     if (c->nrows) {
-        kj_gpu_scissor(c->target->width, phys_x(c->target, KJ_LAYOUT_LEFT),
-                       phys_y(c->target, c->y0), phys_x(c->target, KJ_LAYOUT_RIGHT),
-                       phys_y(c->target, c->y1));
+        kj_gpu_scissor(c->target->width, kj_g2d_phys_x(c->target, KJ_LAYOUT_LEFT),
+                       kj_g2d_phys_y(c->target, c->y0), kj_g2d_phys_x(c->target, KJ_LAYOUT_RIGHT),
+                       kj_g2d_phys_y(c->target, c->y1));
     } else {
         kj_gpu_scissor(c->target->width, sx0, (int)(c->y0 * c->target->scale),
                        sx0 + (int)(256 * c->target->scale), (int)(c->y1 * c->target->scale));
     }
     kj_gpu_use_program(KJ_PROGRAM_2D);
-    set_xform(c->target);
+    kj_g2d_set_xform(c->target);
     kj_gpu_bind_texture(0, kj_atlas_texture());
     kj_gpu_tev_texture_modulate();
     C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_COLOR);
@@ -751,7 +751,7 @@ void kj_g2d_text_draw(const kj_target *t, const kj_v2d *v, uint32_t vertex_count
     /* The previous pass may have left the 3D program bound (world layer).
      * Our vertices are the 2D layout and must use the 2D attribute info. */
     kj_gpu_use_program(KJ_PROGRAM_2D);
-    set_xform(&pt);
+    kj_g2d_set_xform(&pt);
     if (textured) {
         kj_gpu_bind_texture(0, kj_text_texture());
         C3D_FVUnifSet(GPU_VERTEX_SHADER, kj_gpu_uloc_2d_uvscale(),
@@ -767,12 +767,12 @@ void kj_g2d_text_draw(const kj_target *t, const kj_v2d *v, uint32_t vertex_count
     C3D_AlphaTest(true, GPU_GREATER, 0);
     /* The brightness pass can leave constant-alpha blending armed; text is
      * opaque over its own backing and must not inherit it. */
-    blend_off();
+    kj_g2d_blend_off();
     kj_gpu_draw_quads(first, vertex_count / 4u);
 #ifndef HGSS_PROFILE_OFF
-    ++s_stats.draws;
+    ++kj_g2d_counters.draws;
 #endif
-    set_xform(t);
+    kj_g2d_set_xform(t);
     kj_gpu_bind_texture(0, kj_atlas_texture());
     kj_gpu_tev_texture_modulate();
 }
@@ -780,7 +780,7 @@ void kj_g2d_text_draw(const kj_target *t, const kj_v2d *v, uint32_t vertex_count
 /* A text BG under a wide layout: per band of lines with the same active
  * rows, its quads once per segment, translated or stretched under the
  * segment's scissor (layout.c). */
-static void draw_layer_wide(const ctx *c, const fx *f, int bg, const drawable *d) {
+static void draw_layer_wide(const kj_g2d_span *c, const kj_g2d_fx *f, int bg, const drawable *d) {
     const kj_target *t = c->target;
     const uint16_t cnt = r16(c->regs, 0x08 + 2 * bg);
     const kj_layout_bg g = {bg, r16(c->regs, 0x10 + 4 * bg) & 0x1FF,
@@ -799,31 +799,32 @@ static void draw_layer_wide(const ctx *c, const fx *f, int bg, const drawable *d
         bool unsupported;
         const int n = kj_layout_segments(c->rows, c->nrows, act, &g, seg, &unsupported);
 #ifndef HGSS_PROFILE_OFF
-        s_stats.unsupported_modes += unsupported ? 1u : 0u;
-        s_stats.layout_segments += (uint32_t)n;
+        kj_g2d_counters.unsupported_modes += unsupported ? 1u : 0u;
+        kj_g2d_counters.layout_segments += (uint32_t)n;
 #endif
         for (int k = 0; k < n; ++k) {
             const int s0 = seg[k].s0, s1 = seg[k].s1;
-            kj_gpu_scissor(t->width, phys_x(t, s0), phys_y(t, y), phys_x(t, s1), phys_y(t, y1));
+            kj_gpu_scissor(t->width, kj_g2d_phys_x(t, s0), kj_g2d_phys_y(t, y),
+                           kj_g2d_phys_x(t, s1), kj_g2d_phys_y(t, y1));
             if (seg[k].stretch == 2) {
-                set_xform_x(t, (float)(s1 - s0) / 256.0f, (float)s0);
+                kj_g2d_set_xform_x(t, (float)(s1 - s0) / 256.0f, (float)s0);
             } else if (seg[k].stretch) {
                 const float kx = (float)(s1 - s0);
-                set_xform_x(t, kx, (float)s0 - (float)seg[k].sx * kx);
+                kj_g2d_set_xform_x(t, kx, (float)s0 - (float)seg[k].sx * kx);
             } else {
-                set_xform_x(t, 1.0f, (float)(s0 - seg[k].sx));
+                kj_g2d_set_xform_x(t, 1.0f, (float)(s0 - seg[k].sx));
             }
             draw_layer(f, bg, d, false);
         }
         y = y1;
     }
-    set_xform(t);
+    kj_g2d_set_xform(t);
     restore_2d_state(c, (int)t->offset_x);
 }
 
-static void draw_span(ctx *c, const prepared *pr, bool draw_3d, bool *drew_3d) {
-    fx f;
-    read_fx(c, &f);
+static void draw_span(kj_g2d_span *c, const prepared *pr, bool draw_3d, bool *drew_3d) {
+    kj_g2d_fx f;
+    kj_g2d_read_fx(c, &f);
     const uint32_t layers_on = (c->dispcnt >> 8) & 0x1Fu;
     const bool bg0_3d = c->engine == 0 && (c->dispcnt & 8u);
     const int sx0 = (int)(c->target->offset_x);
@@ -835,12 +836,12 @@ static void draw_span(ctx *c, const prepared *pr, bool draw_3d, bool *drew_3d) {
              * into stencil bits 4-5; no colour writes. WIN1/WIN0 follow
              * and override it, matching DS window priority. */
             C3D_DepthTest(false, GPU_ALWAYS, 0);
-            blend_off();
+            kj_g2d_blend_off();
             C3D_StencilTest(true, GPU_ALWAYS, 0x30, 0, 0x30);
             C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_REPLACE);
             draw_quads(&pr->obj[8]);
         }
-        write_windows(c);
+        kj_g2d_write_windows(c);
         restore_2d_state(c, sx0);
     }
     for (int p = 3; p >= 0; --p) {
@@ -869,7 +870,7 @@ static void draw_span(ctx *c, const prepared *pr, bool draw_3d, bool *drew_3d) {
                         shifted.world.offset_x += dx * shifted.world.scale;
                     }
                     const uint8_t stencil = (uint8_t)((t2 ? 1 : 0) | (t1 && f.mode >= 2 ? 2 : 0));
-                    const uint8_t won = bg0_window_on(&f);
+                    const uint8_t won = kj_g2d_bg0_window_on(&f);
                     const uint8_t wactive = f.windows ? f.active : 0;
                     kj_g3d_draw(&shifted, c->screen == KJ_SCREEN_TOP, stencil, won, wactive);
                     if (world_2x) {
@@ -896,8 +897,9 @@ static void draw_span(ctx *c, const prepared *pr, bool draw_3d, bool *drew_3d) {
             } else if (c->nrows) {
                 /* Affine BGs keep the DS's 256 columns (no layout rule
                  * maps them yet: counted, drawn unchanged). */
-                kj_gpu_scissor(c->target->width, phys_x(c->target, 0), phys_y(c->target, c->y0),
-                               phys_x(c->target, 256), phys_y(c->target, c->y1));
+                kj_gpu_scissor(c->target->width, kj_g2d_phys_x(c->target, 0),
+                               kj_g2d_phys_y(c->target, c->y0), kj_g2d_phys_x(c->target, 256),
+                               kj_g2d_phys_y(c->target, c->y1));
                 draw_layer(&f, bg, &pr->bg[bg], false);
                 restore_2d_state(c, sx0);
             } else {
@@ -906,7 +908,7 @@ static void draw_span(ctx *c, const prepared *pr, bool draw_3d, bool *drew_3d) {
             /* Native text belongs to this BG's priority slot: after the
              * background, before any later (higher-priority) layer. It is a
              * no-op when no window on this plane is presented natively. */
-            kj_text_draw_bg(c->target, c->engine, bg, pltt_ptr(c->in->mem, c->engine, 0),
+            kj_text_draw_bg(c->target, c->engine, bg, kj_g2d_pltt_ptr(c->in->mem, c->engine, 0),
                             r16(c->regs, 0x10 + 4 * bg) & 0x1FFu,
                             r16(c->regs, 0x12 + 4 * bg) & 0x1FFu);
             if (pr->band[bg].count != 0 && kj_wideart_texture() != NULL) {
@@ -917,9 +919,10 @@ static void draw_span(ctx *c, const prepared *pr, bool draw_3d, bool *drew_3d) {
                               1.0f / (float)(kj_wideart_texture_width() * KJ_ATLAS_UV_UNIT),
                               -1.0f / (float)(kj_wideart_texture_height() * KJ_ATLAS_UV_UNIT), 0.0f,
                               1.0f);
-                kj_gpu_scissor(c->target->width, phys_x(c->target, KJ_LAYOUT_LEFT),
-                               phys_y(c->target, c->y0), phys_x(c->target, KJ_LAYOUT_RIGHT),
-                               phys_y(c->target, c->y1));
+                kj_gpu_scissor(c->target->width, kj_g2d_phys_x(c->target, KJ_LAYOUT_LEFT),
+                               kj_g2d_phys_y(c->target, c->y0),
+                               kj_g2d_phys_x(c->target, KJ_LAYOUT_RIGHT),
+                               kj_g2d_phys_y(c->target, c->y1));
                 draw_layer(&f, bg, &pr->band[bg], false);
                 restore_2d_state(c, sx0);
             }
@@ -931,8 +934,8 @@ static void draw_span(ctx *c, const prepared *pr, bool draw_3d, bool *drew_3d) {
     }
     /* (A Gym Leader's VS wipe darkens the field around its band: the side
      * 3D darkens with the middle.) */
-    open_wide_3d_scissor(c);
-    brightness_pass(&f);
+    kj_g2d_open_wide_3d_scissor(c);
+    kj_g2d_brightness_pass(&f);
 }
 
 static uint32_t ds_to_rgba(uint16_t c) {
@@ -944,8 +947,8 @@ static uint32_t ds_to_rgba(uint16_t c) {
 void kj_screen_draw(int screen, int engine, const kj_frame_input *in) {
     const kj_target *target = kj_target_get(screen);
     const kj_ds_memory *mem = in->mem;
-    screen_memo *memo = &s_memo[screen];
-    ctx c;
+    kj_g2d_screen_memo *memo = &kj_g2d_memo[screen];
+    kj_g2d_span c;
 
     memset(&c, 0, sizeof(c));
     c.in = in;
@@ -971,7 +974,7 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in) {
 
     const uint8_t *io = mem->io + engine * 0x1000;
     const uint32_t dispcnt = r32(io, 0);
-    const uint16_t *pal = pltt_ptr(mem, engine, 0); /* BG then OBJ: 512 colours */
+    const uint16_t *pal = kj_g2d_pltt_ptr(mem, engine, 0); /* BG then OBJ: 512 colours */
     const uint16_t bldcnt = r16(io, 0x50);
     const uint8_t bd_flags =
         (uint8_t)(((bldcnt >> 13) & 1) | ((bldcnt & 0x20) && ((bldcnt >> 6) & 3) >= 2 ? 2 : 0));
@@ -1011,7 +1014,7 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in) {
             memo->layout_generation == in->screen.generation &&
             memcmp(memo->regs, io, KJ_LINE_REG_BYTES) == 0 && memcmp(memo->pal, pal, 1024) == 0) {
 #ifndef HGSS_PROFILE_OFF
-            ++s_skipped_screens;
+            ++kj_g2d_skipped_screens;
 #endif
             kj_perf_add(KJ_PERF_G2D, kj_perf_now() - t0);
             return;
@@ -1025,14 +1028,14 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in) {
     if (forced_blank || display_mode == 0) {
         C3D_RenderTargetClear(target->rt, C3D_CLEAR_ALL, 0xFFFFFFFFu, 0);
         kj_gpu_use_program(KJ_PROGRAM_2D);
-        set_xform(target);
-        master_brightness(&c, r16(io, 0x6C));
+        kj_g2d_set_xform(target);
+        kj_g2d_master_brightness(&c, r16(io, 0x6C));
         kj_perf_add(KJ_PERF_G2D, kj_perf_now() - t0);
         return;
     }
     if (display_mode != 1) {
 #ifndef HGSS_PROFILE_OFF
-        ++s_stats.unsupported_modes; /* VRAM / main-memory display: tracked blocker */
+        ++kj_g2d_counters.unsupported_modes; /* VRAM / main-memory display: tracked blocker */
 #endif
         C3D_RenderTargetClear(target->rt, C3D_CLEAR_ALL, 0x000000FFu, 0);
         kj_perf_add(KJ_PERF_G2D, kj_perf_now() - t0);
@@ -1048,7 +1051,7 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in) {
     if (prepared_ok) {
         draw_span(&c, &pr, has_3d, &drew_3d);
 #ifndef HGSS_PROFILE_OFF
-        ++s_stats.spans;
+        ++kj_g2d_counters.spans;
 #endif
         kj_perf_count(KJ_COUNT_SPANS, 1);
     } else {
@@ -1061,7 +1064,7 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in) {
             prepare_span(&c, false, &pr);
             draw_span(&c, &pr, has_3d, &drew_3d);
 #ifndef HGSS_PROFILE_OFF
-            ++s_stats.spans;
+            ++kj_g2d_counters.spans;
 #endif
             kj_perf_count(KJ_COUNT_SPANS, 1);
             y0 = y1;
@@ -1069,11 +1072,11 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in) {
     }
     kj_gpu_scissor_off();
     kj_gpu_use_program(KJ_PROGRAM_2D);
-    set_xform(target);
+    kj_g2d_set_xform(target);
     if (screen == KJ_SCREEN_TOP && (kj_script_debug() & KJ_DEBUG_NO_SIDE_FILL)) {
-        side_black();
+        kj_g2d_side_black();
     }
-    master_brightness(&c, r16(io, 0x6C));
+    kj_g2d_master_brightness(&c, r16(io, 0x6C));
 
     memo->drawn = single_span;
     memo->engine = engine;
@@ -1112,25 +1115,25 @@ void kj_g2d_exit(void) {
      * the quads point at atlas slots and the band uses the same linear heap. */
     for (int e = 0; e < 2; ++e) {
         for (int bg = 0; bg < 4; ++bg) {
-            kj_g2d_layer_cache_reset(&s_bg_cache[e][bg]);
+            kj_g2d_layer_cache_reset(&kj_g2d_bg_cache[e][bg]);
         }
-        kj_g2d_layer_cache_reset(&s_obj_cache[e]);
+        kj_g2d_layer_cache_reset(&kj_g2d_obj_cache[e]);
     }
-    memset(s_memo, 0, sizeof(s_memo));
-    s_skipped_screens = s_reused_layers = s_rebuilt_layers = 0;
-    s_char_bytes_compared = 0;
+    memset(kj_g2d_memo, 0, sizeof(kj_g2d_memo));
+    kj_g2d_skipped_screens = kj_g2d_reused_layers = kj_g2d_rebuilt_layers = 0;
+    kj_g2d_char_bytes_compared = 0;
     kj_atlas_exit();
     kj_gpu_exit();
 }
 
 void kj_g2d_take_stats(kj_g2d_stats *out) {
-    s_stats.skipped_screens = s_skipped_screens;
-    s_stats.reused_layers = s_reused_layers;
-    s_stats.rebuilt_layers = s_rebuilt_layers;
-    s_stats.char_bytes_compared = s_char_bytes_compared;
-    s_skipped_screens = s_reused_layers = s_rebuilt_layers = 0;
-    s_char_bytes_compared = 0;
-    *out = s_stats;
+    kj_g2d_counters.skipped_screens = kj_g2d_skipped_screens;
+    kj_g2d_counters.reused_layers = kj_g2d_reused_layers;
+    kj_g2d_counters.rebuilt_layers = kj_g2d_rebuilt_layers;
+    kj_g2d_counters.char_bytes_compared = kj_g2d_char_bytes_compared;
+    kj_g2d_skipped_screens = kj_g2d_reused_layers = kj_g2d_rebuilt_layers = 0;
+    kj_g2d_char_bytes_compared = 0;
+    *out = kj_g2d_counters;
     out->dropped_quads += kj_gpu_quads_dropped();
-    memset(&s_stats, 0, sizeof(s_stats));
+    memset(&kj_g2d_counters, 0, sizeof(kj_g2d_counters));
 }
