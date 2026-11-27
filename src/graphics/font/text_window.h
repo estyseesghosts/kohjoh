@@ -58,6 +58,7 @@ typedef struct kj_text_stats {
     uint32_t draws;
     uint32_t events_seen;
     uint32_t events_dropped;
+    uint32_t scrolls;
 } kj_text_stats;
 
 typedef struct kj_text_glyph {
@@ -84,6 +85,7 @@ typedef struct kj_text_presentation {
     uint8_t alternate;
     uint8_t poisoned;
     uint8_t temporary;
+    uint8_t logged; /* last fallback reason logged for this generation */
     uint16_t tilemap_x, tilemap_y, width, height;
     uint16_t glyph_count;
     kj_text_glyph glyphs[KJ_TEXT_MAX_GLYPHS_PER_WINDOW];

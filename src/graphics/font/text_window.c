@@ -97,10 +97,23 @@ static bool all_glyphs_resolvable(const kj_text_presentation *p, kj_text_fallbac
     for (uint16_t i = 0; i < p->glyph_count; ++i) {
         const kj_text_glyph *g = &p->glyphs[i];
         kj_glyph rec;
-        if (g->code == 0xFFFFu || g->code == 0xE000u) {
-            continue; /* end of string / line feed never reach the printer */
+        if (g->code == 0xFFFFu || g->code == 0xE000u || g->code == 0x0000u) {
+            /* End of string, line feed, or the blank filler HGSS leaves in
+             * windows that also carry artwork (the map-name banner). Those
+             * windows cannot be backed by a fill, so keep them on DS pixels. */
+            if (g->code == 0x0000u) {
+                *why = KJ_TEXT_FALLBACK_UNSUPPORTED_GLYPH;
+                return false;
+            }
+            continue;
         }
         if (!kj_font_lookup(g->font_id, g->code, KJ_GLYPH_VARIANT_STANDARD, &rec)) {
+            static uint32_t logged_code;
+            if (logged_code != ((uint32_t)g->font_id << 16 | g->code)) {
+                logged_code = (uint32_t)g->font_id << 16 | g->code;
+                kj_log("[text] no glyph: font %u code 0x%04X win %08lx", (unsigned)g->font_id,
+                       (unsigned)g->code, (unsigned long)p->window);
+            }
             *why = KJ_TEXT_FALLBACK_UNSUPPORTED_GLYPH;
             ++s_stats.unsupported_codes;
             return false;
@@ -128,12 +141,6 @@ static void decide(kj_text_presentation *p)
         why = KJ_TEXT_FALLBACK_UNSUPPORTED_LAYER;
     } else if (p->glyph_count == 0 || p->glyph_count > KJ_TEXT_MAX_GLYPHS_PER_WINDOW) {
         why = KJ_TEXT_FALLBACK_CAPACITY;
-    } else if (!p->have_fill || p->fill == 0) {
-        /* No solid fill: the window's background is art in its own tiles (or
-         * a transparent layer over another BG). We cannot reproduce that
-         * backing, so the DS pixels stay authoritative. Index 0 is also
-         * transparent on hardware and must never be painted. */
-        why = KJ_TEXT_FALLBACK_NO_BACKING;
     } else if (p->alternate) {
         why = KJ_TEXT_FALLBACK_ALTERNATE_TABLE;
     } else if (!all_glyphs_resolvable(p, &why)) {
@@ -154,6 +161,13 @@ static void decide(kj_text_presentation *p)
         ++s_stats.windows_fallback;
         if (why < KJ_TEXT_FALLBACK_COUNT) {
             ++s_stats.fallback_reason[why];
+        }
+        if (p->logged != (uint8_t)why) {
+            p->logged = (uint8_t)why;
+            kj_log("[text] fallback %d win %08lx gen %lu bg %u %ux%u at %u,%u glyphs %u",
+                   (int)why, (unsigned long)p->window, (unsigned long)p->generation,
+                   (unsigned)p->bg_id, (unsigned)p->width, (unsigned)p->height,
+                   (unsigned)p->tilemap_x, (unsigned)p->tilemap_y, (unsigned)p->glyph_count);
         }
         kj_text_log_fallback(why, NULL);
     }
@@ -265,24 +279,40 @@ void kj_text_frame(const kj_frame_input *in)
                 p->poisoned = 0;
                 p->alternate = 0;
             } else {
-                /* A partial erase overlaps existing text; be conservative. */
-                p->glyph_count = 0;
-                p->published = false;
-                p->poisoned = 1;
-                p->fallback = KJ_TEXT_FALLBACK_NO_BACKING;
-                p->native = false;
+                /* A partial erase clears that rectangle only. Drop the glyphs
+                 * it covers and keep the rest native; the window's backing
+                 * fill still covers the cleared area. */
+                const int x0 = e->x, y0 = e->y;
+                const int x1 = e->x + (int)e->arg0, y1 = e->y + (int)e->arg1;
+                uint16_t keep = 0;
+                for (uint16_t i = 0; i < p->glyph_count; ++i) {
+                    const kj_text_glyph *g = &p->glyphs[i];
+                    const bool hit = g->x < x1 && g->x + 8 > x0 && g->y < y1 && g->y + 16 > y0;
+                    if (!hit) {
+                        p->glyphs[keep++] = *g;
+                    }
+                }
+                p->glyph_count = keep;
             }
             break;
         case KJ_TEXT_EV_SCROLL:
             p = find_live(e->window);
             if (p != NULL) {
-                /* The first implementation keeps scrolling dialogue on the
-                 * legacy path: shift the records would need clipping too. */
-                p->glyph_count = 0;
-                p->published = false;
-                p->poisoned = 1;
-                p->fallback = KJ_TEXT_FALLBACK_NO_BACKING;
-                ++s_stats.fallback_reason[KJ_TEXT_FALLBACK_NO_BACKING];
+                /* The DS shifts the window's pixels; shift the records with
+                 * them and drop whatever scrolled out. This is what lets the
+                 * second page of a dialogue stay native. */
+                uint16_t keep = 0;
+                const int dw = (int)p->width * 8, dh = (int)p->height * 8;
+                for (uint16_t i = 0; i < p->glyph_count; ++i) {
+                    kj_text_glyph g = p->glyphs[i];
+                    g.x = (int16_t)(g.x + e->x);
+                    g.y = (int16_t)(g.y + e->y);
+                    if (g.x + 8 > 0 && g.x < dw && g.y + 16 > 0 && g.y < dh) {
+                        p->glyphs[keep++] = g;
+                    }
+                }
+                p->glyph_count = keep;
+                ++s_stats.scrolls;
             }
             break;
         case KJ_TEXT_EV_PUBLISH:

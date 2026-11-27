@@ -212,6 +212,7 @@ static void test_policy(const unsigned char *blob, size_t size)
     unsigned n;
     kj_frame_input in;
     const kj_text_presentation *p;
+    const kj_text_presentation *found;
     int cursor;
     const kj_text_stats *stats;
 
@@ -259,7 +260,6 @@ static void test_policy(const unsigned char *blob, size_t size)
     assert(!kj_text_owns_tile(0, 1, 0, 0, 0, 0));     /* other plane */
     assert(!kj_text_owns_tile(1, 0, 0, 0, 0, 0));     /* other engine */
 
-    /* A glyph outside the repertoire keeps that window on the DS pixels. */
     n = 0;
     add_full_window(events, &n, 0x3000);
     glyph(events, &n, 0x3000, 0x1234, 0, 0);
@@ -319,20 +319,25 @@ static void test_policy(const unsigned char *blob, size_t size)
     kj_text_frame(&in);
     assert(kj_text_stats_read()->fallback_reason[KJ_TEXT_FALLBACK_UNSUPPORTED_LAYER] == 1);
 
-    /* Scrolling dialogue stays on the legacy path (clipping not modelled). */
+    /* Scrolling shifts the records with the pixels; the window stays native. */
     n = 0;
     add_full_window(events, &n, 0x6000);
-    glyph(events, &n, 0x6000, 299, 0, 0);
+    glyph(events, &n, 0x6000, 299, 8, 16);
     events[n] = ev(KJ_TEXT_EV_SCROLL, 0x6000, 1);
-    events[n].y = 8;
+    events[n].y = -16;
     n++;
     publish(events, &n, 0x6000);
     in.text_event_count = n;
     kj_text_frame(&in);
     cursor = 0;
+    found = NULL;
     while ((p = kj_text_next(0, 0, &cursor)) != NULL) {
-        assert(p->window != 0x6000);
+        if (p->window == 0x6000) {
+            found = p;
+        }
     }
+    assert(found != NULL && found->native);
+    assert(found->glyph_count == 1 && found->glyphs[0].y == 0);
 
     /* Removing a window retires its record: the DS pixels take over. */
     n = 0;
@@ -343,6 +348,72 @@ static void test_policy(const unsigned char *blob, size_t size)
     cursor = 0;
     while ((p = kj_text_next(0, 0, &cursor)) != NULL) {
         assert(p->window != 0x2000);
+    }
+
+    /* A window filled with index 0 (transparent) is still presentable when it
+     * holds only text: skip its legacy tiles, paint no backing. */
+    n = 0;
+    events[n++] = ev(KJ_TEXT_EV_ADD, 0x7000, 1);
+    {
+        kj_text_event f = ev(KJ_TEXT_EV_FILL, 0x7000, 1);
+        f.value = 0;
+        f.arg0 = 240;
+        f.arg1 = 32;
+        events[n++] = f;
+    }
+    glyph(events, &n, 0x7000, 299, 0, 0);
+    publish(events, &n, 0x7000);
+    in.text_event_count = n;
+    kj_text_frame(&in);
+    cursor = 0;
+    found = NULL;
+    while ((p = kj_text_next(0, 0, &cursor)) != NULL) {
+        if (p->window == 0x7000) {
+            found = p;
+        }
+    }
+    assert(found != NULL && found->native && found->fill == 0);
+    assert(kj_text_owns_tile(0, 0, 0, 0, 0, 0));
+
+    /* Art blitted into the buffer means the fill is not the backing. */
+    n = 0;
+    events[n++] = ev(KJ_TEXT_EV_ADD, 0x8000, 1);
+    {
+        kj_text_event f = ev(KJ_TEXT_EV_FILL, 0x8000, 1);
+        f.value = 0;
+        f.arg0 = 240;
+        f.arg1 = 32;
+        events[n++] = f;
+    }
+    glyph(events, &n, 0x8000, 299, 0, 0);
+    events[n++] = ev(KJ_TEXT_EV_ART, 0x8000, 1);
+    publish(events, &n, 0x8000);
+    in.text_event_count = n;
+    kj_text_frame(&in);
+    cursor = 0;
+    while ((p = kj_text_next(0, 0, &cursor)) != NULL) {
+        assert(p->window != 0x8000);
+    }
+
+    /* A blank filler glyph marks a window whose tiles carry artwork (the
+     * map-name banner), so it must stay on the DS pixels too. */
+    n = 0;
+    events[n++] = ev(KJ_TEXT_EV_ADD, 0x9000, 1);
+    {
+        kj_text_event f = ev(KJ_TEXT_EV_FILL, 0x9000, 1);
+        f.value = 0;
+        f.arg0 = 240;
+        f.arg1 = 32;
+        events[n++] = f;
+    }
+    glyph(events, &n, 0x9000, 299, 0, 0);
+    glyph(events, &n, 0x9000, 0x0000, 8, 0);
+    publish(events, &n, 0x9000);
+    in.text_event_count = n;
+    kj_text_frame(&in);
+    cursor = 0;
+    while ((p = kj_text_next(0, 0, &cursor)) != NULL) {
+        assert(p->window != 0x9000);
     }
 
     /* DS colours: 5-bit to 8-bit with an opaque alpha; index 0 is transparent. */
