@@ -149,15 +149,35 @@ These are tracked honestly rather than claimed as complete:
   walk script and frame confirms it: without the restore the top banner is a
   corrupted dark strip; with it, `Route 34` renders clean at native
   resolution while the world beneath stays exactly 2x.
-- **1x pop-in**: a controlled four-way diagnosis is only partly complete.
-  The retained-list visibility optimisation was A/B tested in LOTUS with the
-  `goldenrod_walk.script` movement sequence (`debug: 0x800` switches only that
-  optimisation off). Top-screen captures at frames 3700, 3800, 3900, 4000 and
-  4100 are **byte-identical** (0 differing bytes out of 384,000 per frame)
-  with culling on and off, so it is not the source of any pop-in. Manual 1x
-  play in the latest build also showed no pop-in. Game-facing `BOX_TEST`
-  rejection and map-cell residency have not yet been fully traced in all
-  locations, so Task 8/9 remain open rather than claimed complete.
+- **1x pop-in / four-way culling diagnosis**: all four variants were captured
+  in LOTUS with the same `goldenrod_walk.script` at frames 3700, 3800, 3900,
+  4000 and 4100 (`A` = both on, `B` = retained-list culling off via
+  `debug: 0x800`, `C` = `BOX_TEST` bypassed via `debug: 0x1000`, `D` = both
+  off). Per frame, differing bytes out of 384,000 were:
+  `A vs B = 0, 0, 0, 0, 0`; `A vs C = 90829, 90428, 90188, 124951, 63035`;
+  `A vs D` equals `A vs C`.
+  So the retained-list optimisation is byte-identical and is not a source of
+  pop-in. The `BOX_TEST` bypass changes the picture, but it is a **confounded
+  result**: a global bypass also changes game-side object decisions (the
+  station sign and the fountain disappear), which is exactly why the spec
+  requires a narrowly scoped, call-site-specific render-visibility bypass.
+  The correct next step is to log stable prop identifiers at each game-facing
+  `GF3d_ModelBoxTest()` call site rather than to draw conclusions from variant
+  C/D. Manual 1x play in the latest build showed no pop-in.
+- **Second-location regression**: a Cianwood save was generated with
+  `hgss-save location set` from the verified safe-spawn registry and staged in
+  both LOTUS sessions. Same-frame captures at frame 4200 again give
+  **24,000/24,000** uniform 2x2 blocks and **96,000/96,000** pixels identical
+  to the 1x central crop. This confirms the mapping is not specific to
+  Goldenrod.
+- **Battle / menu isolation**: with the 2x config active, `trainer_battle.script`
+  reaches a trainer battle at frame 4200. The top-screen capture is
+  **byte-identical (0 / 384,000 bytes)** to the same script on the v0.0.5
+  baseline build. Battles, their windows and their text therefore inherit no
+  field scaling. This also exercises window/blend composition on a native
+  layer, but does not by itself prove translucent BG0 composition in 2x.
+  Game-facing `BOX_TEST` call-site tracing, map-cell residency and billboard
+  alignment remain open, so Tasks 8/9 are not claimed complete.
 - 1x map residency (Task 8), scripted cinematic framing (Task 10), pixel
   stability (Task 12), O3DS performance (Task 13) and both-edition regression
   matrix (Task 14) remain open.

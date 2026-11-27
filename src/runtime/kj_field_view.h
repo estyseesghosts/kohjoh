@@ -46,6 +46,10 @@ const kj_field_view_desc *kj_field_view_current(void);
  * Driven by script.txt `debug: 0x800` (KJ_DEBUG_NO_VIS_CULL). */
 void kj_field_view_set_vis_cull_enabled(bool enabled);
 bool kj_field_view_vis_cull_enabled(void);
+/* Diagnostic: bypass render-visibility BOX_TEST rejection (script.txt
+ * `debug: 0x1000`). Development-only; never enabled by config.txt. */
+void kj_field_view_set_box_cull_enabled(bool enabled);
+bool kj_field_view_box_cull_enabled(void);
 /* Safe fallback used by non-field scenes and by soft reset. */
 void kj_field_view_reset(void);
 

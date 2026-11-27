@@ -32,3 +32,13 @@ bool kj_field_view_vis_cull_enabled(void)
 {
     return true;
 }
+
+void kj_field_view_set_box_cull_enabled(bool enabled)
+{
+    (void)enabled;
+}
+
+bool kj_field_view_box_cull_enabled(void)
+{
+    return true;
+}

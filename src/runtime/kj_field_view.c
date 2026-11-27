@@ -19,6 +19,7 @@ extern void NitroPort_Log(const char *fmt, ...);
 static kj_field_view_desc s_view;
 static uint32_t s_view_generation;
 static bool s_vis_cull = true;
+static bool s_box_cull = true;
 
 static void derive(kj_field_view_desc *v)
 {
@@ -102,6 +103,16 @@ bool kj_field_view_vis_cull_enabled(void)
     return s_vis_cull;
 }
 
+void kj_field_view_set_box_cull_enabled(bool enabled)
+{
+    s_box_cull = enabled;
+}
+
+bool kj_field_view_box_cull_enabled(void)
+{
+    return s_box_cull;
+}
+
 void kj_field_view_reset(void)
 {
     s_view.requested_mode = KJ_FIELD_VIEW_LEGACY;
@@ -111,5 +122,6 @@ void kj_field_view_reset(void)
     s_view.scene_id = KJ_SCREEN_UNKNOWN;
     s_view.scene_generation = 0;
     s_view.view_generation = ++s_view_generation;
+    s_box_cull = true;
     derive(&s_view);
 }

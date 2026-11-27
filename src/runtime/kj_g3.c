@@ -1312,6 +1312,12 @@ static void box_test(const uint32_t *p)
     uint32_t stat = get32(0x600) & ~0x3u;
     frame_buf *fb = build();
     ++fb->frame.box_tests;
+    /* Four-way pop-in diagnosis (pixel-perfect-2 Task 4A). Development-only:
+     * treat every queried box as visible so a producer-side rejection cannot
+     * hide geometry. Never enabled by config.txt. */
+    if (!kj_field_view_box_cull_enabled()) {
+        all_out = 0x3Fu;
+    }
     if (all_out == 0) {
         stat |= 0x2u;
     } else {
