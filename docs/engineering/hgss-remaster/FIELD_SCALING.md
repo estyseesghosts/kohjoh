@@ -81,11 +81,16 @@ Native tests (`build/run-native-tests.sh`, all PASS on 2026-11-26):
   including culled vs unculled visible-triangle equality.
 - `visibility_test.py`, `test_touch_tp.py` — unchanged behaviour.
 
-For exact equivalence, `tools/qa/check_2x_matches_1x.py field_1x.bgra
-field_2x.bgra` compares every 2x pixel with the 1x pixel at
-`(X/2+100, Y/2+60)` — the canonical mapping between the modes. It fails on
-horizontal compression, mirroring and texel drift, not merely on block
-non-uniformity. Both captures must be at the same game frame.
+Block uniformity alone is insufficient (a black or mirrored frame would
+score 100%). `tools/qa/check_2x_blocks.py capture.bgra --source field_1x.bgra`
+also compares every 2x pixel with the independent 1x capture at
+`(X/2+100, Y/2+60)` — the canonical mapping between the modes. This is the
+`np.repeat(np.repeat(source, 2, 0), 2, 1)` comparison from Task 2D, but uses a
+separate rendering of the same frame rather than a CPU enlargement of the 2x
+texture. It fails on horizontal compression, mirroring, texel drift and
+origin shift, not merely on block non-uniformity. Both captures must be at
+the same game frame (`check_2x_matches_1x.py` remains as a standalone form of
+the same check).
 
 Build: `tools/game/check_patches.py` (106/106 patches) and
 `tools/game/hgss_game.py --target 3ds --game heartgold` produced
