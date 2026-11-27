@@ -53,9 +53,9 @@ const char *kj_ds_pack_build_id(void)
     return KJ_PAK_BUILD_ID;
 }
 
-void kj_ds_set_save_path(const char *path)
+bool kj_ds_set_save_path(const char *path)
 {
-    NitroPort_SetSavePath(path);
+    return NitroPort_SetSavePath(path) ? true : false;
 }
 
 const char *kj_ds_open_pack(const char *pak_path, const char *manifest_path)

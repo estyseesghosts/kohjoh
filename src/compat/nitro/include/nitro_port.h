@@ -332,8 +332,12 @@ void NitroPort_InitArm7Services(void);
 
 /* Save-card backing store: raw 512 KiB FLASH image, emulator .sav layout.
  * Set before CARD_IdentifyBackup. A missing file is created filled with 0xFF.
- * Changing the path while a card request is active is not supported. */
-void NitroPort_SetSavePath(const char *path);
+ * Changing the path while a card request is active is not supported.
+ * Returns TRUE when the path was installed and the backend could open,
+ * create or import the 512 KiB image. On FALSE the previous path is not
+ * left half-replaced: a failed new path is discarded and the backend has no
+ * path until a later successful call. NULL or "" clears the path. */
+BOOL NitroPort_SetSavePath(const char *path);
 /* The save's changes not in its file yet (the pages of a write until its
  * last: a write goes into the file whole), into it now: for the HOME menu,
  * sleep and closing (a write under way finishes it itself). And how many

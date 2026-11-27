@@ -7,6 +7,7 @@
  * current working directory (kohjoh.md 4.2). */
 typedef struct kj_paths {
     bool bundled;              /* installed title: pack in RomFS, save in the title archive */
+    bool save_dir_ready;       /* saves/ was created (or already existed) */
     char root[96];             /* sdmc:/3ds/kohjoh */
     char pack_file[128];
     char manifest_file[128];

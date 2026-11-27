@@ -41,8 +41,10 @@ const char *kj_ds_open_pack(const char *pak_path, const char *manifest_path);
 void kj_game_main(const kj_game_settings *settings);
 
 /* Back the game's 512 KiB save chip with a raw file (compat port_card).
- * Must be called before kj_game_main. */
-void kj_ds_set_save_path(const char *path);
+ * Must be called before kj_game_main. Returns false when the path cannot be
+ * installed or the image cannot be opened, created or imported; the caller
+ * must not start the game in that case. */
+bool kj_ds_set_save_path(const char *path);
 
 /* Edition identity compiled into this program. */
 const char *kj_ds_edition_name(void);     /* "heartgold" / "soulsilver" */

@@ -56,8 +56,9 @@ static void unlock(void)
 }
 
 static void flush_locked(void);
+static BOOL open_save(void);
 
-void NitroPort_SetSavePath(const char *path)
+BOOL NitroPort_SetSavePath(const char *path)
 {
     char *copy = NULL;
     if (path && *path) {
@@ -65,7 +66,7 @@ void NitroPort_SetSavePath(const char *path)
         copy = (char *)malloc(len + 1);
         if (!copy) {
             NitroPort_Log("[ARM7 CARD] cannot allocate save path");
-            return;
+            return FALSE;
         }
         memcpy(copy, path, len + 1);
     }
@@ -77,7 +78,17 @@ void NitroPort_SetSavePath(const char *path)
     }
     free(sSavePath);
     sSavePath = copy;
+    /* Validate now, before the game starts: a directory that cannot be
+     * written, an unreadable existing file or a failed import must fail
+     * startup rather than a later card request. open_save() leaves the
+     * backend closed and the original file untouched on failure. */
+    const BOOL ready = copy == NULL ? TRUE : open_save();
+    if (!ready) {
+        free(sSavePath);
+        sSavePath = NULL;
+    }
     unlock();
+    return ready;
 }
 
 /* The save, as it is in the file, kept in memory: read once (one request
