@@ -184,6 +184,9 @@ int main(int argc, char **argv)
     kj_log("[app] kohjoh %s (%s), %s, %s", KJ_BUILD_ID, kj_ds_edition_name(),
            paths->bundled ? "installed title (RomFS pack)" : "homebrew (SD pack)",
            is_new ? "New 3DS hardware held at O3DS clock" : "Old 3DS");
+#ifdef KJ_CRASH_TEST
+    kj_crash_test_trigger();
+#endif
 
     {
         char script[128];

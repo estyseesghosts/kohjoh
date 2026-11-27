@@ -20,6 +20,7 @@
 #define LINE_MAX_BYTES 512
 
 static LightLock s_lock;
+static LightLock s_flush_lock; /* exactly one drain+write operation at a time */
 static LightEvent s_wake;
 static char s_ring[RING_BYTES];
 static size_t s_head; /* write position */
@@ -48,7 +49,11 @@ static void append(const char *text, size_t len)
     }
 }
 
-static void flush_ring(void)
+/* Drain the producer ring under its lock, then write to the file under the
+ * flush lock. The two locks are separate on purpose: the SD write must not
+ * block producers, and kj_log_flush_now() from another thread must not
+ * interleave chunks with the writer thread. */
+static void flush_ring_locked(void)
 {
     static char chunk[RING_BYTES];
     size_t n = 0;
@@ -75,6 +80,13 @@ static void flush_ring(void)
     fflush(s_file);
 }
 
+static void flush_ring(void)
+{
+    LightLock_Lock(&s_flush_lock);
+    flush_ring_locked();
+    LightLock_Unlock(&s_flush_lock);
+}
+
 static void log_thread(void *arg)
 {
     (void)arg;
@@ -88,6 +100,7 @@ static void log_thread(void *arg)
 void kj_log_init(const char *path)
 {
     LightLock_Init(&s_lock);
+    LightLock_Init(&s_flush_lock);
     LightEvent_Init(&s_wake, RESET_ONESHOT);
     s_start_tick = svcGetSystemTick();
     s_file = path != NULL ? fopen(path, "a") : NULL;
@@ -110,11 +123,15 @@ void kj_log_shutdown(void)
         threadFree(s_thread);
         s_thread = NULL;
     }
-    flush_ring();
+    /* Flush and close under the flush lock so a concurrent
+     * kj_log_flush_now() cannot use a closed file. */
+    LightLock_Lock(&s_flush_lock);
+    flush_ring_locked();
     if (s_file != NULL) {
         fclose(s_file);
         s_file = NULL;
     }
+    LightLock_Unlock(&s_flush_lock);
 }
 
 void kj_log_flush_now(void)

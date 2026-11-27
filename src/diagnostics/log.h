@@ -7,7 +7,8 @@
 void kj_log_init(const char *path);
 /* Stop the flush thread and write everything still buffered. */
 void kj_log_shutdown(void);
-/* Write the ring now, on the calling thread (crash paths, exit). */
+/* Write the ring now, on the calling thread (exit and fatal-screen paths).
+ * Never call this from an exception handler: it takes the ring/flush locks. */
 void kj_log_flush_now(void);
 
 void kj_log(const char *fmt, ...) __attribute__((format(printf, 1, 2)));

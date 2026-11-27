@@ -68,7 +68,9 @@ static void handler(ERRF_ExceptionInfo *excep, CpuRegisters *regs)
                          (unsigned long)regs->r[9], (unsigned long)regs->r[10],
                          (unsigned long)regs->r[11], (unsigned long)regs->r[12]);
         /* The crash file first: it needs no lock the faulting thread could
-         * hold (the log ring does). */
+         * hold. Never call the normal ring logger from here: the fault may
+         * have happened while its producer or flush lock was held, and that
+         * would deadlock the handler before the system error screen. */
         if (s_crash_path[0] != '\0') {
             FILE *f = fopen(s_crash_path, "a");
             if (f != NULL) {
@@ -76,8 +78,6 @@ static void handler(ERRF_ExceptionInfo *excep, CpuRegisters *regs)
                 fclose(f);
             }
         }
-        kj_log("%s", text);
-        kj_log_flush_now();
     }
     ERRF_ExceptionHandler(excep, regs);
 }
@@ -98,3 +98,15 @@ void kj_crash_install(void)
     }
     threadOnException(handler, s_stacks[i] + HANDLER_STACK_BYTES, &s_data[i]);
 }
+
+#ifdef KJ_CRASH_TEST
+/* Development-only: fault in ordinary code so the exception path can be
+ * exercised on hardware or in an emulator (docs/testing.md). */
+void kj_crash_test_trigger(void)
+{
+    kj_log("[crash-test] triggering a data abort now");
+    kj_log_flush_now();
+    volatile unsigned *bad = (volatile unsigned *)0x00000000u;
+    *bad = 1u;
+}
+#endif
