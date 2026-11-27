@@ -18,6 +18,12 @@
  * Every tile reaches the GPU through the atlas (exact-compare cache). Modes
  * this file cannot draw are counted in unsupported_modes, never replaced by
  * a CPU picture.
+ *
+ * Module boundaries: g2d_layers.c decodes BG/OBJ quads, g2d_retained.c owns
+ * the retained caches and byte comparisons. Window/blend/brightness passes
+ * and wide-art band placement stay here because they interleave the DS
+ * priority pass; a separate effects object would only exchange the ctx and
+ * drawable state back and forth.
  */
 
 #include "graphics/g2d/g2d.h"

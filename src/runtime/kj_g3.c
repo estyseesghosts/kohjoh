@@ -1923,6 +1923,12 @@ static u32 s_fifo_calls;
 
 /* ------------------------------------------------- retained display lists */
 
+/* Retained replay stays in this translation unit on purpose: it reads and
+ * writes the live DS command/geometry state on every decoded block, and a
+ * cross-TU boundary would add calls to the measured hot path without O3DS
+ * evidence that the cost is neutral. Pure matrix support lives in
+ * kj_g3_matrix.c; the arena and cache entries remain owned here. */
+
 /*
  * Retained display lists (OPT-003), event replay.
  *
