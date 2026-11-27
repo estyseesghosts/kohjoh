@@ -141,7 +141,7 @@ void kj_script_load(const char *path)
         } else if (strcmp(tok, "fontbench") == 0) {
             s_fontbench = true;
         } else if (strcmp(tok, "battle:") == 0) {
-            char *f = strtok(NULL, " \t\r\n");
+            char *fr = strtok(NULL, " \t\r\n");
             char *a = strtok(NULL, " \t\r\n");
             char *b = strtok(NULL, " \t\r\n");
             char *bg = strtok(NULL, " \t\r\n");
@@ -150,8 +150,8 @@ void kj_script_load(const char *path)
                 s_battle_bg = (int)strtol(bg, NULL, 10);
                 s_battle_terrain = (int)strtol(ter, NULL, 10);
             }
-            if (f != NULL && a != NULL) {
-                s_battle_frame = (uint32_t)strtoul(f, NULL, 10);
+            if (fr != NULL && a != NULL) {
+                s_battle_frame = (uint32_t)strtoul(fr, NULL, 10);
                 s_battle_t1 = (unsigned)strtoul(a, NULL, 10);
                 s_battle_t2 = b ? (unsigned)strtoul(b, NULL, 10) : 0;
             }

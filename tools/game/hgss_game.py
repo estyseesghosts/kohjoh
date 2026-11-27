@@ -150,6 +150,18 @@ def game_defines() -> list[str]:
     return ["-D" + GAME["define"]]
 
 WARNINGS = ["-Wall", "-Wuninitialized", "-Wmaybe-uninitialized"]
+# Kohjoh first-party 3DS code (src/app, graphics, audio, storage, content,
+# diagnostics). Legacy/decomp code keeps WARNINGS above; these flags are
+# deliberately not mixed into the DS-ABI/game build, whose vendored headers
+# and emulated compiler are outside this boundary.
+FIRST_PARTY_WARNINGS = ["-Wall", "-Wextra", "-Wshadow", "-Wundef",
+                        "-Wstrict-prototypes", "-Wmissing-prototypes",
+                        "-Wpointer-arith", "-Wformat=2", "-Werror"]
+# src/runtime is first-party but must compile in the DS ABI with NitroSDK
+# headers, so the C-only prototype rules stay out. The rest is useful and is
+# checked separately from the decomp game objects.
+RUNTIME_WARNINGS = ["-Wall", "-Wextra", "-Wshadow", "-Wundef",
+                    "-Wpointer-arith", "-Wformat=2"]
 SECTION_FLAGS = ["-ffunction-sections", "-fdata-sections"]
 
 HOST_FLAGS = ["-m32", "-malign-double", "-fno-pie",
@@ -368,11 +380,13 @@ def ctr_sources() -> list[Path]:
 
 
 def ctr_cflags(out: Path) -> list[str]:
-    return ["-std=gnu11", "-O2", "-g", *WARNINGS, *SECTION_FLAGS,
+    return ["-std=gnu11", "-O2", "-g", *FIRST_PARTY_WARNINGS, *SECTION_FLAGS,
             "-Wno-unused-function", *ARM_FLAGS, *game_defines(),
             *(["-DHGSS_PROFILE_OFF"] if profile_mode() == "off" else []),
             *[f"-D{d}" for d in EXTRA_DEFINES],
-            f"-I{devkitpro() / 'libctru' / 'include'}",
+            # libctru/citro3d are vendor headers: keep them outside the
+            # first-party warning boundary instead of editing them.
+            "-isystem", f"{devkitpro() / 'libctru' / 'include'}",
             f"-I{REPO / 'src'}", f"-I{REPO / 'src' / 'runtime'}", f"-I{out / 'gen'}"]
 
 
@@ -1939,8 +1953,9 @@ def main(argv: list[str] | None = None) -> int:
     pak_c = pak_reader_source(out)
     app_jobs.append((pak_c, out / "app" / "pak_reader_hgss.o", "c"))
     print(f"== compiling the DS-side runtime ({len(app_jobs)} files)", flush=True)
-    app_cflags = list(cflags) + [f"-I{REPO / 'src' / 'compat' / 'pak' / 'include'}",
-                                 f"-I{REPO / 'src' / 'runtime'}"]
+    app_cflags = list(cflags) + RUNTIME_WARNINGS + [
+        f"-I{REPO / 'src' / 'compat' / 'pak' / 'include'}",
+        f"-I{REPO / 'src' / 'runtime'}"]
     app_objects, app_failed = compile_objects(
         tools["cc"], app_cflags, app_jobs, args.jobs, log_dir, args.keep_going)
     if args.target == "3ds":

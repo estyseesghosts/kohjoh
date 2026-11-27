@@ -185,7 +185,11 @@ void kj_log(const char *fmt, ...)
     va_end(args);
 }
 
-/* The compat layer's logger (strong; overrides its weak stderr default). */
+/* The compat layer's logger (strong; overrides its weak stderr default).
+ * Declared here because the NitroSDK-side header cannot be included from the
+ * libctru build. */
+void NitroPort_Log(const char *fmt, ...);
+
 void NitroPort_Log(const char *fmt, ...)
 {
     va_list args;

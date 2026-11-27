@@ -320,8 +320,8 @@ void kj_text_frame(const kj_frame_input *in)
                 const int x0 = e->x, y0 = e->y;
                 const int x1 = e->x + (int)e->arg0, y1 = e->y + (int)e->arg1;
                 uint16_t keep = 0;
-                for (uint16_t i = 0; i < p->glyph_count; ++i) {
-                    const kj_text_glyph *g = &p->glyphs[i];
+                for (uint16_t gi = 0; gi < p->glyph_count; ++gi) {
+                    const kj_text_glyph *g = &p->glyphs[gi];
                     const bool hit = g->x < x1 && g->x + 8 > x0 && g->y < y1 && g->y + 16 > y0;
                     if (!hit) {
                         p->glyphs[keep++] = *g;
@@ -338,8 +338,8 @@ void kj_text_frame(const kj_frame_input *in)
                  * second page of a dialogue stay native. */
                 uint16_t keep = 0;
                 const int dw = (int)p->width * 8, dh = (int)p->height * 8;
-                for (uint16_t i = 0; i < p->glyph_count; ++i) {
-                    kj_text_glyph g = p->glyphs[i];
+                for (uint16_t gi = 0; gi < p->glyph_count; ++gi) {
+                    kj_text_glyph g = p->glyphs[gi];
                     g.x = (int16_t)(g.x + e->x);
                     g.y = (int16_t)(g.y + e->y);
                     if (g.x + 8 > 0 && g.x < dw && g.y + 16 > 0 && g.y < dh) {

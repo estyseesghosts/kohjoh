@@ -538,6 +538,7 @@ static bool still_valid(tex_entry *e, const desc *d)
     }
     e->checked_frame = s_frame;
     const uint32_t total = d->data_len + d->index_len;
+    (void)total;
     const int data = differs(e->shadow, d->addr, d->data_len);
     const int index = d->index_len ? differs(e->shadow + d->data_len, d->index_addr, d->index_len) : 0;
     if (data < 0 || index < 0) {

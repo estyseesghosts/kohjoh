@@ -28,7 +28,8 @@ bool kj_offscreen_init(void)
     }
     C3D_TexSetFilter(&s_tex, GPU_NEAREST, GPU_NEAREST);
     C3D_TexSetWrap(&s_tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
-    s_target = C3D_RenderTargetCreateFromTex(&s_tex, GPU_TEX_2D, 0, GPU_RB_DEPTH24_STENCIL8);
+    s_target = C3D_RenderTargetCreateFromTex(&s_tex, (GPU_TEXFACE)GPU_TEX_2D, 0,
+                                             GPU_RB_DEPTH24_STENCIL8);
     if (s_target == NULL) {
         kj_log("[gpu] 2x: cannot attach depth/stencil to world texture (VRAM free %lu)",
                (unsigned long)vramSpaceFree());
