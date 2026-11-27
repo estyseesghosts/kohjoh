@@ -7,6 +7,12 @@
 #include "diagnostics/log.h"
 
 static kj_text_presentation s_windows[KJ_TEXT_MAX_WINDOWS];
+/* Least-recently-seen age per record, private to this file. A live window's
+ * age is refreshed by every event or publication it receives; on capacity
+ * exhaustion the smallest age is evicted. Never expose this through the
+ * public presentation struct. */
+static uint32_t s_age[KJ_TEXT_MAX_WINDOWS];
+static uint32_t s_serial;
 static kj_text_stats s_stats;
 static bool s_enabled;
 static bool s_atlas_ready;
@@ -17,6 +23,8 @@ static bool s_logged_native;
 void kj_text_init(void)
 {
     memset(s_windows, 0, sizeof(s_windows));
+    memset(s_age, 0, sizeof(s_age));
+    s_serial = 0;
     memset(&s_stats, 0, sizeof(s_stats));
     memset(s_logged, 0, sizeof(s_logged));
     s_enabled = false;
@@ -26,6 +34,8 @@ void kj_text_init(void)
 void kj_text_exit(void)
 {
     memset(s_windows, 0, sizeof(s_windows));
+    memset(s_age, 0, sizeof(s_age));
+    s_serial = 0;
 }
 
 void kj_text_set_enabled(bool native)
@@ -53,43 +63,68 @@ void kj_text_note_draw(void)
     ++s_stats.draws;
 }
 
+static void touch(int index)
+{
+    s_age[index] = ++s_serial;
+}
+
 static kj_text_presentation *find_live(uint32_t window)
 {
     for (int i = 0; i < KJ_TEXT_MAX_WINDOWS; ++i) {
         if (s_windows[i].valid && s_windows[i].window == window) {
+            touch(i);
             return &s_windows[i];
         }
     }
     return NULL;
 }
 
+static int least_recently_seen(void)
+{
+    int best = -1;
+    uint32_t oldest = UINT32_MAX;
+    for (int i = 0; i < KJ_TEXT_MAX_WINDOWS; ++i) {
+        if (s_windows[i].valid && s_age[i] < oldest) {
+            oldest = s_age[i];
+            best = i;
+        }
+    }
+    return best;
+}
+
 static kj_text_presentation *claim(uint32_t window, uint32_t generation)
 {
-    kj_text_presentation *slot = NULL;
+    int slot = -1;
 
     for (int i = 0; i < KJ_TEXT_MAX_WINDOWS; ++i) {
         if (s_windows[i].valid && s_windows[i].window == window) {
             if (s_windows[i].generation == generation) {
+                touch(i);
                 return &s_windows[i];
             }
             /* A new allocation at the same address must not inherit. */
-            slot = &s_windows[i];
+            slot = i;
             break;
         }
-        if (!s_windows[i].valid && slot == NULL) {
-            slot = &s_windows[i];
+        if (!s_windows[i].valid && slot < 0) {
+            slot = i;
         }
     }
-    if (slot == NULL) {
-        /* Reclaim the oldest record rather than hide everything. */
-        slot = &s_windows[0];
+    if (slot < 0) {
+        /* The table is a fixed capacity: evict the least recently seen
+         * record (never an arbitrary slot), and count the drop. */
+        slot = least_recently_seen();
         ++s_stats.events_dropped;
+        if (slot < 0) {
+            slot = 0; /* no valid record: unreachable with a non-zero capacity */
+        }
     }
-    memset(slot, 0, sizeof(*slot));
-    slot->valid = true;
-    slot->window = window;
-    slot->generation = generation;
-    return slot;
+    memset(&s_windows[slot], 0, sizeof(s_windows[slot]));
+    s_windows[slot].valid = true;
+    s_windows[slot].window = window;
+    s_windows[slot].generation = generation;
+    touch(slot);
+    return &s_windows[slot];
 }
 
 static bool all_glyphs_resolvable(const kj_text_presentation *p, kj_text_fallback *why)

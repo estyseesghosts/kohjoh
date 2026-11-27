@@ -433,6 +433,110 @@ static void test_policy(const unsigned char *blob, size_t size)
     kj_font_atlas_exit();
 }
 
+/* Fixed-capacity policy: exactly KJ_TEXT_MAX_WINDOWS records fit; one more
+ * evicts the least recently seen record, not slot 0. A reused address with a
+ * new generation inherits nothing from the evicted record. */
+static void test_capacity(const unsigned char *blob, size_t size)
+{
+    static kj_text_event events[4 * (KJ_TEXT_MAX_WINDOWS + 4)];
+    kj_frame_input in;
+    unsigned n;
+    int count;
+    int cursor;
+    const kj_text_presentation *p;
+    bool saw_victim, saw_recent, saw_new;
+
+    assert(kj_font_atlas_init(blob, size));
+    kj_text_init();
+    kj_text_stats_reset();
+    kj_text_set_enabled(true);
+    memset(&in, 0, sizeof(in));
+    in.text_events = events;
+
+    /* Exactly capacity: every window fits, nothing is dropped. */
+    for (unsigned i = 0; i < KJ_TEXT_MAX_WINDOWS; ++i) {
+        n = 0;
+        add_full_window(events, &n, 0x10000u + i);
+        /* index 1 is a record that will fall back to legacy. */
+        glyph(events, &n, 0x10000u + i, i == 1 ? 0x1234u : 299u, 0, 0);
+        publish(events, &n, 0x10000u + i);
+        in.text_event_count = n;
+        kj_text_frame(&in);
+    }
+    assert(kj_text_stats_read()->events_dropped == 0);
+    count = 0;
+    cursor = 0;
+    while (kj_text_next(0, 0, &cursor) != NULL) {
+        ++count;
+    }
+    assert(count == KJ_TEXT_MAX_WINDOWS - 1); /* the legacy record is not native */
+
+    /* Make the first-inserted record the most recently seen. The victim of
+     * the next allocation must then be the second-inserted one, not slot 0. */
+    n = 0;
+    publish(events, &n, 0x10000u);
+    in.text_event_count = n;
+    kj_text_frame(&in);
+
+    n = 0;
+    add_full_window(events, &n, 0x10000u + KJ_TEXT_MAX_WINDOWS);
+    glyph(events, &n, 0x10000u + KJ_TEXT_MAX_WINDOWS, 299, 0, 0);
+    publish(events, &n, 0x10000u + KJ_TEXT_MAX_WINDOWS);
+    in.text_event_count = n;
+    kj_text_frame(&in);
+    assert(kj_text_stats_read()->events_dropped == 1);
+
+    saw_victim = saw_recent = saw_new = false;
+    cursor = 0;
+    while ((p = kj_text_next(0, 0, &cursor)) != NULL) {
+        if (p->window == 0x10001u) {
+            saw_victim = true;
+        }
+        if (p->window == 0x10000u) {
+            saw_recent = true;
+            assert(p->glyph_count == 1 && p->glyphs[0].code == 299);
+        }
+        if (p->window == 0x10000u + KJ_TEXT_MAX_WINDOWS) {
+            saw_new = true;
+            assert(p->native && p->glyph_count == 1);
+            assert(p->fallback == KJ_TEXT_OK && p->poisoned == 0);
+        }
+    }
+    assert(!saw_victim);
+    assert(saw_recent && saw_new);
+
+    /* Re-add the evicted address with a new generation: no old glyphs and no
+     * fallback policy may survive. */
+    n = 0;
+    events[n++] = ev(KJ_TEXT_EV_ADD, 0x10001u, 2);
+    {
+        kj_text_event f = ev(KJ_TEXT_EV_FILL, 0x10001u, 2);
+        f.value = 15;
+        f.arg0 = 240;
+        f.arg1 = 32;
+        events[n++] = f;
+    }
+    glyph_gen(events, &n, 0x10001u, 2, 325, 0, 0);
+    publish_gen(events, &n, 0x10001u, 2);
+    in.text_event_count = n;
+    kj_text_frame(&in);
+
+    cursor = 0;
+    saw_victim = false;
+    while ((p = kj_text_next(0, 0, &cursor)) != NULL) {
+        if (p->window == 0x10001u) {
+            saw_victim = true;
+            assert(p->generation == 2 && p->glyph_count == 1);
+            assert(p->glyphs[0].code == 325);
+            assert(p->native && p->fallback == KJ_TEXT_OK);
+        }
+    }
+    assert(saw_victim);
+
+    kj_text_exit();
+    kj_font_atlas_exit();
+}
+
 int main(int argc, char **argv)
 {
     const char *path = argc > 1 ? argv[1] : "assets/fonts/generated/kohjoh_text_atlas.bin";
@@ -442,6 +546,7 @@ int main(int argc, char **argv)
     test_atlas(blob, size);
     test_batch(blob, size);
     test_policy(blob, size);
+    test_capacity(blob, size);
 
     free(blob);
     puts("text_test: PASS");
