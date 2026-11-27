@@ -31,6 +31,31 @@ types, no enums, `kj_ds_*` / `kj_ctr_*` functions.
    (`C3D_FrameBegin(0)`), records both screens and submits. Nothing reads DS
    memory after it returns. If the game is ≥2 refreshes behind, the
    presentation (not the game tick) is skipped and counted.
+   `kj_ctr_publish_frame` is a coordinator over named phases: skip decision,
+   queue completion, frame preparation, screen draws, submission recording,
+   the 600-frame report and scripted capture/freeze directives.
+
+## Lifecycle and ownership
+
+- Renderer stages (`C3D`, targets, G3 storage, G2D, G3D) each record their
+  own readiness. `kj_renderer_init` unwinds through `kj_renderer_exit` on any
+  failure, and `kj_renderer_exit` waits for outstanding GPU work before
+  freeing buffers the PICA may still read. The renderer owns the four G3
+  vertex/index buffers; `kj_g3_shutdown` frees only the G3 display-list arena
+  and clears the borrowed pointers.
+- Child modules own their resources: `targets.c` deletes a partial target
+  pair, `gpu.c` tracks DVLB/program/arena stages, `atlas.c` has explicit
+  readiness, `offscreen.c` cleans its texture, `text_render.c` unwinds its
+  run buffer and atlas, `fontbench.c` and the G2D retained-layer caches have
+  exit paths.
+- Threads use defined atomics, not `volatile`: the audio and log stop flags
+  are published with `__atomic_store_n(..., __ATOMIC_RELEASE)` and read with
+  `__atomic_load_n(..., __ATOMIC_ACQUIRE)`; `LightEvent` carries the wakeup.
+  A faulting thread never calls the normal ring logger from the exception
+  handler.
+- Save startup is transactional: `NitroPort_SetSavePath` opens, creates or
+  imports the 512 KiB image before `kj_game_main`, and failure reaches the
+  application's fatal screen. `paths.c` reports whether `saves/` exists.
 
 ## 2D ([`g2d.c`](../src/graphics/g2d/g2d.c))
 

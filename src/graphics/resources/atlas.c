@@ -34,6 +34,7 @@ typedef struct slot_info {
 } slot_info;
 
 static C3D_Tex s_tex;
+static bool s_ready;
 static uint16_t *s_texels;
 static slot_info s_slots[KJ_ATLAS_SLOTS];
 static uint16_t s_table[TABLE_SIZE];
@@ -76,12 +77,19 @@ bool kj_atlas_init(void)
     memset(s_table, 0xFF, sizeof(s_table));
     memset(s_slots, 0, sizeof(s_slots));
     build_morton();
+    s_ready = true;
     return true;
 }
 
 void kj_atlas_exit(void)
 {
-    C3D_TexDelete(&s_tex);
+    if (s_ready) {
+        C3D_TexDelete(&s_tex);
+        s_texels = NULL;
+        memset(s_table, 0xFF, sizeof(s_table));
+        memset(s_slots, 0, sizeof(s_slots));
+        s_ready = false;
+    }
 }
 
 void kj_atlas_begin_frame(void)

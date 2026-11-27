@@ -29,6 +29,7 @@ extern const u32 g3d_lit_shbin_size;
 
 static DVLB_s *s_dvlb_2d, *s_dvlb_3d, *s_dvlb_lit;
 static shaderProgram_s s_prog_2d, s_prog_3d, s_prog_lit;
+static bool s_prog_2d_ready, s_prog_3d_ready, s_prog_lit_ready;
 static kj_lit_uniforms s_lit;
 static int s_lit_palette, s_lit_texscale;
 static C3D_AttrInfo s_attr_2d, s_attr_3d;
@@ -43,18 +44,34 @@ static uint32_t s_arena_used, s_arena_dropped;
 
 bool kj_gpu_init(void)
 {
+    static bool dvlb_ready[3], prog_ready[3];
     s_dvlb_2d = DVLB_ParseFile((u32 *)g2d_shbin, g2d_shbin_size);
+    dvlb_ready[0] = s_dvlb_2d != NULL;
     s_dvlb_3d = DVLB_ParseFile((u32 *)g3d_shbin, g3d_shbin_size);
+    dvlb_ready[1] = s_dvlb_3d != NULL;
     s_dvlb_lit = DVLB_ParseFile((u32 *)g3d_lit_shbin, g3d_lit_shbin_size);
-    if (s_dvlb_2d == NULL || s_dvlb_3d == NULL || s_dvlb_lit == NULL) {
+    dvlb_ready[2] = s_dvlb_lit != NULL;
+    if (!dvlb_ready[0] || !dvlb_ready[1] || !dvlb_ready[2]) {
         kj_log("[gpu] shader parse failed");
-        return false;
+        goto fail;
     }
-    shaderProgramInit(&s_prog_2d);
+    prog_ready[0] = shaderProgramInit(&s_prog_2d);
+    if (!prog_ready[0]) {
+        goto fail;
+    }
+    s_prog_2d_ready = true;
     shaderProgramSetVsh(&s_prog_2d, &s_dvlb_2d->DVLE[0]);
-    shaderProgramInit(&s_prog_3d);
+    prog_ready[1] = shaderProgramInit(&s_prog_3d);
+    if (!prog_ready[1]) {
+        goto fail;
+    }
+    s_prog_3d_ready = true;
     shaderProgramSetVsh(&s_prog_3d, &s_dvlb_3d->DVLE[0]);
-    shaderProgramInit(&s_prog_lit);
+    prog_ready[2] = shaderProgramInit(&s_prog_lit);
+    if (!prog_ready[2]) {
+        goto fail;
+    }
+    s_prog_lit_ready = true;
     shaderProgramSetVsh(&s_prog_lit, &s_dvlb_lit->DVLE[0]);
     s_lit_palette = shaderInstanceGetUniformLocation(s_prog_lit.vertexShader, "palette");
     s_lit_texscale = shaderInstanceGetUniformLocation(s_prog_lit.vertexShader, "texscale");
@@ -88,7 +105,7 @@ bool kj_gpu_init(void)
     s_quad_indices = linearAlloc(ARENA_QUADS * 6u * sizeof(uint16_t));
     if (s_arena == NULL || s_quad_indices == NULL) {
         kj_log("[gpu] out of linear memory for the 2D arena");
-        return false;
+        goto fail;
     }
     for (uint32_t q = 0; q < ARENA_QUADS; ++q) {
         const uint16_t b = (uint16_t)(q * 4u);
@@ -101,18 +118,52 @@ bool kj_gpu_init(void)
         i[5] = (uint16_t)(b + 3);
     }
     return true;
+
+fail:
+    kj_gpu_exit();
+    return false;
 }
 
 void kj_gpu_exit(void)
 {
-    shaderProgramFree(&s_prog_2d);
-    shaderProgramFree(&s_prog_3d);
-    shaderProgramFree(&s_prog_lit);
-    DVLB_Free(s_dvlb_2d);
-    DVLB_Free(s_dvlb_3d);
-    DVLB_Free(s_dvlb_lit);
-    linearFree(s_arena);
-    linearFree(s_quad_indices);
+    /* Reverse acquisition order. Every stage is tracked separately so a
+     * partial init (failed DVLB, program or arena allocation) is safely
+     * destroyable and a second call is harmless. */
+    if (s_prog_lit_ready) {
+        shaderProgramFree(&s_prog_lit);
+        s_prog_lit_ready = false;
+    }
+    if (s_prog_3d_ready) {
+        shaderProgramFree(&s_prog_3d);
+        s_prog_3d_ready = false;
+    }
+    if (s_prog_2d_ready) {
+        shaderProgramFree(&s_prog_2d);
+        s_prog_2d_ready = false;
+    }
+    if (s_dvlb_lit != NULL) {
+        DVLB_Free(s_dvlb_lit);
+        s_dvlb_lit = NULL;
+    }
+    if (s_dvlb_3d != NULL) {
+        DVLB_Free(s_dvlb_3d);
+        s_dvlb_3d = NULL;
+    }
+    if (s_dvlb_2d != NULL) {
+        DVLB_Free(s_dvlb_2d);
+        s_dvlb_2d = NULL;
+    }
+    if (s_arena != NULL) {
+        linearFree(s_arena);
+        s_arena = NULL;
+    }
+    if (s_quad_indices != NULL) {
+        linearFree(s_quad_indices);
+        s_quad_indices = NULL;
+    }
+    s_arena_used = 0;
+    s_arena_dropped = 0;
+    kj_gpu_invalidate();
 }
 
 void kj_gpu_invalidate(void)

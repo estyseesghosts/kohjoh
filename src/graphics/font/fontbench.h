@@ -11,6 +11,9 @@ extern "C" {
  * line in script.txt. Draws over the finished top frame at 1:1 physical
  * pixels. A no-op when the atlas is not ready. */
 void kj_fontbench_draw(const kj_target *top);
+/* Release the fontbench-owned linear vertex buffer. Safe to call when the
+ * overlay never ran or was already released. */
+void kj_fontbench_exit(void);
 
 #ifdef __cplusplus
 }

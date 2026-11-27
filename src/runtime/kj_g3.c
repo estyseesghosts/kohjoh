@@ -2205,6 +2205,21 @@ static void dl_flush_all(void)
     ++s_dl_flushes;
 #endif
 }
+
+void kj_g3_shutdown(void)
+{
+    /* G3-owned storage only: the display-list arena. The two vertex/index
+     * buffer pairs are allocated and owned by the renderer (kj_g3_storage)
+     * and are only borrowed here, so clear the borrow rather than free it. */
+    free(s_dl_arena);
+    s_dl_arena = NULL;
+    s_dl_arena_used = 0;
+    memset(s_dl, 0, sizeof(s_dl));
+    for (int i = 0; i < 2; ++i) {
+        s_buf[i].verts = NULL;
+        s_buf[i].indices = NULL;
+    }
+}
 static dl_rec s_rec;
 static uint32_t s_dl_bytes;
 static uint32_t s_dl_hits, s_dl_misses, s_dl_uncacheable;

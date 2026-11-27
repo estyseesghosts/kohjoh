@@ -28,6 +28,14 @@ bool kj_targets_init(void)
     if (s_targets[0].rt == NULL || s_targets[1].rt == NULL) {
         kj_log("[gpu] cannot create render targets (VRAM free %lu)",
                (unsigned long)vramSpaceFree());
+        /* Delete whichever target succeeded; a half-created pair has no
+         * useful state and must not leak VRAM into the next attempt. */
+        for (int i = 0; i < 2; ++i) {
+            if (s_targets[i].rt != NULL) {
+                C3D_RenderTargetDelete(s_targets[i].rt);
+                s_targets[i].rt = NULL;
+            }
+        }
         return false;
     }
     C3D_RenderTargetSetOutput(s_targets[0].rt, GFX_TOP, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
@@ -72,6 +80,7 @@ void kj_targets_exit(void)
             s_targets[i].rt = NULL;
         }
     }
+    s_world_mode = KJ_FIELD_SCALE_LEGACY;
 }
 
 kj_target *kj_target_get(int screen)

@@ -41,28 +41,27 @@ bool kj_text_render_init(void)
         }
     }
     if (!kj_font_atlas_init(kohjoh_text_atlas_bin, kohjoh_text_atlas_bin_size)) {
-        return false;
+        goto fail;
     }
     const kj_font_atlas *atlas = kj_font_atlas_get();
     if (atlas == NULL || !C3D_TexInit(&s_texture, atlas->page_w, atlas->page_h, GPU_RGBA5551)) {
-        kj_font_atlas_exit();
-        return false;
+        goto fail;
     }
     C3D_TexSetFilter(&s_texture, GPU_NEAREST, GPU_NEAREST);
     C3D_TexSetWrap(&s_texture, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
-    const void *page0 = kj_font_page(0);
-    if (page0 == NULL) {
-        C3D_TexDelete(&s_texture);
-        kj_font_atlas_exit();
-        return false;
+    {
+        const void *page0 = kj_font_page(0);
+        if (page0 == NULL) {
+            goto fail;
+        }
+        /* Pages beyond the first are not bound by the first implementation; the
+         * generator currently emits one 256x256 page. */
+        /* C3D_TexInit allocates the texture already in PICA's 8x8 tile layout;
+         * the generator wrote that exact layout, so copy it into the texture
+         * memory rather than re-tiling it with C3D_TexUpload. */
+        memcpy(s_texture.data, page0, (size_t)atlas->page_w * atlas->page_h * 2u);
+        GSPGPU_FlushDataCache(s_texture.data, atlas->page_w * atlas->page_h * 2u);
     }
-    /* Pages beyond the first are not bound by the first implementation; the
-     * generator currently emits one 256x256 page. */
-    /* C3D_TexInit allocates the texture already in PICA's 8x8 tile layout;
-     * the generator wrote that exact layout, so copy it into the texture
-     * memory rather than re-tiling it with C3D_TexUpload. */
-    memcpy(s_texture.data, page0, (size_t)atlas->page_w * atlas->page_h * 2u);
-    GSPGPU_FlushDataCache(s_texture.data, atlas->page_w * atlas->page_h * 2u);
     s_texture_ready = true;
     kj_text_init();
     kj_log("[text] atlas ready: %u glyphs, %u masks, %ux%u, %u KiB",
@@ -70,6 +69,12 @@ bool kj_text_render_init(void)
            (unsigned)atlas->page_w, (unsigned)atlas->page_h,
            (unsigned)((unsigned)atlas->page_w * atlas->page_h * 2u / 1024u));
     return true;
+
+fail:
+    /* Native text is optional: release everything acquired here and leave
+     * the legacy DS text path in place. */
+    kj_text_render_exit();
+    return false;
 }
 
 void kj_text_render_exit(void)

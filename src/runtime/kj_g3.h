@@ -32,6 +32,9 @@ typedef struct kj_g3_storage {
 } kj_g3_storage;
 
 void kj_g3_init(const kj_g3_storage *storage);
+/* G3-owned allocations: the display-list arena. Borrowed vertex/index
+ * pointers are cleared; the renderer keeps ownership of those buffers. */
+void kj_g3_shutdown(void);
 
 /* Counters for diagnostics. */
 typedef struct kj_g3_stats {

@@ -114,6 +114,14 @@ static int draw_line(kj_text_run *run, const char *text, int x, int y, uint32_t 
     return worst_bottom;
 }
 
+void kj_fontbench_exit(void)
+{
+    if (s_vertices != NULL) {
+        linearFree(s_vertices);
+        s_vertices = NULL;
+    }
+}
+
 void kj_fontbench_draw(const kj_target *top)
 {
     static bool logged;

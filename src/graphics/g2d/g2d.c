@@ -1094,6 +1094,20 @@ static bool cache_alloc(layer_cache *lc)
     return lc->quads != NULL;
 }
 
+static void layer_cache_reset(layer_cache *lc)
+{
+    /* chars is malloc'd; quads and band are PICA-visible linear memory.
+     * Do not mix the allocator families. */
+    free(lc->chars);
+    if (lc->quads != NULL) {
+        linearFree(lc->quads);
+    }
+    if (lc->band != NULL) {
+        linearFree(lc->band);
+    }
+    memset(lc, 0, sizeof(*lc));
+}
+
 static uint32_t s_char_bytes_compared;
 
 static bool chars_same(const layer_cache *lc, const uint8_t *vram)
@@ -1877,6 +1891,7 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
     prepared pr;
     bool prepared_ok = false;
     uint64_t t0 = kj_perf_now();
+    (void)t0;
     if (single_span && display_mode == 1 && !forced_blank) {
         c.y0 = 0;
         c.y1 = 192;
@@ -1965,7 +1980,11 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
 bool kj_g2d_init(void)
 {
     memset(s_pal, 0, sizeof(s_pal));
-    if (!kj_gpu_init() || !kj_atlas_init()) {
+    if (!kj_gpu_init()) {
+        return false;
+    }
+    if (!kj_atlas_init()) {
+        kj_gpu_exit();
         return false;
     }
     /* Native text is optional: an atlas failure keeps the legacy renderer. */
@@ -1981,7 +2000,19 @@ void kj_g2d_exit(void)
     kj_log("[wide art] %lu layer builds with a picture, %lu without", (unsigned long)s_art_matched,
            (unsigned long)s_art_missing);
     kj_wideart_exit();
+    kj_fontbench_exit();
     kj_text_render_exit();
+    /* Release retained-layer storage before the atlas and GPU arena go away:
+     * the quads point at atlas slots and the band uses the same linear heap. */
+    for (int e = 0; e < 2; ++e) {
+        for (int bg = 0; bg < 4; ++bg) {
+            layer_cache_reset(&s_bg_cache[e][bg]);
+        }
+        layer_cache_reset(&s_obj_cache[e]);
+    }
+    memset(s_memo, 0, sizeof(s_memo));
+    s_skipped_screens = s_reused_layers = s_rebuilt_layers = 0;
+    s_char_bytes_compared = 0;
     kj_atlas_exit();
     kj_gpu_exit();
 }

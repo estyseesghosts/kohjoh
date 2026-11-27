@@ -75,6 +75,8 @@ bool kj_g3d_init(void)
             linearFree(s_join_indices);
             s_join_indices = NULL;
         }
+        /* Optional optimization: the direct batch path remains available. */
+        kj_log("[gpu] join scratch unavailable; direct batches only");
     }
     return true;
 }
@@ -663,6 +665,7 @@ void kj_g3d_draw(const kj_target *target, bool wide, uint8_t stencil_flags, uint
         return;
     }
     uint64_t t0 = kj_perf_now();
+    (void)t0;
 #ifndef HGSS_PROFILE_OFF
     s_stats.batches += f->batch_count;
 #endif
