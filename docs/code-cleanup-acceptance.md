@@ -9,8 +9,8 @@ O3DS timing claim is made.
 
 | Build | Result |
 | --- | --- |
-| HeartGold 3DS, strict first-party warnings (`-Werror`) | passes, 5,958,172-byte `.3dsx` |
-| SoulSilver 3DS, same tree | passes, 5,958,164-byte `.3dsx`, SHA-256 `ab9cc82df2ffdc9de24f5bbd46d08b9c2a89b0888aea719af4b65a27c4936328` |
+| HeartGold 3DS, strict first-party warnings (`-Werror`) | passes, 5,957,904-byte `.3dsx` |
+| SoulSilver 3DS, same tree | passes, 5,957,896-byte `.3dsx`, SHA-256 `0872853ffbee9261e81a47f12fed45589c0ecf42eb0eaf0c254a5ecd833baa3d` |
 | Profile-only reporter timing (`perf.c`) | compiles; run on O3DS pending |
 
 The strict policy is `-Wall -Wextra -Wshadow -Wundef -Wstrict-prototypes
@@ -53,25 +53,25 @@ commit; its differential hashes (`e8bfdd766ba03a03` sound,
 ## Emulator correctness
 
 LOTUS (0.1.4, AZAHAR backend, Old 3DS configuration, software renderer) runs
-the cleanup artifact through the intro. The recorded capture at 1,798 guest
-frames shows the widened New Bark scene and trainer, matching the baseline
-artifact run in the same session setup. The screenshot is
-`build/lotus/cleanup-intro/final-top.png`; the baseline comparison is
-`build/lotus/cleanup-base-lotus/final-top.png`. LOTUS is an emulator: this
+the cleanup artifact through the intro. The 1,798-frame capture shows the
+widened New Bark scene and trainer (`build/lotus/cleanup-intro/final-top.png`),
+matching the baseline artifact (`build/lotus/cleanup-base-lotus/final-top.png`).
+The final module layout was re-run to the Game Freak splash:
+`build/lotus/cleanup-modules/final-bottom.png`. LOTUS is an emulator: this
 verifies that the pack, overlays, renderer and GPU path boot and draw, not
 O3DS pacing.
 
 ## Performance position
 
 The normal build remains the timing authority. Final normal-build symbol sizes
-(HeartGold, `arm-none-eabi-nm -S --size-sort`) are: `fifo_words_impl` 0x21d0
-(baseline 0x21cc), `kj_screen_draw` 0x89c (0x860), `kj_g3d_draw` 0x2a4
+(HeartGold, `arm-none-eabi-nm -S --size-sort`) are: `fifo_words_impl` 0x2174
+(baseline 0x21cc), `kj_screen_draw` 0x7e8 (0x860), `kj_g3d_draw` 0x2a4
 (unchanged), `kj_tex_get` 0x8d0 (0x950), `kj_text_frame` 0x9ac (0x930),
 `kj_ctr_publish_frame` 0x1a8 (0x198), `kj_renderer_init` 0x1c4 (0x138),
-`kj_atlas_tile` 0x450 (unchanged). The 60-byte `kj_screen_draw` growth is the
-cross-module call glue for the extracted layer/retained helpers; the work
-itself moved to `g2d_layers.c`/`g2d_retained.c`. No O3DS hardware run was
-available, so pacing, texture upload counts and command-buffer pressure are
-not claimed as measured after the cleanup. A follow-up run of the same
-Goldenrod workload on the same O3DS remains required before treating the
-structural splits as performance-neutral on hardware.
+`kj_atlas_tile` 0x450 (unchanged). The extracted modules reduce
+`kj_screen_draw` and the FIFO body slightly; per-span calls replace inlined
+layer/effect code. No O3DS hardware run was available, so pacing, texture
+upload counts and command-buffer pressure are not claimed as measured after
+the cleanup. A follow-up run of the same Goldenrod workload on the same O3DS
+remains required before treating the structural splits as performance-neutral
+on hardware.
