@@ -20,8 +20,7 @@ typedef struct {
 
 static window_identity s_windows[KJ_TEXT_MAX_TEXT_WINDOWS];
 
-static window_identity *identity_for(struct Window *window, BOOL create)
-{
+static window_identity *identity_for(struct Window *window, BOOL create) {
     unsigned int i;
     window_identity *free_slot = NULL;
 
@@ -47,8 +46,7 @@ static window_identity *identity_for(struct Window *window, BOOL create)
     return free_slot;
 }
 
-static kj_text_event *next_event(unsigned int kind)
-{
+static kj_text_event *next_event(unsigned int kind) {
     kj_text_event *e;
 
     if (s_event_count >= KJ_TEXT_MAX_EVENTS) {
@@ -61,8 +59,7 @@ static kj_text_event *next_event(unsigned int kind)
     return e;
 }
 
-static void fill_geometry(kj_text_event *e, struct Window *window, const window_identity *id)
-{
+static void fill_geometry(kj_text_event *e, struct Window *window, const window_identity *id) {
     e->window = (uint32_t)(uintptr_t)window;
     e->generation = id != NULL ? id->generation : 0;
     e->bg_id = GetWindowBgId(window);
@@ -75,8 +72,7 @@ static void fill_geometry(kj_text_event *e, struct Window *window, const window_
     e->height = GetWindowHeight(window);
 }
 
-void NitroPort_TextWindowAdd(struct Window *window)
-{
+void NitroPort_TextWindowAdd(struct Window *window) {
     window_identity *id = identity_for(window, TRUE);
     kj_text_event *e;
 
@@ -89,8 +85,7 @@ void NitroPort_TextWindowAdd(struct Window *window)
     }
 }
 
-void NitroPort_TextWindowAddTemporary(struct Window *window)
-{
+void NitroPort_TextWindowAddTemporary(struct Window *window) {
     window_identity *id = identity_for(window, TRUE);
     kj_text_event *e;
 
@@ -104,9 +99,8 @@ void NitroPort_TextWindowAddTemporary(struct Window *window)
     }
 }
 
-void NitroPort_TextWindowFillRect(struct Window *window, unsigned int fill, int x, int y,
-                                  int width, int height)
-{
+void NitroPort_TextWindowFillRect(struct Window *window, unsigned int fill, int x, int y, int width,
+                                  int height) {
     window_identity *id = identity_for(window, TRUE);
     kj_text_event *e;
 
@@ -124,8 +118,7 @@ void NitroPort_TextWindowFillRect(struct Window *window, unsigned int fill, int 
     }
 }
 
-void NitroPort_TextWindowBlit(struct Window *window)
-{
+void NitroPort_TextWindowBlit(struct Window *window) {
     window_identity *id = identity_for(window, FALSE);
     kj_text_event *e;
 
@@ -138,8 +131,7 @@ void NitroPort_TextWindowBlit(struct Window *window)
     }
 }
 
-void NitroPort_TextWindowRemove(struct Window *window)
-{
+void NitroPort_TextWindowRemove(struct Window *window) {
     window_identity *id = identity_for(window, FALSE);
     kj_text_event *e;
 
@@ -154,8 +146,7 @@ void NitroPort_TextWindowRemove(struct Window *window)
     id->window = NULL;
 }
 
-void NitroPort_TextWindowPublish(struct Window *window)
-{
+void NitroPort_TextWindowPublish(struct Window *window) {
     window_identity *id = identity_for(window, TRUE);
     kj_text_event *e;
 
@@ -168,8 +159,7 @@ void NitroPort_TextWindowPublish(struct Window *window)
     }
 }
 
-void NitroPort_TextWindowFill(struct Window *window, unsigned int fill)
-{
+void NitroPort_TextWindowFill(struct Window *window, unsigned int fill) {
     window_identity *id = identity_for(window, TRUE);
     kj_text_event *e;
 
@@ -183,8 +173,7 @@ void NitroPort_TextWindowFill(struct Window *window, unsigned int fill)
     }
 }
 
-void NitroPort_TextWindowScroll(struct Window *window, int dx, int dy, unsigned int fill)
-{
+void NitroPort_TextWindowScroll(struct Window *window, int dx, int dy, unsigned int fill) {
     window_identity *id = identity_for(window, TRUE);
     kj_text_event *e;
 
@@ -200,10 +189,9 @@ void NitroPort_TextWindowScroll(struct Window *window, int dx, int dy, unsigned 
     }
 }
 
-void NitroPort_TextGlyph(struct Window *window, unsigned int code, unsigned int fontId,
-                         int x, int y, unsigned int fg, unsigned int shadow, unsigned int bg,
-                         unsigned int glyphTable)
-{
+void NitroPort_TextGlyph(struct Window *window, unsigned int code, unsigned int fontId, int x,
+                         int y, unsigned int fg, unsigned int shadow, unsigned int bg,
+                         unsigned int glyphTable) {
     window_identity *id = identity_for(window, TRUE);
     kj_text_event *e;
 
@@ -224,8 +212,7 @@ void NitroPort_TextGlyph(struct Window *window, unsigned int code, unsigned int 
     }
 }
 
-const kj_text_event *NitroPort_TextEvents(uint32_t *count)
-{
+const kj_text_event *NitroPort_TextEvents(uint32_t *count) {
     const kj_text_event *out;
 
     if (s_overflow) {

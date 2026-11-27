@@ -7,28 +7,27 @@
 #include "kj_lighting.h"
 
 unsigned char NitroPort_IoReg[0x1000];
-void NitroPort_Log(const char *fmt, ...) { assert(strstr(fmt, "MISMATCH") == NULL); }
+void NitroPort_Log(const char *fmt, ...) {
+    assert(strstr(fmt, "MISMATCH") == NULL);
+}
 static uint64_t hash = 1469598103934665603ull;
 static uint32_t rng = 0x719aba;
 
-static uint32_t next(void)
-{
+static uint32_t next(void) {
     rng ^= rng << 13;
     rng ^= rng >> 17;
     rng ^= rng << 5;
     return rng;
 }
 
-static void digest(const void *ptr, size_t count)
-{
+static void digest(const void *ptr, size_t count) {
     const unsigned char *bytes = ptr;
     while (count-- != 0) {
         hash = (hash ^ *bytes++) * 1099511628211ull;
     }
 }
 
-static void triangle_vertex(const kj_g3_frame *frame, const kj_g3_batch *batch, uint16_t index)
-{
+static void triangle_vertex(const kj_g3_frame *frame, const kj_g3_batch *batch, uint16_t index) {
     kj_g3_vertex v = frame->verts[index];
     if (v.pad & 128u) {
         uint32_t packed;
@@ -48,8 +47,7 @@ static void triangle_vertex(const kj_g3_frame *frame, const kj_g3_batch *batch, 
     digest(&frame->matrices[batch->first_matrix + v.mtx], sizeof(kj_g3_matrix));
 }
 
-int main(void)
-{
+int main(void) {
     kj_g3_storage storage;
     for (unsigned i = 0; i < 2; ++i) {
         storage.verts[i] = calloc(KJ_G3_MAX_VERTS, sizeof(kj_g3_vertex));

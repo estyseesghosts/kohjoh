@@ -42,8 +42,7 @@ static const kj_v2d *s_bound_base;
 static uint16_t *s_quad_indices;
 static uint32_t s_arena_used, s_arena_dropped;
 
-bool kj_gpu_init(void)
-{
+bool kj_gpu_init(void) {
     static bool dvlb_ready[3], prog_ready[3];
     s_dvlb_2d = DVLB_ParseFile((u32 *)g2d_shbin, g2d_shbin_size);
     dvlb_ready[0] = s_dvlb_2d != NULL;
@@ -124,8 +123,7 @@ fail:
     return false;
 }
 
-void kj_gpu_exit(void)
-{
+void kj_gpu_exit(void) {
     /* Reverse acquisition order. Every stage is tracked separately so a
      * partial init (failed DVLB, program or arena allocation) is safely
      * destroyable and a second call is harmless. */
@@ -166,15 +164,13 @@ void kj_gpu_exit(void)
     kj_gpu_invalidate();
 }
 
-void kj_gpu_invalidate(void)
-{
+void kj_gpu_invalidate(void) {
     s_program = KJ_PROGRAM_NONE;
     s_bound_base = NULL;
     s_bound[0] = s_bound[1] = s_bound[2] = NULL;
 }
 
-void kj_gpu_use_program(kj_program_id id)
-{
+void kj_gpu_use_program(kj_program_id id) {
     if (s_program == id) {
         return;
     }
@@ -193,8 +189,7 @@ void kj_gpu_use_program(kj_program_id id)
     }
 }
 
-void kj_gpu_bind_texture(int unit, C3D_Tex *tex)
-{
+void kj_gpu_bind_texture(int unit, C3D_Tex *tex) {
     if (s_bound[unit] == tex) {
         return;
     }
@@ -202,8 +197,7 @@ void kj_gpu_bind_texture(int unit, C3D_Tex *tex)
     C3D_TexBind(unit, tex);
 }
 
-kj_v2d *kj_gpu_quads_alloc(uint32_t quads, uint32_t *first_quad)
-{
+kj_v2d *kj_gpu_quads_alloc(uint32_t quads, uint32_t *first_quad) {
     if (s_arena_used + quads > ARENA_QUADS) {
 #ifndef HGSS_PROFILE_OFF
         s_arena_dropped += quads;
@@ -216,27 +210,23 @@ kj_v2d *kj_gpu_quads_alloc(uint32_t quads, uint32_t *first_quad)
     return v;
 }
 
-void kj_gpu_quads_reset(void)
-{
+void kj_gpu_quads_reset(void) {
     s_arena_used = 0;
 }
 
-void kj_gpu_quads_reset_to(uint32_t used)
-{
+void kj_gpu_quads_reset_to(uint32_t used) {
     if (used <= s_arena_used) {
         s_arena_used = used;
     }
 }
 
-uint32_t kj_gpu_quads_dropped(void)
-{
+uint32_t kj_gpu_quads_dropped(void) {
     const uint32_t d = s_arena_dropped;
     s_arena_dropped = 0;
     return d;
 }
 
-static void bind_base(const kj_v2d *base)
-{
+static void bind_base(const kj_v2d *base) {
     if (s_bound_base == base) {
         return;
     }
@@ -246,8 +236,7 @@ static void bind_base(const kj_v2d *base)
     s_bound_base = base;
 }
 
-void kj_gpu_draw_quads_from(const kj_v2d *base, uint32_t count)
-{
+void kj_gpu_draw_quads_from(const kj_v2d *base, uint32_t count) {
     if (count == 0) {
         return;
     }
@@ -255,8 +244,7 @@ void kj_gpu_draw_quads_from(const kj_v2d *base, uint32_t count)
     C3D_DrawElements(GPU_TRIANGLES, (int)(count * 6u), C3D_UNSIGNED_SHORT, s_quad_indices);
 }
 
-void kj_gpu_draw_quads(uint32_t first, uint32_t count)
-{
+void kj_gpu_draw_quads(uint32_t first, uint32_t count) {
     if (count == 0) {
         return;
     }
@@ -265,33 +253,27 @@ void kj_gpu_draw_quads(uint32_t first, uint32_t count)
                      s_quad_indices + first * 6u);
 }
 
-int kj_gpu_uloc_2d_xform(void)
-{
+int kj_gpu_uloc_2d_xform(void) {
     return s_uloc_xform;
 }
 
-int kj_gpu_uloc_2d_uvscale(void)
-{
+int kj_gpu_uloc_2d_uvscale(void) {
     return s_uloc_uvscale;
 }
 
-int kj_gpu_uloc_3d_palette(void)
-{
+int kj_gpu_uloc_3d_palette(void) {
     return s_program == KJ_PROGRAM_3D_LIT ? s_lit_palette : s_uloc_palette;
 }
 
-int kj_gpu_uloc_3d_texscale(void)
-{
+int kj_gpu_uloc_3d_texscale(void) {
     return s_program == KJ_PROGRAM_3D_LIT ? s_lit_texscale : s_uloc_texscale;
 }
 
-const kj_lit_uniforms *kj_gpu_lit_uniforms(void)
-{
+const kj_lit_uniforms *kj_gpu_lit_uniforms(void) {
     return &s_lit;
 }
 
-void kj_gpu_tev_texture_modulate(void)
-{
+void kj_gpu_tev_texture_modulate(void) {
     C3D_TexEnv *env = C3D_GetTexEnv(0);
     C3D_TexEnvInit(env);
     C3D_TexEnvSrc(env, C3D_Both, GPU_TEXTURE0, GPU_PRIMARY_COLOR, 0);
@@ -301,8 +283,7 @@ void kj_gpu_tev_texture_modulate(void)
     }
 }
 
-void kj_gpu_tev_vertex_color(void)
-{
+void kj_gpu_tev_vertex_color(void) {
     C3D_TexEnv *env = C3D_GetTexEnv(0);
     C3D_TexEnvInit(env);
     C3D_TexEnvSrc(env, C3D_Both, GPU_PRIMARY_COLOR, 0, 0);
@@ -312,8 +293,7 @@ void kj_gpu_tev_vertex_color(void)
     }
 }
 
-void kj_gpu_tev_constant(uint32_t rgba)
-{
+void kj_gpu_tev_constant(uint32_t rgba) {
     C3D_TexEnv *env = C3D_GetTexEnv(0);
     C3D_TexEnvInit(env);
     C3D_TexEnvSrc(env, C3D_Both, GPU_CONSTANT, 0, 0);
@@ -324,8 +304,7 @@ void kj_gpu_tev_constant(uint32_t rgba)
     }
 }
 
-void kj_gpu_scissor_target(int screen_w, int screen_h, int x0, int y0, int x1, int y1)
-{
+void kj_gpu_scissor_target(int screen_w, int screen_h, int x0, int y0, int x1, int y1) {
     int rect[4], rotated[4];
 
     /* Clipping happens in signed physical coordinates, before the portrait
@@ -343,8 +322,7 @@ void kj_gpu_scissor_target(int screen_w, int screen_h, int x0, int y0, int x1, i
                    (u32)rotated[3]);
 }
 
-void kj_gpu_scissor_active(int surface_w, int surface_h, int x0, int y0, int x1, int y1)
-{
+void kj_gpu_scissor_active(int surface_w, int surface_h, int x0, int y0, int x1, int y1) {
     int rect[4], out[4];
     rect[0] = x0;
     rect[1] = y0;
@@ -358,12 +336,10 @@ void kj_gpu_scissor_active(int surface_w, int surface_h, int x0, int y0, int x1,
     C3D_SetScissor(GPU_SCISSOR_NORMAL, (u32)out[0], (u32)out[1], (u32)out[2], (u32)out[3]);
 }
 
-void kj_gpu_scissor(int screen_w, int x0, int y0, int x1, int y1)
-{
+void kj_gpu_scissor(int screen_w, int x0, int y0, int x1, int y1) {
     kj_gpu_scissor_target(screen_w, 240, x0, y0, x1, y1);
 }
 
-void kj_gpu_scissor_off(void)
-{
+void kj_gpu_scissor_off(void) {
     C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
 }

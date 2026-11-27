@@ -21,8 +21,7 @@
 
 #include SOURCE
 
-bool C3D_TexInit(C3D_Tex *tex, u16 width, u16 height, GPU_TEXCOLOR fmt)
-{
+bool C3D_TexInit(C3D_Tex *tex, u16 width, u16 height, GPU_TEXCOLOR fmt) {
     const size_t bytes = (size_t)width * height * (fmt == GPU_RGBA8 ? 4u : 2u);
     tex->data = malloc(bytes);
     if (tex->data == NULL) {
@@ -35,14 +34,12 @@ bool C3D_TexInit(C3D_Tex *tex, u16 width, u16 height, GPU_TEXCOLOR fmt)
     return true;
 }
 
-void C3D_TexDelete(C3D_Tex *tex)
-{
+void C3D_TexDelete(C3D_Tex *tex) {
     free(tex->data);
     tex->data = NULL;
 }
 
-void C3D_TexSetFilter(C3D_Tex *tex, GPU_TEXTURE_FILTER mag, GPU_TEXTURE_FILTER min)
-{
+void C3D_TexSetFilter(C3D_Tex *tex, GPU_TEXTURE_FILTER mag, GPU_TEXTURE_FILTER min) {
     (void)tex;
     (void)mag;
     (void)min;
@@ -53,8 +50,7 @@ static uint8_t s_vram[0xA4000];
 static kj_ds_memory s_mem;
 static kj_frame_input s_in;
 
-static void set_bank(int index, bool enabled, uint32_t offset, uint8_t mst, uint8_t ofs)
-{
+static void set_bank(int index, bool enabled, uint32_t offset, uint8_t mst, uint8_t ofs) {
     s_in.banks[index].lcdc_offset = offset;
     s_in.banks[index].size = 0x20000;
     s_in.banks[index].enabled = enabled;
@@ -62,8 +58,7 @@ static void set_bank(int index, bool enabled, uint32_t offset, uint8_t mst, uint
     s_in.banks[index].ofs = ofs;
 }
 
-static void setup(void)
-{
+static void setup(void) {
     memset(s_vram, 0, sizeof(s_vram));
     memset(&s_mem, 0, sizeof(s_mem));
     memset(&s_in, 0, sizeof(s_in));
@@ -78,25 +73,21 @@ static void setup(void)
     kj_tex_begin_frame(&s_in);
 }
 
-static void next_frame(void)
-{
+static void next_frame(void) {
     kj_tex_begin_frame(&s_in);
 }
 
-static uint32_t tex_param(unsigned fmt, unsigned log2_w, unsigned log2_h, uint32_t addr)
-{
+static uint32_t tex_param(unsigned fmt, unsigned log2_w, unsigned log2_h, uint32_t addr) {
     return (fmt << 26) | (log2_w << 20) | (log2_h << 23) | ((addr >> 3) & 0xFFFFu);
 }
 
-static size_t tex_bytes(const C3D_Tex *tex)
-{
+static size_t tex_bytes(const C3D_Tex *tex) {
     return (size_t)tex->width * tex->height * (tex->fmt == GPU_RGBA8 ? 4u : 2u);
 }
 
 /* Decode from an empty cache and require it to match the cached image.
  * `tex` is invalid after this call. */
-static void assert_matches_clean(C3D_Tex *tex, uint32_t param, uint32_t pltt)
-{
+static void assert_matches_clean(C3D_Tex *tex, uint32_t param, uint32_t pltt) {
     const size_t bytes = tex_bytes(tex);
     uint8_t *got = malloc(bytes);
     assert(got != NULL);
@@ -114,8 +105,7 @@ static void assert_matches_clean(C3D_Tex *tex, uint32_t param, uint32_t pltt)
     free(got);
 }
 
-static void fill_indexed(void)
-{
+static void fill_indexed(void) {
     /* 8x8, format 3 (16-colour): 32 texel bytes, 16 palette entries. */
     for (unsigned i = 0; i < 32; ++i) {
         s_vram[i] = (uint8_t)(i * 0x11u);
@@ -127,8 +117,7 @@ static void fill_indexed(void)
     }
 }
 
-static void fill_compressed(void)
-{
+static void fill_compressed(void) {
     /* 8x8, format 5: 16 texel bytes, 8 index bytes. All blocks select
      * palette offset 0; mode 0 is 3-colour + transparent texel 3. */
     for (unsigned i = 0; i < 16; ++i) {
@@ -142,8 +131,7 @@ static void fill_compressed(void)
     }
 }
 
-static void test_indexed_palette_change(void)
-{
+static void test_indexed_palette_change(void) {
     setup();
     fill_indexed();
     const uint32_t param = tex_param(3, 0, 0, 0);
@@ -164,8 +152,7 @@ static void test_indexed_palette_change(void)
     printf("PASS indexed palette change reconverted\n");
 }
 
-static void test_compressed_palette_only_change(void)
-{
+static void test_compressed_palette_only_change(void) {
     setup();
     fill_compressed();
     const uint32_t param = tex_param(5, 0, 0, 0);
@@ -187,8 +174,7 @@ static void test_compressed_palette_only_change(void)
     printf("PASS format-5 palette-only change reconverted\n");
 }
 
-static void test_compressed_index_change(void)
-{
+static void test_compressed_index_change(void) {
     setup();
     fill_compressed();
     const uint32_t param = tex_param(5, 0, 0, 0);
@@ -209,8 +195,7 @@ static void test_compressed_index_change(void)
     printf("PASS format-5 index change reconverted\n");
 }
 
-static void test_unmapped_palette_keeps_image_then_recovers(void)
-{
+static void test_unmapped_palette_keeps_image_then_recovers(void) {
     setup();
     fill_compressed();
     const uint32_t param = tex_param(5, 0, 0, 0);
@@ -236,8 +221,7 @@ static void test_unmapped_palette_keeps_image_then_recovers(void)
     printf("PASS unmapped palette bank keeps the old image and recovers\n");
 }
 
-static void test_failed_refresh_then_success(void)
-{
+static void test_failed_refresh_then_success(void) {
     setup();
     fill_compressed();
     const uint32_t param = tex_param(5, 0, 0, 0);
@@ -268,8 +252,7 @@ static void test_failed_refresh_then_success(void)
     printf("PASS failed refresh kept the old image, later refresh succeeded\n");
 }
 
-static void test_new_entry_requires_palette(void)
-{
+static void test_new_entry_requires_palette(void) {
     setup();
     fill_compressed();
     const uint32_t param = tex_param(5, 0, 0, 0);
@@ -286,8 +269,7 @@ static void test_new_entry_requires_palette(void)
     printf("PASS a new entry waits for its palette bank\n");
 }
 
-int main(void)
-{
+int main(void) {
     test_indexed_palette_change();
     test_compressed_palette_only_change();
     test_compressed_index_change();

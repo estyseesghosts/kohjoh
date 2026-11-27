@@ -20,8 +20,7 @@ static bool s_atlas_ready;
 static unsigned char s_logged[KJ_TEXT_FALLBACK_COUNT];
 static bool s_logged_native;
 
-void kj_text_init(void)
-{
+void kj_text_init(void) {
     memset(s_windows, 0, sizeof(s_windows));
     memset(s_age, 0, sizeof(s_age));
     s_serial = 0;
@@ -31,45 +30,37 @@ void kj_text_init(void)
     s_atlas_ready = kj_font_atlas_ready();
 }
 
-void kj_text_exit(void)
-{
+void kj_text_exit(void) {
     memset(s_windows, 0, sizeof(s_windows));
     memset(s_age, 0, sizeof(s_age));
     s_serial = 0;
 }
 
-void kj_text_set_enabled(bool native)
-{
+void kj_text_set_enabled(bool native) {
     s_enabled = native;
 }
 
-bool kj_text_enabled(void)
-{
+bool kj_text_enabled(void) {
     return s_enabled && s_atlas_ready;
 }
 
-void kj_text_stats_reset(void)
-{
+void kj_text_stats_reset(void) {
     memset(&s_stats, 0, sizeof(s_stats));
 }
 
-const kj_text_stats *kj_text_stats_read(void)
-{
+const kj_text_stats *kj_text_stats_read(void) {
     return &s_stats;
 }
 
-void kj_text_note_draw(void)
-{
+void kj_text_note_draw(void) {
     ++s_stats.draws;
 }
 
-static void touch(int index)
-{
+static void touch(int index) {
     s_age[index] = ++s_serial;
 }
 
-static kj_text_presentation *find_live(uint32_t window)
-{
+static kj_text_presentation *find_live(uint32_t window) {
     for (int i = 0; i < KJ_TEXT_MAX_WINDOWS; ++i) {
         if (s_windows[i].valid && s_windows[i].window == window) {
             touch(i);
@@ -79,8 +70,7 @@ static kj_text_presentation *find_live(uint32_t window)
     return NULL;
 }
 
-static int least_recently_seen(void)
-{
+static int least_recently_seen(void) {
     int best = -1;
     uint32_t oldest = UINT32_MAX;
     for (int i = 0; i < KJ_TEXT_MAX_WINDOWS; ++i) {
@@ -92,8 +82,7 @@ static int least_recently_seen(void)
     return best;
 }
 
-static kj_text_presentation *claim(uint32_t window, uint32_t generation)
-{
+static kj_text_presentation *claim(uint32_t window, uint32_t generation) {
     int slot = -1;
 
     for (int i = 0; i < KJ_TEXT_MAX_WINDOWS; ++i) {
@@ -127,8 +116,7 @@ static kj_text_presentation *claim(uint32_t window, uint32_t generation)
     return &s_windows[slot];
 }
 
-static bool all_glyphs_resolvable(const kj_text_presentation *p, kj_text_fallback *why)
-{
+static bool all_glyphs_resolvable(const kj_text_presentation *p, kj_text_fallback *why) {
     for (uint16_t i = 0; i < p->glyph_count; ++i) {
         const kj_text_glyph *g = &p->glyphs[i];
         kj_glyph rec;
@@ -157,8 +145,7 @@ static bool all_glyphs_resolvable(const kj_text_presentation *p, kj_text_fallbac
     return true;
 }
 
-static void decide(kj_text_presentation *p)
-{
+static void decide(kj_text_presentation *p) {
     kj_text_fallback why = KJ_TEXT_OK;
 
     p->native = false;
@@ -170,8 +157,8 @@ static void decide(kj_text_presentation *p)
     } else if (p->temporary) {
         why = KJ_TEXT_FALLBACK_TEMPORARY_WINDOW;
     } else if (p->poisoned) {
-        why = p->fallback != KJ_TEXT_OK ? (kj_text_fallback)p->fallback
-                                        : KJ_TEXT_FALLBACK_NO_BACKING;
+        why =
+            p->fallback != KJ_TEXT_OK ? (kj_text_fallback)p->fallback : KJ_TEXT_FALLBACK_NO_BACKING;
     } else if (p->bg_id >= 8) {
         why = KJ_TEXT_FALLBACK_UNSUPPORTED_LAYER;
     } else if (p->glyph_count == 0 || p->glyph_count > KJ_TEXT_MAX_GLYPHS_PER_WINDOW) {
@@ -199,18 +186,17 @@ static void decide(kj_text_presentation *p)
         }
         if (p->logged != (uint8_t)why) {
             p->logged = (uint8_t)why;
-            kj_log("[text] fallback %d win %08lx gen %lu bg %u %ux%u at %u,%u glyphs %u",
-                   (int)why, (unsigned long)p->window, (unsigned long)p->generation,
-                   (unsigned)p->bg_id, (unsigned)p->width, (unsigned)p->height,
-                   (unsigned)p->tilemap_x, (unsigned)p->tilemap_y, (unsigned)p->glyph_count);
+            kj_log("[text] fallback %d win %08lx gen %lu bg %u %ux%u at %u,%u glyphs %u", (int)why,
+                   (unsigned long)p->window, (unsigned long)p->generation, (unsigned)p->bg_id,
+                   (unsigned)p->width, (unsigned)p->height, (unsigned)p->tilemap_x,
+                   (unsigned)p->tilemap_y, (unsigned)p->glyph_count);
         }
         kj_text_log_fallback(why, NULL);
     }
     p->fallback = (uint8_t)why;
 }
 
-void kj_text_frame(const kj_frame_input *in)
-{
+void kj_text_frame(const kj_frame_input *in) {
     if (in == NULL) {
         return;
     }
@@ -376,16 +362,14 @@ void kj_text_frame(const kj_frame_input *in)
     }
 }
 
-const kj_text_presentation *kj_text_next(int engine, int bg, int *cursor)
-{
+const kj_text_presentation *kj_text_next(int engine, int bg, int *cursor) {
     if (cursor == NULL) {
         return NULL;
     }
     for (int i = *cursor; i < KJ_TEXT_MAX_WINDOWS; ++i) {
         const kj_text_presentation *p = &s_windows[i];
         const int plane = engine * 4 + bg;
-        if (p->valid && p->published && p->native && p->engine == engine &&
-            p->bg_id == plane) {
+        if (p->valid && p->published && p->native && p->engine == engine && p->bg_id == plane) {
             *cursor = i + 1;
             return p;
         }
@@ -397,13 +381,11 @@ const kj_text_presentation *kj_text_next(int engine, int bg, int *cursor)
 /* A tile inside a window that this frame presents natively is replaced by the
  * native pass, so the legacy glyph pixels must not be drawn underneath it.
  * Coordinates are DS screen pixels (the same space text_render maps). */
-bool kj_text_owns_tile(int engine, int bg, int hofs, int vofs, int x, int y)
-{
+bool kj_text_owns_tile(int engine, int bg, int hofs, int vofs, int x, int y) {
     const int plane = engine * 4 + bg;
     for (int i = 0; i < KJ_TEXT_MAX_WINDOWS; ++i) {
         const kj_text_presentation *p = &s_windows[i];
-        if (!p->valid || !p->published || !p->native || p->engine != engine ||
-            p->bg_id != plane) {
+        if (!p->valid || !p->published || !p->native || p->engine != engine || p->bg_id != plane) {
             continue;
         }
         const int wx = (int)p->tilemap_x * 8 - hofs;
@@ -416,8 +398,7 @@ bool kj_text_owns_tile(int engine, int bg, int hofs, int vofs, int x, int y)
 }
 
 uint32_t kj_text_ds_color(const uint16_t *palette, uint8_t color_mode, uint8_t palette_num,
-                          uint8_t index)
-{
+                          uint8_t index) {
     uint16_t c;
     uint32_t r, g, b;
 
@@ -439,8 +420,7 @@ uint32_t kj_text_ds_color(const uint16_t *palette, uint8_t color_mode, uint8_t p
     return (r << 24) | (g << 16) | (b << 8) | 0xFFu;
 }
 
-void kj_text_log_fallback(kj_text_fallback reason, const kj_text_event *event)
-{
+void kj_text_log_fallback(kj_text_fallback reason, const kj_text_event *event) {
     char line[120];
 
     if (reason >= KJ_TEXT_FALLBACK_COUNT || s_logged[reason]) {
@@ -448,7 +428,7 @@ void kj_text_log_fallback(kj_text_fallback reason, const kj_text_event *event)
     }
     s_logged[reason] = 1;
     snprintf(line, sizeof(line), "[text] native fallback %d (font %u code 0x%04X bg %u)",
-             (int)reason, event != NULL ? event->font_id : 0u,
-             event != NULL ? event->code : 0u, event != NULL ? event->bg_id : 0u);
+             (int)reason, event != NULL ? event->font_id : 0u, event != NULL ? event->code : 0u,
+             event != NULL ? event->bg_id : 0u);
     kj_log("%s", line);
 }

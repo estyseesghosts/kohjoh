@@ -35,38 +35,40 @@ static volatile u32 s_next;
 static char s_crash_path[128];
 static volatile u32 s_in_handler;
 
-static const char *type_name(ERRF_ExceptionType t)
-{
+static const char *type_name(ERRF_ExceptionType t) {
     switch (t) {
-    case ERRF_EXCEPTION_PREFETCH_ABORT: return "prefetch abort";
-    case ERRF_EXCEPTION_DATA_ABORT: return "data abort";
-    case ERRF_EXCEPTION_UNDEFINED: return "undefined instruction";
-    case ERRF_EXCEPTION_VFP: return "VFP exception";
-    default: return "unknown exception";
+    case ERRF_EXCEPTION_PREFETCH_ABORT:
+        return "prefetch abort";
+    case ERRF_EXCEPTION_DATA_ABORT:
+        return "data abort";
+    case ERRF_EXCEPTION_UNDEFINED:
+        return "undefined instruction";
+    case ERRF_EXCEPTION_VFP:
+        return "VFP exception";
+    default:
+        return "unknown exception";
     }
 }
 
-static void handler(ERRF_ExceptionInfo *excep, CpuRegisters *regs)
-{
+static void handler(ERRF_ExceptionInfo *excep, CpuRegisters *regs) {
     /* A second fault (in this handler or another thread): go straight to
      * the system screen. */
     if (__atomic_fetch_add(&s_in_handler, 1, __ATOMIC_SEQ_CST) == 0) {
         char text[640];
-        int n = snprintf(text, sizeof(text),
-                         "[crash] %s on thread %08lx: pc %08lx lr %08lx sp %08lx cpsr %08lx "
-                         "far %08lx fsr %08lx\n[crash] r0 %08lx r1 %08lx r2 %08lx r3 %08lx "
-                         "r4 %08lx r5 %08lx r6 %08lx r7 %08lx\n[crash] r8 %08lx r9 %08lx "
-                         "r10 %08lx r11 %08lx r12 %08lx\n",
-                         type_name(excep->type), (unsigned long)(u32)(uintptr_t)getThreadLocalStorage(),
-                         (unsigned long)regs->pc, (unsigned long)regs->lr, (unsigned long)regs->sp,
-                         (unsigned long)regs->cpsr, (unsigned long)excep->far,
-                         (unsigned long)excep->fsr, (unsigned long)regs->r[0],
-                         (unsigned long)regs->r[1], (unsigned long)regs->r[2],
-                         (unsigned long)regs->r[3], (unsigned long)regs->r[4],
-                         (unsigned long)regs->r[5], (unsigned long)regs->r[6],
-                         (unsigned long)regs->r[7], (unsigned long)regs->r[8],
-                         (unsigned long)regs->r[9], (unsigned long)regs->r[10],
-                         (unsigned long)regs->r[11], (unsigned long)regs->r[12]);
+        int n = snprintf(
+            text, sizeof(text),
+            "[crash] %s on thread %08lx: pc %08lx lr %08lx sp %08lx cpsr %08lx "
+            "far %08lx fsr %08lx\n[crash] r0 %08lx r1 %08lx r2 %08lx r3 %08lx "
+            "r4 %08lx r5 %08lx r6 %08lx r7 %08lx\n[crash] r8 %08lx r9 %08lx "
+            "r10 %08lx r11 %08lx r12 %08lx\n",
+            type_name(excep->type), (unsigned long)(u32)(uintptr_t)getThreadLocalStorage(),
+            (unsigned long)regs->pc, (unsigned long)regs->lr, (unsigned long)regs->sp,
+            (unsigned long)regs->cpsr, (unsigned long)excep->far, (unsigned long)excep->fsr,
+            (unsigned long)regs->r[0], (unsigned long)regs->r[1], (unsigned long)regs->r[2],
+            (unsigned long)regs->r[3], (unsigned long)regs->r[4], (unsigned long)regs->r[5],
+            (unsigned long)regs->r[6], (unsigned long)regs->r[7], (unsigned long)regs->r[8],
+            (unsigned long)regs->r[9], (unsigned long)regs->r[10], (unsigned long)regs->r[11],
+            (unsigned long)regs->r[12]);
         /* The crash file first: it needs no lock the faulting thread could
          * hold. Never call the normal ring logger from here: the fault may
          * have happened while its producer or flush lock was held, and that
@@ -82,16 +84,14 @@ static void handler(ERRF_ExceptionInfo *excep, CpuRegisters *regs)
     ERRF_ExceptionHandler(excep, regs);
 }
 
-void kj_crash_init(const char *crash_path)
-{
+void kj_crash_init(const char *crash_path) {
     if (crash_path != NULL) {
         snprintf(s_crash_path, sizeof(s_crash_path), "%s", crash_path);
     }
     kj_crash_install();
 }
 
-void kj_crash_install(void)
-{
+void kj_crash_install(void) {
     const u32 i = __atomic_fetch_add(&s_next, 1, __ATOMIC_SEQ_CST);
     if (i >= MAX_THREADS) {
         return; /* the system screen still reports it */
@@ -102,8 +102,7 @@ void kj_crash_install(void)
 #ifdef KJ_CRASH_TEST
 /* Development-only: fault in ordinary code so the exception path can be
  * exercised on hardware or in an emulator (docs/testing.md). */
-void kj_crash_test_trigger(void)
-{
+void kj_crash_test_trigger(void) {
     kj_log("[crash-test] triggering a data abort now");
     kj_log_flush_now();
     volatile unsigned *bad = (volatile unsigned *)0x00000000u;

@@ -25,8 +25,8 @@ extern "C" {
 /* ------------------------------------------------------------------ boot */
 
 typedef struct kj_game_settings {
-    uint16_t nickname[11];   /* UTF-16, 0-terminated */
-    uint8_t language;        /* NVRAM language code (1 = English) */
+    uint16_t nickname[11]; /* UTF-16, 0-terminated */
+    uint8_t language;      /* NVRAM language code (1 = English) */
     uint8_t birth_month;
     uint8_t birth_day;
     uint8_t favorite_color;
@@ -47,8 +47,8 @@ void kj_game_main(const kj_game_settings *settings);
 bool kj_ds_set_save_path(const char *path);
 
 /* Edition identity compiled into this program. */
-const char *kj_ds_edition_name(void);     /* "heartgold" / "soulsilver" */
-const char *kj_ds_pack_build_id(void);    /* pack builder ID the program expects */
+const char *kj_ds_edition_name(void);  /* "heartgold" / "soulsilver" */
+const char *kj_ds_pack_build_id(void); /* pack builder ID the program expects */
 
 /* -------------------------------------------------------- DS memory view */
 
@@ -58,15 +58,15 @@ const char *kj_ds_pack_build_id(void);    /* pack builder ID the program expects
  * stopped at its frame boundary), so every read is coherent with one
  * published frame. */
 typedef struct kj_ds_memory {
-    const uint8_t *io;            /* 0x04000000.. I/O registers (engine A at +0, B at +0x1000) */
-    const uint8_t *pltt;          /* 0x800: BG A, OBJ A, BG B, OBJ B */
-    const uint8_t *oam;           /* 0x800: engine A, engine B */
-    const int8_t *oam_wide_dx;    /* 128 per engine, coherent with OAM */
-    const uint8_t *bg_vram_a;     /* 0x80000 engine A BG view */
-    const uint8_t *bg_vram_b;     /* 0x20000 engine B BG view */
-    const uint8_t *obj_vram_a;    /* 0x40000 engine A OBJ view */
-    const uint8_t *obj_vram_b;    /* 0x20000 engine B OBJ view */
-    const uint8_t *lcdc_vram;     /* 0xA4000 banks A..I in LCDC order */
+    const uint8_t *io;         /* 0x04000000.. I/O registers (engine A at +0, B at +0x1000) */
+    const uint8_t *pltt;       /* 0x800: BG A, OBJ A, BG B, OBJ B */
+    const uint8_t *oam;        /* 0x800: engine A, engine B */
+    const int8_t *oam_wide_dx; /* 128 per engine, coherent with OAM */
+    const uint8_t *bg_vram_a;  /* 0x80000 engine A BG view */
+    const uint8_t *bg_vram_b;  /* 0x20000 engine B BG view */
+    const uint8_t *obj_vram_a; /* 0x40000 engine A OBJ view */
+    const uint8_t *obj_vram_b; /* 0x20000 engine B OBJ view */
+    const uint8_t *lcdc_vram;  /* 0xA4000 banks A..I in LCDC order */
     size_t io_size;
 } kj_ds_memory;
 
@@ -89,7 +89,7 @@ typedef struct kj_vram_bank {
  * this frame. NULL / 0 when no H-blank effect ran. */
 #define KJ_LINE_REG_BYTES 0x70
 typedef struct kj_line_regs {
-    const uint8_t (*regs)[192][KJ_LINE_REG_BYTES];   /* [engine][line] */
+    const uint8_t (*regs)[192][KJ_LINE_REG_BYTES]; /* [engine][line] */
     bool active;
 } kj_line_regs;
 
@@ -108,12 +108,12 @@ typedef struct kj_line_regs {
 #define KJ_G3_MAX_BATCHES 2048
 
 typedef struct kj_g3_vertex {
-    int16_t x, y, z;     /* object space, 4.12 fixed */
-    uint8_t mtx;         /* index into the batch's matrix palette */
+    int16_t x, y, z; /* object space, 4.12 fixed */
+    uint8_t mtx;     /* index into the batch's matrix palette */
     uint8_t pad;
-    uint8_t r, g, b, a;  /* 0..255 (DS 5-bit expanded); a = polygon alpha */
-    int16_t s, t;        /* texel units, 12.4 fixed (after DS texgen) */
-} kj_g3_vertex;          /* 16 bytes */
+    uint8_t r, g, b, a; /* 0..255 (DS 5-bit expanded); a = polygon alpha */
+    int16_t s, t;       /* texel units, 12.4 fixed (after DS texgen) */
+} kj_g3_vertex;         /* 16 bytes */
 
 /* A clip matrix (projection x position), row-major 4x4 floats in the
  * PICA's row order (rows = output components). */
@@ -124,13 +124,13 @@ typedef struct kj_g3_matrix {
 typedef struct kj_g3_batch {
     uint32_t first_index;
     uint32_t index_count;
-    uint16_t first_matrix;     /* palette slice for this batch */
+    uint16_t first_matrix; /* palette slice for this batch */
     uint16_t matrix_count;
-    uint32_t poly_attr;        /* DS POLYGON_ATTR at the BEGIN */
-    uint32_t tex_param;        /* DS TEXIMAGE_PARAM */
-    uint32_t tex_pltt;         /* DS PLTT_BASE */
-    uint32_t viewport;         /* VIEWPORT x1 | y1 << 8 | x2 << 16 | y2 << 24 */
-    uint32_t flags;            /* KJ_G3_BATCH_* */
+    uint32_t poly_attr; /* DS POLYGON_ATTR at the BEGIN */
+    uint32_t tex_param; /* DS TEXIMAGE_PARAM */
+    uint32_t tex_pltt;  /* DS PLTT_BASE */
+    uint32_t viewport;  /* VIEWPORT x1 | y1 << 8 | x2 << 16 | y2 << 24 */
+    uint32_t flags;     /* KJ_G3_BATCH_* */
 } kj_g3_batch;
 
 /* Matrices one draw can address (the vertex shader's uniform palette). */
@@ -138,9 +138,9 @@ typedef struct kj_g3_batch {
 #define KJ_G3_LIT_PALETTE 6
 #define KJ_G3_MAX_LIGHTING 512
 
-#define KJ_G3_BATCH_TRANSLUCENT 0x1u   /* goes to the translucent list */
-#define KJ_G3_BATCH_SHADOW      0x2u   /* DS shadow polygon */
-#define KJ_G3_BATCH_LIT         0x4u   /* lighting context index in flags >> 16 */
+#define KJ_G3_BATCH_TRANSLUCENT 0x1u /* goes to the translucent list */
+#define KJ_G3_BATCH_SHADOW 0x2u      /* DS shadow polygon */
+#define KJ_G3_BATCH_LIT 0x4u         /* lighting context index in flags >> 16 */
 
 typedef struct kj_g3_frame {
     const kj_g3_vertex *verts;
@@ -153,10 +153,10 @@ typedef struct kj_g3_frame {
     uint32_t batch_count;
     /* DS state at SwapBuffers */
     uint32_t disp3dcnt;
-    uint32_t clear_color;      /* CLEAR_COLOR */
-    uint32_t clear_depth;      /* CLEAR_DEPTH (15 bit) */
-    uint32_t swap_params;      /* SWAP_BUFFERS argument */
-    uint32_t viewport;         /* VIEWPORT x1,y1,x2,y2 bytes */
+    uint32_t clear_color; /* CLEAR_COLOR */
+    uint32_t clear_depth; /* CLEAR_DEPTH (15 bit) */
+    uint32_t swap_params; /* SWAP_BUFFERS argument */
+    uint32_t viewport;    /* VIEWPORT x1,y1,x2,y2 bytes */
     uint8_t alpha_test_ref;
     uint16_t fog_color_hi;
     uint32_t fog_color;
@@ -164,7 +164,7 @@ typedef struct kj_g3_frame {
     uint8_t fog_table[32];
     uint16_t edge_color[8];
     uint16_t toon_table[32];
-    uint32_t serial;           /* increments per swap */
+    uint32_t serial; /* increments per swap */
     /* dropped/unsupported work, never silently zero */
     uint32_t dropped_verts;
     uint32_t dropped_batches;
@@ -181,36 +181,40 @@ typedef struct kj_g3_frame {
 
 /* Semantic screen IDs (issue #15): the application on display, from the
  * game's OverlayManager. Fixed values; never stored in the save. */
-#define KJ_SCREEN_UNKNOWN        0u
-#define KJ_SCREEN_FIELD          1u
-#define KJ_SCREEN_BATTLE         2u
-#define KJ_SCREEN_TITLE          3u
-#define KJ_SCREEN_INTRO          4u
-#define KJ_SCREEN_MAIN_MENU      5u
-#define KJ_SCREEN_OAK_SPEECH     6u
-#define KJ_SCREEN_PARTY          7u
-#define KJ_SCREEN_SUMMARY        8u
-#define KJ_SCREEN_BAG            9u
-#define KJ_SCREEN_PC_BOX         10u
-#define KJ_SCREEN_POKEDEX        11u
-#define KJ_SCREEN_POKEGEAR       12u
-#define KJ_SCREEN_GEAR_MAP       13u
-#define KJ_SCREEN_GEAR_PHONE     14u
-#define KJ_SCREEN_GEAR_RADIO     15u
-#define KJ_SCREEN_GEAR_CONFIG    16u
-#define KJ_SCREEN_TRAINER_CARD   17u
-#define KJ_SCREEN_TC_SIGNATURE   18u
-#define KJ_SCREEN_OPTIONS        19u
-#define KJ_SCREEN_FLY_MAP        20u
-#define KJ_SCREEN_STARTER        21u
-#define KJ_SCREEN_CREDITS        22u
-#define KJ_SCREEN_EASY_CHAT      23u
-#define KJ_SCREEN_NAMING         24u
-#define KJ_SCREEN_OTHER          25u  /* a known application without an ID */
-#define KJ_SCREEN_COUNT          26u
+#define KJ_SCREEN_UNKNOWN 0u
+#define KJ_SCREEN_FIELD 1u
+#define KJ_SCREEN_BATTLE 2u
+#define KJ_SCREEN_TITLE 3u
+#define KJ_SCREEN_INTRO 4u
+#define KJ_SCREEN_MAIN_MENU 5u
+#define KJ_SCREEN_OAK_SPEECH 6u
+#define KJ_SCREEN_PARTY 7u
+#define KJ_SCREEN_SUMMARY 8u
+#define KJ_SCREEN_BAG 9u
+#define KJ_SCREEN_PC_BOX 10u
+#define KJ_SCREEN_POKEDEX 11u
+#define KJ_SCREEN_POKEGEAR 12u
+#define KJ_SCREEN_GEAR_MAP 13u
+#define KJ_SCREEN_GEAR_PHONE 14u
+#define KJ_SCREEN_GEAR_RADIO 15u
+#define KJ_SCREEN_GEAR_CONFIG 16u
+#define KJ_SCREEN_TRAINER_CARD 17u
+#define KJ_SCREEN_TC_SIGNATURE 18u
+#define KJ_SCREEN_OPTIONS 19u
+#define KJ_SCREEN_FLY_MAP 20u
+#define KJ_SCREEN_STARTER 21u
+#define KJ_SCREEN_CREDITS 22u
+#define KJ_SCREEN_EASY_CHAT 23u
+#define KJ_SCREEN_NAMING 24u
+#define KJ_SCREEN_OTHER 25u /* a known application without an ID */
+#define KJ_SCREEN_COUNT 26u
 
 /* Names of the IDs above, in order (logs and the wide_layouts.txt override). */
-#define KJ_SCREEN_NAMES_INIT                                                            { "unknown", "field", "battle", "title", "intro", "mainmenu", "oakspeech",           "party", "summary", "bag", "pcbox", "pokedex", "pokegear", "gearmap",              "gearphone", "gearradio", "gearconfig", "trainercard", "signature",                "options", "flymap", "starter", "credits", "easychat", "naming", "other" }
+#define KJ_SCREEN_NAMES_INIT                                                                       \
+    {"unknown",   "field",     "battle",     "title",       "intro",     "mainmenu", "oakspeech",  \
+     "party",     "summary",   "bag",        "pcbox",       "pokedex",   "pokegear", "gearmap",    \
+     "gearphone", "gearradio", "gearconfig", "trainercard", "signature", "options",  "flymap",     \
+     "starter",   "credits",   "easychat",   "naming",      "other"}
 
 /* One wide-layout rule (issue #16; Unown's ss3ds_widelayouts.h rows).
  * Columns and lines are the DS's; the wide top screen shows DS columns
@@ -231,14 +235,14 @@ typedef struct kj_layout_row {
     int16_t kind, bgs, top, bottom, x0, x1, dx, arg;
 } kj_layout_row;
 
-#define KJ_LAYOUT_MOVE    1
-#define KJ_LAYOUT_FILL    2
-#define KJ_LAYOUT_OBJS    3
+#define KJ_LAYOUT_MOVE 1
+#define KJ_LAYOUT_FILL 2
+#define KJ_LAYOUT_OBJS 3
 #define KJ_LAYOUT_SHIFT3D 4
-#define KJ_LAYOUT_COPY    5
-#define KJ_LAYOUT_WRAP    6
-#define KJ_LAYOUT_SCALE   7
-#define KJ_LAYOUT_SCREEN  0x10
+#define KJ_LAYOUT_COPY 5
+#define KJ_LAYOUT_WRAP 6
+#define KJ_LAYOUT_SCALE 7
+#define KJ_LAYOUT_SCREEN 0x10
 #define KJ_LAYOUT_MAX_ROWS 32
 
 /* The screen on display and its layout, per engine (0 = A, 1 = B). The
@@ -246,7 +250,7 @@ typedef struct kj_layout_row {
  * it never compares strings or scans memory. */
 typedef struct kj_screen_state {
     uint32_t screen_id;
-    uint32_t depth;              /* nesting of the screen's application */
+    uint32_t depth; /* nesting of the screen's application */
     uint32_t generation;
     uint32_t row_count[2];
     const kj_layout_row *rows[2]; /* immutable while generation holds */
@@ -269,25 +273,25 @@ typedef struct kj_screen_state {
 #define KJ_TEXT_EV_FILL 4u
 #define KJ_TEXT_EV_SCROLL 5u
 #define KJ_TEXT_EV_PUBLISH 6u
-#define KJ_TEXT_EV_ART 7u     /* non-text art written into the window buffer */
+#define KJ_TEXT_EV_ART 7u              /* non-text art written into the window buffer */
 #define KJ_TEXT_WINDOW_TEMPORARY 0x01u /* no tilemap position (OBJ source) */
 
 typedef struct kj_text_event {
-    uint32_t window;     /* opaque game-side window identity */
-    uint32_t generation; /* distinguishes a reused allocation */
-    uint16_t code;       /* HGSS character code */
-    int16_t x, y;        /* logical cell position (window-relative) */
-    uint16_t value;      /* fill index, or scroll distance */
-    uint16_t arg0, arg1; /* FILL: rectangle width and height */
-    uint8_t kind;        /* KJ_TEXT_EV_* */
-    uint8_t font_id;     /* 0..5, or 255 for the numeric printers */
-    uint8_t variant;     /* KJ_GLYPH_VARIANT_* requested by the caller */
-    uint8_t fg, shadow, bg; /* resolved palette indices */
-    uint8_t glyph_table; /* 0 or 0xFFFC (alternate table) */
-    uint8_t engine;      /* 0 = A, 1 = B */
-    uint8_t bg_id;       /* 0..7 (4..7 are the lower screen) */
-    uint8_t palette_num; /* window palette bank */
-    uint8_t color_mode;  /* 0 = 4bpp, 1 = 8bpp */
+    uint32_t window;              /* opaque game-side window identity */
+    uint32_t generation;          /* distinguishes a reused allocation */
+    uint16_t code;                /* HGSS character code */
+    int16_t x, y;                 /* logical cell position (window-relative) */
+    uint16_t value;               /* fill index, or scroll distance */
+    uint16_t arg0, arg1;          /* FILL: rectangle width and height */
+    uint8_t kind;                 /* KJ_TEXT_EV_* */
+    uint8_t font_id;              /* 0..5, or 255 for the numeric printers */
+    uint8_t variant;              /* KJ_GLYPH_VARIANT_* requested by the caller */
+    uint8_t fg, shadow, bg;       /* resolved palette indices */
+    uint8_t glyph_table;          /* 0 or 0xFFFC (alternate table) */
+    uint8_t engine;               /* 0 = A, 1 = B */
+    uint8_t bg_id;                /* 0..7 (4..7 are the lower screen) */
+    uint8_t palette_num;          /* window palette bank */
+    uint8_t color_mode;           /* 0 = 4bpp, 1 = 8bpp */
     uint8_t tilemap_x, tilemap_y; /* window origin in tiles */
     uint8_t width, height;        /* window size in tiles */
     uint8_t flags;
@@ -298,11 +302,11 @@ typedef struct kj_frame_input {
     const kj_ds_memory *mem;
     kj_vram_bank banks[9];
     kj_line_regs lines;
-    const kj_g3_frame *g3;          /* NULL if no new 3D scene was swapped */
-    uint32_t vblank_count;          /* DS V-blanks so far */
-    uint32_t game_frame;            /* publishes so far */
-    bool engine_a_on_top;           /* POWCNT1 bit 15 */
-    kj_screen_state screen;         /* same generation as this frame's DS state */
+    const kj_g3_frame *g3;  /* NULL if no new 3D scene was swapped */
+    uint32_t vblank_count;  /* DS V-blanks so far */
+    uint32_t game_frame;    /* publishes so far */
+    bool engine_a_on_top;   /* POWCNT1 bit 15 */
+    kj_screen_state screen; /* same generation as this frame's DS state */
     const kj_text_event *text_events;
     uint32_t text_event_count;
 } kj_frame_input;
@@ -327,10 +331,10 @@ void kj_ctr_log(const char *line);
 
 /* Input for the DS side, sampled once per V-blank. */
 typedef struct kj_input {
-    uint16_t keys;        /* PAD_BUTTON_* / PAD_KEY_* bits (X = 0x400, Y = 0x800), 1 = held */
+    uint16_t keys; /* PAD_BUTTON_* / PAD_KEY_* bits (X = 0x400, Y = 0x800), 1 = held */
     bool touch;
-    uint16_t touch_x;     /* DS coordinates 0..255 */
-    uint16_t touch_y;     /* 0..191 */
+    uint16_t touch_x; /* DS coordinates 0..255 */
+    uint16_t touch_y; /* 0..191 */
 } kj_input;
 
 const kj_input *kj_ctr_input(void);

@@ -1,0 +1,16 @@
+# Coffeepot's baseline style (c-style-guide.md, "A baseline .clang-format"):
+# 4 spaces, no tabs, ~100 columns, attached braces, no one-line bodies, and
+# no include sorting. Apply only to first-party Kohjoh C/H; never to the
+# vendored decomp, SDK or generated files. Formatting is a mechanical step
+# after semantic changes, not mixed with them.
+BasedOnStyle: LLVM
+Language: Cpp
+IndentWidth: 4
+UseTab: Never
+ColumnLimit: 100
+BreakBeforeBraces: Attach
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+PointerAlignment: Right
+SortIncludes: Never

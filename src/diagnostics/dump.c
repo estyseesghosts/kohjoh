@@ -21,13 +21,11 @@
 #include <stdio.h>
 #include <string.h>
 
-static bool put(FILE *f, const void *p, size_t n)
-{
+static bool put(FILE *f, const void *p, size_t n) {
     return fwrite(p, 1, n, f) == n;
 }
 
-static bool blob(FILE *f, const void *p, uint32_t n)
-{
+static bool blob(FILE *f, const void *p, uint32_t n) {
     static const uint8_t zeros[256];
     if (!put(f, &n, 4)) {
         return false;
@@ -47,8 +45,7 @@ static bool blob(FILE *f, const void *p, uint32_t n)
 
 /* Keep KJD1's literal-colour ABI for the independent offline oracle.
  * This conversion runs only for an explicitly requested debug dump. */
-static bool vertex_blob(FILE *file, const kj_g3_frame *frame)
-{
+static bool vertex_blob(FILE *file, const kj_g3_frame *frame) {
     uint32_t bytes = frame->vert_count * sizeof(kj_g3_vertex);
     if (!put(file, &bytes, sizeof(bytes))) {
         return false;
@@ -75,8 +72,7 @@ static bool vertex_blob(FILE *file, const kj_g3_frame *frame)
     return true;
 }
 
-bool kj_dump_frame(const char *path, const kj_frame_input *in)
-{
+bool kj_dump_frame(const char *path, const kj_frame_input *in) {
     FILE *f = fopen(path, "wb");
     if (f == NULL) {
         kj_log("[dump] cannot open %s", path);
@@ -87,21 +83,21 @@ bool kj_dump_frame(const char *path, const kj_frame_input *in)
     const uint32_t lines = in->lines.active ? 1u : 0u;
     bool ok = put(f, "KJD1", 4) && put(f, &frame, 4) && put(f, &top, 4);
     for (int i = 0; i < 9 && ok; ++i) {
-        const uint8_t b[4] = { in->banks[i].enabled, in->banks[i].mst, in->banks[i].ofs, 0 };
+        const uint8_t b[4] = {in->banks[i].enabled, in->banks[i].mst, in->banks[i].ofs, 0};
         ok = put(f, &in->banks[i].lcdc_offset, 4) && put(f, &in->banks[i].size, 4) && put(f, b, 4);
     }
-    ok = ok && put(f, &lines, 4) && blob(f, m->io, (uint32_t)m->io_size) && blob(f, m->pltt, 0x800) &&
-         blob(f, m->oam, 0x800) && blob(f, m->bg_vram_a, 0x80000) && blob(f, m->bg_vram_b, 0x20000) &&
-         blob(f, m->obj_vram_a, 0x40000) && blob(f, m->obj_vram_b, 0x20000) &&
-         blob(f, m->lcdc_vram, 0xA4000) &&
-         blob(f, in->lines.active ? (const void *)in->lines.regs : NULL, 2 * 192 * KJ_LINE_REG_BYTES);
+    ok = ok && put(f, &lines, 4) && blob(f, m->io, (uint32_t)m->io_size) &&
+         blob(f, m->pltt, 0x800) && blob(f, m->oam, 0x800) && blob(f, m->bg_vram_a, 0x80000) &&
+         blob(f, m->bg_vram_b, 0x20000) && blob(f, m->obj_vram_a, 0x40000) &&
+         blob(f, m->obj_vram_b, 0x20000) && blob(f, m->lcdc_vram, 0xA4000) &&
+         blob(f, in->lines.active ? (const void *)in->lines.regs : NULL,
+              2 * 192 * KJ_LINE_REG_BYTES);
     const kj_g3_frame *g = in->g3;
     const uint32_t present = g != NULL ? 1u : 0u;
     ok = ok && put(f, &present, 4);
     if (ok && g != NULL) {
         ok = put(f, &g->swap_params, 4) && put(f, &g->viewport, 4) && put(f, &g->disp3dcnt, 4) &&
-             vertex_blob(f, g) &&
-             blob(f, g->indices, g->index_count * 2u) &&
+             vertex_blob(f, g) && blob(f, g->indices, g->index_count * 2u) &&
              blob(f, g->matrices, g->matrix_count * (uint32_t)sizeof(kj_g3_matrix)) &&
              blob(f, g->batches, g->batch_count * (uint32_t)sizeof(kj_g3_batch));
     }

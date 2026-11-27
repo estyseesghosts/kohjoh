@@ -48,39 +48,35 @@ static uint32_t s_frame_time[WINDOW];
 #define MAX_HITCH_LOG 12u
 static uint32_t s_hitch_frame[MAX_HITCH_LOG], s_hitch_len[MAX_HITCH_LOG];
 static uint32_t s_scene_serial, s_hitch_scene[MAX_HITCH_LOG];
-static uint32_t s_hitch_logic[MAX_HITCH_LOG], s_hitch_g2d[MAX_HITCH_LOG], s_hitch_g3d[MAX_HITCH_LOG];
+static uint32_t s_hitch_logic[MAX_HITCH_LOG], s_hitch_g2d[MAX_HITCH_LOG],
+    s_hitch_g3d[MAX_HITCH_LOG];
 static uint32_t s_hitches, s_skipped;
 uint32_t kj_perf_counts[KJ_COUNT_COUNT];
 static uint32_t s_hitch_counts[MAX_HITCH_LOG][KJ_COUNT_COUNT];
 
-uint64_t kj_perf_now(void)
-{
+uint64_t kj_perf_now(void) {
     return svcGetSystemTick();
 }
 
-void kj_perf_add(enum kj_perf_stage stage, uint64_t ticks)
-{
+void kj_perf_add(enum kj_perf_stage stage, uint64_t ticks) {
     s_frame_stage[stage] += (uint32_t)ticks;
 }
 
-void kj_perf_vblank_begin(void)
-{
+void kj_perf_vblank_begin(void) {
     s_vblank_start = svcGetSystemTick();
     if (s_logic_start != 0) {
         kj_perf_add(KJ_PERF_LOGIC, s_vblank_start - s_logic_start);
     }
 }
 
-void kj_perf_vblank_end(void)
-{
+void kj_perf_vblank_end(void) {
     const uint64_t now = svcGetSystemTick();
     kj_perf_add(KJ_PERF_VBLANK_WAIT, now - s_vblank_start);
     s_logic_start = now;
     ++s_vblanks_since_publish;
 }
 
-void kj_perf_publish_begin(uint32_t scene_serial)
-{
+void kj_perf_publish_begin(uint32_t scene_serial) {
     s_scene_serial = scene_serial;
     s_publish_start = svcGetSystemTick();
     if (s_logic_start != 0) {
@@ -88,21 +84,20 @@ void kj_perf_publish_begin(uint32_t scene_serial)
     }
 }
 
-static int cmp_u32(const void *a, const void *b)
-{
+static int cmp_u32(const void *a, const void *b) {
     const uint32_t x = *(const uint32_t *)a, y = *(const uint32_t *)b;
     return x < y ? -1 : x > y;
 }
 
 /* This window counts every game frame, including skipped pictures. */
-static void record_game_logic(void)
-{
+static void record_game_logic(void) {
     s_game_logic[s_game_n] = s_frame_stage[KJ_PERF_LOGIC];
     s_game_active[s_game_n] = s_frame_stage[KJ_PERF_LOGIC] + s_frame_stage[KJ_PERF_PUBLISH];
     ++s_game_n;
     if (s_game_n == WINDOW) {
         qsort(s_game_logic, WINDOW, sizeof(s_game_logic[0]), cmp_u32);
-        kj_log("[gamecpu] 600 game frames, logic us p50 %lu p95 %lu p99 %lu max %lu (includes preemption; excludes V-blank wait)",
+        kj_log("[gamecpu] 600 game frames, logic us p50 %lu p95 %lu p99 %lu max %lu (includes "
+               "preemption; excludes V-blank wait)",
                (unsigned long)(s_game_logic[WINDOW / 2] / TICKS_PER_US),
                (unsigned long)(s_game_logic[WINDOW * 95 / 100] / TICKS_PER_US),
                (unsigned long)(s_game_logic[WINDOW * 99 / 100] / TICKS_PER_US),
@@ -118,8 +113,7 @@ static void record_game_logic(void)
     }
 }
 
-static void report(void)
-{
+static void report(void) {
     static const char *const names[KJ_PERF_STAGE_COUNT] = {
         "logic", "vbl_wait", "g2d", "g3d", "gpu_wait", "submit", "publish",
     };
@@ -136,9 +130,10 @@ static void report(void)
     }
     memcpy(sorted, s_interval, sizeof(sorted));
     qsort(sorted, WINDOW, sizeof(sorted[0]), cmp_u32);
-    kj_log("[perf] window %lu: %u publishes, emulated interval (vblanks) p50 %lu max %lu, misses %lu",
-           (unsigned long)++s_windows, WINDOW, (unsigned long)sorted[WINDOW / 2],
-           (unsigned long)sorted[WINDOW - 1], (unsigned long)s_misses);
+    kj_log(
+        "[perf] window %lu: %u publishes, emulated interval (vblanks) p50 %lu max %lu, misses %lu",
+        (unsigned long)++s_windows, WINDOW, (unsigned long)sorted[WINDOW / 2],
+        (unsigned long)sorted[WINDOW - 1], (unsigned long)s_misses);
     s_misses = 0;
     {
         uint32_t hist[5] = {0, 0, 0, 0, 0};
@@ -148,7 +143,8 @@ static void report(void)
         }
         memcpy(sorted, s_frame_time, sizeof(sorted));
         qsort(sorted, WINDOW, sizeof(sorted[0]), cmp_u32);
-        kj_log("[frame] submission interval (refreshes; LCD unobserved) 0:%lu 1:%lu 2:%lu 3:%lu 4+:%lu; hitches %lu, "
+        kj_log("[frame] submission interval (refreshes; LCD unobserved) 0:%lu 1:%lu 2:%lu 3:%lu "
+               "4+:%lu; hitches %lu, "
                "presents skipped %lu; frame time us p50 %lu p99 %lu max %lu",
                (unsigned long)hist[0], (unsigned long)hist[1], (unsigned long)hist[2],
                (unsigned long)hist[3], (unsigned long)hist[4], (unsigned long)s_hitches,
@@ -170,9 +166,10 @@ static void report(void)
             kj_log("%s", line);
             for (uint32_t i = 0; i < shown; ++i) {
                 const uint32_t *k = s_hitch_counts[i];
-                kj_log("[frame]   %lu scene %lu: tile conv %lu, spans %lu, quads %lu, tex uploads %lu, "
-                       "tex bytes compared %lu", (unsigned long)s_hitch_frame[i],
-                       (unsigned long)s_hitch_scene[i],
+                kj_log("[frame]   %lu scene %lu: tile conv %lu, spans %lu, quads %lu, tex uploads "
+                       "%lu, "
+                       "tex bytes compared %lu",
+                       (unsigned long)s_hitch_frame[i], (unsigned long)s_hitch_scene[i],
                        (unsigned long)k[KJ_COUNT_TILE_CONV], (unsigned long)k[KJ_COUNT_SPANS],
                        (unsigned long)k[KJ_COUNT_QUADS], (unsigned long)k[KJ_COUNT_TEX_UPLOAD],
                        (unsigned long)k[KJ_COUNT_TEX_BYTES]);
@@ -183,8 +180,7 @@ static void report(void)
     }
 }
 
-static void note_hitch(uint32_t game_frame, uint32_t refreshes)
-{
+static void note_hitch(uint32_t game_frame, uint32_t refreshes) {
     if (s_hitches < MAX_HITCH_LOG) {
         s_hitch_frame[s_hitches] = game_frame;
         s_hitch_scene[s_hitches] = s_scene_serial;
@@ -197,8 +193,7 @@ static void note_hitch(uint32_t game_frame, uint32_t refreshes)
     ++s_hitches;
 }
 
-void kj_perf_present_skipped(uint32_t game_frame)
-{
+void kj_perf_present_skipped(uint32_t game_frame) {
     ++s_skipped;
     (void)game_frame;
     kj_perf_add(KJ_PERF_PUBLISH, svcGetSystemTick() - s_publish_start);
@@ -208,8 +203,7 @@ void kj_perf_present_skipped(uint32_t game_frame)
     s_logic_start = svcGetSystemTick();
 }
 
-void kj_perf_publish_end(uint32_t game_frame)
-{
+void kj_perf_publish_end(uint32_t game_frame) {
     const uint64_t now = svcGetSystemTick();
     const uint32_t real = C3D_FrameCounter(0);
     const uint32_t real_interval = s_any_publish ? real - s_last_real : 2u;

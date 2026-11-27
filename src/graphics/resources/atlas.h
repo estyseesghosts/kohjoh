@@ -24,19 +24,19 @@
 
 /* A palette the atlas can expand tiles with. */
 typedef struct kj_palette {
-    const uint16_t *colors; /* live DS memory (BGR555) */
-    uint16_t count;         /* 16 or 256 */
-    uint16_t converted[256];/* RGBA5551 of the current version */
-    uint16_t shadow[256];   /* the colours of the current version */
+    const uint16_t *colors;  /* live DS memory (BGR555) */
+    uint16_t count;          /* 16 or 256 */
+    uint16_t converted[256]; /* RGBA5551 of the current version */
+    uint16_t shadow[256];    /* the colours of the current version */
     uint32_t version;
     uint32_t checked_frame;
 } kj_palette;
 
 /* Result of a tile lookup. */
 typedef struct kj_tile_ref {
-    uint16_t slot;      /* atlas slot */
-    uint8_t transparent;/* every pixel is index 0: draw nothing */
-    uint8_t valid;      /* 0: atlas full (counted), draw nothing */
+    uint16_t slot;       /* atlas slot */
+    uint8_t transparent; /* every pixel is index 0: draw nothing */
+    uint8_t valid;       /* 0: atlas full (counted), draw nothing */
 } kj_tile_ref;
 
 bool kj_atlas_init(void);
@@ -67,8 +67,7 @@ kj_tile_ref kj_atlas_tile(uint32_t source_id, const uint8_t *tile, uint32_t offs
 #define KJ_ATLAS_UV_UNIT 16
 
 static inline void kj_atlas_slot_uv(uint16_t slot, int16_t *u0, int16_t *v0, int16_t *u1,
-                                    int16_t *v1)
-{
+                                    int16_t *v1) {
     const int u = (slot % KJ_ATLAS_TILES_PER_ROW) * 8 * KJ_ATLAS_UV_UNIT;
     const int v = (slot / KJ_ATLAS_TILES_PER_ROW) * 8 * KJ_ATLAS_UV_UNIT;
     *u0 = (int16_t)(u + 1);

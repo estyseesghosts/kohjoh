@@ -28,8 +28,8 @@ bool kj_text_texture_ready(void);
 /* Draw every native presentation for (engine, bg). `palette` is the live
  * 256-colour BG palette for the engine; `hofs`/`vofs` are the BG scroll. The
  * caller has already set the layer's scissor and priority slot. */
-void kj_text_draw_bg(const kj_target *target, int engine, int bg, const uint16_t *palette,
-                     int hofs, int vofs);
+void kj_text_draw_bg(const kj_target *target, int engine, int bg, const uint16_t *palette, int hofs,
+                     int vofs);
 
 #ifdef __cplusplus
 }

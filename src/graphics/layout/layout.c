@@ -17,15 +17,13 @@
 #define COLS (KJ_LAYOUT_RIGHT - KJ_LAYOUT_LEFT)
 #define NONE INT16_MIN
 
-static bool bg_row(const kj_layout_row *t)
-{
+static bool bg_row(const kj_layout_row *t) {
     return t->kind == KJ_LAYOUT_MOVE || t->kind == KJ_LAYOUT_FILL || t->kind == KJ_LAYOUT_COPY ||
            t->kind == KJ_LAYOUT_WRAP || t->kind == KJ_LAYOUT_SCALE;
 }
 
 /* Unown's h0: the scroll as a small signed picture offset. */
-static int h0_of(const kj_layout_bg *bg)
-{
+static int h0_of(const kj_layout_bg *bg) {
     int h = bg->hofs & (bg->w - 1);
     if (h > bg->w - 64) {
         h -= bg->w;
@@ -33,8 +31,7 @@ static int h0_of(const kj_layout_bg *bg)
     return h;
 }
 
-uint32_t kj_layout_active(const kj_layout_row *rows, uint32_t n, const kj_layout_bg *bg, int y)
-{
+uint32_t kj_layout_active(const kj_layout_row *rows, uint32_t n, const kj_layout_bg *bg, int y) {
     const int py = (y + bg->vofs) & (bg->h - 1);
     uint32_t mask = 0;
     if (n > KJ_LAYOUT_MAX_ROWS) {
@@ -55,8 +52,7 @@ uint32_t kj_layout_active(const kj_layout_row *rows, uint32_t n, const kj_layout
 
 /* Picture column -> the source screen column nearest wide column s (the
  * map repeats every w px), in [SRC_LO, SRC_HI), or NONE. */
-static int16_t source_col(int pic, int h0, int w, int s)
-{
+static int16_t source_col(int pic, int h0, int w, int s) {
     int d = (pic - h0 - s) & (w - 1);
     if (d > w / 2) {
         d -= w;
@@ -71,8 +67,7 @@ static int16_t source_col(int pic, int h0, int w, int s)
 }
 
 int kj_layout_segments(const kj_layout_row *rows, uint32_t n, uint32_t active,
-                       const kj_layout_bg *bg, kj_layout_seg *out, bool *unsupported)
-{
+                       const kj_layout_bg *bg, kj_layout_seg *out, bool *unsupported) {
     int16_t r[COLS];
     const int h0 = h0_of(bg), m = bg->w - 1;
     bool missing = false;
@@ -85,7 +80,7 @@ int kj_layout_segments(const kj_layout_row *rows, uint32_t n, uint32_t active,
      * wide title, soulsilver3ds/platform/title_layers.h: sx = (4x+2)/5). */
     for (uint32_t k = 0; k < n; ++k) {
         if ((active & (1u << k)) && rows[k].kind == KJ_LAYOUT_SCALE) {
-            out[0] = (kj_layout_seg){ KJ_LAYOUT_LEFT, KJ_LAYOUT_RIGHT, 0, 2 };
+            out[0] = (kj_layout_seg){KJ_LAYOUT_LEFT, KJ_LAYOUT_RIGHT, 0, 2};
             return 1;
         }
     }
@@ -172,16 +167,15 @@ int kj_layout_segments(const kj_layout_row *rows, uint32_t n, uint32_t active,
             *unsupported = true;
             break;
         }
-        out[count++] = (kj_layout_seg){ (int16_t)(i + KJ_LAYOUT_LEFT), (int16_t)(j + KJ_LAYOUT_LEFT),
-                                        r[i], stretch ? 1 : 0 };
+        out[count++] = (kj_layout_seg){(int16_t)(i + KJ_LAYOUT_LEFT), (int16_t)(j + KJ_LAYOUT_LEFT),
+                                       r[i], stretch ? 1 : 0};
         i = j;
     }
     *unsupported |= missing;
     return count;
 }
 
-int kj_layout_obj_dx(const kj_layout_row *rows, uint32_t n, int cx, int cy)
-{
+int kj_layout_obj_dx(const kj_layout_row *rows, uint32_t n, int cx, int cy) {
     for (uint32_t k = 0; k < n; ++k) {
         const kj_layout_row *t = &rows[k];
         if (t->kind == KJ_LAYOUT_OBJS && cx >= t->x0 && cx < t->x1 && cy >= t->top &&
@@ -192,8 +186,7 @@ int kj_layout_obj_dx(const kj_layout_row *rows, uint32_t n, int cx, int cy)
     return 0;
 }
 
-int kj_layout_shift3d(const kj_layout_row *rows, uint32_t n)
-{
+int kj_layout_shift3d(const kj_layout_row *rows, uint32_t n) {
     int dx = 0;
     for (uint32_t k = 0; k < n; ++k) {
         if (rows[k].kind == KJ_LAYOUT_SHIFT3D) {

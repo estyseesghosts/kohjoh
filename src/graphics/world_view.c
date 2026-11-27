@@ -13,8 +13,7 @@
 
 #include <string.h>
 
-void kj_world_view_init(kj_world_view *view, kj_field_scale mode, int surface_w, int surface_h)
-{
+void kj_world_view_init(kj_world_view *view, kj_field_scale mode, int surface_w, int surface_h) {
     memset(view, 0, sizeof(*view));
     view->mode = mode;
     view->surface_w = surface_w;
@@ -52,15 +51,13 @@ void kj_world_view_init(kj_world_view *view, kj_field_scale mode, int surface_w,
     view->offset_y = ((float)surface_h - view->scale * KJ_DS_SCREEN_H) / 2.0f;
 }
 
-void kj_world_view_init_display(kj_world_view *view, kj_field_scale mode)
-{
+void kj_world_view_init_display(kj_world_view *view, kj_field_scale mode) {
     kj_world_view_init(view, mode, mode == KJ_FIELD_SCALE_2X ? 200 : 400,
                        mode == KJ_FIELD_SCALE_2X ? 120 : 240);
 }
 
-void kj_world_view_map(const kj_world_view *view, float ds_x, float ds_y,
-                       float *surface_x, float *surface_y)
-{
+void kj_world_view_map(const kj_world_view *view, float ds_x, float ds_y, float *surface_x,
+                       float *surface_y) {
     if (surface_x != NULL) {
         *surface_x = ds_x * view->scale + view->offset_x;
     }
@@ -69,9 +66,8 @@ void kj_world_view_map(const kj_world_view *view, float ds_x, float ds_y,
     }
 }
 
-void kj_world_view_unmap(const kj_world_view *view, float surface_x, float surface_y,
-                         float *ds_x, float *ds_y)
-{
+void kj_world_view_unmap(const kj_world_view *view, float surface_x, float surface_y, float *ds_x,
+                         float *ds_y) {
     if (ds_x != NULL) {
         *ds_x = (surface_x - view->offset_x) / view->scale;
     }
@@ -81,8 +77,7 @@ void kj_world_view_unmap(const kj_world_view *view, float surface_x, float surfa
 }
 
 void kj_world_view_visible_ds(const kj_world_view *view, float *x0, float *y0, float *x1,
-                              float *y1)
-{
+                              float *y1) {
     if (x0 != NULL) {
         *x0 = -view->offset_x / view->scale;
     }
@@ -97,8 +92,7 @@ void kj_world_view_visible_ds(const kj_world_view *view, float *x0, float *y0, f
     }
 }
 
-void kj_world_view_clip_extents(const kj_world_view *view, float *hx, float *hy)
-{
+void kj_world_view_clip_extents(const kj_world_view *view, float *hx, float *hy) {
     if (hx != NULL) {
         *hx = (float)view->surface_w / (view->scale * KJ_DS_SCREEN_W);
     }
@@ -107,9 +101,8 @@ void kj_world_view_clip_extents(const kj_world_view *view, float *hx, float *hy)
     }
 }
 
-bool kj_world_view_scissor(const kj_world_view *view, int ds_x0, int ds_y0, int ds_x1,
-                           int ds_y1, int out[4])
-{
+bool kj_world_view_scissor(const kj_world_view *view, int ds_x0, int ds_y0, int ds_x1, int ds_y1,
+                           int out[4]) {
     float sx0, sy0, sx1, sy1;
     int l, t, r, b;
 
@@ -142,8 +135,7 @@ bool kj_world_view_scissor(const kj_world_view *view, int ds_x0, int ds_y0, int 
     return true;
 }
 
-void kj_world_view_plain_scissor(int surface_w, int surface_h, const int rect[4], int out[4])
-{
+void kj_world_view_plain_scissor(int surface_w, int surface_h, const int rect[4], int out[4]) {
     for (int i = 0; i < 4; ++i) {
         out[i] = rect[i] < 0 ? 0 : rect[i];
     }
@@ -161,8 +153,7 @@ void kj_world_view_plain_scissor(int surface_w, int surface_h, const int rect[4]
     }
 }
 
-void kj_world_view_rotate_scissor(int surface_w, int surface_h, const int rect[4], int out[4])
-{
+void kj_world_view_rotate_scissor(int surface_w, int surface_h, const int rect[4], int out[4]) {
     /* Render targets are portrait (height x width): physical (x,y) maps to
      * framebuffer (surface_h - y, surface_w - x). Arguments are
      * (top, left, bottom, right). */
@@ -188,14 +179,18 @@ void kj_world_view_rotate_scissor(int surface_w, int surface_h, const int rect[4
     out[3] = right;
 }
 
-uint32_t kj_world_view_key(const kj_world_view *view)
-{
+uint32_t kj_world_view_key(const kj_world_view *view) {
     /* FNV-1a over the fields that change how a scene is projected. */
     const uint32_t words[] = {
-        (uint32_t)view->mode, (uint32_t)view->surface_w, (uint32_t)view->surface_h,
-        (uint32_t)view->world_w, (uint32_t)view->world_h,
-        (uint32_t)(view->scale * 10000.0f), (uint32_t)(view->offset_x + 1000.0f),
-        (uint32_t)(view->offset_y + 1000.0f), (uint32_t)view->backing_w,
+        (uint32_t)view->mode,
+        (uint32_t)view->surface_w,
+        (uint32_t)view->surface_h,
+        (uint32_t)view->world_w,
+        (uint32_t)view->world_h,
+        (uint32_t)(view->scale * 10000.0f),
+        (uint32_t)(view->offset_x + 1000.0f),
+        (uint32_t)(view->offset_y + 1000.0f),
+        (uint32_t)view->backing_w,
         (uint32_t)view->backing_h,
     };
     uint32_t h = 2166136261u;
@@ -206,8 +201,7 @@ uint32_t kj_world_view_key(const kj_world_view *view)
     return h;
 }
 
-bool kj_world_view_equal(const kj_world_view *a, const kj_world_view *b)
-{
+bool kj_world_view_equal(const kj_world_view *a, const kj_world_view *b) {
     return a->mode == b->mode && a->surface_w == b->surface_w && a->surface_h == b->surface_h &&
            a->world_w == b->world_w && a->world_h == b->world_h && a->scale == b->scale &&
            a->offset_x == b->offset_x && a->offset_y == b->offset_y &&

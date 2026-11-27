@@ -7,28 +7,27 @@
 #include SOURCE
 
 unsigned char NitroPort_IoReg[0x1000];
-void NitroPort_Log(const char *fmt, ...) { assert(strstr(fmt, "MISMATCH") == NULL); }
+void NitroPort_Log(const char *fmt, ...) {
+    assert(strstr(fmt, "MISMATCH") == NULL);
+}
 static uint64_t hash = 1469598103934665603ull;
 static uint32_t rng = 984521u;
 
-static uint32_t next(void)
-{
+static uint32_t next(void) {
     rng ^= rng << 13;
     rng ^= rng >> 17;
     rng ^= rng << 5;
     return rng;
 }
 
-static void digest(const void *ptr, size_t count)
-{
+static void digest(const void *ptr, size_t count) {
     const unsigned char *bytes = ptr;
     for (size_t i = 0; i < count; ++i) {
         hash = (hash ^ bytes[i]) * 1099511628211ull;
     }
 }
 
-int main(void)
-{
+int main(void) {
     kj_g3_storage storage;
     for (unsigned i = 0; i < 2; ++i) {
         storage.verts[i] = calloc(KJ_G3_MAX_VERTS, sizeof(kj_g3_vertex));
@@ -39,9 +38,8 @@ int main(void)
     size_t sizes[4];
     for (unsigned l = 0; l < 4; ++l) {
         const uint32_t words[] = {
-            0x40, l, 0x21, 0x200, 0x23, 0, 0, 0x23, 4096, 0,
-            0x14, 0, 0x21, 0x100200, 0x23, 4096 << 16, 0,
-            0x23, 4096, 4096, 0x41,
+            0x40, l,    0x21,     0x200, 0x23,       0, 0,    0x23, 4096, 0,    0x14,
+            0,    0x21, 0x100200, 0x23,  4096 << 16, 0, 0x23, 4096, 4096, 0x41,
         };
         memcpy(lists[l], words, sizeof(words));
         sizes[l] = sizeof(words) / 4;

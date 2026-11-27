@@ -52,7 +52,7 @@ const kj_wideart_pic *kj_wideart_find(uint64_t key);
  *   max_h, max_v: how far away a picture may be (0: any)
  *   dx_out: how far the layer has scrolled since the picture was made */
 const kj_wideart_pic *kj_wideart_find_near(uint64_t key, int cur_h, int cur_v, int period_h,
-                                            int period_v, int max_h, int max_v, int *dx_out);
+                                           int period_v, int max_h, int max_v, int *dx_out);
 
 C3D_Tex *kj_wideart_texture(void);
 uint32_t kj_wideart_texture_width(void);

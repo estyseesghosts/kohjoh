@@ -61,8 +61,7 @@ static uint32_t s_last_cull, s_last_depth, s_last_blend;
 static uint32_t s_last_shininess[32];
 static bool s_shininess_valid;
 
-bool kj_g3d_init(void)
-{
+bool kj_g3d_init(void) {
     kj_tex_init();
     s_join_verts = linearAlloc(KJ_JOIN_MAX_VERTS * sizeof(*s_join_verts));
     s_join_indices = linearAlloc(KJ_JOIN_MAX_INDICES * sizeof(*s_join_indices));
@@ -81,8 +80,7 @@ bool kj_g3d_init(void)
     return true;
 }
 
-void kj_g3d_exit(void)
-{
+void kj_g3d_exit(void) {
     if (s_join_verts != NULL) {
         linearFree(s_join_verts);
         s_join_verts = NULL;
@@ -94,16 +92,14 @@ void kj_g3d_exit(void)
     kj_tex_exit();
 }
 
-void kj_g3d_set_frame(const kj_g3_frame *frame)
-{
+void kj_g3d_set_frame(const kj_g3_frame *frame) {
     s_frame = frame;
     /* The caller has waited for the previous frame's GPU work. */
     s_join_verts_used = 0;
     s_join_indices_used = 0;
 }
 
-void kj_g3d_take_stats(kj_g3d_stats *out)
-{
+void kj_g3d_take_stats(kj_g3d_stats *out) {
     kj_tex_stats ts;
     kj_tex_take_stats(&ts);
     *out = s_stats;
@@ -128,14 +124,12 @@ void kj_g3d_take_stats(kj_g3d_stats *out)
  */
 #define W_DEPTH_SCALE (1.0f / 4096.0f)
 
-bool kj_g3d_wbuffer(void)
-{
+bool kj_g3d_wbuffer(void) {
     return s_frame != NULL && (s_frame->swap_params & 2u) != 0;
 }
 
 /* F: DS clip -> PICA clip for viewport `vp` on `target`. */
-static void make_fixup(const kj_target *t, uint32_t vp, bool wbuffer, float f[4][4])
-{
+static void make_fixup(const kj_target *t, uint32_t vp, bool wbuffer, float f[4][4]) {
     const float x1 = (float)(vp & 0xFF), y1 = (float)((vp >> 8) & 0xFF);
     const float vw = (float)(((vp >> 16) & 0xFF)) - x1 + 1.0f;
     const float vh = (float)(((vp >> 24) & 0xFF)) - y1 + 1.0f;
@@ -148,11 +142,9 @@ static void make_fixup(const kj_target *t, uint32_t vp, bool wbuffer, float f[4]
 
     memset(f, 0, sizeof(float) * 16);
     f[0][1] = a * vh / 2.0f;
-    f[0][3] = 1.0f - 2.0f * w->offset_y / (float)w->surface_h -
-              a * (192.0f - y1 - vh / 2.0f);
+    f[0][3] = 1.0f - 2.0f * w->offset_y / (float)w->surface_h - a * (192.0f - y1 - vh / 2.0f);
     f[1][0] = -b * vw / 2.0f;
-    f[1][3] = 1.0f - 2.0f * w->offset_x / (float)w->surface_w -
-              b * (x1 + vw / 2.0f);
+    f[1][3] = 1.0f - 2.0f * w->offset_x / (float)w->surface_w - b * (x1 + vw / 2.0f);
     if (wbuffer) {
         f[2][3] = -W_DEPTH_SCALE;
     } else {
@@ -162,8 +154,7 @@ static void make_fixup(const kj_target *t, uint32_t vp, bool wbuffer, float f[4]
     f[3][3] = 1.0f;
 }
 
-static void upload_palette(const kj_g3_batch *b, float fix[4][4])
-{
+static void upload_palette(const kj_g3_batch *b, float fix[4][4]) {
     const int loc = kj_gpu_uloc_3d_palette();
     for (unsigned i = 0; i < b->matrix_count; ++i) {
         const kj_g3_matrix *m = &s_frame->matrices[b->first_matrix + i];
@@ -184,8 +175,7 @@ static void upload_palette(const kj_g3_batch *b, float fix[4][4])
     }
 }
 
-static void upload_lighting(const kj_g3_batch *b)
-{
+static void upload_lighting(const kj_g3_batch *b) {
     const kj_lit_uniforms *u = kj_gpu_lit_uniforms();
     const kj_lighting *light = &s_frame->lighting[b->flags >> 16];
     const uint32_t alpha = (b->poly_attr >> 16) & 31u;
@@ -203,47 +193,44 @@ static void upload_lighting(const kj_g3_batch *b)
             /* w flags: the shader skips a disabled light, and the half
              * vector of a light with no specular colour (exactly zero). */
             const bool on = (light->enabled & (1u << i)) != 0;
-            const bool spec = on && (light->specular[i][0] | light->specular[i][1] |
-                                     light->specular[i][2]) != 0;
-            C3D_FVUnifSet(GPU_VERTEX_SHADER, u->direction + i,
-                          dir_hi[0], dir_hi[1], dir_hi[2], on);
-            C3D_FVUnifSet(GPU_VERTEX_SHADER, u->direction_low + i,
-                          dir_lo[0], dir_lo[1], dir_lo[2], 0);
-            C3D_FVUnifSet(GPU_VERTEX_SHADER, u->half + i,
-                          half_hi[0], half_hi[1], half_hi[2], spec);
-            C3D_FVUnifSet(GPU_VERTEX_SHADER, u->half_low + i,
-                          half_lo[0], half_lo[1], half_lo[2], 0);
-            C3D_FVUnifSet(GPU_VERTEX_SHADER, u->ambient + i,
-                          light->ambient[i][0], light->ambient[i][1], light->ambient[i][2], 0);
-            C3D_FVUnifSet(GPU_VERTEX_SHADER, u->diffuse + i,
-                          light->diffuse[i][0], light->diffuse[i][1], light->diffuse[i][2], 0);
-            C3D_FVUnifSet(GPU_VERTEX_SHADER, u->specular + i,
-                          light->specular[i][0], light->specular[i][1], light->specular[i][2], 0);
+            const bool spec =
+                on && (light->specular[i][0] | light->specular[i][1] | light->specular[i][2]) != 0;
+            C3D_FVUnifSet(GPU_VERTEX_SHADER, u->direction + i, dir_hi[0], dir_hi[1], dir_hi[2], on);
+            C3D_FVUnifSet(GPU_VERTEX_SHADER, u->direction_low + i, dir_lo[0], dir_lo[1], dir_lo[2],
+                          0);
+            C3D_FVUnifSet(GPU_VERTEX_SHADER, u->half + i, half_hi[0], half_hi[1], half_hi[2], spec);
+            C3D_FVUnifSet(GPU_VERTEX_SHADER, u->half_low + i, half_lo[0], half_lo[1], half_lo[2],
+                          0);
+            C3D_FVUnifSet(GPU_VERTEX_SHADER, u->ambient + i, light->ambient[i][0],
+                          light->ambient[i][1], light->ambient[i][2], 0);
+            C3D_FVUnifSet(GPU_VERTEX_SHADER, u->diffuse + i, light->diffuse[i][0],
+                          light->diffuse[i][1], light->diffuse[i][2], 0);
+            C3D_FVUnifSet(GPU_VERTEX_SHADER, u->specular + i, light->specular[i][0],
+                          light->specular[i][1], light->specular[i][2], 0);
         }
-        C3D_FVUnifSet(GPU_VERTEX_SHADER, u->emission,
-                      light->emission[0], light->emission[1], light->emission[2], 0);
+        C3D_FVUnifSet(GPU_VERTEX_SHADER, u->emission, light->emission[0], light->emission[1],
+                      light->emission[2], 0);
         if (light->use_shininess &&
             (!s_shininess_valid ||
              memcmp(s_last_shininess, light->shininess, sizeof(s_last_shininess)) != 0)) {
             for (unsigned i = 0; i < 32; ++i) {
                 const uint32_t word = light->shininess[i];
-                C3D_FVUnifSet(GPU_VERTEX_SHADER, u->shininess + i,
-                              word & 255u, word >> 8 & 255u, word >> 16 & 255u, word >> 24);
+                C3D_FVUnifSet(GPU_VERTEX_SHADER, u->shininess + i, word & 255u, word >> 8 & 255u,
+                              word >> 16 & 255u, word >> 24);
             }
             memcpy(s_last_shininess, light->shininess, sizeof(s_last_shininess));
             s_shininess_valid = true;
         }
     }
     if (light != s_last_lighting || alpha != s_last_alpha) {
-        C3D_FVUnifSet(GPU_VERTEX_SHADER, u->params,
-                      (alpha << 3) | (alpha >> 2), light->use_shininess, 0, 0);
+        C3D_FVUnifSet(GPU_VERTEX_SHADER, u->params, (alpha << 3) | (alpha >> 2),
+                      light->use_shininess, 0, 0);
     }
     s_last_lighting = light;
     s_last_alpha = alpha;
 }
 
-static void tev_for(uint32_t attr, bool textured)
-{
+static void tev_for(uint32_t attr, bool textured) {
     C3D_TexEnv *env = C3D_GetTexEnv(0);
     C3D_TexEnvInit(env);
     if (!textured) {
@@ -270,8 +257,7 @@ static void tev_for(uint32_t attr, bool textured)
     }
 }
 
-static GPU_TEXTURE_WRAP_PARAM wrap_mode(bool repeat, bool flip)
-{
+static GPU_TEXTURE_WRAP_PARAM wrap_mode(bool repeat, bool flip) {
     return !repeat ? GPU_CLAMP_TO_EDGE : flip ? GPU_MIRRORED_REPEAT : GPU_REPEAT;
 }
 
@@ -300,9 +286,7 @@ static uint8_t s_join_src[KJ_G3_MAX_VERTS];
 static uint32_t s_join_epoch[KJ_G3_MAX_VERTS];
 static uint32_t s_join_stamp;
 
-static bool join_key_equal(const kj_g3_batch *a, const kj_g3_batch *b,
-                           bool translucent_pass)
-{
+static bool join_key_equal(const kj_g3_batch *a, const kj_g3_batch *b, bool translucent_pass) {
     if (b->index_count == 0 || (b->flags & KJ_G3_BATCH_SHADOW) != 0) {
         return false;
     }
@@ -324,8 +308,7 @@ static bool join_key_equal(const kj_g3_batch *a, const kj_g3_batch *b,
 
 /* Slot of `m` in the union (adding it when there is room), or -1 if full. */
 static int union_find_or_add(kj_g3_matrix *u, unsigned *count, unsigned cap,
-                             const kj_g3_matrix *m)
-{
+                             const kj_g3_matrix *m) {
     for (unsigned i = 0; i < *count; ++i) {
         if (memcmp(&u[i], m, sizeof(*m)) == 0) {
             return (int)i;
@@ -340,13 +323,10 @@ static int union_find_or_add(kj_g3_matrix *u, unsigned *count, unsigned cap,
 
 /* Set every GPU state input of `b` except the matrix palette: program and
  * lighting, viewport fixup, texture, TEV, cull, depth, blend. */
-static void apply_batch_state(const kj_g3_batch *b, bool translucent,
-                              uint32_t disp3dcnt, uint32_t dbg, bool wbuffer,
-                              const kj_target *target, uint32_t *last_vp,
-                              float fix[4][4])
-{
-    const kj_program_id program = (b->flags & KJ_G3_BATCH_LIT)
-                                      ? KJ_PROGRAM_3D_LIT : KJ_PROGRAM_3D;
+static void apply_batch_state(const kj_g3_batch *b, bool translucent, uint32_t disp3dcnt,
+                              uint32_t dbg, bool wbuffer, const kj_target *target,
+                              uint32_t *last_vp, float fix[4][4]) {
+    const kj_program_id program = (b->flags & KJ_G3_BATCH_LIT) ? KJ_PROGRAM_3D_LIT : KJ_PROGRAM_3D;
     if (program != s_draw_program) {
         kj_gpu_use_program(program);
         s_draw_program = program;
@@ -374,8 +354,8 @@ static void apply_batch_state(const kj_g3_batch *b, bool translucent,
         C3D_TexSetWrap(tex, wrap_mode((b->tex_param >> 16) & 1u, (b->tex_param >> 18) & 1u),
                        wrap_mode((b->tex_param >> 17) & 1u, (b->tex_param >> 19) & 1u));
         C3D_TexBind(0, tex);
-        C3D_FVUnifSet(GPU_VERTEX_SHADER, kj_gpu_uloc_3d_texscale(),
-                      1.0f / (16.0f * tex->width), -1.0f / (16.0f * tex->height), 0.0f, 1.0f);
+        C3D_FVUnifSet(GPU_VERTEX_SHADER, kj_gpu_uloc_3d_texscale(), 1.0f / (16.0f * tex->width),
+                      -1.0f / (16.0f * tex->height), 0.0f, 1.0f);
         s_last_tex = tex;
         s_last_wrap = wrap;
     }
@@ -425,7 +405,8 @@ static void apply_batch_state(const kj_g3_batch *b, bool translucent,
 #endif
 
     /* blend: on/off only; the factors are fixed either way */
-    const uint32_t blend = (translucent && (disp3dcnt & 8u) && !(dbg & KJ_DEBUG_NO_BLEND)) ? 1u : 0u;
+    const uint32_t blend =
+        (translucent && (disp3dcnt & 8u) && !(dbg & KJ_DEBUG_NO_BLEND)) ? 1u : 0u;
     if (blend != s_last_blend) {
         if (blend) {
             C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_SRC_ALPHA, GPU_ONE_MINUS_SRC_ALPHA,
@@ -444,11 +425,9 @@ static void apply_batch_state(const kj_g3_batch *b, bool translucent,
 
 /* One batch, drawn straight from the frame's VBO/IBO: the #10-verified
  * path. Used for single batches and as the fallback for declined joins. */
-static void draw_batch_direct(const kj_g3_frame *f, const kj_g3_batch *b,
-                              bool translucent, uint32_t disp3dcnt, uint32_t dbg,
-                              bool wbuffer, const kj_target *target,
-                              uint32_t *last_vp, float fix[4][4])
-{
+static void draw_batch_direct(const kj_g3_frame *f, const kj_g3_batch *b, bool translucent,
+                              uint32_t disp3dcnt, uint32_t dbg, bool wbuffer,
+                              const kj_target *target, uint32_t *last_vp, float fix[4][4]) {
     apply_batch_state(b, translucent, disp3dcnt, dbg, wbuffer, target, last_vp, fix);
     const kj_g3_matrix *pal = &f->matrices[b->first_matrix];
     if (s_last_pal == NULL || s_last_pal_count != b->matrix_count || s_last_pal_vp != b->viewport ||
@@ -470,10 +449,8 @@ static void draw_batch_direct(const kj_g3_frame *f, const kj_g3_batch *b,
  * their matrix palettes. False: overflow of any kind; the caller falls
  * back to direct draws (never a partial draw). */
 static bool draw_joined(const kj_g3_frame *f, const kj_g3_batch **members, unsigned n,
-                        bool translucent, uint32_t disp3dcnt, uint32_t dbg,
-                        bool wbuffer, const kj_target *target, uint32_t *last_vp,
-                        float fix[4][4])
-{
+                        bool translucent, uint32_t disp3dcnt, uint32_t dbg, bool wbuffer,
+                        const kj_target *target, uint32_t *last_vp, float fix[4][4]) {
     const kj_g3_batch *b0 = members[0];
     const unsigned cap = (b0->flags & KJ_G3_BATCH_LIT) ? KJ_G3_LIT_PALETTE : KJ_G3_PALETTE;
     kj_g3_matrix u[KJ_G3_PALETTE];
@@ -582,8 +559,7 @@ static bool draw_joined(const kj_g3_frame *f, const kj_g3_batch **members, unsig
 }
 
 static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t disp3dcnt,
-                      uint8_t stencil_flags)
-{
+                      uint8_t stencil_flags) {
     const kj_g3_frame *f = s_frame;
     const bool wbuffer = kj_g3d_wbuffer();
     const uint32_t dbg = kj_script_debug();
@@ -624,8 +600,7 @@ static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t d
         const kj_g3_batch *members[KJ_G3_MAX_BATCHES > 256 ? 256 : 256];
         unsigned n = 1;
         members[0] = b;
-        while (n < 256 && i + n < f->batch_count &&
-               join_key_equal(b, &f->batches[i + n], false)) {
+        while (n < 256 && i + n < f->batch_count && join_key_equal(b, &f->batches[i + n], false)) {
             members[n] = &f->batches[i + n];
             ++n;
         }
@@ -635,8 +610,8 @@ static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t d
 #ifndef HGSS_PROFILE_OFF
             ++s_stats.join_groups;
 #endif
-            drawn = draw_joined(f, members, n, false, disp3dcnt, dbg, wbuffer, target,
-                                &last_vp, fix);
+            drawn =
+                draw_joined(f, members, n, false, disp3dcnt, dbg, wbuffer, target, &last_vp, fix);
 #ifndef HGSS_PROFILE_OFF
             if (drawn) {
                 ++s_stats.joined_groups;
@@ -648,8 +623,8 @@ static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t d
         }
         if (!drawn) {
             for (unsigned m = 0; m < n; ++m) {
-                draw_batch_direct(f, members[m], false, disp3dcnt, dbg, wbuffer, target,
-                                  &last_vp, fix);
+                draw_batch_direct(f, members[m], false, disp3dcnt, dbg, wbuffer, target, &last_vp,
+                                  fix);
             }
         }
         i += n;
@@ -657,8 +632,7 @@ static void draw_pass(const kj_target *target, bool translucent_pass, uint32_t d
 }
 
 void kj_g3d_draw(const kj_target *target, bool wide, uint8_t stencil_flags, uint8_t window_on,
-                 uint8_t window_active)
-{
+                 uint8_t window_active) {
     const kj_g3_frame *f = s_frame;
     (void)wide;
     if (f == NULL || f->batch_count == 0) {

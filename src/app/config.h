@@ -32,8 +32,8 @@ typedef enum {
 /* Pure parser, usable by native tests. `text` need not be NUL terminated.
  * `requested` is the last valid mode seen; `effective` is the mode that will
  * actually be used (legacy unless a valid value was found). */
-kj_config_status kj_config_parse(const char *text, size_t length,
-                                 kj_field_scale *requested, kj_field_scale *effective);
+kj_config_status kj_config_parse(const char *text, size_t length, kj_field_scale *requested,
+                                 kj_field_scale *effective);
 const char *kj_config_scale_name(kj_field_scale mode);
 
 /* Same file and same grammar, independent key and independent validation:
@@ -41,8 +41,7 @@ const char *kj_config_scale_name(kj_field_scale mode);
  * `*requested` is what the file asked for; `*effective` is what will be used
  * (legacy unless `native` was seen and the build has an atlas). The atlas
  * check happens at renderer init, not here. */
-kj_config_status kj_config_parse_text(const char *text, size_t length,
-                                      kj_text_renderer *requested,
+kj_config_status kj_config_parse_text(const char *text, size_t length, kj_text_renderer *requested,
                                       kj_text_renderer *effective);
 const char *kj_config_text_name(kj_text_renderer mode);
 

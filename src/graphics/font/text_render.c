@@ -31,8 +31,7 @@ static kj_text_vertex *s_run;
 _Static_assert(sizeof(kj_text_vertex) == sizeof(kj_v2d), "text vertex layout");
 _Static_assert(KJ_TEXT_UV_UNIT == KJ_ATLAS_UV_UNIT, "text UV unit");
 
-bool kj_text_render_init(void)
-{
+bool kj_text_render_init(void) {
     kj_text_render_exit();
     if (s_run == NULL) {
         s_run = linearAlloc(TEXT_RUN_VERTICES * sizeof(kj_text_vertex));
@@ -64,9 +63,8 @@ bool kj_text_render_init(void)
     }
     s_texture_ready = true;
     kj_text_init();
-    kj_log("[text] atlas ready: %u glyphs, %u masks, %ux%u, %u KiB",
-           (unsigned)atlas->glyph_count, (unsigned)atlas->art_count,
-           (unsigned)atlas->page_w, (unsigned)atlas->page_h,
+    kj_log("[text] atlas ready: %u glyphs, %u masks, %ux%u, %u KiB", (unsigned)atlas->glyph_count,
+           (unsigned)atlas->art_count, (unsigned)atlas->page_w, (unsigned)atlas->page_h,
            (unsigned)((unsigned)atlas->page_w * atlas->page_h * 2u / 1024u));
     return true;
 
@@ -77,8 +75,7 @@ fail:
     return false;
 }
 
-void kj_text_render_exit(void)
-{
+void kj_text_render_exit(void) {
     if (s_texture_ready) {
         C3D_TexDelete(&s_texture);
         s_texture_ready = false;
@@ -91,29 +88,24 @@ void kj_text_render_exit(void)
     kj_text_exit();
 }
 
-C3D_Tex *kj_text_texture(void)
-{
+C3D_Tex *kj_text_texture(void) {
     return s_texture_ready ? &s_texture : NULL;
 }
 
-bool kj_text_texture_ready(void)
-{
+bool kj_text_texture_ready(void) {
     return s_texture_ready;
 }
 
-static int map_x(const kj_target *t, int x)
-{
+static int map_x(const kj_target *t, int x) {
     return (int)(t->offset_x + (float)x * t->scale + 0.5f);
 }
 
-static int map_y(const kj_target *t, int y)
-{
+static int map_y(const kj_target *t, int y) {
     return (int)((float)y * t->scale + 0.5f);
 }
 
-void kj_text_draw_bg(const kj_target *target, int engine, int bg, const uint16_t *palette,
-                     int hofs, int vofs)
-{
+void kj_text_draw_bg(const kj_target *target, int engine, int bg, const uint16_t *palette, int hofs,
+                     int vofs) {
     int cursor = 0;
     const kj_text_presentation *p;
 

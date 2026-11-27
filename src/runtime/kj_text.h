@@ -20,15 +20,15 @@ extern "C" {
 struct Window;
 
 /* Called from render_text.c immediately after CopyGlyphToWindow. */
-void NitroPort_TextGlyph(struct Window *window, unsigned int code, unsigned int fontId,
-                         int x, int y, unsigned int fg, unsigned int shadow, unsigned int bg,
+void NitroPort_TextGlyph(struct Window *window, unsigned int code, unsigned int fontId, int x,
+                         int y, unsigned int fg, unsigned int shadow, unsigned int bg,
                          unsigned int glyphTable);
 
 /* Window lifecycle / mutations, called from bg_window.c. */
 void NitroPort_TextWindowAdd(struct Window *window);
 void NitroPort_TextWindowAddTemporary(struct Window *window);
-void NitroPort_TextWindowFillRect(struct Window *window, unsigned int fill, int x, int y,
-                                  int width, int height);
+void NitroPort_TextWindowFillRect(struct Window *window, unsigned int fill, int x, int y, int width,
+                                  int height);
 void NitroPort_TextWindowBlit(struct Window *window);
 void NitroPort_TextWindowRemove(struct Window *window);
 void NitroPort_TextWindowPublish(struct Window *window);

@@ -6,27 +6,26 @@
 #include SOURCE
 
 unsigned char NitroPort_IoReg[0x1000];
-void NitroPort_Log(const char *fmt, ...) { (void)fmt; }
+void NitroPort_Log(const char *fmt, ...) {
+    (void)fmt;
+}
 static uint32_t rng = 0x913297u;
 
-static uint32_t next(void)
-{
+static uint32_t next(void) {
     rng ^= rng << 13;
     rng ^= rng >> 17;
     rng ^= rng << 5;
     return rng;
 }
 
-static void random_bytes(void *ptr, size_t count)
-{
+static void random_bytes(void *ptr, size_t count) {
     unsigned char *bytes = ptr;
     for (size_t i = 0; i < count; ++i) {
         bytes[i] = (unsigned char)next();
     }
 }
 
-int main(void)
-{
+int main(void) {
     for (unsigned trial = 0; trial < 20000; ++trial) {
         s_attr_pending = next();
         s_attr = next();

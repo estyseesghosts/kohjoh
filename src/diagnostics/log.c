@@ -35,13 +35,11 @@ static bool s_running;
 static bool s_ready;
 static u64 s_start_tick;
 
-static size_t ring_used(void)
-{
+static size_t ring_used(void) {
     return (s_head - s_tail) & (RING_BYTES - 1);
 }
 
-static void append(const char *text, size_t len)
-{
+static void append(const char *text, size_t len) {
     if (ring_used() + len + 1 >= RING_BYTES) {
         ++s_dropped;
         return;
@@ -56,8 +54,7 @@ static void append(const char *text, size_t len)
  * flush lock. The two locks are separate on purpose: the SD write must not
  * block producers, and kj_log_flush_now() from another thread must not
  * interleave chunks with the writer thread. */
-static void flush_ring_locked(void)
-{
+static void flush_ring_locked(void) {
     static char chunk[RING_BYTES];
     size_t n = 0;
     uint32_t dropped;
@@ -83,15 +80,13 @@ static void flush_ring_locked(void)
     fflush(s_file);
 }
 
-static void flush_ring(void)
-{
+static void flush_ring(void) {
     LightLock_Lock(&s_flush_lock);
     flush_ring_locked();
     LightLock_Unlock(&s_flush_lock);
 }
 
-static void log_thread(void *arg)
-{
+static void log_thread(void *arg) {
     (void)arg;
     while (__atomic_load_n(&s_running, __ATOMIC_ACQUIRE)) {
         LightEvent_WaitTimeout(&s_wake, 500000000LL);
@@ -100,8 +95,7 @@ static void log_thread(void *arg)
     flush_ring();
 }
 
-void kj_log_init(const char *path)
-{
+void kj_log_init(const char *path) {
     LightLock_Init(&s_lock);
     LightLock_Init(&s_flush_lock);
     LightEvent_Init(&s_wake, RESET_ONESHOT);
@@ -124,8 +118,7 @@ void kj_log_init(const char *path)
     }
 }
 
-void kj_log_shutdown(void)
-{
+void kj_log_shutdown(void) {
     if (s_thread != NULL) {
         __atomic_store_n(&s_running, false, __ATOMIC_RELEASE);
         LightEvent_Signal(&s_wake);
@@ -146,13 +139,11 @@ void kj_log_shutdown(void)
     LightLock_Unlock(&s_flush_lock);
 }
 
-void kj_log_flush_now(void)
-{
+void kj_log_flush_now(void) {
     flush_ring();
 }
 
-void kj_logv(const char *fmt, va_list args)
-{
+void kj_logv(const char *fmt, va_list args) {
     char line[LINE_MAX_BYTES];
     const u64 ms = (svcGetSystemTick() - s_start_tick) / (SYSCLOCK_ARM11 / 1000);
     int n = snprintf(line, sizeof(line), "%6lu.%03lu ", (unsigned long)(ms / 1000),
@@ -177,8 +168,7 @@ void kj_logv(const char *fmt, va_list args)
     LightLock_Unlock(&s_lock);
 }
 
-void kj_log(const char *fmt, ...)
-{
+void kj_log(const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     kj_logv(fmt, args);
@@ -190,15 +180,13 @@ void kj_log(const char *fmt, ...)
  * libctru build. */
 void NitroPort_Log(const char *fmt, ...);
 
-void NitroPort_Log(const char *fmt, ...)
-{
+void NitroPort_Log(const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     kj_logv(fmt, args);
     va_end(args);
 }
 
-void kj_ctr_log(const char *line)
-{
+void kj_ctr_log(const char *line) {
     kj_log("%s", line);
 }

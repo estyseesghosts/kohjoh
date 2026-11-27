@@ -51,25 +51,23 @@
 /* ------------------------------------------------------------ palettes */
 
 enum {
-    PAL_4BPP = 0,        /* + engine*32 + kind*16 + bank   (64) */
-    PAL_STD256 = 64,     /* + engine*2 + kind               (4) */
-    PAL_EXT_BG = 128,    /* + engine*64 + slot*16 + index (128) */
-    PAL_EXT_OBJ = 256,   /* + engine*16 + index            (32) */
+    PAL_4BPP = 0,      /* + engine*32 + kind*16 + bank   (64) */
+    PAL_STD256 = 64,   /* + engine*2 + kind               (4) */
+    PAL_EXT_BG = 128,  /* + engine*64 + slot*16 + index (128) */
+    PAL_EXT_OBJ = 256, /* + engine*16 + index            (32) */
     PAL_COUNT = 288
 };
 
 static kj_palette s_pal[PAL_COUNT];
 static kj_g2d_stats s_stats;
 
-static const uint16_t *pltt_ptr(const kj_ds_memory *mem, int engine, int kind)
-{
+static const uint16_t *pltt_ptr(const kj_ds_memory *mem, int engine, int kind) {
     return (const uint16_t *)(mem->pltt + engine * 0x400 + kind * 0x200);
 }
 
 /* Find the LCDC-array address of an extended palette slot, from VRAMCNT.
  * NULL when no bank provides it. */
-static const uint8_t *ext_bg_slot(const kj_frame_input *in, int engine, int slot)
-{
+static const uint8_t *ext_bg_slot(const kj_frame_input *in, int engine, int slot) {
     const kj_vram_bank *b = in->banks;
     const uint8_t *lcdc = in->mem->lcdc_vram;
 
@@ -93,8 +91,7 @@ static const uint8_t *ext_bg_slot(const kj_frame_input *in, int engine, int slot
     return NULL;
 }
 
-static const uint8_t *ext_obj(const kj_frame_input *in, int engine)
-{
+static const uint8_t *ext_obj(const kj_frame_input *in, int engine) {
     const kj_vram_bank *b = in->banks;
     const uint8_t *lcdc = in->mem->lcdc_vram;
 
@@ -112,8 +109,8 @@ static const uint8_t *ext_obj(const kj_frame_input *in, int engine)
     return NULL;
 }
 
-static kj_palette *pal_4bpp(const kj_frame_input *in, int engine, int kind, int bank, uint32_t *id)
-{
+static kj_palette *pal_4bpp(const kj_frame_input *in, int engine, int kind, int bank,
+                            uint32_t *id) {
     *id = PAL_4BPP + engine * 32 + kind * 16 + bank;
     kj_palette *p = &s_pal[*id];
     p->colors = pltt_ptr(in->mem, engine, kind) + bank * 16;
@@ -122,8 +119,7 @@ static kj_palette *pal_4bpp(const kj_frame_input *in, int engine, int kind, int 
     return p;
 }
 
-static kj_palette *pal_256(const kj_frame_input *in, int engine, int kind, uint32_t *id)
-{
+static kj_palette *pal_256(const kj_frame_input *in, int engine, int kind, uint32_t *id) {
     *id = PAL_STD256 + engine * 2 + kind;
     kj_palette *p = &s_pal[*id];
     p->colors = pltt_ptr(in->mem, engine, kind);
@@ -133,8 +129,7 @@ static kj_palette *pal_256(const kj_frame_input *in, int engine, int kind, uint3
 }
 
 static kj_palette *pal_ext_bg(const kj_frame_input *in, int engine, int slot, int index,
-                              uint32_t *id)
-{
+                              uint32_t *id) {
     const uint8_t *base = ext_bg_slot(in, engine, slot);
     if (base == NULL) {
         return pal_256(in, engine, 0, id);
@@ -147,8 +142,7 @@ static kj_palette *pal_ext_bg(const kj_frame_input *in, int engine, int slot, in
     return p;
 }
 
-static kj_palette *pal_ext_obj(const kj_frame_input *in, int engine, int index, uint32_t *id)
-{
+static kj_palette *pal_ext_obj(const kj_frame_input *in, int engine, int index, uint32_t *id) {
     const uint8_t *base = ext_obj(in, engine);
     if (base == NULL) {
         return pal_256(in, engine, 1, id);
@@ -163,13 +157,11 @@ static kj_palette *pal_ext_obj(const kj_frame_input *in, int engine, int index, 
 
 /* ------------------------------------------------------------ registers */
 
-static uint16_t r16(const uint8_t *regs, unsigned off)
-{
+static uint16_t r16(const uint8_t *regs, unsigned off) {
     return (uint16_t)(regs[off] | (regs[off + 1] << 8));
 }
 
-static uint32_t r32(const uint8_t *regs, unsigned off)
-{
+static uint32_t r32(const uint8_t *regs, unsigned off) {
     return (uint32_t)regs[off] | ((uint32_t)regs[off + 1] << 8) | ((uint32_t)regs[off + 2] << 16) |
            ((uint32_t)regs[off + 3] << 24);
 }
@@ -195,8 +187,8 @@ typedef struct ctx {
 
 /* ------------------------------------------------------------ quad emit */
 
-static inline void put_quad(kj_v2d *v, int x, int y, int w, int h, uint16_t slot, bool hf, bool vf)
-{
+static inline void put_quad(kj_v2d *v, int x, int y, int w, int h, uint16_t slot, bool hf,
+                            bool vf) {
     int16_t u0, v0, u1, v1;
     kj_atlas_slot_uv(slot, &u0, &v0, &u1, &v1);
     if (hf) {
@@ -209,10 +201,10 @@ static inline void put_quad(kj_v2d *v, int x, int y, int w, int h, uint16_t slot
         v0 = v1;
         v1 = t;
     }
-    v[0] = (kj_v2d){ (int16_t)x, (int16_t)y, u0, v0, 255, 255, 255, 255 };
-    v[1] = (kj_v2d){ (int16_t)(x + w), (int16_t)y, u1, v0, 255, 255, 255, 255 };
-    v[2] = (kj_v2d){ (int16_t)x, (int16_t)(y + h), u0, v1, 255, 255, 255, 255 };
-    v[3] = (kj_v2d){ (int16_t)(x + w), (int16_t)(y + h), u1, v1, 255, 255, 255, 255 };
+    v[0] = (kj_v2d){(int16_t)x, (int16_t)y, u0, v0, 255, 255, 255, 255};
+    v[1] = (kj_v2d){(int16_t)(x + w), (int16_t)y, u1, v0, 255, 255, 255, 255};
+    v[2] = (kj_v2d){(int16_t)x, (int16_t)(y + h), u0, v1, 255, 255, 255, 255};
+    v[3] = (kj_v2d){(int16_t)(x + w), (int16_t)(y + h), u1, v1, 255, 255, 255, 255};
 }
 
 /* A run of quads: either in the frame arena (reserve a worst case, give the
@@ -229,8 +221,7 @@ typedef struct run {
     uint32_t char_lo, char_hi;
 } run;
 
-static bool run_begin(run *r, uint32_t cap)
-{
+static bool run_begin(run *r, uint32_t cap) {
     r->count = 0;
     r->char_lo = UINT32_MAX;
     r->char_hi = 0;
@@ -243,15 +234,13 @@ static bool run_begin(run *r, uint32_t cap)
     return r->v != NULL;
 }
 
-static void run_end(run *r)
-{
+static void run_end(run *r) {
     if (!r->ext) {
         kj_gpu_quads_reset_to(r->first + r->count);
     }
 }
 
-static inline void run_note(run *r, uint16_t slot, uint32_t off, uint32_t bytes)
-{
+static inline void run_note(run *r, uint16_t slot, uint32_t off, uint32_t bytes) {
     if (r->slots != NULL) {
         r->slots[r->count] = slot;
     }
@@ -265,8 +254,7 @@ static inline void run_note(run *r, uint16_t slot, uint32_t off, uint32_t bytes)
 
 /* ------------------------------------------------------------ text BGs */
 
-static uint32_t text_bg(const ctx *c, int bg, run *out)
-{
+static uint32_t text_bg(const ctx *c, int bg, run *out) {
     const uint16_t cnt = r16(c->regs, 0x08 + 2 * bg);
     const int hofs = r16(c->regs, 0x10 + 4 * bg) & 0x1FF;
     const int vofs = r16(c->regs, 0x12 + 4 * bg) & 0x1FF;
@@ -301,8 +289,8 @@ static uint32_t text_bg(const ctx *c, int bg, run *out)
                                   (uint32_t)((my & 255) >> 3) * 64u;
         for (int sx = sx_lo - (hofs & 7); sx < sx_hi; sx += 8) {
             const int mx = (sx + hofs) & (w - 1);
-            const uint32_t addr = (row_base + (uint32_t)(mx >> 8) * 0x800u +
-                                   (uint32_t)((mx & 255) >> 3) * 2u) & mask;
+            const uint32_t addr =
+                (row_base + (uint32_t)(mx >> 8) * 0x800u + (uint32_t)((mx & 255) >> 3) * 2u) & mask;
             const uint16_t entry = (uint16_t)(c->bg_vram[addr] | (c->bg_vram[addr + 1] << 8));
             const uint32_t toff = (char_base + (entry & 0x3FFu) * tile_bytes) & mask;
             const int pbank = entry >> 12;
@@ -348,8 +336,7 @@ static uint32_t text_bg(const ctx *c, int bg, run *out)
 /* Affine and extended-affine (16-bit entry) BGs: map tiles are placed by
  * the inverse of the BG's matrix; only tiles whose texture-space position
  * falls inside the screen's texture-space bounding box are emitted. */
-static uint32_t affine_bg(const ctx *c, int bg, bool ext16, run *out)
-{
+static uint32_t affine_bg(const ctx *c, int bg, bool ext16, run *out) {
     const unsigned base = bg == 2 ? 0x20 : 0x30;
     const uint16_t cnt = r16(c->regs, 0x08 + 2 * bg);
     const float pa = (int16_t)r16(c->regs, base + 0) / 256.0f;
@@ -379,8 +366,8 @@ static uint32_t affine_bg(const ctx *c, int bg, bool ext16, run *out)
 
     /* texture-space bounds of the span */
     float tminx = 1e9f, tmaxx = -1e9f, tminy = 1e9f, tmaxy = -1e9f;
-    const float cx[4] = { 0, 256, 0, 256 }, cy[4] = { (float)c->y0, (float)c->y0, (float)c->y1,
-                                                      (float)c->y1 };
+    const float cx[4] = {0, 256, 0, 256},
+                cy[4] = {(float)c->y0, (float)c->y0, (float)c->y1, (float)c->y1};
     for (int i = 0; i < 4; ++i) {
         const float tx = ox + pa * cx[i] + pb * cy[i];
         const float ty = oy + pc * cx[i] + pd * cy[i];
@@ -393,10 +380,14 @@ static uint32_t affine_bg(const ctx *c, int bg, bool ext16, run *out)
     int ty0 = (int)floorf(tminy / 8.0f) - 1, ty1 = (int)floorf(tmaxy / 8.0f) + 1;
     const int tiles = size / 8;
     if (!wrap) {
-        if (tx0 < 0) tx0 = 0;
-        if (ty0 < 0) ty0 = 0;
-        if (tx1 > tiles - 1) tx1 = tiles - 1;
-        if (ty1 > tiles - 1) ty1 = tiles - 1;
+        if (tx0 < 0)
+            tx0 = 0;
+        if (ty0 < 0)
+            ty0 = 0;
+        if (tx1 > tiles - 1)
+            tx1 = tiles - 1;
+        if (ty1 > tiles - 1)
+            ty1 = tiles - 1;
     }
     if (tx1 < tx0 || ty1 < ty0) {
         return 0;
@@ -432,8 +423,8 @@ static uint32_t affine_bg(const ctx *c, int bg, bool ext16, run *out)
             uint32_t pal_id;
             kj_palette *pal = ext ? pal_ext_bg(c->in, c->engine, bg, pbank, &pal_id)
                                   : pal_256(c->in, c->engine, 0, &pal_id);
-            const kj_tile_ref t =
-                kj_atlas_tile((uint32_t)(c->engine * 2), c->bg_vram + toff, toff, bpp8, pal, pal_id);
+            const kj_tile_ref t = kj_atlas_tile((uint32_t)(c->engine * 2), c->bg_vram + toff, toff,
+                                                bpp8, pal, pal_id);
             if (!t.valid || t.transparent) {
                 continue;
             }
@@ -441,11 +432,19 @@ static uint32_t affine_bg(const ctx *c, int bg, bool ext16, run *out)
             kj_v2d *v = out->v + out->count * 4u;
             int16_t u0, v0, u1, v1;
             kj_atlas_slot_uv(t.slot, &u0, &v0, &u1, &v1);
-            if (hf) { const int16_t s = u0; u0 = u1; u1 = s; }
-            if (vf) { const int16_t s = v0; v0 = v1; v1 = s; }
-            const float px[4] = { tx * 8.0f, tx * 8.0f + 8, tx * 8.0f, tx * 8.0f + 8 };
-            const float py[4] = { ty * 8.0f, ty * 8.0f, ty * 8.0f + 8, ty * 8.0f + 8 };
-            const int16_t uu[4] = { u0, u1, u0, u1 }, vv[4] = { v0, v0, v1, v1 };
+            if (hf) {
+                const int16_t s = u0;
+                u0 = u1;
+                u1 = s;
+            }
+            if (vf) {
+                const int16_t s = v0;
+                v0 = v1;
+                v1 = s;
+            }
+            const float px[4] = {tx * 8.0f, tx * 8.0f + 8, tx * 8.0f, tx * 8.0f + 8};
+            const float py[4] = {ty * 8.0f, ty * 8.0f, ty * 8.0f + 8, ty * 8.0f + 8};
+            const int16_t uu[4] = {u0, u1, u0, u1}, vv[4] = {v0, v0, v1, v1};
             for (int k = 0; k < 4; ++k) {
                 const float dx = px[k] - ox, dy = py[k] - oy;
                 v[k].x = (int16_t)lroundf(ia * dx + ib * dy);
@@ -462,13 +461,12 @@ static uint32_t affine_bg(const ctx *c, int bg, bool ext16, run *out)
 
 /* ---------------------------------------------------------------- OBJs */
 
-static const uint8_t OBJ_W[4][4] = { { 8, 16, 32, 64 }, { 16, 32, 32, 64 }, { 8, 8, 16, 32 }, { 0 } };
-static const uint8_t OBJ_H[4][4] = { { 8, 16, 32, 64 }, { 8, 8, 16, 32 }, { 16, 32, 32, 64 }, { 0 } };
+static const uint8_t OBJ_W[4][4] = {{8, 16, 32, 64}, {16, 32, 32, 64}, {8, 8, 16, 32}, {0}};
+static const uint8_t OBJ_H[4][4] = {{8, 16, 32, 64}, {8, 8, 16, 32}, {16, 32, 32, 64}, {0}};
 
 /* Emit the OBJs of one priority and blend kind (semi = OBJ mode 1).
  * prio < 0 emits the OBJ-window OBJs (mode 2) of every priority. */
-static uint32_t objs(const ctx *c, int prio, bool semi, run *out)
-{
+static uint32_t objs(const ctx *c, int prio, bool semi, run *out) {
     const uint8_t *oam = c->in->mem->oam + c->engine * 0x400;
     const bool map1d = (c->dispcnt & 0x10) != 0;
     const uint32_t boundary = 32u << ((c->dispcnt >> 20) & 3u);
@@ -596,10 +594,10 @@ static uint32_t objs(const ctx *c, int prio, bool semi, run *out)
                 } else {
                     int16_t u0, v0, u1, v1;
                     kj_atlas_slot_uv(t.slot, &u0, &v0, &u1, &v1);
-                    const float px[4] = { tx * 8.0f, tx * 8.0f + 8, tx * 8.0f, tx * 8.0f + 8 };
-                    const float py[4] = { ty * 8.0f, ty * 8.0f, ty * 8.0f + 8, ty * 8.0f + 8 };
-                    const int16_t uu[4] = { u0, u1, u0, u1 };
-                    const int16_t vv[4] = { v0, v0, v1, v1 };
+                    const float px[4] = {tx * 8.0f, tx * 8.0f + 8, tx * 8.0f, tx * 8.0f + 8};
+                    const float py[4] = {ty * 8.0f, ty * 8.0f, ty * 8.0f + 8, ty * 8.0f + 8};
+                    const int16_t uu[4] = {u0, u1, u0, u1};
+                    const int16_t vv[4] = {v0, v0, v1, v1};
                     for (int k = 0; k < 4; ++k) {
                         const float dx = px[k] - w / 2.0f, dy = py[k] - h / 2.0f;
                         v[k].x = (int16_t)lroundf(cxs + ia * dx + ib * dy);
@@ -620,32 +618,28 @@ static uint32_t objs(const ctx *c, int prio, bool semi, run *out)
 
 /* x' = k * x + add before the target's own mapping (wide layouts: k = 1
  * translates a segment, k > 1 stretches one column across it). */
-static void set_xform_x(const kj_target *t, float k, float add)
-{
+static void set_xform_x(const kj_target *t, float k, float add) {
     /* clip.x = 1 - y_phys/120 ; clip.y = 1 - x_phys/(w/2)
      * y_phys = y * scale ; x_phys = x' * scale + offset */
     const float half_w = t->width / 2.0f;
     C3D_FVUnifSet(GPU_VERTEX_SHADER, kj_gpu_uloc_2d_xform(), -t->scale / 120.0f, 1.0f,
                   -t->scale * k / half_w, 1.0f - (t->offset_x + t->scale * add) / half_w);
     C3D_FVUnifSet(GPU_VERTEX_SHADER, kj_gpu_uloc_2d_uvscale(),
-                  1.0f / (KJ_ATLAS_SIZE * KJ_ATLAS_UV_UNIT), -1.0f / (KJ_ATLAS_SIZE * KJ_ATLAS_UV_UNIT),
-                  0.0f, 1.0f);
+                  1.0f / (KJ_ATLAS_SIZE * KJ_ATLAS_UV_UNIT),
+                  -1.0f / (KJ_ATLAS_SIZE * KJ_ATLAS_UV_UNIT), 0.0f, 1.0f);
 }
 
-static void set_xform(const kj_target *t)
-{
+static void set_xform(const kj_target *t) {
     set_xform_x(t, 1.0f, 0.0f);
 }
 
 /* DS column / line -> physical pixel, rounded the same way for every edge
  * so neighbouring scissors abut. */
-static int phys_x(const kj_target *t, int x)
-{
+static int phys_x(const kj_target *t, int x) {
     return (int)lroundf(t->offset_x + (float)x * t->scale);
 }
 
-static int phys_y(const kj_target *t, int y)
-{
+static int phys_y(const kj_target *t, int y) {
     return (int)lroundf((float)y * t->scale);
 }
 
@@ -659,8 +653,7 @@ typedef struct fx {
     uint8_t active;           /* bit r: region r can occur (outside always) */
 } fx;
 
-static void read_fx(const ctx *c, fx *f)
-{
+static void read_fx(const ctx *c, fx *f) {
     f->bldcnt = r16(c->regs, 0x50);
     f->mode = (f->bldcnt >> 6) & 3;
     const uint16_t alpha = r16(c->regs, 0x52);
@@ -683,8 +676,7 @@ static void read_fx(const ctx *c, fx *f)
 
 /* The window regions BG0 (the 3D layer) shows in, as a bit per region for
  * kj_g3d_draw; regions that cannot occur are left to `active`. */
-static uint8_t bg0_window_on(const fx *f)
-{
+static uint8_t bg0_window_on(const fx *f) {
     uint8_t on = 0;
     for (int r = 0; r < 4; ++r) {
         if (f->region_enable[r] & 1u) {
@@ -694,23 +686,20 @@ static uint8_t bg0_window_on(const fx *f)
     return on;
 }
 
-static void stencil_write_all(uint8_t ref, uint8_t test_mask)
-{
+static void stencil_write_all(uint8_t ref, uint8_t test_mask) {
     C3D_StencilTest(true, test_mask ? GPU_EQUAL : GPU_ALWAYS, ref, test_mask, 0x03);
     C3D_StencilOp(GPU_STENCIL_KEEP, GPU_STENCIL_KEEP, GPU_STENCIL_REPLACE);
 }
 
-static void blend_off(void)
-{
+static void blend_off(void) {
     C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_ONE, GPU_ZERO, GPU_ONE, GPU_ZERO);
 }
 
-static void blend_alpha(float eva, float evb)
-{
+static void blend_alpha(float eva, float evb) {
     const uint32_t ka = (uint32_t)(eva * 255.0f + 0.5f), kb = (uint32_t)(evb * 255.0f + 0.5f);
     C3D_BlendingColor(ka | (ka << 8) | (ka << 16) | (kb << 24));
-    C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_CONSTANT_COLOR, GPU_CONSTANT_ALPHA,
-                   GPU_ONE, GPU_ZERO);
+    C3D_AlphaBlend(GPU_BLEND_ADD, GPU_BLEND_ADD, GPU_CONSTANT_COLOR, GPU_CONSTANT_ALPHA, GPU_ONE,
+                   GPU_ZERO);
 }
 
 /* Draw quads of one layer in every window region where it is enabled. */
@@ -720,8 +709,7 @@ typedef struct drawable {
     uint32_t count;
 } drawable;
 
-static void draw_quads(const drawable *d)
-{
+static void draw_quads(const drawable *d) {
     if (d->base != NULL) {
         kj_gpu_draw_quads_from(d->base, d->count);
     } else {
@@ -729,8 +717,7 @@ static void draw_quads(const drawable *d)
     }
 }
 
-static void draw_layer(const fx *f, int layer, const drawable *d, bool force_semi)
-{
+static void draw_layer(const fx *f, int layer, const drawable *d, bool force_semi) {
     const uint32_t count = d->count;
     if (count == 0) {
         return;
@@ -787,17 +774,16 @@ static void draw_layer(const fx *f, int layer, const drawable *d, bool force_sem
 }
 
 /* A rectangle (DS pixels) as one untextured quad in the arena. */
-static bool rect_quad(int x0, int y0, int x1, int y1, uint32_t rgba, uint32_t *first)
-{
+static bool rect_quad(int x0, int y0, int x1, int y1, uint32_t rgba, uint32_t *first) {
     kj_v2d *v = kj_gpu_quads_alloc(1, first);
     if (v == NULL) {
         return false;
     }
     const uint8_t r = rgba & 255, g = (rgba >> 8) & 255, b = (rgba >> 16) & 255, a = rgba >> 24;
-    v[0] = (kj_v2d){ (int16_t)x0, (int16_t)y0, 0, 0, r, g, b, a };
-    v[1] = (kj_v2d){ (int16_t)x1, (int16_t)y0, 0, 0, r, g, b, a };
-    v[2] = (kj_v2d){ (int16_t)x0, (int16_t)y1, 0, 0, r, g, b, a };
-    v[3] = (kj_v2d){ (int16_t)x1, (int16_t)y1, 0, 0, r, g, b, a };
+    v[0] = (kj_v2d){(int16_t)x0, (int16_t)y0, 0, 0, r, g, b, a};
+    v[1] = (kj_v2d){(int16_t)x1, (int16_t)y0, 0, 0, r, g, b, a};
+    v[2] = (kj_v2d){(int16_t)x0, (int16_t)y1, 0, 0, r, g, b, a};
+    v[3] = (kj_v2d){(int16_t)x1, (int16_t)y1, 0, 0, r, g, b, a};
     return true;
 }
 
@@ -808,8 +794,7 @@ static bool rect_quad(int x0, int y0, int x1, int y1, uint32_t rgba, uint32_t *f
  * output rows/columns lands in one source texel. Transparency/stencil
  * coverage is still approximate -- see FIELD_SCALING.md limitations. */
 static void composite_world_2x(const ctx *c, uint8_t stencil_flags, uint8_t window_on,
-                               uint8_t window_active)
-{
+                               uint8_t window_active) {
     uint32_t first;
     kj_v2d *v = kj_gpu_quads_alloc(1, &first);
     if (v == NULL) {
@@ -821,8 +806,8 @@ static void composite_world_2x(const ctx *c, uint8_t stencil_flags, uint8_t wind
     const int x1 = (int)lroundf(((float)c->target->width - ox) / scale);
     const int y0 = 0;
     const int y1 = (int)lroundf(240.0f / scale);
-    const int xs[4] = { x0, x1, x0, x1 };
-    const int ys[4] = { y0, y0, y1, y1 };
+    const int xs[4] = {x0, x1, x0, x1};
+    const int ys[4] = {y0, y0, y1, y1};
 
     /* The world quad covers all 400x240 output pixels, not just the DS
      * columns used by the surrounding 2D passes. */
@@ -845,8 +830,14 @@ static void composite_world_2x(const ctx *c, uint8_t stencil_flags, uint8_t wind
          * Undo both exactly: flip u, and offset v by the 56 padding rows. */
         const float u = 8.0f * (240.0f - phys_row);
         const float vv = 8.0f * (phys_x + 112.0f);
-        v[k] = (kj_v2d){ (int16_t)xs[k], (int16_t)ys[k], (int16_t)lroundf(u),
-                         (int16_t)lroundf(vv), 255, 255, 255, 255 };
+        v[k] = (kj_v2d){(int16_t)xs[k],
+                        (int16_t)ys[k],
+                        (int16_t)lroundf(u),
+                        (int16_t)lroundf(vv),
+                        255,
+                        255,
+                        255,
+                        255};
     }
     blend_off();
     /* The composite covers the physical display; native window regions must
@@ -863,23 +854,21 @@ static void composite_world_2x(const ctx *c, uint8_t stencil_flags, uint8_t wind
  * rows keeps its 2D scissored to the DS columns (restore_2d_state). Passes
  * that must reach the side 3D too (windows, BLDY) open the scissor to the
  * wide range there. */
-static bool wide_3d(const ctx *c)
-{
+static bool wide_3d(const ctx *c) {
     return c->screen == KJ_SCREEN_TOP && (c->dispcnt & 0x108u) == 0x108u;
 }
 
-static void open_wide_3d_scissor(const ctx *c)
-{
+static void open_wide_3d_scissor(const ctx *c) {
     if (wide_3d(c) && !c->nrows) {
-        kj_gpu_scissor(c->target->width, phys_x(c->target, KJ_LAYOUT_LEFT), phys_y(c->target, c->y0),
-                       phys_x(c->target, KJ_LAYOUT_RIGHT), phys_y(c->target, c->y1));
+        kj_gpu_scissor(c->target->width, phys_x(c->target, KJ_LAYOUT_LEFT),
+                       phys_y(c->target, c->y0), phys_x(c->target, KJ_LAYOUT_RIGHT),
+                       phys_y(c->target, c->y1));
     }
 }
 
 /* Window rectangles of a span into stencil bits 4-5. WIN1 first, then
  * WIN0 (WIN0 has priority). Coordinates wrap when x1 > x2 / y1 > y2. */
-static void write_windows(const ctx *c)
-{
+static void write_windows(const ctx *c) {
     kj_gpu_tev_vertex_color();
     C3D_DepthTest(false, GPU_ALWAYS, 0); /* stencil only: no colour or depth writes */
     C3D_AlphaTest(false, GPU_ALWAYS, 0);
@@ -896,10 +885,24 @@ static void write_windows(const ctx *c)
             y2 = 192;
         }
         int xs[4][2], ys[2][2], nx = 0, ny = 0;
-        if (x1 <= x2) { xs[nx][0] = x1; xs[nx++][1] = x2; }
-        else { xs[nx][0] = x1; xs[nx++][1] = 256; xs[nx][0] = 0; xs[nx++][1] = x2; }
-        if (y1 <= y2) { ys[ny][0] = y1; ys[ny++][1] = y2; }
-        else { ys[ny][0] = y1; ys[ny++][1] = 192; ys[ny][0] = 0; ys[ny++][1] = y2; }
+        if (x1 <= x2) {
+            xs[nx][0] = x1;
+            xs[nx++][1] = x2;
+        } else {
+            xs[nx][0] = x1;
+            xs[nx++][1] = 256;
+            xs[nx][0] = 0;
+            xs[nx++][1] = x2;
+        }
+        if (y1 <= y2) {
+            ys[ny][0] = y1;
+            ys[ny++][1] = y2;
+        } else {
+            ys[ny][0] = y1;
+            ys[ny++][1] = 192;
+            ys[ny][0] = 0;
+            ys[ny++][1] = y2;
+        }
         /* Wide top screen: a window that reaches a DS screen edge runs on
          * across the side columns, so wipes and covers closing in from the
          * edges hide the widened picture too. The side columns get their
@@ -946,8 +949,7 @@ static void write_windows(const ctx *c)
 }
 
 /* BLDY: pixels whose top layer is an effect-enabled 1st target. */
-static void brightness_pass(const fx *f)
-{
+static void brightness_pass(const fx *f) {
     if (f->mode < 2 || f->evy <= 0.0f) {
         return;
     }
@@ -970,8 +972,7 @@ static void brightness_pass(const fx *f)
 }
 
 /* MASTER_BRIGHT over the whole physical screen (sides included). */
-static void master_brightness(const ctx *c, uint16_t mb)
-{
+static void master_brightness(const ctx *c, uint16_t mb) {
     const int mode = mb >> 14;
     int factor = mb & 31;
     if (factor > 16) {
@@ -1000,8 +1001,7 @@ static void master_brightness(const ctx *c, uint16_t mb)
 
 /* The side columns black (QA switch KJ_DEBUG_NO_SIDE_FILL, issue #21):
  * shows what the widescreen stages add over a plain centred picture. */
-static void side_black(void)
-{
+static void side_black(void) {
     uint32_t q;
     if (!rect_quad(-64, 0, 0, 192, 0xFF000000u, &q)) {
         return;
@@ -1022,8 +1022,7 @@ static void side_black(void)
 
 /* Lines [y0, y1) whose registers equal line y0's (the bytes the 2D
  * renderer reads: 0x00-0x6F except DISPSTAT/VCOUNT, already zeroed). */
-static int span_end(const kj_line_regs *lines, int engine, int y0)
-{
+static int span_end(const kj_line_regs *lines, int engine, int y0) {
     if (!lines->active) {
         return 192;
     }
@@ -1086,16 +1085,14 @@ typedef struct screen_memo {
 static screen_memo s_memo[2];
 static uint32_t s_skipped_screens, s_reused_layers, s_rebuilt_layers;
 
-static bool cache_alloc(layer_cache *lc)
-{
+static bool cache_alloc(layer_cache *lc) {
     if (lc->quads == NULL) {
         lc->quads = linearAlloc(CACHE_QUADS * 4u * sizeof(kj_v2d));
     }
     return lc->quads != NULL;
 }
 
-static void layer_cache_reset(layer_cache *lc)
-{
+static void layer_cache_reset(layer_cache *lc) {
     /* chars is malloc'd; quads and band are PICA-visible linear memory.
      * Do not mix the allocator families. */
     free(lc->chars);
@@ -1110,16 +1107,14 @@ static void layer_cache_reset(layer_cache *lc)
 
 static uint32_t s_char_bytes_compared;
 
-static bool chars_same(const layer_cache *lc, const uint8_t *vram)
-{
+static bool chars_same(const layer_cache *lc, const uint8_t *vram) {
 #ifndef HGSS_PROFILE_OFF
     s_char_bytes_compared += lc->char_len;
 #endif
     return lc->char_len == 0 || memcmp(lc->chars, vram + lc->char_lo, lc->char_len) == 0;
 }
 
-static void chars_keep(layer_cache *lc, const uint8_t *vram, uint32_t lo, uint32_t hi)
-{
+static void chars_keep(layer_cache *lc, const uint8_t *vram, uint32_t lo, uint32_t hi) {
     if (hi <= lo) {
         lc->char_len = 0;
         return;
@@ -1141,20 +1136,18 @@ static void chars_keep(layer_cache *lc, const uint8_t *vram, uint32_t lo, uint32
 }
 
 /* Registers a text BG's quads depend on. */
-static void text_key(const ctx *c, int bg, uint8_t key[16])
-{
+static void text_key(const ctx *c, int bg, uint8_t key[16]) {
     memset(key, 0, 16);
     memcpy(key, c->regs + 0x08 + 2 * bg, 2);
     memcpy(key + 2, c->regs + 0x10 + 4 * bg, 4);
     const uint32_t d = c->dispcnt & 0x7F000000u; /* char/screen offsets, ext palettes */
     memcpy(key + 6, &d, 4);
     key[10] = (uint8_t)c->engine;
-    key[11] = c->nrows ? 1 : 0; /* wide quads (-64..320) */
+    key[11] = c->nrows ? 1 : 0;                   /* wide quads (-64..320) */
     key[12] = c->screen == KJ_SCREEN_TOP ? 1 : 0; /* wide-art bands: top only */
 }
 
-static void text_map_range(const ctx *c, int bg, uint32_t *off, uint32_t *len)
-{
+static void text_map_range(const ctx *c, int bg, uint32_t *off, uint32_t *len) {
     const uint16_t cnt = r16(c->regs, 0x08 + 2 * bg);
     uint32_t scr = ((cnt >> 8) & 31u) * 0x800u;
     if (c->engine == 0) {
@@ -1168,8 +1161,7 @@ static void text_map_range(const ctx *c, int bg, uint32_t *off, uint32_t *len)
     }
 }
 
-static const uint8_t *text_ext_src(const ctx *c, int bg)
-{
+static const uint8_t *text_ext_src(const ctx *c, int bg) {
     const uint16_t cnt = r16(c->regs, 0x08 + 2 * bg);
     if (!(cnt & 0x80) || !(c->dispcnt & (1u << 30))) {
         return NULL;
@@ -1201,12 +1193,11 @@ static const uint8_t *text_ext_src(const ctx *c, int bg)
 #define WIDE_BAND_W 32
 #define WIDE_ORIGIN 32
 
-static const int s_text_sizes[4][2] = { { 256, 256 }, { 512, 256 }, { 256, 512 }, { 512, 512 } };
+static const int s_text_sizes[4][2] = {{256, 256}, {512, 256}, {256, 512}, {512, 512}};
 static uint64_t s_logged_key[2][4];
 static uint32_t s_art_matched, s_art_missing;
 
-static uint64_t art_key_add(uint64_t h, uint32_t v)
-{
+static uint64_t art_key_add(uint64_t h, uint32_t v) {
     for (int i = 0; i < 4; ++i) {
         h = (h ^ (v & 0xFFu)) * 0x100000001b3ull;
         v >>= 8;
@@ -1214,8 +1205,7 @@ static uint64_t art_key_add(uint64_t h, uint32_t v)
     return h;
 }
 
-static uint64_t text_art_key(const ctx *c, int bg)
-{
+static uint64_t text_art_key(const ctx *c, int bg) {
     const uint16_t cnt = r16(c->regs, 0x08 + 2 * bg);
     const bool bpp8 = (cnt & 0x80u) != 0;
     const uint32_t entries =
@@ -1270,22 +1260,20 @@ static uint64_t text_art_key(const ctx *c, int bg)
     return h != 0 ? h : 1;
 }
 
-static void put_band_quad(kj_v2d *v, int x, int w, int h, int tx, int ty)
-{
+static void put_band_quad(kj_v2d *v, int x, int w, int h, int tx, int ty) {
     const int16_t u0 = (int16_t)(tx * KJ_ATLAS_UV_UNIT + 1);
     const int16_t u1 = (int16_t)((tx + w) * KJ_ATLAS_UV_UNIT - 1);
     const int16_t v0 = (int16_t)(ty * KJ_ATLAS_UV_UNIT + 1);
     const int16_t v1 = (int16_t)((ty + h) * KJ_ATLAS_UV_UNIT - 1);
-    v[0] = (kj_v2d){ (int16_t)x, 0, u0, v0, 255, 255, 255, 255 };
-    v[1] = (kj_v2d){ (int16_t)(x + w), 0, u1, v0, 255, 255, 255, 255 };
-    v[2] = (kj_v2d){ (int16_t)x, (int16_t)h, u0, v1, 255, 255, 255, 255 };
-    v[3] = (kj_v2d){ (int16_t)(x + w), (int16_t)h, u1, v1, 255, 255, 255, 255 };
+    v[0] = (kj_v2d){(int16_t)x, 0, u0, v0, 255, 255, 255, 255};
+    v[1] = (kj_v2d){(int16_t)(x + w), 0, u1, v0, 255, 255, 255, 255};
+    v[2] = (kj_v2d){(int16_t)x, (int16_t)h, u0, v1, 255, 255, 255, 255};
+    v[3] = (kj_v2d){(int16_t)(x + w), (int16_t)h, u1, v1, 255, 255, 255, 255};
 }
 
 /* The picture's bands as quads (at most 2), shifted by dx: how far the
  * layer has scrolled right since the picture was made. */
-static uint32_t band_quads(const kj_wideart_pic *pic, int dx, kj_v2d *v)
-{
+static uint32_t band_quads(const kj_wideart_pic *pic, int dx, kj_v2d *v) {
     const int bh = pic->band_h;
     uint32_t n = 0;
     int lo = dx > 0 ? 0 : -dx;
@@ -1307,8 +1295,7 @@ static uint32_t band_quads(const kj_wideart_pic *pic, int dx, kj_v2d *v)
 }
 
 /* A rebuilt layer's bands: its key, logged once, and its picture's quads. */
-static uint32_t layer_bands(const ctx *c, int bg, kj_v2d *v)
-{
+static uint32_t layer_bands(const ctx *c, int bg, kj_v2d *v) {
     const uint64_t key = text_art_key(c, bg);
     const kj_wideart_pic *pic = kj_wideart_find(key);
 
@@ -1317,9 +1304,9 @@ static uint32_t layer_bands(const ctx *c, int bg, kj_v2d *v)
         s_logged_key[c->engine][bg] = key;
         /* <key>_<hofs>_<vofs>.png is the name a picture for this layer
          * as it is now would have. */
-        kj_log("[wide art] engine %d bg %d key %016llx_%d_%d%s", c->engine, bg, (unsigned long long)key,
-               r16(c->regs, 0x10 + 4 * bg) & 0x1FF, r16(c->regs, 0x12 + 4 * bg) & 0x1FF,
-               pic != NULL ? " (a picture)" : "");
+        kj_log("[wide art] engine %d bg %d key %016llx_%d_%d%s", c->engine, bg,
+               (unsigned long long)key, r16(c->regs, 0x10 + 4 * bg) & 0x1FF,
+               r16(c->regs, 0x12 + 4 * bg) & 0x1FF, pic != NULL ? " (a picture)" : "");
     }
     if (pic == NULL) {
         ++s_art_missing;
@@ -1341,8 +1328,7 @@ static uint32_t layer_bands(const ctx *c, int bg, kj_v2d *v)
 }
 
 /* A text BG, retained when possible. */
-static bool text_bg_retained(const ctx *c, int bg, drawable *out, drawable *band)
-{
+static bool text_bg_retained(const ctx *c, int bg, drawable *out, drawable *band) {
     layer_cache *lc = &s_bg_cache[c->engine][bg];
     const uint16_t *pal = pltt_ptr(c->in->mem, c->engine, 0);
     uint8_t key[16];
@@ -1405,8 +1391,7 @@ static bool text_bg_retained(const ctx *c, int bg, drawable *out, drawable *band
 }
 
 /* The OBJ layer (all priorities), retained when possible. */
-static bool objs_retained(const ctx *c, drawable sub[9])
-{
+static bool objs_retained(const ctx *c, drawable sub[9]) {
     layer_cache *lc = &s_obj_cache[c->engine];
     const uint8_t *oam = c->in->mem->oam + c->engine * 0x400;
     const uint16_t *pal = pltt_ptr(c->in->mem, c->engine, 1);
@@ -1480,8 +1465,7 @@ static bool objs_retained(const ctx *c, drawable sub[9])
     return true;
 }
 
-void kj_g2d_begin_frame(void)
-{
+void kj_g2d_begin_frame(void) {
     /* Retained quads point at atlas slots: keep them alive before any
      * allocation this frame can evict them. */
     for (int e = 0; e < 2; ++e) {
@@ -1508,8 +1492,7 @@ typedef struct prepared {
     bool all_reused;
 } prepared;
 
-static void prepare_span(const ctx *c, bool retain, prepared *pr)
-{
+static void prepare_span(const ctx *c, bool retain, prepared *pr) {
     const int bgmode = (int)(c->dispcnt & 7u);
     const uint32_t layers_on = (c->dispcnt >> 8) & 0x1Fu;
     const bool bg0_3d = c->engine == 0 && (c->dispcnt & 8u);
@@ -1522,13 +1505,27 @@ static void prepare_span(const ctx *c, bool retain, prepared *pr)
         }
         bool affine = false, ext16 = false, unsupported = false;
         switch (bgmode) {
-        case 0: break;
-        case 1: affine = bg == 3; break;
-        case 2: affine = bg >= 2; break;
-        case 3: ext16 = bg == 3; break;
-        case 4: affine = bg == 2; ext16 = bg == 3; break;
-        case 5: ext16 = bg >= 2; break;
-        default: unsupported = bg >= 2; break;
+        case 0:
+            break;
+        case 1:
+            affine = bg == 3;
+            break;
+        case 2:
+            affine = bg >= 2;
+            break;
+        case 3:
+            ext16 = bg == 3;
+            break;
+        case 4:
+            affine = bg == 2;
+            ext16 = bg == 3;
+            break;
+        case 5:
+            ext16 = bg >= 2;
+            break;
+        default:
+            unsupported = bg >= 2;
+            break;
         }
         if (ext16 && (r16(c->regs, 0x08 + 2 * bg) & 0x80)) {
             unsupported = true; /* bitmap BG (256-colour / direct) */
@@ -1592,11 +1589,11 @@ static void prepare_span(const ctx *c, bool retain, prepared *pr)
     pr->all_reused = retain && s_rebuilt_layers == rebuilt_before;
 }
 
-static void restore_2d_state(const ctx *c, int sx0)
-{
+static void restore_2d_state(const ctx *c, int sx0) {
     if (c->nrows) {
-        kj_gpu_scissor(c->target->width, phys_x(c->target, KJ_LAYOUT_LEFT), phys_y(c->target, c->y0),
-                       phys_x(c->target, KJ_LAYOUT_RIGHT), phys_y(c->target, c->y1));
+        kj_gpu_scissor(c->target->width, phys_x(c->target, KJ_LAYOUT_LEFT),
+                       phys_y(c->target, c->y0), phys_x(c->target, KJ_LAYOUT_RIGHT),
+                       phys_y(c->target, c->y1));
     } else {
         kj_gpu_scissor(c->target->width, sx0, (int)(c->y0 * c->target->scale),
                        sx0 + (int)(256 * c->target->scale), (int)(c->y1 * c->target->scale));
@@ -1614,8 +1611,7 @@ static void restore_2d_state(const ctx *c, int sx0)
  * then restore the DS atlas mapping so later layers are unaffected.
  * `textured` selects the font atlas and texel UVs; otherwise the vertices are
  * solid fills drawn with the vertex-colour material. */
-void kj_g2d_text_draw(const kj_target *t, const kj_v2d *v, uint32_t vertex_count, bool textured)
-{
+void kj_g2d_text_draw(const kj_target *t, const kj_v2d *v, uint32_t vertex_count, bool textured) {
     const kj_font_atlas *fa = kj_font_atlas_get();
     kj_target pt;
     kj_v2d *dst;
@@ -1671,12 +1667,12 @@ void kj_g2d_text_draw(const kj_target *t, const kj_v2d *v, uint32_t vertex_count
 /* A text BG under a wide layout: per band of lines with the same active
  * rows, its quads once per segment, translated or stretched under the
  * segment's scissor (layout.c). */
-static void draw_layer_wide(const ctx *c, const fx *f, int bg, const drawable *d)
-{
+static void draw_layer_wide(const ctx *c, const fx *f, int bg, const drawable *d) {
     const kj_target *t = c->target;
     const uint16_t cnt = r16(c->regs, 0x08 + 2 * bg);
-    const kj_layout_bg g = { bg, r16(c->regs, 0x10 + 4 * bg) & 0x1FF, r16(c->regs, 0x12 + 4 * bg) & 0x1FF,
-                             (cnt >> 14) & 1 ? 512 : 256, (cnt >> 14) & 2 ? 512 : 256 };
+    const kj_layout_bg g = {bg, r16(c->regs, 0x10 + 4 * bg) & 0x1FF,
+                            r16(c->regs, 0x12 + 4 * bg) & 0x1FF, (cnt >> 14) & 1 ? 512 : 256,
+                            (cnt >> 14) & 2 ? 512 : 256};
     if (d->count == 0) {
         return;
     }
@@ -1712,8 +1708,7 @@ static void draw_layer_wide(const ctx *c, const fx *f, int bg, const drawable *d
     restore_2d_state(c, (int)t->offset_x);
 }
 
-static void draw_span(ctx *c, const prepared *pr, bool draw_3d, bool *drew_3d)
-{
+static void draw_span(ctx *c, const prepared *pr, bool draw_3d, bool *drew_3d) {
     fx f;
     read_fx(c, &f);
     const uint32_t layers_on = (c->dispcnt >> 8) & 0x1Fu;
@@ -1744,9 +1739,9 @@ static void draw_span(ctx *c, const prepared *pr, bool draw_3d, bool *drew_3d)
                 if (draw_3d && !*drew_3d) {
                     const bool t2 = (f.bldcnt >> 8) & 1;
                     const bool t1 = f.bldcnt & 1;
-                    const bool world_2x = c->screen == KJ_SCREEN_TOP && kj_offscreen_ready() &&
-                                          kj_field_view_current()->effective_mode ==
-                                              KJ_FIELD_VIEW_2X;
+                    const bool world_2x =
+                        c->screen == KJ_SCREEN_TOP && kj_offscreen_ready() &&
+                        kj_field_view_current()->effective_mode == KJ_FIELD_VIEW_2X;
                     if (world_2x) {
                         kj_offscreen_begin_world(0);
                     } else {
@@ -1807,7 +1802,8 @@ static void draw_span(ctx *c, const prepared *pr, bool draw_3d, bool *drew_3d)
                 kj_gpu_bind_texture(0, kj_wideart_texture());
                 C3D_FVUnifSet(GPU_VERTEX_SHADER, kj_gpu_uloc_2d_uvscale(),
                               1.0f / (float)(kj_wideart_texture_width() * KJ_ATLAS_UV_UNIT),
-                              -1.0f / (float)(kj_wideart_texture_height() * KJ_ATLAS_UV_UNIT), 0.0f, 1.0f);
+                              -1.0f / (float)(kj_wideart_texture_height() * KJ_ATLAS_UV_UNIT), 0.0f,
+                              1.0f);
                 kj_gpu_scissor(c->target->width, phys_x(c->target, KJ_LAYOUT_LEFT),
                                phys_y(c->target, c->y0), phys_x(c->target, KJ_LAYOUT_RIGHT),
                                phys_y(c->target, c->y1));
@@ -1826,15 +1822,13 @@ static void draw_span(ctx *c, const prepared *pr, bool draw_3d, bool *drew_3d)
     brightness_pass(&f);
 }
 
-static uint32_t ds_to_rgba(uint16_t c)
-{
+static uint32_t ds_to_rgba(uint16_t c) {
     const uint32_t r = c & 31u, g = (c >> 5) & 31u, b = (c >> 10) & 31u;
     return ((r << 3) | (r >> 2)) << 24 | ((g << 3) | (g >> 2)) << 16 | ((b << 3) | (b >> 2)) << 8 |
            0xFFu;
 }
 
-void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
-{
+void kj_screen_draw(int screen, int engine, const kj_frame_input *in) {
     const kj_target *target = kj_target_get(screen);
     const kj_ds_memory *mem = in->mem;
     screen_memo *memo = &s_memo[screen];
@@ -1866,7 +1860,8 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
     const uint32_t dispcnt = r32(io, 0);
     const uint16_t *pal = pltt_ptr(mem, engine, 0); /* BG then OBJ: 512 colours */
     const uint16_t bldcnt = r16(io, 0x50);
-    const uint8_t bd_flags = (uint8_t)(((bldcnt >> 13) & 1) | ((bldcnt & 0x20) && ((bldcnt >> 6) & 3) >= 2 ? 2 : 0));
+    const uint8_t bd_flags =
+        (uint8_t)(((bldcnt >> 13) & 1) | ((bldcnt & 0x20) && ((bldcnt >> 6) & 3) >= 2 ? 2 : 0));
     const int display_mode = (int)((dispcnt >> 16) & 3u);
     const bool forced_blank = (dispcnt & 0x80u) != 0;
     const bool has_3d = engine == 0 && (dispcnt & 8u) && in->g3 != NULL;
@@ -1955,7 +1950,7 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
 #ifndef HGSS_PROFILE_OFF
             ++s_stats.spans;
 #endif
-        kj_perf_count(KJ_COUNT_SPANS, 1);
+            kj_perf_count(KJ_COUNT_SPANS, 1);
             y0 = y1;
         }
     }
@@ -1977,8 +1972,7 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
 
 /* ---------------------------------------------------------------- init */
 
-bool kj_g2d_init(void)
-{
+bool kj_g2d_init(void) {
     memset(s_pal, 0, sizeof(s_pal));
     if (!kj_gpu_init()) {
         return false;
@@ -1995,8 +1989,7 @@ bool kj_g2d_init(void)
     return true;
 }
 
-void kj_g2d_exit(void)
-{
+void kj_g2d_exit(void) {
     kj_log("[wide art] %lu layer builds with a picture, %lu without", (unsigned long)s_art_matched,
            (unsigned long)s_art_missing);
     kj_wideart_exit();
@@ -2017,8 +2010,7 @@ void kj_g2d_exit(void)
     kj_gpu_exit();
 }
 
-void kj_g2d_take_stats(kj_g2d_stats *out)
-{
+void kj_g2d_take_stats(kj_g2d_stats *out) {
     s_stats.skipped_screens = s_skipped_screens;
     s_stats.reused_layers = s_reused_layers;
     s_stats.rebuilt_layers = s_rebuilt_layers;

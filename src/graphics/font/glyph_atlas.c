@@ -5,19 +5,15 @@
 static kj_font_atlas s_atlas;
 static bool s_ready;
 
-static uint16_t rd16(const uint8_t *p)
-{
+static uint16_t rd16(const uint8_t *p) {
     return (uint16_t)(p[0] | (p[1] << 8));
 }
 
-static uint32_t rd32(const uint8_t *p)
-{
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) |
-           ((uint32_t)p[3] << 24);
+static uint32_t rd32(const uint8_t *p) {
+    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
 
-static void parse_glyph(const uint8_t *p, kj_glyph *g)
-{
+static void parse_glyph(const uint8_t *p, kj_glyph *g) {
     g->font_id = rd16(p + 0);
     g->code = rd16(p + 2);
     g->art_index = rd16(p + 4);
@@ -29,8 +25,7 @@ static void parse_glyph(const uint8_t *p, kj_glyph *g)
     g->unicode = rd32(p + 14);
 }
 
-static void parse_art(const uint8_t *p, kj_glyph_art *a)
-{
+static void parse_art(const uint8_t *p, kj_glyph_art *a) {
     a->page = rd16(p + 0);
     a->x = rd16(p + 2);
     a->y = rd16(p + 4);
@@ -38,8 +33,7 @@ static void parse_art(const uint8_t *p, kj_glyph_art *a)
     a->h = p[7];
 }
 
-bool kj_font_atlas_init(const uint8_t *blob, size_t size)
-{
+bool kj_font_atlas_init(const uint8_t *blob, size_t size) {
     memset(&s_atlas, 0, sizeof(s_atlas));
     s_ready = false;
     if (blob == NULL || size < KJ_GLYPH_ATLAS_HEADER_SIZE) {
@@ -105,24 +99,20 @@ bool kj_font_atlas_init(const uint8_t *blob, size_t size)
     return true;
 }
 
-void kj_font_atlas_exit(void)
-{
+void kj_font_atlas_exit(void) {
     memset(&s_atlas, 0, sizeof(s_atlas));
     s_ready = false;
 }
 
-const kj_font_atlas *kj_font_atlas_get(void)
-{
+const kj_font_atlas *kj_font_atlas_get(void) {
     return s_ready ? &s_atlas : NULL;
 }
 
-bool kj_font_atlas_ready(void)
-{
+bool kj_font_atlas_ready(void) {
     return s_ready;
 }
 
-static int compare_key(const uint8_t *rec, uint16_t font_id, uint16_t code, uint8_t variant)
-{
+static int compare_key(const uint8_t *rec, uint16_t font_id, uint16_t code, uint8_t variant) {
     const uint16_t rf = rd16(rec + 0);
     const uint16_t rc = rd16(rec + 2);
     const uint8_t rv = rec[12];
@@ -138,8 +128,7 @@ static int compare_key(const uint8_t *rec, uint16_t font_id, uint16_t code, uint
     return 0;
 }
 
-static bool lookup_exact(uint16_t font_id, uint16_t code, uint8_t variant, kj_glyph *out)
-{
+static bool lookup_exact(uint16_t font_id, uint16_t code, uint8_t variant, kj_glyph *out) {
     if (!s_ready) {
         return false;
     }
@@ -163,8 +152,7 @@ static bool lookup_exact(uint16_t font_id, uint16_t code, uint8_t variant, kj_gl
     return false;
 }
 
-bool kj_font_lookup(uint16_t font_id, uint16_t code, uint8_t variant, kj_glyph *out)
-{
+bool kj_font_lookup(uint16_t font_id, uint16_t code, uint8_t variant, kj_glyph *out) {
     if (lookup_exact(font_id, code, variant, out)) {
         return true;
     }
@@ -174,8 +162,7 @@ bool kj_font_lookup(uint16_t font_id, uint16_t code, uint8_t variant, kj_glyph *
     return false;
 }
 
-bool kj_font_art(uint16_t index, kj_glyph_art *out)
-{
+bool kj_font_art(uint16_t index, kj_glyph_art *out) {
     if (!s_ready || index >= s_atlas.art_count) {
         return false;
     }
@@ -183,8 +170,7 @@ bool kj_font_art(uint16_t index, kj_glyph_art *out)
     return true;
 }
 
-const void *kj_font_page(uint8_t page)
-{
+const void *kj_font_page(uint8_t page) {
     if (!s_ready || page >= s_atlas.page_count) {
         return NULL;
     }

@@ -15,7 +15,7 @@
 #include <nitro_port_fs.h>
 #include <string.h>
 
-extern const NitroPortOverlay gHeartgoldOverlays[];   /* gen/overlay_table.c */
+extern const NitroPortOverlay gHeartgoldOverlays[]; /* gen/overlay_table.c */
 extern const u32 gHeartgoldOverlayCount;
 
 void NitroMain(void);
@@ -34,7 +34,7 @@ void NitroMain(void);
 
 /* The game stores the console's MAC address in the save and compares it on
  * load; one fixed address keeps every save "from this DS". */
-static const u8 MAC_ADDRESS[6] = { 0x00, 0x09, 0xBF, 0x48, 0x47, 0x53 };
+static const u8 MAC_ADDRESS[6] = {0x00, 0x09, 0xBF, 0x48, 0x47, 0x53};
 
 #define ROM_HEADER_SIZE 0x200
 #define ROM_TITLE_OFFSET 0x00
@@ -43,23 +43,19 @@ static const u8 MAC_ADDRESS[6] = { 0x00, 0x09, 0xBF, 0x48, 0x47, 0x53 };
 #define ROM_DEVICE_SIZE_OFFSET 0x14
 #define ROM_VERSION_OFFSET 0x1E
 
-const char *kj_ds_edition_name(void)
-{
+const char *kj_ds_edition_name(void) {
     return KJ_EDITION;
 }
 
-const char *kj_ds_pack_build_id(void)
-{
+const char *kj_ds_pack_build_id(void) {
     return KJ_PAK_BUILD_ID;
 }
 
-bool kj_ds_set_save_path(const char *path)
-{
+bool kj_ds_set_save_path(const char *path) {
     return NitroPort_SetSavePath(path) ? true : false;
 }
 
-const char *kj_ds_open_pack(const char *pak_path, const char *manifest_path)
-{
+const char *kj_ds_open_pack(const char *pak_path, const char *manifest_path) {
     switch (NitroPort_OpenPak(pak_path, manifest_path, KJ_PAK_BUILD_ID)) {
     case PAK_OK:
         return NULL;
@@ -80,8 +76,7 @@ const char *kj_ds_open_pack(const char *pak_path, const char *manifest_path)
     }
 }
 
-void kj_game_main(const kj_game_settings *settings)
-{
+void kj_game_main(const kj_game_settings *settings) {
     static u8 header[ROM_HEADER_SIZE];
     NitroPortFirmware firmware;
 

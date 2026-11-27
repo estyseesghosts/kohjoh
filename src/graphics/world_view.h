@@ -22,16 +22,16 @@
  */
 typedef struct kj_world_view {
     kj_field_scale mode;
-    int surface_w;  /* active rasterization width (400 or 200) */
-    int surface_h;  /* active rasterization height (240 or 120) */
-    int world_w;    /* active DS-coordinate world width (400 or 200) */
-    int world_h;    /* active DS-coordinate world height (240 or 120) */
+    int surface_w; /* active rasterization width (400 or 200) */
+    int surface_h; /* active rasterization height (240 or 120) */
+    int world_w;   /* active DS-coordinate world width (400 or 200) */
+    int world_h;   /* active DS-coordinate world height (240 or 120) */
     float scale;
     float offset_x; /* signed */
     float offset_y; /* signed */
     int backing_w;  /* padded GPU texture (256x128 in 2x, else the surface) */
     int backing_h;
-    int backing_x;  /* active region origin inside the padded texture */
+    int backing_x; /* active region origin inside the padded texture */
     int backing_y;
 } kj_world_view;
 
@@ -42,10 +42,10 @@ enum { KJ_DS_SCREEN_W = 256, KJ_DS_SCREEN_H = 192 };
 void kj_world_view_init(kj_world_view *view, kj_field_scale mode, int surface_w, int surface_h);
 void kj_world_view_init_display(kj_world_view *view, kj_field_scale mode);
 
-void kj_world_view_map(const kj_world_view *view, float ds_x, float ds_y,
-                       float *surface_x, float *surface_y);
-void kj_world_view_unmap(const kj_world_view *view, float surface_x, float surface_y,
-                         float *ds_x, float *ds_y);
+void kj_world_view_map(const kj_world_view *view, float ds_x, float ds_y, float *surface_x,
+                       float *surface_y);
+void kj_world_view_unmap(const kj_world_view *view, float surface_x, float surface_y, float *ds_x,
+                         float *ds_y);
 
 /* DS coordinates that can contribute to the image, derived from the active
  * surface, not from a fixed radius around the player. */
@@ -56,8 +56,8 @@ void kj_world_view_clip_extents(const kj_world_view *view, float *hx, float *hy)
 
 /* DS viewport (inclusive x1/y1) -> clipped surface rect [l,t,r,b) in pixels.
  * Returns false for an empty rect. Handles negative offsets by clipping. */
-bool kj_world_view_scissor(const kj_world_view *view, int ds_x0, int ds_y0, int ds_x1,
-                           int ds_y1, int out[4]);
+bool kj_world_view_scissor(const kj_world_view *view, int ds_x0, int ds_y0, int ds_x1, int ds_y1,
+                           int out[4]);
 
 /* Surface rect -> PICA framebuffer scissor arguments (top, left, bottom, right)
  * for a portrait render target. Pure so native tests cover the rotation. */

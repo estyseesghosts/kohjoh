@@ -7,7 +7,6 @@
 
 #include "kj_bridge.h"
 
-
 /* The most recently swapped scene (the DS keeps drawing it until the next
  * SWAP_BUFFERS), or NULL before the first swap. Valid until the swap after
  * next; the renderer only reads it inside kj_ctr_publish_frame. */

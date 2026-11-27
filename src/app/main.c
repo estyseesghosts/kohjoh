@@ -50,30 +50,27 @@ static u32 s_base;
 static u32 s_emulated;
 static u32 s_late_vblanks, s_resyncs;
 
-static u32 real_vblanks(void)
-{
+static u32 real_vblanks(void) {
     return C3D_FrameCounter(0) - s_base;
 }
 
-u32 kj_pacing_behind(void)
-{
+u32 kj_pacing_behind(void) {
     const u32 real = real_vblanks();
     return real > s_emulated ? real - s_emulated : 0;
 }
 
-void kj_pacing_stats(u32 *late, u32 *resyncs)
-{
+void kj_pacing_stats(u32 *late, u32 *resyncs) {
     *late = s_late_vblanks;
     *resyncs = s_resyncs;
     s_late_vblanks = s_resyncs = 0;
 }
 
-static void fatal_screen(const char *title, const char *detail)
-{
+static void fatal_screen(const char *title, const char *detail) {
     /* No game is running: a text console on the bottom screen is fine. */
     gfxInitDefault();
     consoleInit(GFX_BOTTOM, NULL);
-    printf("\x1b[1;1Hkohjoh\n\n%s\n\n%s\n\nPress START to exit.\n", title, detail != NULL ? detail : "");
+    printf("\x1b[1;1Hkohjoh\n\n%s\n\n%s\n\nPress START to exit.\n", title,
+           detail != NULL ? detail : "");
     kj_log("[fatal] %s: %s", title, detail != NULL ? detail : "");
     kj_log_flush_now();
     while (aptMainLoop()) {
@@ -90,13 +87,11 @@ static void fatal_screen(const char *title, const char *detail)
 }
 
 /* Every game thread installs the crash handler (compat platform hook). */
-void NitroPort_PlatformThreadStarted(void)
-{
+void NitroPort_PlatformThreadStarted(void) {
     kj_crash_install();
 }
 
-bool kj_ctr_vblank(void)
-{
+bool kj_ctr_vblank(void) {
     kj_perf_vblank_begin();
     /* One owner of APT, once per V-blank (hgss-3ds pitfall: "APT has one
      * owner"). aptMainLoop handles HOME, sleep and the close request. */
@@ -136,8 +131,7 @@ bool kj_ctr_vblank(void)
     return true;
 }
 
-void kj_ctr_terminate(void)
-{
+void kj_ctr_terminate(void) {
     kj_log("[app] terminating after %lu V-blanks%s", (unsigned long)s_vblank_count,
            s_closing ? " (close requested)" : "");
     kj_audio_exit();
@@ -148,8 +142,7 @@ void kj_ctr_terminate(void)
     exit(0);
 }
 
-static void restore_forwarder_loader(int argc, char **argv)
-{
+static void restore_forwarder_loader(int argc, char **argv) {
     static const char prefix[] = "kohjoh-forwarder:restore=";
     for (int i = 1; i < argc; i++) {
         if (strncmp(argv[i], prefix, sizeof(prefix) - 1) == 0) {
@@ -165,8 +158,7 @@ static void restore_forwarder_loader(int argc, char **argv)
     }
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     restore_forwarder_loader(argc, argv);
 
     /* O3DS baseline: run at 268 MHz without the L2 even on a New 3DS. */

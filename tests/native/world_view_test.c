@@ -9,13 +9,11 @@
 
 #include "graphics/world_view.h"
 
-static void expect_close(float a, float b)
-{
+static void expect_close(float a, float b) {
     assert(fabsf(a - b) < 0.0001f);
 }
 
-static void test_canonical(void)
-{
+static void test_canonical(void) {
     kj_world_view v;
     float sx, sy, dx, dy;
 
@@ -64,8 +62,7 @@ static void test_canonical(void)
     expect_close(dy, 77.5f);
 }
 
-static void test_visible_and_clip(void)
-{
+static void test_visible_and_clip(void) {
     kj_world_view v;
     float x0, y0, x1, y1, hx, hy;
 
@@ -100,8 +97,7 @@ static void test_visible_and_clip(void)
     expect_close(hy, 0.625f);
 }
 
-static void test_scissor(void)
-{
+static void test_scissor(void) {
     kj_world_view v;
     int r[4];
 
@@ -134,10 +130,9 @@ static void test_scissor(void)
     assert(r[0] == 20 && r[1] == 10 && r[2] == 21 && r[3] == 11);
 }
 
-static void test_rotation(void)
-{
-    const int full[4] = { 0, 0, 400, 240 };
-    const int part[4] = { 40, 24, 360, 216 };
+static void test_rotation(void) {
+    const int full[4] = {0, 0, 400, 240};
+    const int part[4] = {40, 24, 360, 216};
     int r[4];
 
     /* Portrait render target: physical (x,y) -> fb (240-y, 400-x). */
@@ -147,13 +142,12 @@ static void test_rotation(void)
     assert(r[0] == 24 && r[1] == 40 && r[2] == 216 && r[3] == 360);
 
     /* The 2x active region inside its padded 256x128 backing texture. */
-    const int active[4] = { 0, 0, 200, 120 };
+    const int active[4] = {0, 0, 200, 120};
     kj_world_view_rotate_scissor(200, 120, active, r);
     assert(r[0] == 0 && r[1] == 0 && r[2] == 120 && r[3] == 200);
 }
 
-static void test_keys(void)
-{
+static void test_keys(void) {
     kj_world_view a, b;
     kj_world_view_init_display(&a, KJ_FIELD_SCALE_LEGACY);
     kj_world_view_init_display(&b, KJ_FIELD_SCALE_LEGACY);
@@ -168,8 +162,7 @@ static void test_keys(void)
     assert(kj_world_view_key(&a) != kj_world_view_key(&b));
 }
 
-int main(void)
-{
+int main(void) {
     test_canonical();
     test_visible_and_clip();
     test_scissor();

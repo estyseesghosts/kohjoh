@@ -8,7 +8,12 @@
 /* Shared PICA state helpers with a bound-state cache: citro3d marks a
  * texture dirty on every bind, even of the same texture (GPU_2D.md 8). */
 
-typedef enum kj_program_id { KJ_PROGRAM_NONE, KJ_PROGRAM_2D, KJ_PROGRAM_3D, KJ_PROGRAM_3D_LIT } kj_program_id;
+typedef enum kj_program_id {
+    KJ_PROGRAM_NONE,
+    KJ_PROGRAM_2D,
+    KJ_PROGRAM_3D,
+    KJ_PROGRAM_3D_LIT
+} kj_program_id;
 
 bool kj_gpu_init(void);
 void kj_gpu_exit(void);
@@ -49,9 +54,9 @@ typedef struct kj_lit_uniforms {
 const kj_lit_uniforms *kj_gpu_lit_uniforms(void);
 
 /* TEV presets. */
-void kj_gpu_tev_texture_modulate(void); /* tex0 * vertex colour */
-void kj_gpu_tev_vertex_color(void);     /* vertex colour only */
-void kj_gpu_tev_constant(uint32_t rgba);/* constant colour */
+void kj_gpu_tev_texture_modulate(void);  /* tex0 * vertex colour */
+void kj_gpu_tev_vertex_color(void);      /* vertex colour only */
+void kj_gpu_tev_constant(uint32_t rgba); /* constant colour */
 
 /* Scissor in physical screen coordinates of a target (x right, y down).
  * `kj_gpu_scissor` keeps the 240-pixel interface target; the target form

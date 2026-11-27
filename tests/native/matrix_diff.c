@@ -8,28 +8,27 @@
 #include SOURCE
 
 unsigned char NitroPort_IoReg[0x1000];
-void NitroPort_Log(const char *fmt, ...) { (void)fmt; }
+void NitroPort_Log(const char *fmt, ...) {
+    (void)fmt;
+}
 static uint32_t rng = 0x123abcde;
 static uint64_t hash = 1469598103934665603ull;
 
-static uint32_t next(void)
-{
+static uint32_t next(void) {
     rng ^= rng << 13;
     rng ^= rng >> 17;
     rng ^= rng << 5;
     return rng;
 }
 
-static void digest(const void *p, size_t n)
-{
+static void digest(const void *p, size_t n) {
     const unsigned char *bytes = p;
     while (n-- != 0) {
         hash = (hash ^ *bytes++) * 1099511628211ull;
     }
 }
 
-int main(void)
-{
+int main(void) {
     kj_g3_storage storage;
     for (unsigned i = 0; i < 2; ++i) {
         storage.verts[i] = calloc(KJ_G3_MAX_VERTS, sizeof(kj_g3_vertex));

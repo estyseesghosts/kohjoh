@@ -21,8 +21,7 @@ static uint32_t s_view_generation;
 static bool s_vis_cull = true;
 static bool s_box_cull = true;
 
-static void derive(kj_field_view_desc *v)
-{
+static void derive(kj_field_view_desc *v) {
     float sw, sh, scale;
 
     switch (v->effective_mode) {
@@ -56,8 +55,7 @@ static void derive(kj_field_view_desc *v)
     v->clip_hy = sh / (scale * KJ_DS_H);
 }
 
-void kj_field_view_configure(uint32_t requested, uint32_t configured)
-{
+void kj_field_view_configure(uint32_t requested, uint32_t configured) {
     s_view.requested_mode = requested;
     s_view.configured_mode = configured;
     ++s_view_generation;
@@ -65,10 +63,9 @@ void kj_field_view_configure(uint32_t requested, uint32_t configured)
     derive(&s_view);
 }
 
-void kj_field_view_set_scene(uint32_t screen_id, uint32_t generation)
-{
-    const uint32_t new_mode = screen_id == KJ_SCREEN_FIELD ? s_view.configured_mode
-                                                           : KJ_FIELD_VIEW_LEGACY;
+void kj_field_view_set_scene(uint32_t screen_id, uint32_t generation) {
+    const uint32_t new_mode =
+        screen_id == KJ_SCREEN_FIELD ? s_view.configured_mode : KJ_FIELD_VIEW_LEGACY;
     const bool mode_changed = new_mode != s_view.effective_mode;
     if (mode_changed) {
         ++s_view_generation; /* invalidate projection-keyed caches */
@@ -88,33 +85,27 @@ void kj_field_view_set_scene(uint32_t screen_id, uint32_t generation)
     }
 }
 
-const kj_field_view_desc *kj_field_view_current(void)
-{
+const kj_field_view_desc *kj_field_view_current(void) {
     return &s_view;
 }
 
-void kj_field_view_set_vis_cull_enabled(bool enabled)
-{
+void kj_field_view_set_vis_cull_enabled(bool enabled) {
     s_vis_cull = enabled;
 }
 
-bool kj_field_view_vis_cull_enabled(void)
-{
+bool kj_field_view_vis_cull_enabled(void) {
     return s_vis_cull;
 }
 
-void kj_field_view_set_box_cull_enabled(bool enabled)
-{
+void kj_field_view_set_box_cull_enabled(bool enabled) {
     s_box_cull = enabled;
 }
 
-bool kj_field_view_box_cull_enabled(void)
-{
+bool kj_field_view_box_cull_enabled(void) {
     return s_box_cull;
 }
 
-void kj_field_view_reset(void)
-{
+void kj_field_view_reset(void) {
     s_view.requested_mode = KJ_FIELD_VIEW_LEGACY;
     s_view.configured_mode = KJ_FIELD_VIEW_LEGACY;
     s_view.effective_mode = KJ_FIELD_VIEW_LEGACY;

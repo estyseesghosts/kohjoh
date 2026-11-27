@@ -25,14 +25,12 @@
 
 static kj_paths s_paths;
 
-static bool file_exists(const char *path)
-{
+static bool file_exists(const char *path) {
     struct stat st;
     return stat(path, &st) == 0 && S_ISREG(st.st_mode);
 }
 
-static bool ensure_dir(const char *path)
-{
+static bool ensure_dir(const char *path) {
     if (mkdir(path, 0777) == 0 || errno == EEXIST) {
         return true;
     }
@@ -40,8 +38,7 @@ static bool ensure_dir(const char *path)
     return false;
 }
 
-const kj_paths *kj_paths_init(void)
-{
+const kj_paths *kj_paths_init(void) {
     const char *edition = kj_ds_edition_name();
 
     snprintf(s_paths.root, sizeof(s_paths.root), "sdmc:/3ds/kohjoh");
@@ -67,8 +64,8 @@ const kj_paths *kj_paths_init(void)
         s_paths.bundled = false;
         snprintf(s_paths.pack_file, sizeof(s_paths.pack_file), "%s/data/%s.pak", s_paths.root,
                  edition);
-        snprintf(s_paths.manifest_file, sizeof(s_paths.manifest_file),
-                 "%s/data/%s.manifest.json", s_paths.root, edition);
+        snprintf(s_paths.manifest_file, sizeof(s_paths.manifest_file), "%s/data/%s.manifest.json",
+                 s_paths.root, edition);
     }
     snprintf(s_paths.save_file, sizeof(s_paths.save_file), "%s/saves/%s.sav", s_paths.root,
              edition);

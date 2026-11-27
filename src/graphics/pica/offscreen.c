@@ -19,8 +19,7 @@ static C3D_Tex s_tex;
 static C3D_RenderTarget *s_target;
 static bool s_ready;
 
-bool kj_offscreen_init(void)
-{
+bool kj_offscreen_init(void) {
     if (!C3D_TexInitVRAM(&s_tex, KJ_OFFSCREEN_W, KJ_OFFSCREEN_H, GPU_RGBA8)) {
         kj_log("[gpu] 2x: cannot allocate 128x256 world texture (VRAM free %lu)",
                (unsigned long)vramSpaceFree());
@@ -28,8 +27,8 @@ bool kj_offscreen_init(void)
     }
     C3D_TexSetFilter(&s_tex, GPU_NEAREST, GPU_NEAREST);
     C3D_TexSetWrap(&s_tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
-    s_target = C3D_RenderTargetCreateFromTex(&s_tex, (GPU_TEXFACE)GPU_TEX_2D, 0,
-                                             GPU_RB_DEPTH24_STENCIL8);
+    s_target =
+        C3D_RenderTargetCreateFromTex(&s_tex, (GPU_TEXFACE)GPU_TEX_2D, 0, GPU_RB_DEPTH24_STENCIL8);
     if (s_target == NULL) {
         kj_log("[gpu] 2x: cannot attach depth/stencil to world texture (VRAM free %lu)",
                (unsigned long)vramSpaceFree());
@@ -43,8 +42,7 @@ bool kj_offscreen_init(void)
     return true;
 }
 
-void kj_offscreen_exit(void)
-{
+void kj_offscreen_exit(void) {
     if (s_target != NULL) {
         C3D_RenderTargetDelete(s_target);
         s_target = NULL;
@@ -55,23 +53,19 @@ void kj_offscreen_exit(void)
     s_ready = false;
 }
 
-bool kj_offscreen_ready(void)
-{
+bool kj_offscreen_ready(void) {
     return s_ready;
 }
 
-C3D_RenderTarget *kj_offscreen_target(void)
-{
+C3D_RenderTarget *kj_offscreen_target(void) {
     return s_target;
 }
 
-C3D_Tex *kj_offscreen_texture(void)
-{
+C3D_Tex *kj_offscreen_texture(void) {
     return &s_tex;
 }
 
-void kj_offscreen_begin_world(uint32_t clear_color)
-{
+void kj_offscreen_begin_world(uint32_t clear_color) {
     C3D_RenderTargetClear(s_target, C3D_CLEAR_ALL, clear_color, 0);
     C3D_FrameDrawOn(s_target);
     /* FrameDrawOn installs a viewport covering the whole 128x256 texture.
@@ -86,8 +80,7 @@ void kj_offscreen_begin_world(uint32_t clear_color)
     kj_gpu_invalidate();
 }
 
-void kj_offscreen_end_world(C3D_RenderTarget *native)
-{
+void kj_offscreen_end_world(C3D_RenderTarget *native) {
     kj_gpu_scissor_off();
     kj_gpu_invalidate(); /* GPU state invalidation between the two surfaces */
     C3D_FrameDrawOn(native);

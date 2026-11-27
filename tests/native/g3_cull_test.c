@@ -10,19 +10,20 @@
 #include SOURCE
 
 unsigned char NitroPort_IoReg[0x1000];
-void NitroPort_Log(const char *fmt, ...) { assert(strstr(fmt, "MISMATCH") == NULL); }
+void NitroPort_Log(const char *fmt, ...) {
+    assert(strstr(fmt, "MISMATCH") == NULL);
+}
 static uint32_t rng = 0x5eed1234u;
 
-static uint32_t next(void)
-{
+static uint32_t next(void) {
     rng ^= rng << 13;
     rng ^= rng >> 17;
     rng ^= rng << 5;
     return rng;
 }
 
-static uint64_t tri_hash(const kj_g3_frame *f, const kj_g3_batch *b, unsigned first, bool *outside)
-{
+static uint64_t tri_hash(const kj_g3_frame *f, const kj_g3_batch *b, unsigned first,
+                         bool *outside) {
     uint64_t h = 1469598103934665603ull;
     unsigned out_all = 0xFu;
     for (unsigned k = 0; k < 3; ++k) {
@@ -52,14 +53,12 @@ static uint64_t tri_hash(const kj_g3_frame *f, const kj_g3_batch *b, unsigned fi
     return h;
 }
 
-static int cmp64(const void *a, const void *b)
-{
+static int cmp64(const void *a, const void *b) {
     const uint64_t x = *(const uint64_t *)a, y = *(const uint64_t *)b;
     return x < y ? -1 : x > y;
 }
 
-int main(void)
-{
+int main(void) {
     kj_g3_storage storage;
     for (unsigned i = 0; i < 2; ++i) {
         storage.verts[i] = calloc(KJ_G3_MAX_VERTS, sizeof(kj_g3_vertex));
@@ -83,18 +82,18 @@ int main(void)
                 lists[l][n++] = 0x20;
                 lists[l][n++] = next() & 0x7fffu;
                 lists[l][n++] = 0x23;
-                lists[l][n++] = (next() & 0x1fffu) - 0x1000u + (((next() & 0x1fffu) - 0x1000u) << 16);
+                lists[l][n++] =
+                    (next() & 0x1fffu) - 0x1000u + (((next() & 0x1fffu) - 0x1000u) << 16);
                 lists[l][n++] = (next() & 0x1fffu) - 0x1000u;
             }
         }
         lists[l][n++] = 0x41;
         sizes[l] = n;
     }
-    const uint32_t proj[16] = { /* perspective-like: w = -z */
-        4096, 0, 0, 0,
-        0, 4096, 0, 0,
-        0, 0, (uint32_t)-4096, (uint32_t)-4096,
-        0, 0, (uint32_t)-8192, 0,
+    const uint32_t proj[16] = {
+        /* perspective-like: w = -z */
+        4096, 0, 0, 0, 0, 4096, 0, 0, 0, 0, (uint32_t)-4096, (uint32_t)-4096, 0, 0, (uint32_t)-8192,
+        0,
     };
     uint64_t visible_hash = 1469598103934665603ull;
     uint32_t total = 0, visible = 0;

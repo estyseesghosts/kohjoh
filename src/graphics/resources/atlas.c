@@ -43,14 +43,12 @@ static uint32_t s_clock;
 static uint8_t s_morton[64];
 static kj_atlas_stats s_stats;
 
-static uint32_t hash_key(uint64_t key)
-{
+static uint32_t hash_key(uint64_t key) {
     uint64_t h = key * 0x9E3779B97F4A7C15ull;
     return (uint32_t)(h >> 49) & (TABLE_SIZE - 1u);
 }
 
-static void build_morton(void)
-{
+static void build_morton(void) {
     /* Texel (x, y) of an 8x8 tile, y from the top, -> Morton index: x in
      * the even bits, y in the odd bits, y flipped (PICA tiles are stored
      * bottom row first within the tile). */
@@ -64,8 +62,7 @@ static void build_morton(void)
     }
 }
 
-bool kj_atlas_init(void)
-{
+bool kj_atlas_init(void) {
     if (!C3D_TexInit(&s_tex, KJ_ATLAS_SIZE, KJ_ATLAS_SIZE, GPU_RGBA5551)) {
         kj_log("[atlas] cannot allocate the %dx%d atlas", KJ_ATLAS_SIZE, KJ_ATLAS_SIZE);
         return false;
@@ -81,8 +78,7 @@ bool kj_atlas_init(void)
     return true;
 }
 
-void kj_atlas_exit(void)
-{
+void kj_atlas_exit(void) {
     if (s_ready) {
         C3D_TexDelete(&s_tex);
         s_texels = NULL;
@@ -92,29 +88,24 @@ void kj_atlas_exit(void)
     }
 }
 
-void kj_atlas_begin_frame(void)
-{
+void kj_atlas_begin_frame(void) {
     ++s_frame;
 }
 
-C3D_Tex *kj_atlas_texture(void)
-{
+C3D_Tex *kj_atlas_texture(void) {
     return &s_tex;
 }
 
-void kj_atlas_take_stats(kj_atlas_stats *out)
-{
+void kj_atlas_take_stats(kj_atlas_stats *out) {
     *out = s_stats;
     memset(&s_stats, 0, sizeof(s_stats));
 }
 
-static uint16_t to_rgba5551(uint16_t c)
-{
+static uint16_t to_rgba5551(uint16_t c) {
     return (uint16_t)(((c & 31u) << 11) | (((c >> 5) & 31u) << 6) | (((c >> 10) & 31u) << 1) | 1u);
 }
 
-void kj_palette_check(kj_palette *p)
-{
+void kj_palette_check(kj_palette *p) {
     if (p->checked_frame == s_frame) {
         return;
     }
@@ -130,8 +121,7 @@ void kj_palette_check(kj_palette *p)
     ++p->version;
 }
 
-static void table_remove(uint64_t key)
-{
+static void table_remove(uint64_t key) {
     uint32_t i = hash_key(key);
 
     while (s_table[i] != EMPTY) {
@@ -162,8 +152,7 @@ static void table_remove(uint64_t key)
     s_table[hole] = EMPTY;
 }
 
-static int find_free_slot(void)
-{
+static int find_free_slot(void) {
     for (uint32_t n = 0; n < KJ_ATLAS_SLOTS; ++n) {
         const uint32_t s = s_clock;
         s_clock = (s_clock + 1u) % KJ_ATLAS_SLOTS;
@@ -183,8 +172,7 @@ static int find_free_slot(void)
 }
 
 static void convert(uint16_t slot, const uint8_t *tile, bool bpp8, const kj_palette *pal,
-                    slot_info *info)
-{
+                    slot_info *info) {
     uint16_t *dst = s_texels + (uint32_t)slot * 64u;
     const uint16_t *conv = pal->converted;
     unsigned any = 0;
@@ -214,9 +202,8 @@ static void convert(uint16_t slot, const uint8_t *tile, bool bpp8, const kj_pale
 }
 
 kj_tile_ref kj_atlas_tile(uint32_t source_id, const uint8_t *tile, uint32_t offset, bool bpp8,
-                          kj_palette *pal, uint32_t pal_id)
-{
-    kj_tile_ref ref = { 0, 0, 0 };
+                          kj_palette *pal, uint32_t pal_id) {
+    kj_tile_ref ref = {0, 0, 0};
     const uint64_t key = ((uint64_t)source_id << 56) | ((uint64_t)(bpp8 ? 1 : 0) << 55) |
                          ((uint64_t)(pal_id & 0xFFFFu) << 32) | offset;
     const size_t nbytes = bpp8 ? 64u : 32u;
@@ -280,8 +267,7 @@ kj_tile_ref kj_atlas_tile(uint32_t source_id, const uint8_t *tile, uint32_t offs
     return ref;
 }
 
-void kj_atlas_touch(const uint16_t *slots, uint32_t count)
-{
+void kj_atlas_touch(const uint16_t *slots, uint32_t count) {
     for (uint32_t i = 0; i < count; ++i) {
         s_slots[slots[i]].last_frame = s_frame;
     }

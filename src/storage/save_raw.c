@@ -9,8 +9,7 @@
 #include "diagnostics/log.h"
 #include "runtime/kj_bridge.h"
 
-bool kj_save_backend_init(const kj_paths *paths)
-{
+bool kj_save_backend_init(const kj_paths *paths) {
     kj_log("[save] raw save file %s", paths->save_file);
     if (!paths->save_dir_ready) {
         kj_log("[save] the save directory could not be created; not starting the game");

@@ -73,15 +73,13 @@ static mtx s_clip;
 static bool s_clip_dirty = true;
 static uint32_t s_clip_version = 1; /* bumps on every clip change */
 
-static void mtx_identity(mtx *m)
-{
+static void mtx_identity(mtx *m) {
     memset(m, 0, sizeof(*m));
     m->m[0][0] = m->m[1][1] = m->m[2][2] = m->m[3][3] = FX_ONE;
 }
 
 /* out = a * b (row-vector convention: apply a, then b). */
-static void mtx_mul(mtx *out, const mtx *a, const mtx *b)
-{
+static void mtx_mul(mtx *out, const mtx *a, const mtx *b) {
     mtx r;
 
     for (int i = 0; i < 4; ++i) {
@@ -101,14 +99,12 @@ static void mtx_mul(mtx *out, const mtx *a, const mtx *b)
  * projective right operands. Repeated base transforms need 36/48 products
  * instead of 64, before the identity/translation fast paths below.
  * See Coffeepot cpu-optimization.md: reduce integer work before using SIMD. */
-static void mtx_mul_affine(mtx *out, const mtx *a, const mtx *b, bool rotation_only)
-{
+static void mtx_mul_affine(mtx *out, const mtx *a, const mtx *b, bool rotation_only) {
     mtx r;
     const unsigned rows = rotation_only ? 3u : 4u;
     for (unsigned i = 0; i < rows; ++i) {
         for (unsigned j = 0; j < 4; ++j) {
-            int64_t acc = (int64_t)a->m[i][0] * b->m[0][j] +
-                          (int64_t)a->m[i][1] * b->m[1][j] +
+            int64_t acc = (int64_t)a->m[i][0] * b->m[0][j] + (int64_t)a->m[i][1] * b->m[1][j] +
                           (int64_t)a->m[i][2] * b->m[2][j];
             if (i == 3) {
                 acc += (int64_t)FX_ONE * b->m[3][j];
@@ -122,15 +118,13 @@ static void mtx_mul_affine(mtx *out, const mtx *a, const mtx *b, bool rotation_o
     *out = r;
 }
 
-static bool rotation_is_identity(const mtx *m)
-{
+static bool rotation_is_identity(const mtx *m) {
     return m->m[0][0] == FX_ONE && m->m[1][1] == FX_ONE && m->m[2][2] == FX_ONE &&
-           m->m[0][1] == 0 && m->m[0][2] == 0 && m->m[1][0] == 0 &&
-           m->m[1][2] == 0 && m->m[2][0] == 0 && m->m[2][1] == 0;
+           m->m[0][1] == 0 && m->m[0][2] == 0 && m->m[1][0] == 0 && m->m[1][2] == 0 &&
+           m->m[2][0] == 0 && m->m[2][1] == 0;
 }
 
-static int32_t sign_bits(uint32_t v, int bits)
-{
+static int32_t sign_bits(uint32_t v, int bits) {
     const uint32_t mask = 1u << (bits - 1);
     v &= (1u << bits) - 1u;
     return (int32_t)((v ^ mask) - mask);
@@ -139,14 +133,12 @@ static int32_t sign_bits(uint32_t v, int bits)
 static void normals_changed(void);
 static void vec_changed(void);
 
-static void clip_changed(void)
-{
+static void clip_changed(void) {
     s_clip_dirty = true;
     ++s_clip_version;
 }
 
-static const mtx *clip_matrix(void)
-{
+static const mtx *clip_matrix(void) {
     if (s_clip_dirty) {
         mtx_mul(&s_clip, &s_pos, &s_proj);
         s_clip_dirty = false;
@@ -155,8 +147,7 @@ static const mtx *clip_matrix(void)
 }
 
 /* The matrix MTX_LOAD/MULT/SCALE/TRANS act on, for mode 0/1/3. */
-static mtx *selected(void)
-{
+static mtx *selected(void) {
     switch (s_mtx_mode) {
     case 0:
         return &s_proj;
@@ -167,8 +158,7 @@ static mtx *selected(void)
     }
 }
 
-static void read_matrix(mtx *m, unsigned op, const uint32_t *p)
-{
+static void read_matrix(mtx *m, unsigned op, const uint32_t *p) {
     mtx_identity(m);
     if (op == 0x16 || op == 0x18) {
         for (int i = 0; i < 16; ++i) {
@@ -185,8 +175,7 @@ static void read_matrix(mtx *m, unsigned op, const uint32_t *p)
     }
 }
 
-static void load_matrix(const mtx *m)
-{
+static void load_matrix(const mtx *m) {
     if (s_mtx_mode == 2) {
         s_pos = *m;
         s_vec = *m;
@@ -201,15 +190,13 @@ static void load_matrix(const mtx *m)
 
 static void translate_matrix(const uint32_t *p);
 
-static void mult_matrix(const mtx *m, unsigned op)
-{
+static void mult_matrix(const mtx *m, unsigned op) {
     if (op == 0x1A && rotation_is_identity(m)) {
         return;
     }
     if (op == 0x19 && rotation_is_identity(m)) {
-        const uint32_t translation[3] = {
-            (uint32_t)m->m[3][0], (uint32_t)m->m[3][1], (uint32_t)m->m[3][2]
-        };
+        const uint32_t translation[3] = {(uint32_t)m->m[3][0], (uint32_t)m->m[3][1],
+                                         (uint32_t)m->m[3][2]};
         translate_matrix(translation);
         return;
     }
@@ -239,8 +226,7 @@ static void mult_matrix(const mtx *m, unsigned op)
  * full product's other terms are exact multiples of 4096 (identical after
  * >> 12). Mode 2 scales the position matrix only (GBATEK). 12 products
  * instead of 64 (O3DS: 1.1 ms per game frame, o3ds-log-0). */
-static void scale_rows(mtx *t, const uint32_t *p)
-{
+static void scale_rows(mtx *t, const uint32_t *p) {
     for (int i = 0; i < 3; ++i) {
         const int64_t f = (int32_t)p[i];
         for (int j = 0; j < 4; ++j) {
@@ -249,8 +235,7 @@ static void scale_rows(mtx *t, const uint32_t *p)
     }
 }
 
-static void scale_matrix(const uint32_t *p)
-{
+static void scale_matrix(const uint32_t *p) {
     if (p[0] == FX_ONE && p[1] == FX_ONE && p[2] == FX_ONE) {
         return;
     }
@@ -261,17 +246,16 @@ static void scale_matrix(const uint32_t *p)
 }
 
 /* MTX_TRANS: T * M changes row 3 only: row3 = t . rows0-2 + row3. */
-static void translate_rows(mtx *t, const uint32_t *p)
-{
+static void translate_rows(mtx *t, const uint32_t *p) {
     for (int j = 0; j < 4; ++j) {
-        const int64_t acc = (int64_t)(int32_t)p[0] * t->m[0][j] + (int64_t)(int32_t)p[1] * t->m[1][j] +
+        const int64_t acc = (int64_t)(int32_t)p[0] * t->m[0][j] +
+                            (int64_t)(int32_t)p[1] * t->m[1][j] +
                             (int64_t)(int32_t)p[2] * t->m[2][j] + (int64_t)4096 * t->m[3][j];
         t->m[3][j] = (int32_t)(acc >> 12);
     }
 }
 
-static void translate_matrix(const uint32_t *p)
-{
+static void translate_matrix(const uint32_t *p) {
     if ((p[0] | p[1] | p[2]) == 0) {
         return;
     }
@@ -290,8 +274,7 @@ static void translate_matrix(const uint32_t *p)
 static void execute_body(unsigned op, const uint32_t *p);
 #endif
 
-static void stack_op(unsigned op, uint32_t param)
-{
+static void stack_op(unsigned op, uint32_t param) {
     if (s_mtx_mode == 0) {
         switch (op) {
         case 0x11:
@@ -398,8 +381,7 @@ static uint32_t s_viewport = 0xBFFF0000u; /* 0,0,255,191 */
 static int s_primitive;
 static bool s_in_begin;
 
-static void make_products(void)
-{
+static void make_products(void) {
     for (unsigned a = 0; a < 32; ++a) {
         for (unsigned b = 0; b < 32; ++b) {
             s_product[a][b] = (uint8_t)((a * b + 15) / 31);
@@ -408,8 +390,7 @@ static void make_products(void)
     s_products_made = true;
 }
 
-static void transform_vector(const int32_t in[3], const mtx *m, int32_t out[3])
-{
+static void transform_vector(const int32_t in[3], const mtx *m, int32_t out[3]) {
     for (int j = 0; j < 3; ++j) {
         int64_t acc = 0;
         for (int i = 0; i < 3; ++i) {
@@ -438,8 +419,7 @@ static struct {
     uint16_t rgb;
 } s_normal_cache[NORMAL_CACHE];
 
-static void normals_changed(void)
-{
+static void normals_changed(void) {
     ++s_normal_gen;
     ++s_lighting_gen;
 }
@@ -450,8 +430,7 @@ static void normals_changed(void)
  * game frame with the cache flushed at every restore, o3ds-log-0). */
 static int32_t s_shade_vec[3][3];
 
-static void vec_changed(void)
-{
+static void vec_changed(void) {
     bool same = true;
     for (int i = 0; i < 3; ++i) {
         for (int j = 0; j < 3; ++j) {
@@ -476,8 +455,7 @@ static struct {
     uint8_t ambient[3], diffuse[3], specular[3];
 } s_light_terms[4];
 
-static void update_light_terms(unsigned i)
-{
+static void update_light_terms(unsigned i) {
     for (unsigned c = 0; c < 3; ++c) {
         const unsigned l = (s_light_color[i] >> (5 * c)) & 31u;
         s_light_terms[i].ambient[c] = s_product[(s_ambient >> (5 * c)) & 31u][l];
@@ -487,8 +465,7 @@ static void update_light_terms(unsigned i)
     s_light_terms_dirty &= ~(1u << i);
 }
 
-static uint16_t shade(uint32_t value)
-{
+static uint16_t shade(uint32_t value) {
 #ifndef HGSS_PROFILE_OFF
     if (s_coarse_sample) {
         ++s_sample_normals;
@@ -510,8 +487,7 @@ static uint16_t shade(uint32_t value)
     return rgb;
 }
 
-static uint16_t shade_uncached(uint32_t value)
-{
+static uint16_t shade_uncached(uint32_t value) {
     int32_t normal[3], n[3];
     unsigned r = s_emission & 31u, g = (s_emission >> 5) & 31u, b = (s_emission >> 10) & 31u;
 
@@ -548,7 +524,8 @@ static uint16_t shade_uncached(uint32_t value)
             const unsigned amb = s_light_terms[i].ambient[c];
             const unsigned dif = s_light_terms[i].diffuse[c];
             const unsigned spc = s_light_terms[i].specular[c];
-            const unsigned add = amb + ((dif * diffuse + 2048u) >> 12) + ((spc * spec + 2048u) >> 12);
+            const unsigned add =
+                amb + ((dif * diffuse + 2048u) >> 12) + ((spc * spec + 2048u) >> 12);
             if (c == 0) {
                 r += add;
             } else if (c == 1) {
@@ -558,18 +535,17 @@ static uint16_t shade_uncached(uint32_t value)
             }
         }
     }
-    return (uint16_t)((r > 31u ? 31u : r) | ((g > 31u ? 31u : g) << 5) | ((b > 31u ? 31u : b) << 10));
+    return (uint16_t)((r > 31u ? 31u : r) | ((g > 31u ? 31u : g) << 5) |
+                      ((b > 31u ? 31u : b) << 10));
 }
 
-static int32_t saturate16(int64_t v)
-{
+static int32_t saturate16(int64_t v) {
     return v < -32768 ? -32768 : v > 32767 ? 32767 : (int32_t)v;
 }
 
 /* Texture-coordinate generation (TEXIMAGE_PARAM bits 30-31). Mode 1 at
  * TEXCOORD, mode 2 at NORMAL, mode 3 at each vertex (GBATEK). */
-static void texgen(const int32_t *source, int mode)
-{
+static void texgen(const int32_t *source, int mode) {
     for (int j = 0; j < 2; ++j) {
         int64_t v;
         if (mode == 1) {
@@ -601,8 +577,8 @@ typedef struct frame_buf {
 } frame_buf;
 
 static frame_buf s_buf[2];
-static int s_build;          /* index of the frame being built */
-static bool s_have_display;  /* a swap has happened */
+static int s_build;         /* index of the frame being built */
+static bool s_have_display; /* a swap has happened */
 static bool s_capture_requested = true;
 static bool s_capture_scene = true;
 #ifndef HGSS_PROFILE_OFF
@@ -637,21 +613,19 @@ static uint16_t s_current_light_id;
 /* Primitive assembly: indices (into the frame) of this BEGIN's recent
  * vertices. */
 static uint32_t s_prim_verts[4];
-static uint32_t s_prim_count;     /* vertices since BEGIN */
+static uint32_t s_prim_count; /* vertices since BEGIN */
 static uint32_t s_strip_parity;
 
 static void update_color_rgba(void);
 
-static void resolve_color(void)
-{
+static void resolve_color(void) {
     if (s_color_pending) {
         s_color = kj_lighting_color(s_latched_normal, &s_latched_light);
         s_color_pending = false;
     }
 }
 
-void kj_g3_init(const kj_g3_storage *storage)
-{
+void kj_g3_init(const kj_g3_storage *storage) {
     for (int i = 0; i < 2; ++i) {
         s_buf[i].verts = storage->verts[i];
         s_buf[i].indices = storage->indices[i];
@@ -673,13 +647,11 @@ void kj_g3_init(const kj_g3_storage *storage)
     update_color_rgba();
 }
 
-void kj_g3_set_wide(bool wide)
-{
+void kj_g3_set_wide(bool wide) {
     s_wide = wide;
 }
 
-void kj_g3_set_capture(bool capture)
-{
+void kj_g3_set_capture(bool capture) {
 #ifndef HGSS_PROFILE_OFF
     if (s_producer_skipped) {
         s_skipped_producer_fifo += s_capture_frame_fifo;
@@ -696,8 +668,7 @@ void kj_g3_set_capture(bool capture)
 /* Render-only game producers call this before traversing their scene. Game
  * updates stay outside the gate. Refuse to suppress a producer if another
  * producer already started this scene; its pending geometry must finish. */
-int NitroPort_SkipSceneBuild(void)
-{
+int NitroPort_SkipSceneBuild(void) {
     if (s_capture_requested || s_in_begin || s_buf[s_build].frame.vert_count != 0) {
         return 0;
     }
@@ -708,25 +679,21 @@ int NitroPort_SkipSceneBuild(void)
     return 1;
 }
 
-void kj_g3_get_stats(kj_g3_stats *out)
-{
+void kj_g3_get_stats(kj_g3_stats *out) {
     *out = s_stats;
 }
 
-const kj_g3_frame *kj_g3_take_frame(void)
-{
+const kj_g3_frame *kj_g3_take_frame(void) {
     return s_have_display ? &s_buf[s_build ^ 1].frame : NULL;
 }
 
-static frame_buf *build(void)
-{
+static frame_buf *build(void) {
     return &s_buf[s_build];
 }
 
 /* The current clip matrix as a global (frame) matrix id, pushing it into
  * the frame's matrix list when it changed. */
-static bool current_gmtx(uint32_t *out)
-{
+static bool current_gmtx(uint32_t *out) {
     frame_buf *fb = build();
 
     if (s_cur_gmtx_version != s_clip_version || fb->pool_count == 0) {
@@ -750,24 +717,23 @@ static bool current_gmtx(uint32_t *out)
 }
 
 static const uint8_t EXPAND5[32] = {
-    0, 8, 16, 24, 33, 41, 49, 57, 66, 74, 82, 90, 99, 107, 115, 123,
+    0,   8,   16,  24,  33,  41,  49,  57,  66,  74,  82,  90,  99,  107, 115, 123,
     132, 140, 148, 156, 165, 173, 181, 189, 198, 206, 214, 222, 231, 239, 247, 255,
 };
 
-static void update_color_rgba(void)
-{
+static void update_color_rgba(void) {
     const unsigned a = (s_attr >> 16) & 31u;
     if (s_color_gpu && s_color_pending) {
         s_color_rgba = (s_color_rgba & 0x00FFFFFFu) | ((uint32_t)EXPAND5[a] << 24);
         return;
     }
     resolve_color();
-    s_color_rgba = (uint32_t)EXPAND5[s_color & 31u] | ((uint32_t)EXPAND5[(s_color >> 5) & 31u] << 8) |
+    s_color_rgba = (uint32_t)EXPAND5[s_color & 31u] |
+                   ((uint32_t)EXPAND5[(s_color >> 5) & 31u] << 8) |
                    ((uint32_t)EXPAND5[(s_color >> 10) & 31u] << 16) | ((uint32_t)EXPAND5[a] << 24);
 }
 
-static void material_changed(void)
-{
+static void material_changed(void) {
     s_batch_ok = false;
 }
 
@@ -780,76 +746,75 @@ static void material_changed(void)
  * picture with every Goldenrod map vertex lit in the shader. */
 static bool s_bake_lighting;
 
-static void normal_color(uint32_t value)
-{
+static void normal_color(uint32_t value) {
 #ifdef KJ_G3_GPU_LIGHTING
     if (!s_bake_lighting) {
-    if (s_checked_lighting_gen != s_lighting_gen) {
-        s_gpu_context_ok = true;
-        for (unsigned i = 0; i < 4; ++i) {
-            if (!(s_attr & (1u << i))) {
-                continue;
-            }
-            for (unsigned c = 0; c < 3; ++c) {
-                s_gpu_context_ok = s_gpu_context_ok &&
-                    s_light_dir[i][c] >= -16384 && s_light_dir[i][c] <= 16383 &&
-                    s_light_half[i][c] >= -16384 && s_light_half[i][c] <= 16383;
-            }
-        }
-        s_checked_lighting_gen = s_lighting_gen;
-    }
-    int32_t normal[3];
-    for (unsigned i = 0; i < 3; ++i) {
-        normal[i] = sign_bits(value >> (i * 10), 10) * 8;
-    }
-    transform_vector(normal, &s_vec, s_latched_normal);
-    bool fits = s_gpu_context_ok;
-    for (unsigned i = 0; i < 3; ++i) {
-        fits = fits && s_latched_normal[i] >= -8192 && s_latched_normal[i] <= 8191;
-    }
-    if (fits) {
-#ifndef HGSS_PROFILE_OFF
-        if (s_coarse_sample) {
-            ++s_sample_normals;
-        }
-#endif
-        if (s_latched_light_gen != s_lighting_gen) {
-            memset(&s_latched_light, 0, sizeof(s_latched_light));
-            memcpy(s_latched_light.direction, s_light_dir, sizeof(s_light_dir));
-            memcpy(s_latched_light.half, s_light_half, sizeof(s_light_half));
-            memcpy(s_latched_light.shininess, s_shininess, sizeof(s_shininess));
-            s_latched_light.enabled = s_attr & 15u;
-            s_latched_light.use_shininess = s_use_shininess;
-            for (unsigned c = 0; c < 3; ++c) {
-                s_latched_light.emission[c] = s_emission >> (c * 5) & 31u;
-            }
+        if (s_checked_lighting_gen != s_lighting_gen) {
+            s_gpu_context_ok = true;
             for (unsigned i = 0; i < 4; ++i) {
                 if (!(s_attr & (1u << i))) {
                     continue;
                 }
-                if (s_light_terms_dirty & (1u << i)) {
-                    update_light_terms(i);
+                for (unsigned c = 0; c < 3; ++c) {
+                    s_gpu_context_ok = s_gpu_context_ok && s_light_dir[i][c] >= -16384 &&
+                                       s_light_dir[i][c] <= 16383 && s_light_half[i][c] >= -16384 &&
+                                       s_light_half[i][c] <= 16383;
                 }
-                memcpy(s_latched_light.ambient[i], s_light_terms[i].ambient, 3);
-                memcpy(s_latched_light.diffuse[i], s_light_terms[i].diffuse, 3);
-                memcpy(s_latched_light.specular[i], s_light_terms[i].specular, 3);
             }
-            s_latched_light_gen = s_lighting_gen;
-            material_changed();
+            s_checked_lighting_gen = s_lighting_gen;
         }
-        if (!s_color_gpu) {
-            material_changed();
-        }
-        uint64_t bits = 0;
+        int32_t normal[3];
         for (unsigned i = 0; i < 3; ++i) {
-            bits |= (uint64_t)((uint32_t)s_latched_normal[i] & 16383u) << (14 * i);
+            normal[i] = sign_bits(value >> (i * 10), 10) * 8;
         }
-        s_normal_low = (uint32_t)bits;
-        s_normal_high = ((uint32_t)(bits >> 32) & 31u) << 19 |
-                        ((uint32_t)(bits >> 37) & 31u) << 24 | 0x80000000u;
-        s_color_gpu = s_color_pending = true;
-        return;
-    }
+        transform_vector(normal, &s_vec, s_latched_normal);
+        bool fits = s_gpu_context_ok;
+        for (unsigned i = 0; i < 3; ++i) {
+            fits = fits && s_latched_normal[i] >= -8192 && s_latched_normal[i] <= 8191;
+        }
+        if (fits) {
+#ifndef HGSS_PROFILE_OFF
+            if (s_coarse_sample) {
+                ++s_sample_normals;
+            }
+#endif
+            if (s_latched_light_gen != s_lighting_gen) {
+                memset(&s_latched_light, 0, sizeof(s_latched_light));
+                memcpy(s_latched_light.direction, s_light_dir, sizeof(s_light_dir));
+                memcpy(s_latched_light.half, s_light_half, sizeof(s_light_half));
+                memcpy(s_latched_light.shininess, s_shininess, sizeof(s_shininess));
+                s_latched_light.enabled = s_attr & 15u;
+                s_latched_light.use_shininess = s_use_shininess;
+                for (unsigned c = 0; c < 3; ++c) {
+                    s_latched_light.emission[c] = s_emission >> (c * 5) & 31u;
+                }
+                for (unsigned i = 0; i < 4; ++i) {
+                    if (!(s_attr & (1u << i))) {
+                        continue;
+                    }
+                    if (s_light_terms_dirty & (1u << i)) {
+                        update_light_terms(i);
+                    }
+                    memcpy(s_latched_light.ambient[i], s_light_terms[i].ambient, 3);
+                    memcpy(s_latched_light.diffuse[i], s_light_terms[i].diffuse, 3);
+                    memcpy(s_latched_light.specular[i], s_light_terms[i].specular, 3);
+                }
+                s_latched_light_gen = s_lighting_gen;
+                material_changed();
+            }
+            if (!s_color_gpu) {
+                material_changed();
+            }
+            uint64_t bits = 0;
+            for (unsigned i = 0; i < 3; ++i) {
+                bits |= (uint64_t)((uint32_t)s_latched_normal[i] & 16383u) << (14 * i);
+            }
+            s_normal_low = (uint32_t)bits;
+            s_normal_high = ((uint32_t)(bits >> 32) & 31u) << 19 |
+                            ((uint32_t)(bits >> 37) & 31u) << 24 | 0x80000000u;
+            s_color_gpu = s_color_pending = true;
+            return;
+        }
     }
 #endif
     s_color_gpu = s_color_pending = false;
@@ -857,8 +822,7 @@ static void normal_color(uint32_t value)
     update_color_rgba();
 }
 
-static bool current_lighting(void)
-{
+static bool current_lighting(void) {
     frame_buf *fb = build();
     if (s_current_light_gen == s_latched_light_gen && fb->frame.lighting_count != 0) {
         return true;
@@ -876,15 +840,13 @@ static bool current_lighting(void)
     return true;
 }
 
-static void close_batch(void)
-{
+static void close_batch(void) {
     s_batch = NULL;
     s_batch_ok = false;
     s_slot_gid = UINT32_MAX;
 }
 
-static bool open_batch(void)
-{
+static bool open_batch(void) {
     frame_buf *fb = build();
     if (s_color_gpu) {
         current_lighting();
@@ -929,8 +891,7 @@ static bool open_batch(void)
 
 /* Palette slot of global matrix `gid` in the open batch, adding it if
  * there is room; -1 when the palette is full. */
-static int palette_slot(uint32_t gid)
-{
+static int palette_slot(uint32_t gid) {
     const uint16_t count = s_batch->matrix_count;
 
     for (int i = count - 1; i >= 0; --i) {
@@ -959,20 +920,18 @@ static int palette_slot(uint32_t gid)
     return count;
 }
 
-static bool batch_matches_state(void)
-{
+static bool batch_matches_state(void) {
     if (s_batch_ok) {
         return true;
     }
     s_batch_ok = s_batch != NULL && s_batch_key_attr == s_attr && s_batch_key_tex == s_tex_param &&
                  s_batch_key_pltt == s_tex_pltt && s_batch_key_vp == s_viewport &&
-                 (!s_color_gpu || ((s_batch->flags & KJ_G3_BATCH_LIT) &&
-                                  s_batch_light_gen == s_latched_light_gen));
+                 (!s_color_gpu ||
+                  ((s_batch->flags & KJ_G3_BATCH_LIT) && s_batch_light_gen == s_latched_light_gen));
     return s_batch_ok;
 }
 
-static inline int cached_slot(uint32_t gid)
-{
+static inline int cached_slot(uint32_t gid) {
     if (gid == s_slot_gid) {
         return s_slot_idx;
     }
@@ -986,8 +945,7 @@ static inline int cached_slot(uint32_t gid)
 
 /* A vertex of the open batch for frame vertex `v`: vertices emitted before
  * the batch opened are copied into it with their matrix remapped. */
-static bool local_vertex(uint32_t v, uint32_t *out)
-{
+static bool local_vertex(uint32_t v, uint32_t *out) {
     frame_buf *fb = build();
 
     if (v >= s_batch_first_vert) {
@@ -1035,8 +993,7 @@ static bool local_vertex(uint32_t v, uint32_t *out)
 }
 
 /* Emit one triangle of frame vertices (a, b, c), batching by material. */
-static void emit_triangle(uint32_t a, uint32_t b, uint32_t c)
-{
+static void emit_triangle(uint32_t a, uint32_t b, uint32_t c) {
     frame_buf *fb = build();
     const unsigned alpha = (s_attr >> 16) & 31u;
     uint32_t la, lb, lc;
@@ -1050,7 +1007,8 @@ static void emit_triangle(uint32_t a, uint32_t b, uint32_t c)
         ++fb->frame.dropped_verts;
         return;
     }
-    if (s_batch_ok && a >= s_batch_first_vert && b >= s_batch_first_vert && c >= s_batch_first_vert) {
+    if (s_batch_ok && a >= s_batch_first_vert && b >= s_batch_first_vert &&
+        c >= s_batch_first_vert) {
         uint16_t *idx = fb->indices + fb->frame.index_count;
         idx[0] = (uint16_t)a;
         idx[1] = (uint16_t)b;
@@ -1078,8 +1036,7 @@ static void emit_triangle(uint32_t a, uint32_t b, uint32_t c)
     ++fb->frame.dropped_verts;
 }
 
-static void submit_vertex(void)
-{
+static void submit_vertex(void) {
     frame_buf *fb = build();
     uint32_t gid;
 
@@ -1091,7 +1048,7 @@ static void submit_vertex(void)
         return;
     }
     if ((s_tex_param >> 30) == 3) {
-        const int32_t src[3] = { s_coord[0], s_coord[1], s_coord[2] };
+        const int32_t src[3] = {s_coord[0], s_coord[1], s_coord[2]};
         texgen(src, 3);
     }
     if (!batch_matches_state() && !open_batch()) {
@@ -1172,20 +1129,17 @@ static void submit_vertex(void)
 
 /* ------------------------------------------------------- results, tests */
 
-static void put32(unsigned offset, uint32_t value)
-{
+static void put32(unsigned offset, uint32_t value) {
     memcpy(NitroPort_IoReg + offset, &value, 4);
 }
 
-static uint32_t get32(unsigned offset)
-{
+static uint32_t get32(unsigned offset) {
     uint32_t v;
     memcpy(&v, NitroPort_IoReg + offset, 4);
     return v;
 }
 
-void NitroPort_Gx3dSyncResults(void)
-{
+void NitroPort_Gx3dSyncResults(void) {
     const mtx *c = clip_matrix();
 
     for (int i = 0; i < 16; ++i) {
@@ -1196,8 +1150,7 @@ void NitroPort_Gx3dSyncResults(void)
     }
 }
 
-void NitroPort_Gx3dRefreshStatus(void)
-{
+void NitroPort_Gx3dRefreshStatus(void) {
     uint32_t stat = get32(0x600);
 
     stat &= ~((0x1Fu << 8) | (1u << 13) | (1u << 14) | 1u);
@@ -1215,15 +1168,13 @@ void NitroPort_Gx3dRefreshStatus(void)
     }
 }
 
-void NitroPort_Gx3dClearStackError(void)
-{
+void NitroPort_Gx3dClearStackError(void) {
     s_stack_error = false;
     s_proj_sp = 0;
     NitroPort_Gx3dRefreshStatus();
 }
 
-int NitroPort_Gx3dEarlierSceneUnread(void)
-{
+int NitroPort_Gx3dEarlierSceneUnread(void) {
     return 0;
 }
 
@@ -1235,8 +1186,7 @@ static uint32_t s_box_view_gen;
 static int s_box_x16 = 20; /* 1.25 * 16 */
 static int s_box_y16 = 16; /* 1.00 * 16 */
 
-static void box_view_refresh(void)
-{
+static void box_view_refresh(void) {
     const kj_field_view_desc *v = kj_field_view_current();
     if (v->view_generation == s_box_view_gen) {
         return;
@@ -1255,8 +1205,7 @@ static void box_view_refresh(void)
     s_box_view_gen = v->view_generation;
 }
 
-static void box_test(const uint32_t *p)
-{
+static void box_test(const uint32_t *p) {
     const int32_t x = sign_bits(p[0], 16), y = sign_bits(p[0] >> 16, 16);
     const int32_t z = sign_bits(p[1], 16), w = sign_bits(p[1] >> 16, 16);
     const int32_t h = sign_bits(p[2], 16), d = sign_bits(p[2] >> 16, 16);
@@ -1332,21 +1281,20 @@ static void box_test(const uint32_t *p)
     put32(0x600, stat);
 }
 
-static void pos_test(const uint32_t *p)
-{
+static void pos_test(const uint32_t *p) {
     s_coord[0] = (int16_t)sign_bits(p[0], 16);
     s_coord[1] = (int16_t)sign_bits(p[0] >> 16, 16);
     s_coord[2] = (int16_t)sign_bits(p[1], 16);
     const mtx *c = clip_matrix();
     for (int j = 0; j < 4; ++j) {
         const int64_t o = ((int64_t)s_coord[0] * c->m[0][j] + (int64_t)s_coord[1] * c->m[1][j] +
-                           (int64_t)s_coord[2] * c->m[2][j] + (int64_t)4096 * c->m[3][j]) >> 12;
+                           (int64_t)s_coord[2] * c->m[2][j] + (int64_t)4096 * c->m[3][j]) >>
+                          12;
         put32(0x620 + 4 * j, (uint32_t)o);
     }
 }
 
-static void vec_test(uint32_t p)
-{
+static void vec_test(uint32_t p) {
     int32_t in[3], out[3];
     for (int j = 0; j < 3; ++j) {
         in[j] = sign_bits(p >> (j * 10), 10) * 8;
@@ -1361,8 +1309,7 @@ static void vec_test(uint32_t p)
 
 /* ------------------------------------------------------------- swap */
 
-static void swap_buffers(uint32_t param)
-{
+static void swap_buffers(uint32_t param) {
     frame_buf *fb = build();
     kj_g3_frame *f = &fb->frame;
 
@@ -1420,23 +1367,46 @@ static void swap_buffers(uint32_t param)
 
 /* ------------------------------------------------------------- dispatch */
 
-static int param_count(unsigned op)
-{
+static int param_count(unsigned op) {
     switch (op) {
-    case 0x10: case 0x12: case 0x13: case 0x14:
-    case 0x20: case 0x21: case 0x22: case 0x24: case 0x25: case 0x26: case 0x27: case 0x28:
-    case 0x29: case 0x2A: case 0x2B: case 0x30: case 0x31: case 0x32: case 0x33:
-    case 0x40: case 0x50: case 0x60: case 0x72:
+    case 0x10:
+    case 0x12:
+    case 0x13:
+    case 0x14:
+    case 0x20:
+    case 0x21:
+    case 0x22:
+    case 0x24:
+    case 0x25:
+    case 0x26:
+    case 0x27:
+    case 0x28:
+    case 0x29:
+    case 0x2A:
+    case 0x2B:
+    case 0x30:
+    case 0x31:
+    case 0x32:
+    case 0x33:
+    case 0x40:
+    case 0x50:
+    case 0x60:
+    case 0x72:
         return 1;
-    case 0x16: case 0x18:
+    case 0x16:
+    case 0x18:
         return 16;
-    case 0x17: case 0x19:
+    case 0x17:
+    case 0x19:
         return 12;
     case 0x1A:
         return 9;
-    case 0x1B: case 0x1C: case 0x70:
+    case 0x1B:
+    case 0x1C:
+    case 0x70:
         return 3;
-    case 0x23: case 0x71:
+    case 0x23:
+    case 0x71:
         return 2;
     case 0x34:
         return 32;
@@ -1450,16 +1420,14 @@ extern u64 svcGetSystemTick(void);
 static u64 s_op_ticks[256];
 static u32 s_op_calls[256];
 static void execute_inner(unsigned op, const uint32_t *p);
-static void execute(unsigned op, const uint32_t *p)
-{
+static void execute(unsigned op, const uint32_t *p) {
     const u64 t0 = svcGetSystemTick();
     execute_inner(op, p);
     s_op_ticks[op & 255] += svcGetSystemTick() - t0;
     ++s_op_calls[op & 255];
 }
 
-void kj_g3_log_op_profile(void)
-{
+void kj_g3_log_op_profile(void) {
     for (int i = 0; i < 256; ++i) {
         if (s_op_calls[i]) {
             NitroPort_Log("[g3prof] op %02x calls %lu ticks %llu (%llu/call)", i,
@@ -1473,8 +1441,7 @@ void kj_g3_log_op_profile(void)
 
 static void execute_inner(unsigned op, const uint32_t *p)
 #else
-void kj_g3_log_op_profile(void)
-{
+void kj_g3_log_op_profile(void) {
 }
 
 static void execute(unsigned op, const uint32_t *p)
@@ -1495,22 +1462,24 @@ static void execute(unsigned op, const uint32_t *p)
         const bool proj_is = memcmp(&s_proj, &zero, sizeof(zero)) == 0;
         if (((pos_is && !pos_was) || (proj_is && !proj_was)) && reported < 64) {
             ++reported;
-            NitroPort_Log("[g3zero] op %02x p0 %08lx mode %d sp %d -> pos %d proj %d (swap %lu)", op,
-                          (unsigned long)p[0], s_mtx_mode, s_posvec_sp, pos_is, proj_is,
+            NitroPort_Log("[g3zero] op %02x p0 %08lx mode %d sp %d -> pos %d proj %d (swap %lu)",
+                          op, (unsigned long)p[0], s_mtx_mode, s_posvec_sp, pos_is, proj_is,
                           (unsigned long)s_stats.swaps);
         }
         return;
     }
 }
 
-static void execute_body(unsigned op, const uint32_t *p)
-{
+static void execute_body(unsigned op, const uint32_t *p) {
 #endif
     switch (op) {
     case 0x10:
         s_mtx_mode = (int)(p[0] & 3);
         break;
-    case 0x11: case 0x12: case 0x13: case 0x14:
+    case 0x11:
+    case 0x12:
+    case 0x13:
+    case 0x14:
         stack_op(op, p[0]);
         break;
     case 0x15: {
@@ -1519,13 +1488,16 @@ static void execute_body(unsigned op, const uint32_t *p)
         load_matrix(&m);
         break;
     }
-    case 0x16: case 0x17: {
+    case 0x16:
+    case 0x17: {
         mtx m;
         read_matrix(&m, op, p);
         load_matrix(&m);
         break;
     }
-    case 0x18: case 0x19: case 0x1A: {
+    case 0x18:
+    case 0x19:
+    case 0x1A: {
         mtx m;
         read_matrix(&m, op, p);
         mult_matrix(&m, op);
@@ -1544,8 +1516,8 @@ static void execute_body(unsigned op, const uint32_t *p)
         break;
     case 0x21:
         if ((s_tex_param >> 30) == 2) {
-            const int32_t src[3] = { sign_bits(p[0], 10) * 8, sign_bits(p[0] >> 10, 10) * 8,
-                                     sign_bits(p[0] >> 20, 10) * 8 };
+            const int32_t src[3] = {sign_bits(p[0], 10) * 8, sign_bits(p[0] >> 10, 10) * 8,
+                                    sign_bits(p[0] >> 20, 10) * 8};
             texgen(src, 2);
         }
         if (s_attr & 0xF) {
@@ -1649,7 +1621,8 @@ static void execute_body(unsigned op, const uint32_t *p)
         }
         int32_t dir[3];
         transform_vector(in, &s_vec, dir);
-        if (dir[0] != s_light_dir[i][0] || dir[1] != s_light_dir[i][1] || dir[2] != s_light_dir[i][2]) {
+        if (dir[0] != s_light_dir[i][0] || dir[1] != s_light_dir[i][1] ||
+            dir[2] != s_light_dir[i][2]) {
             s_light_dir[i][0] = dir[0];
             s_light_dir[i][1] = dir[1];
             s_light_dir[i][2] = dir[2];
@@ -1724,8 +1697,7 @@ static unsigned s_direct_op;
 static uint32_t s_direct_params[32];
 static int s_direct_have;
 
-void NitroPort_GxDirectWrite(int opcode, uint32_t value)
-{
+void NitroPort_GxDirectWrite(int opcode, uint32_t value) {
     const unsigned op = (unsigned)opcode & 0xFF;
     const int need = param_count(op);
 
@@ -1750,16 +1722,15 @@ void NitroPort_GxDirectWrite(int opcode, uint32_t value)
 
 /* Packed GXFIFO: a word of up to four opcodes (low byte first), then the
  * parameters of each in turn. */
-static uint32_t s_fifo_cmds;     /* remaining packed opcodes */
-static int s_fifo_left;          /* opcodes left in the packed word */
+static uint32_t s_fifo_cmds; /* remaining packed opcodes */
+static int s_fifo_left;      /* opcodes left in the packed word */
 static unsigned s_fifo_op;
 static int s_fifo_need, s_fifo_have;
 static uint32_t s_fifo_params[32];
 
 static void fifo_command(unsigned op, const uint32_t *p);
 
-static void fifo_next_command(void)
-{
+static void fifo_next_command(void) {
     while (s_fifo_left > 0) {
         s_fifo_op = s_fifo_cmds & 0xFF;
         s_fifo_cmds >>= 8;
@@ -1780,8 +1751,7 @@ static void fifo_next_command(void)
     s_fifo_need = 0;
 }
 
-void NitroPort_GxFifoWord(uint32_t value)
-{
+void NitroPort_GxFifoWord(uint32_t value) {
     if (s_fifo_need > 0) {
         s_fifo_params[s_fifo_have++] = value;
         if (s_fifo_have >= s_fifo_need) {
@@ -1796,7 +1766,6 @@ void NitroPort_GxFifoWord(uint32_t value)
     fifo_next_command();
 }
 
-
 static uint8_t s_param_count[256];
 
 /* Vertex fast path for the bulk decoder: everything the general path
@@ -1806,8 +1775,7 @@ static uint8_t s_param_count[256];
  * the vertex and assembles the primitive inline. Returns false to make the
  * caller take the general path. Kept small: it runs ~14k times a frame in
  * Goldenrod (ARM11 L1 I-cache: coffeepot icachebench). */
-static bool fast_vertex(void)
-{
+static bool fast_vertex(void) {
     if (!s_in_begin || !s_batch_ok || s_cur_gmtx_version != s_clip_version ||
         s_slot_gid != s_cur_gmtx || (s_tex_param >> 30) == 3) {
         return false;
@@ -1821,7 +1789,8 @@ static bool fast_vertex(void)
     uint32_t *w = (uint32_t *)&fb->verts[n];
     if (s_capture_scene) {
         w[0] = (uint16_t)s_coord[0] | ((uint32_t)(uint16_t)s_coord[1] << 16);
-        w[1] = (uint16_t)s_coord[2] | ((uint32_t)s_slot_idx << 16) | (s_color_gpu ? s_normal_high : 0);
+        w[1] =
+            (uint16_t)s_coord[2] | ((uint32_t)s_slot_idx << 16) | (s_color_gpu ? s_normal_high : 0);
         w[2] = s_color_gpu ? s_normal_low : s_color_rgba;
         w[3] = (uint16_t)s_texcoord[0] | ((uint32_t)(uint16_t)s_texcoord[1] << 16);
     }
@@ -1946,8 +1915,7 @@ done:
  * ARM11's 16 KiB I-cache (coffeepot cpu-optimization.md, icachebench: CPI
  * 1.1 up to 16 KiB, 5.6 from 32 KiB). With the fast path inlined into
  * each opcode and both decode branches this function was 14.6 KiB. */
-static inline __attribute__((always_inline)) void hot_command(unsigned op, const uint32_t *p)
-{
+static inline __attribute__((always_inline)) void hot_command(unsigned op, const uint32_t *p) {
     /* Zero-parameter commands may point one past the end of a FIFO list. */
     const uint32_t v = op >= 0x20 && op <= 0x28 ? p[0] : 0;
     switch (op) {
@@ -2007,13 +1975,11 @@ vertex:
 /* A command completed across FIFO calls still has exactly the same vertex
  * state as a bulk command. Reuse its fast path instead of forcing every
  * split vertex through submit_vertex and the general dispatcher. */
-static void fifo_command(unsigned op, const uint32_t *p)
-{
+static void fifo_command(unsigned op, const uint32_t *p) {
     hot_command(op, p);
 }
 
-static void build_param_table(void)
-{
+static void build_param_table(void) {
     for (unsigned op = 0; op < 256; ++op) {
         s_param_count[op] = (uint8_t)param_count(op);
     }
@@ -2025,7 +1991,6 @@ static void build_param_table(void)
  * parameters run past the end of the buffer goes through the word-at-a-time
  * path, which also finishes any command left open by an earlier call. */
 static u32 s_fifo_calls;
-
 
 /* ------------------------------------------------- retained display lists */
 
@@ -2090,11 +2055,21 @@ typedef struct dl_block {
 
 /* Pure state-list snapshot groups (see dl_state_replay). */
 enum {
-    PS_MODE = 1u << 0, PS_PROJ = 1u << 1, PS_POS = 1u << 2, PS_VEC = 1u << 3, PS_TEX = 1u << 4,
-    PS_LDIR = 1u << 5,   /* four bits, one per light */
-    PS_LCOL = 1u << 9,   /* four bits */
-    PS_DIFAMB = 1u << 13, PS_SPEEMI = 1u << 14, PS_SHIN = 1u << 15, PS_ATTR = 1u << 16,
-    PS_TEXP = 1u << 17, PS_PLTT = 1u << 18, PS_VP = 1u << 19, PS_COLOR = 1u << 20,
+    PS_MODE = 1u << 0,
+    PS_PROJ = 1u << 1,
+    PS_POS = 1u << 2,
+    PS_VEC = 1u << 3,
+    PS_TEX = 1u << 4,
+    PS_LDIR = 1u << 5, /* four bits, one per light */
+    PS_LCOL = 1u << 9, /* four bits */
+    PS_DIFAMB = 1u << 13,
+    PS_SPEEMI = 1u << 14,
+    PS_SHIN = 1u << 15,
+    PS_ATTR = 1u << 16,
+    PS_TEXP = 1u << 17,
+    PS_PLTT = 1u << 18,
+    PS_VP = 1u << 19,
+    PS_COLOR = 1u << 20,
 };
 
 typedef struct dl_state {
@@ -2118,15 +2093,15 @@ typedef struct dl_entry {
     const uint32_t *ptr;
     uint32_t count;
     bool recorded;
-    bool fixed_clip;   /* no matrix command inside: one clip matrix for all blocks */
+    bool fixed_clip;      /* no matrix command inside: one clip matrix for all blocks */
     int16_t lo[3], hi[3]; /* bounds of every retained block */
-    bool never;        /* proven unrecordable for this content */
-    bool command_plan; /* events contain decoded commands, not baked vertex blocks */
+    bool never;           /* proven unrecordable for this content */
+    bool command_plan;    /* events contain decoded commands, not baked vertex blocks */
     bool vertex_plan;
     int16_t coord_key[3];
     int16_t (*coords)[3];
     uint32_t ncoords, cap_coords;
-    bool needs_light;  /* seen lighting its normals: key on lighting state */
+    bool needs_light; /* seen lighting its normals: key on lighting state */
     /* GPU lighting: a lit list that cannot bake (it relights under its own
      * matrix changes or shares strip vertices) or whose lighting key keeps
      * changing (animated vector matrix) runs as a live vertex plan lit on
@@ -2140,7 +2115,7 @@ typedef struct dl_entry {
      * A lit NORMAL overwrites colour; an unlit NORMAL leaves it inherited. */
     uint32_t reads[4];
     uint32_t *words;
-    uint32_t *layout;   /* command-word offsets in words (see dl_layout_plan) */
+    uint32_t *layout; /* command-word offsets in words (see dl_layout_plan) */
     uint32_t nlayout, cap_layout;
     dl_key key;
     bool lit, texgen;
@@ -2156,7 +2131,7 @@ typedef struct dl_entry {
     uint32_t cap_events, cap_blocks, cap_verts, cap_idx; /* storage kept across re-recordings */
     uint32_t bytes;
     uint32_t last_frame;
-    dl_state *snap;    /* pure state list: its final state (arena) */
+    dl_state *snap; /* pure state list: its final state (arena) */
 } dl_entry;
 
 /* Recording state (one list at a time; lists do not nest). */
@@ -2180,8 +2155,7 @@ static uint8_t *s_dl_arena;
 static uint32_t s_dl_arena_used;
 static uint32_t s_dl_flushes;
 
-static void *dl_alloc(uint32_t n)
-{
+static void *dl_alloc(uint32_t n) {
     if (s_dl_arena == NULL) {
         s_dl_arena = malloc(DL_BYTES_MAX);
         if (s_dl_arena == NULL) {
@@ -2197,8 +2171,7 @@ static void *dl_alloc(uint32_t n)
     return ptr;
 }
 
-static void dl_flush_all(void)
-{
+static void dl_flush_all(void) {
     memset(s_dl, 0, sizeof(s_dl));
     s_dl_arena_used = 0;
 #ifndef HGSS_PROFILE_OFF
@@ -2206,8 +2179,7 @@ static void dl_flush_all(void)
 #endif
 }
 
-void kj_g3_shutdown(void)
-{
+void kj_g3_shutdown(void) {
     /* G3-owned storage only: the display-list arena. The two vertex/index
      * buffer pairs are allocated and owned by the renderer (kj_g3_storage)
      * and are only borrowed here, so clear the borrow rather than free it. */
@@ -2228,13 +2200,25 @@ static uint32_t s_dl_plan_calls, s_dl_plan_words;
 #endif
 /* Word coverage of the cache: short lists, a new slot, changed contents,
  * proven uncacheable, replayed, recorded but missed on the entry key. */
-enum { DLC_SHORT, DLC_SMALL, DLC_BEGIN, DLC_BEGIN_FIRST, DLC_SPLIT, DLC_NEW, DLC_CHANGED, DLC_NEVER, DLC_HIT, DLC_KEY, DLC_COUNT };
+enum {
+    DLC_SHORT,
+    DLC_SMALL,
+    DLC_BEGIN,
+    DLC_BEGIN_FIRST,
+    DLC_SPLIT,
+    DLC_NEW,
+    DLC_CHANGED,
+    DLC_NEVER,
+    DLC_HIT,
+    DLC_KEY,
+    DLC_COUNT
+};
 static uint32_t s_dl_cov[DLC_COUNT];
-static uint32_t s_dl_why[6]; /* batch-in-block, shared-verts, straddle/drops, lit+matrix, swap, open-prim */
+static uint32_t
+    s_dl_why[6]; /* batch-in-block, shared-verts, straddle/drops, lit+matrix, swap, open-prim */
 
 /* Close the vertex block in progress (if it produced anything). */
-static void rec_close_block(void)
-{
+static void rec_close_block(void) {
     frame_buf *fb = &s_buf[s_build];
     const uint32_t v1 = fb->frame.vert_count, i1 = fb->frame.index_count;
 
@@ -2242,7 +2226,8 @@ static void rec_close_block(void)
         return;
     }
     const uint32_t opened = fb->frame.batch_count - s_rec.block_b0;
-    if (opened > 1u || (opened == 1u && fb->batches[fb->frame.batch_count - 1].first_index != s_rec.block_i0) ||
+    if (opened > 1u ||
+        (opened == 1u && fb->batches[fb->frame.batch_count - 1].first_index != s_rec.block_i0) ||
         s_rec.nevents >= DL_MAX_EVENTS || s_rec.nblocks >= DL_MAX_EVENTS) {
         s_rec.bad = true; /* batches changed inside the block, or too many events */
 #ifndef HGSS_PROFILE_OFF
@@ -2282,8 +2267,7 @@ static void rec_close_block(void)
     }
 }
 
-static void rec_open_block(void)
-{
+static void rec_open_block(void) {
     frame_buf *fb = &s_buf[s_build];
     s_rec.block_v0 = fb->frame.vert_count;
     s_rec.block_i0 = fb->frame.index_count;
@@ -2291,8 +2275,7 @@ static void rec_open_block(void)
 }
 
 /* Called by decode_words before each command while recording. */
-static void rec_command(unsigned op, const uint32_t *p)
-{
+static void rec_command(unsigned op, const uint32_t *p) {
     if (op >= 0x20 && op <= 0x28) {
         if (op == 0x21 && (s_attr & 0xFu)) {
             s_rec.vecdep = true;
@@ -2324,7 +2307,6 @@ static void rec_command(unsigned op, const uint32_t *p)
     s_rec.events[s_rec.nevents++] = (uint32_t)(p - s_rec.base) | ((uint32_t)op << 20);
 }
 
-
 /* Which entry inputs a list reads before it writes them (scan in order). */
 #define DL_READS_COLOR 1u
 #define DL_READS_COORD 2u
@@ -2333,8 +2315,7 @@ static void rec_command(unsigned op, const uint32_t *p)
 #define DL_HAS_VERTEX_DATA 16u /* any COLOR/NORMAL/TEXCOORD/VTX command */
 #define DL_HAS_NORMAL 32u
 
-static uint32_t dl_entry_reads(const uint32_t *w, size_t n, unsigned lights)
-{
+static uint32_t dl_entry_reads(const uint32_t *w, size_t n, unsigned lights) {
     uint32_t reads = 0, written = 0;
     bool lit = (lights & 1u) != 0, pending_lit = (lights & 2u) != 0;
     size_t i = 0;
@@ -2344,8 +2325,8 @@ static uint32_t dl_entry_reads(const uint32_t *w, size_t n, unsigned lights)
             const unsigned op = cmds & 0xFF;
             const size_t params = s_param_count[op];
             if (params > n - i) {
-                return DL_READS_COLOR | DL_READS_COORD | DL_READS_TEXCOORD |
-                       DL_READS_TEXM | DL_HAS_VERTEX_DATA;
+                return DL_READS_COLOR | DL_READS_COORD | DL_READS_TEXCOORD | DL_READS_TEXM |
+                       DL_HAS_VERTEX_DATA;
             }
             if (op >= 0x20 && op <= 0x28) {
                 reads |= DL_HAS_VERTEX_DATA;
@@ -2369,16 +2350,32 @@ static uint32_t dl_entry_reads(const uint32_t *w, size_t n, unsigned lights)
             case 0x22:
                 written |= DL_READS_TEXCOORD;
                 break;
-            case 0x23: case 0x24:
+            case 0x23:
+            case 0x24:
                 reads |= ~written & (DL_READS_COLOR | DL_READS_TEXCOORD);
                 written |= DL_READS_COORD;
                 break;
-            case 0x25: case 0x26: case 0x27: case 0x28:
+            case 0x25:
+            case 0x26:
+            case 0x27:
+            case 0x28:
                 reads |= ~written & (DL_READS_COLOR | DL_READS_TEXCOORD | DL_READS_COORD);
                 written |= DL_READS_COORD;
                 break;
-            case 0x2A: case 0x10: case 0x11: case 0x12: case 0x13: case 0x14: case 0x15:
-            case 0x16: case 0x17: case 0x18: case 0x19: case 0x1A: case 0x1B: case 0x1C:
+            case 0x2A:
+            case 0x10:
+            case 0x11:
+            case 0x12:
+            case 0x13:
+            case 0x14:
+            case 0x15:
+            case 0x16:
+            case 0x17:
+            case 0x18:
+            case 0x19:
+            case 0x1A:
+            case 0x1B:
+            case 0x1C:
                 reads |= DL_READS_TEXM; /* texgen or texture matrix may change inside */
                 break;
             default:
@@ -2390,8 +2387,7 @@ static uint32_t dl_entry_reads(const uint32_t *w, size_t n, unsigned lights)
     return reads;
 }
 
-static void dl_set_reads(dl_entry *e, const uint32_t *words, size_t count)
-{
+static void dl_set_reads(dl_entry *e, const uint32_t *words, size_t count) {
     for (unsigned lights = 0; lights < 4; ++lights) {
         e->reads[lights] = dl_entry_reads(words, count, lights);
     }
@@ -2401,8 +2397,7 @@ static void dl_set_reads(dl_entry *e, const uint32_t *words, size_t count)
  * idle validates a state list ~41 times a frame on CITnLO (LOTUS, 2026-11-23),
  * so validation must not re-walk parameter counts; it compares only the
  * command words against the retained copy (issue #30). */
-static void dl_layout_plan(dl_entry *e, const uint32_t *words, size_t count)
-{
+static void dl_layout_plan(dl_entry *e, const uint32_t *words, size_t count) {
     size_t i = 0, n = 0;
     while (i < count) {
         ++n;
@@ -2445,8 +2440,7 @@ static void dl_layout_plan(dl_entry *e, const uint32_t *words, size_t count)
  * word before using the retained event offsets, so changing camera/material
  * parameters do not force a new recording. A changed command layout falls
  * through to the ordinary full comparison/recording path. */
-static bool dl_state_layout_same(const dl_entry *e, const uint32_t *words, size_t count)
-{
+static bool dl_state_layout_same(const dl_entry *e, const uint32_t *words, size_t count) {
 #ifndef HGSS_PROFILE_OFF
     const u64 t = s_coarse_sample ? svcGetSystemTick() : 0;
 #endif
@@ -2499,22 +2493,18 @@ static bool dl_state_layout_same(const dl_entry *e, const uint32_t *words, size_
  * texgen matrices nor shininess; clearing/comparing those bytes on every
  * cache lookup needlessly streams through the ARM11's small data cache.
  * All bytes in the selected prefix are initialized, including padding. */
-static size_t dl_key_size(bool lit, bool texgen, uint32_t reads)
-{
+static size_t dl_key_size(bool lit, bool texgen, uint32_t reads) {
     if (lit) {
         return s_use_shininess ? sizeof(dl_key) : offsetof(dl_key, shininess);
     }
-    return texgen || (reads & DL_READS_TEXM) ? offsetof(dl_key, vec)
-                                          : offsetof(dl_key, texm);
+    return texgen || (reads & DL_READS_TEXM) ? offsetof(dl_key, vec) : offsetof(dl_key, texm);
 }
 
 #ifndef HGSS_PROFILE_OFF
 /* Field name for the first differing key word (#29 attribution). */
-static const char *dl_key_field(unsigned word)
-{
-    static const char *const head[] = {
-        "attr_pending", "attr", "tex_param", "tex_pltt", "viewport", "color"
-    };
+static const char *dl_key_field(unsigned word) {
+    static const char *const head[] = {"attr_pending", "attr",     "tex_param",
+                                       "tex_pltt",     "viewport", "color"};
     if (word < sizeof(head) / sizeof(head[0])) {
         return head[word];
     }
@@ -2558,8 +2548,7 @@ static const char *dl_key_field(unsigned word)
 }
 #endif
 
-static void dl_make_key(dl_key *k, bool lit, bool texgen, uint32_t reads)
-{
+static void dl_make_key(dl_key *k, bool lit, bool texgen, uint32_t reads) {
     if (reads & DL_READS_COLOR) {
         resolve_color();
     }
@@ -2612,14 +2601,13 @@ static void dl_make_key(dl_key *k, bool lit, bool texgen, uint32_t reads)
  * key before comparing it: most lists replay every frame. Keep the stored
  * key as an exact snapshot, with no hash/generation collision assumption.
  * Coffeepot cpu-optimization.md: small hot data, avoid repeated copies. */
-static bool dl_key_matches(const dl_key *k, bool lit, bool texgen, uint32_t reads)
-{
+static bool dl_key_matches(const dl_key *k, bool lit, bool texgen, uint32_t reads) {
     if (reads & DL_READS_COLOR) {
         resolve_color();
     }
-    if (k->attr_pending != s_attr_pending || k->attr != s_attr ||
-        k->tex_param != s_tex_param || k->tex_pltt != s_tex_pltt ||
-        k->viewport != s_viewport || k->mtx_mode != (uint32_t)s_mtx_mode) {
+    if (k->attr_pending != s_attr_pending || k->attr != s_attr || k->tex_param != s_tex_param ||
+        k->tex_pltt != s_tex_pltt || k->viewport != s_viewport ||
+        k->mtx_mode != (uint32_t)s_mtx_mode) {
         return false;
     }
     if ((reads & DL_READS_COLOR) && k->color != s_color) {
@@ -2635,8 +2623,7 @@ static bool dl_key_matches(const dl_key *k, bool lit, bool texgen, uint32_t read
          memcmp(k->texcoord_raw, s_texcoord_raw, sizeof(k->texcoord_raw)) != 0)) {
         return false;
     }
-    if ((texgen || (reads & DL_READS_TEXM)) &&
-        memcmp(k->texm, s_tex.m, sizeof(k->texm)) != 0) {
+    if ((texgen || (reads & DL_READS_TEXM)) && memcmp(k->texm, s_tex.m, sizeof(k->texm)) != 0) {
         return false;
     }
     if (!lit) {
@@ -2662,8 +2649,7 @@ static bool dl_key_matches(const dl_key *k, bool lit, bool texgen, uint32_t read
     return !s_use_shininess || memcmp(k->shininess, s_shininess, sizeof(k->shininess)) == 0;
 }
 
-static dl_entry *dl_slot(const uint32_t *ptr, uint32_t count)
-{
+static dl_entry *dl_slot(const uint32_t *ptr, uint32_t count) {
     const uint32_t h = (uint32_t)(((uintptr_t)ptr >> 2) * 2654435761u ^ count * 40503u);
     uint32_t i = h & (DL_SLOTS - 1u);
     dl_entry *victim = NULL;
@@ -2683,8 +2669,7 @@ static dl_entry *dl_slot(const uint32_t *ptr, uint32_t count)
  * re-recorded every frame or two (keyed on changing entry state) reuses it
  * instead of filling the arena, whose flush re-records everything in one
  * frame (Goldenrod: 29.6 ms logic against 13.7, twice per 600 frames). */
-static void dl_drop_recording(dl_entry *e)
-{
+static void dl_drop_recording(dl_entry *e) {
     if (e->snap != NULL) {
         e->snap->mask = 0;
     }
@@ -2695,8 +2680,7 @@ static void dl_drop_recording(dl_entry *e)
 }
 
 /* Room for need elements in *ptr: the existing storage if large enough. */
-static bool dl_reserve(void **ptr, uint32_t *cap, uint32_t need, uint32_t elem)
-{
+static bool dl_reserve(void **ptr, uint32_t *cap, uint32_t need, uint32_t elem) {
     if (need <= *cap) {
         return true;
     }
@@ -2709,13 +2693,11 @@ static bool dl_reserve(void **ptr, uint32_t *cap, uint32_t need, uint32_t elem)
     return true;
 }
 
-static void dl_free(dl_entry *e)
-{
+static void dl_free(dl_entry *e) {
     memset(e, 0, sizeof(*e));
 }
 
-static void dl_capture_exit(dl_exit *x, uint32_t v0)
-{
+static void dl_capture_exit(dl_exit *x, uint32_t v0) {
     resolve_color();
     x->color = s_color;
     memcpy(x->coord, s_coord, sizeof(x->coord));
@@ -2764,9 +2746,8 @@ static dl_profile s_dl_profile[DL_PROFILE_SLOTS];
 static uint32_t s_dl_profile_overflow;
 static uint64_t s_dl_profile_omitted_ticks;
 
-static void dl_profile_add(const uint32_t *words, size_t count, uintptr_t caller,
-                           uint64_t ticks, uint64_t decode, uint64_t replay, uint64_t copy)
-{
+static void dl_profile_add(const uint32_t *words, size_t count, uintptr_t caller, uint64_t ticks,
+                           uint64_t decode, uint64_t replay, uint64_t copy) {
     /* Short/split traffic has many transient interior pointers. Group short
      * calls by length/caller so they cannot crowd model lists out of the table. */
     if (count < DL_MIN_WORDS) {
@@ -2775,8 +2756,7 @@ static void dl_profile_add(const uint32_t *words, size_t count, uintptr_t caller
     const unsigned start = (unsigned)(((uintptr_t)words >> 2) ^ count ^ (caller >> 2));
     for (unsigned i = 0; i < DL_PROFILE_SLOTS; ++i) {
         dl_profile *p = &s_dl_profile[(start + i) & (DL_PROFILE_SLOTS - 1u)];
-        if (p->samples != 0 &&
-            (p->source != words || p->words != count || p->caller != caller)) {
+        if (p->samples != 0 && (p->source != words || p->words != count || p->caller != caller)) {
             continue;
         }
         if (p->samples == 0) {
@@ -2806,14 +2786,13 @@ static void dl_profile_add(const uint32_t *words, size_t count, uintptr_t caller
     s_dl_profile_omitted_ticks += ticks;
 }
 
-static void dl_profile_report(void)
-{
-    NitroPort_Log("[dltop] top 20 by sampled total ticks; random 1/64; omitted samples %lu ticks %llu; "
-                  "src NULL groups short calls; copy is inside replay; "
-                  "reject bits: batch=1 shared=2 drops/split=4 "
-                  "lit+matrix=8 swap=16 open-prim=32",
-                  (unsigned long)s_dl_profile_overflow,
-                  (unsigned long long)s_dl_profile_omitted_ticks);
+static void dl_profile_report(void) {
+    NitroPort_Log(
+        "[dltop] top 20 by sampled total ticks; random 1/64; omitted samples %lu ticks %llu; "
+        "src NULL groups short calls; copy is inside replay; "
+        "reject bits: batch=1 shared=2 drops/split=4 "
+        "lit+matrix=8 swap=16 open-prim=32",
+        (unsigned long)s_dl_profile_overflow, (unsigned long long)s_dl_profile_omitted_ticks);
     for (unsigned rank = 0; rank < 20; ++rank) {
         dl_profile *best = NULL;
         for (unsigned i = 0; i < DL_PROFILE_SLOTS; ++i) {
@@ -2828,15 +2807,14 @@ static void dl_profile_report(void)
         NitroPort_Log("[dltop] src %p caller %p words %lu n %lu hits %lu swaps %lu-%lu "
                       "ticks total/decode/replay/copy/max %llu/%llu/%llu/%llu/%llu "
                       "copy_bytes %llu normals/misses %lu/%lu reject %lx rechecks %lu",
-                      (const void *)best->source, (void *)best->caller,
-                      (unsigned long)best->words, (unsigned long)best->samples,
-                      (unsigned long)best->hits, (unsigned long)best->first_swap,
-                      (unsigned long)best->last_swap, (unsigned long long)best->total,
-                      (unsigned long long)best->decode, (unsigned long long)best->replay,
-                      (unsigned long long)best->copy, (unsigned long long)best->max_ticks,
-                      (unsigned long long)best->copy_bytes, (unsigned long)best->normals,
-                      (unsigned long)best->shade_misses, (unsigned long)best->rejects,
-                      (unsigned long)best->rechecks);
+                      (const void *)best->source, (void *)best->caller, (unsigned long)best->words,
+                      (unsigned long)best->samples, (unsigned long)best->hits,
+                      (unsigned long)best->first_swap, (unsigned long)best->last_swap,
+                      (unsigned long long)best->total, (unsigned long long)best->decode,
+                      (unsigned long long)best->replay, (unsigned long long)best->copy,
+                      (unsigned long long)best->max_ticks, (unsigned long long)best->copy_bytes,
+                      (unsigned long)best->normals, (unsigned long)best->shade_misses,
+                      (unsigned long)best->rejects, (unsigned long)best->rechecks);
         best->samples = 0;
     }
     memset(s_dl_profile, 0, sizeof(s_dl_profile));
@@ -2845,9 +2823,7 @@ static void dl_profile_report(void)
 }
 #endif
 
-
-static bool dl_append_block(const dl_entry *e, const dl_block *b, uint32_t *v_first_out)
-{
+static bool dl_append_block(const dl_entry *e, const dl_block *b, uint32_t *v_first_out) {
     frame_buf *fb = &s_buf[s_build];
     uint32_t gid;
 
@@ -2898,12 +2874,12 @@ static bool dl_append_block(const dl_entry *e, const dl_block *b, uint32_t *v_fi
 #ifndef HGSS_PROFILE_OFF
     if (s_coarse_sample) {
         s_coarse_copy += svcGetSystemTick() - copy_start;
-        s_sample_copy_bytes += (s_capture_scene ? (uint64_t)b->nverts * sizeof(kj_g3_vertex) : 0) + b->nidx * 2u;
+        s_sample_copy_bytes +=
+            (s_capture_scene ? (uint64_t)b->nverts * sizeof(kj_g3_vertex) : 0) + b->nidx * 2u;
     }
 #endif
     return true;
 }
-
 
 #if !defined(KJ_G3_NO_CULL)
 #define KJ_G3_CULL
@@ -2930,8 +2906,7 @@ static uint32_t s_cull_tests, s_cull_blocks, s_cull_verts, s_cull_tris;
 static uint32_t s_plane_version, s_plane_view_gen;
 static int64_t s_plane[4][4];
 
-static void cull_planes(void)
-{
+static void cull_planes(void) {
     const kj_field_view_desc *v = kj_field_view_current();
     if (s_plane_version == s_clip_version && s_plane_view_gen == v->view_generation) {
         return;
@@ -2966,8 +2941,7 @@ static void cull_planes(void)
  * 0: it straddles. Exact integer maxima/minima over the box's corners
  * (centre value plus or minus the absolute extent), doubled to stay
  * integral: the same answer as testing all eight corners. */
-static int box_visibility(const int16_t lo[3], const int16_t hi[3])
-{
+static int box_visibility(const int16_t lo[3], const int16_t hi[3]) {
     /* Task 7 D: A/B switch for the visibility optimisation alone. Face
      * culling in the GPU path is unaffected by this switch. */
     if (!kj_field_view_vis_cull_enabled()) {
@@ -2994,8 +2968,7 @@ static int box_visibility(const int16_t lo[3], const int16_t hi[3])
 }
 #endif
 
-static void dl_replay_impl(dl_entry *e, const uint32_t *words)
-{
+static void dl_replay_impl(dl_entry *e, const uint32_t *words) {
     uint32_t list_v0 = s_buf[s_build].frame.vert_count;
     uint32_t last_block_v0 = list_v0, last_block_rel = 0;
 #ifdef KJ_G3_CULL
@@ -3062,14 +3035,14 @@ static void dl_replay_impl(dl_entry *e, const uint32_t *words)
     update_color_rgba();
 }
 
-static void dl_replay(dl_entry *e, const uint32_t *words)
-{
+static void dl_replay(dl_entry *e, const uint32_t *words) {
 #ifndef HGSS_PROFILE_OFF
     const u64 t = s_coarse_sample ? svcGetSystemTick() : 0;
 #endif
     dl_replay_impl(e, words);
 #ifndef HGSS_PROFILE_OFF
-    if (s_coarse_sample) s_coarse_replay += svcGetSystemTick() - t;
+    if (s_coarse_sample)
+        s_coarse_replay += svcGetSystemTick() - t;
 #endif
 }
 
@@ -3088,8 +3061,7 @@ static void dl_replay(dl_entry *e, const uint32_t *words)
 
 /* The state groups a list writes, or 0 if any command reads DS state the
  * list has not written first (or is not a setter at all). */
-static uint32_t dl_pure_mask(const uint32_t *w, size_t n, uint32_t *commands)
-{
+static uint32_t dl_pure_mask(const uint32_t *w, size_t n, uint32_t *commands) {
     static const uint32_t target[4] = {PS_PROJ, PS_POS, PS_POS | PS_VEC, PS_TEX};
     uint32_t mask = 0, cmds = 0;
     int mode = -1;
@@ -3111,13 +3083,18 @@ static uint32_t dl_pure_mask(const uint32_t *w, size_t n, uint32_t *commands)
                 mode = (int)(v & 3u);
                 mask |= PS_MODE;
                 break;
-            case 0x15: case 0x16: case 0x17:
+            case 0x15:
+            case 0x16:
+            case 0x17:
                 if (mode < 0) {
                     return 0;
                 }
                 mask |= target[mode];
                 break;
-            case 0x18: case 0x19: case 0x1A: case 0x1C:
+            case 0x18:
+            case 0x19:
+            case 0x1A:
+            case 0x1C:
                 if (mode < 0 || (mask & target[mode]) != target[mode]) {
                     return 0;
                 }
@@ -3170,8 +3147,7 @@ static uint32_t dl_pure_mask(const uint32_t *w, size_t n, uint32_t *commands)
     return mask;
 }
 
-static void dl_state_capture(dl_state *st, uint32_t mask, uint32_t commands)
-{
+static void dl_state_capture(dl_state *st, uint32_t mask, uint32_t commands) {
     st->mask = mask;
     st->commands = commands;
     st->mode = s_mtx_mode;
@@ -3198,8 +3174,7 @@ static void dl_state_capture(dl_state *st, uint32_t mask, uint32_t commands)
 }
 
 /* The same end state and the same invalidations as executing the list. */
-static void dl_state_apply(const dl_state *st)
-{
+static void dl_state_apply(const dl_state *st) {
     const uint32_t m = st->mask;
 #ifndef HGSS_PROFILE_OFF
     s_stats.commands += st->commands;
@@ -3282,8 +3257,7 @@ static void dl_state_apply(const dl_state *st)
  * rotation, translation, scale and texture parameters (its last word's
  * commands) for every model, while the camera, lights and material before
  * it stay fixed for a picture. The snapshot covers the words before it. */
-static size_t dl_last_command_word(const uint32_t *w, size_t n)
-{
+static size_t dl_last_command_word(const uint32_t *w, size_t n) {
     size_t i = 0, last = 0;
     while (i < n) {
         uint32_t ops = w[i];
@@ -3296,29 +3270,30 @@ static size_t dl_last_command_word(const uint32_t *w, size_t n)
 }
 
 #ifdef KJ_DL_VERIFY
-static void dl_state_verify(const dl_state *st, const uint32_t *words)
-{
+static void dl_state_verify(const dl_state *st, const uint32_t *words) {
     dl_state live;
     dl_state_capture(&live, st->mask, st->commands);
     const uint32_t m = st->mask;
-    bool same = (!(m & PS_MODE) || live.mode == st->mode) &&
-                (!(m & PS_PROJ) || memcmp(&live.proj, &st->proj, sizeof(mtx)) == 0) &&
-                (!(m & PS_POS) || memcmp(&live.pos, &st->pos, sizeof(mtx)) == 0) &&
-                (!(m & PS_VEC) || memcmp(&live.vec, &st->vec, sizeof(mtx)) == 0) &&
-                (!(m & PS_TEX) || memcmp(&live.tex, &st->tex, sizeof(mtx)) == 0) &&
-                (!(m & PS_DIFAMB) || (live.diffuse == st->diffuse && live.ambient == st->ambient)) &&
-                (!(m & PS_SPEEMI) || (live.specular == st->specular && live.emission == st->emission &&
-                                      live.use_shininess == st->use_shininess)) &&
-                (!(m & PS_SHIN) || memcmp(live.shininess, st->shininess, sizeof(st->shininess)) == 0) &&
-                (!(m & PS_COLOR) || live.color == st->color) &&
-                (!(m & PS_ATTR) || live.attr_pending == st->attr_pending) &&
-                (!(m & PS_TEXP) || live.tex_param == st->tex_param) &&
-                (!(m & PS_PLTT) || live.tex_pltt == st->tex_pltt) &&
-                (!(m & PS_VP) || live.viewport == st->viewport);
+    bool same =
+        (!(m & PS_MODE) || live.mode == st->mode) &&
+        (!(m & PS_PROJ) || memcmp(&live.proj, &st->proj, sizeof(mtx)) == 0) &&
+        (!(m & PS_POS) || memcmp(&live.pos, &st->pos, sizeof(mtx)) == 0) &&
+        (!(m & PS_VEC) || memcmp(&live.vec, &st->vec, sizeof(mtx)) == 0) &&
+        (!(m & PS_TEX) || memcmp(&live.tex, &st->tex, sizeof(mtx)) == 0) &&
+        (!(m & PS_DIFAMB) || (live.diffuse == st->diffuse && live.ambient == st->ambient)) &&
+        (!(m & PS_SPEEMI) || (live.specular == st->specular && live.emission == st->emission &&
+                              live.use_shininess == st->use_shininess)) &&
+        (!(m & PS_SHIN) || memcmp(live.shininess, st->shininess, sizeof(st->shininess)) == 0) &&
+        (!(m & PS_COLOR) || live.color == st->color) &&
+        (!(m & PS_ATTR) || live.attr_pending == st->attr_pending) &&
+        (!(m & PS_TEXP) || live.tex_param == st->tex_param) &&
+        (!(m & PS_PLTT) || live.tex_pltt == st->tex_pltt) &&
+        (!(m & PS_VP) || live.viewport == st->viewport);
     for (unsigned i = 0; i < 4; ++i) {
-        same = same && (!(m & (PS_LDIR << i)) ||
-                        (memcmp(live.light_dir[i], st->light_dir[i], sizeof(st->light_dir[i])) == 0 &&
-                         memcmp(live.light_half[i], st->light_half[i], sizeof(st->light_half[i])) == 0));
+        same = same &&
+               (!(m & (PS_LDIR << i)) ||
+                (memcmp(live.light_dir[i], st->light_dir[i], sizeof(st->light_dir[i])) == 0 &&
+                 memcmp(live.light_half[i], st->light_half[i], sizeof(st->light_half[i])) == 0));
         same = same && (!(m & (PS_LCOL << i)) || live.light_color[i] == st->light_color[i]);
     }
     if (!same) {
@@ -3330,8 +3305,7 @@ static void dl_state_verify(const dl_state *st, const uint32_t *words)
 /* State-only list hit. With an identical pure prefix, restore its end state
  * and execute only the commands of the last packed word; otherwise execute
  * every command and keep the prefix's result for the next call. */
-static void dl_state_replay(dl_entry *e, const uint32_t *words, size_t count)
-{
+static void dl_state_replay(dl_entry *e, const uint32_t *words, size_t count) {
 #ifndef HGSS_PROFILE_OFF
     const u64 t = s_coarse_sample ? svcGetSystemTick() : 0;
 #endif
@@ -3372,12 +3346,12 @@ static void dl_state_replay(dl_entry *e, const uint32_t *words, size_t count)
         execute(e->events[k] >> 20, words + (e->events[k] & 0xFFFFFu));
     }
 #ifndef HGSS_PROFILE_OFF
-    if (s_coarse_sample) s_coarse_replay += svcGetSystemTick() - t;
+    if (s_coarse_sample)
+        s_coarse_replay += svcGetSystemTick() - t;
 #endif
 }
 
-static uint32_t dl_vertex_bound(const dl_entry *e)
-{
+static uint32_t dl_vertex_bound(const dl_entry *e) {
     return e->nverts;
 }
 
@@ -3385,8 +3359,7 @@ static uint32_t dl_vertex_bound(const dl_entry *e)
 static uint32_t s_verify_logged;
 
 /* A hit decoded live: does the live output equal what replay would copy? */
-static void dl_verify(const dl_entry *e, const frame_buf *fb)
-{
+static void dl_verify(const dl_entry *e, const frame_buf *fb) {
     const uint32_t nv = fb->frame.vert_count - s_rec.v0, ni = fb->frame.index_count - s_rec.i0;
     const char *why = NULL;
     uint32_t at = 0;
@@ -3402,7 +3375,8 @@ static void dl_verify(const dl_entry *e, const frame_buf *fb)
         for (uint32_t i = 0; i < nv && why == NULL; ++i) {
             const uint32_t *a = (const uint32_t *)&fb->verts[s_rec.v0 + i];
             const uint32_t *b = (const uint32_t *)&e->verts[i];
-            if (a[0] != b[0] || (a[1] & 0xFFFFu) != (b[1] & 0xFFFFu) || a[2] != b[2] || a[3] != b[3]) {
+            if (a[0] != b[0] || (a[1] & 0xFFFFu) != (b[1] & 0xFFFFu) || a[2] != b[2] ||
+                a[3] != b[3]) {
                 why = "vertex data";
                 at = i;
             }
@@ -3410,7 +3384,8 @@ static void dl_verify(const dl_entry *e, const frame_buf *fb)
         for (uint32_t bk = 0; bk < e->nblocks && why == NULL; ++bk) {
             const dl_block *bl = &e->blocks[bk];
             for (uint32_t i = 0; i < bl->nidx; ++i) {
-                const uint32_t live = fb->indices[s_rec.i0 + bl->first_idx + i] - (s_rec.v0 + bl->first_vert);
+                const uint32_t live =
+                    fb->indices[s_rec.i0 + bl->first_idx + i] - (s_rec.v0 + bl->first_vert);
                 if (live != e->idx[bl->first_idx + i]) {
                     why = "indices";
                     at = bk;
@@ -3422,13 +3397,13 @@ static void dl_verify(const dl_entry *e, const frame_buf *fb)
     if (why != NULL) {
         if (s_verify_logged < 40) {
             ++s_verify_logged;
-            NitroPort_Log("[dlverify] MISMATCH %s at %lu: list %p (%lu words) nv %lu/%lu ni %lu/%lu "
-                          "blocks %lu/%lu events %lu/%lu",
-                          why, (unsigned long)at, (const void *)e->ptr, (unsigned long)e->count,
-                          (unsigned long)nv, (unsigned long)e->nverts, (unsigned long)ni,
-                          (unsigned long)e->nidx, (unsigned long)s_rec.nblocks,
-                          (unsigned long)e->nblocks, (unsigned long)s_rec.nevents,
-                          (unsigned long)e->nevents);
+            NitroPort_Log(
+                "[dlverify] MISMATCH %s at %lu: list %p (%lu words) nv %lu/%lu ni %lu/%lu "
+                "blocks %lu/%lu events %lu/%lu",
+                why, (unsigned long)at, (const void *)e->ptr, (unsigned long)e->count,
+                (unsigned long)nv, (unsigned long)e->nverts, (unsigned long)ni,
+                (unsigned long)e->nidx, (unsigned long)s_rec.nblocks, (unsigned long)e->nblocks,
+                (unsigned long)s_rec.nevents, (unsigned long)e->nevents);
         }
     } else {
 #ifndef HGSS_PROFILE_OFF
@@ -3438,8 +3413,7 @@ static void dl_verify(const dl_entry *e, const frame_buf *fb)
 }
 #endif
 
-static void decode_words_impl(const uint32_t *words, size_t count)
-{
+static void decode_words_impl(const uint32_t *words, size_t count) {
 #ifdef KJ_G3_PROFILE
     const u64 t0 = svcGetSystemTick();
 #endif
@@ -3486,14 +3460,14 @@ static void decode_words_impl(const uint32_t *words, size_t count)
 #endif
 }
 
-static void decode_words(const uint32_t *words, size_t count)
-{
+static void decode_words(const uint32_t *words, size_t count) {
 #ifndef HGSS_PROFILE_OFF
     const u64 t = s_coarse_sample ? svcGetSystemTick() : 0;
 #endif
     decode_words_impl(words, count);
 #ifndef HGSS_PROFILE_OFF
-    if (s_coarse_sample) s_coarse_decode += svcGetSystemTick() - t;
+    if (s_coarse_sample)
+        s_coarse_decode += svcGetSystemTick() - t;
 #endif
 }
 
@@ -3502,8 +3476,7 @@ static void decode_words(const uint32_t *words, size_t count)
  * execute every command against live DS state. No entry-state key applies.
  * Keep exact content validation: a never-list may change between rechecks.
  * Coffeepot renderer-architecture.md: compact specialized render commands. */
-static void dl_compile_commands(dl_entry *e)
-{
+static void dl_compile_commands(dl_entry *e) {
     size_t i = 0;
     uint32_t events = 0;
     while (i < e->count) {
@@ -3528,8 +3501,7 @@ static void dl_compile_commands(dl_entry *e)
     e->command_plan = true;
 }
 
-static void dl_decode_never(const dl_entry *e, const uint32_t *words, size_t count)
-{
+static void dl_decode_never(const dl_entry *e, const uint32_t *words, size_t count) {
     if (!e->command_plan || memcmp(e->words, words, count * 4u) != 0) {
         decode_words(words, count);
         return;
@@ -3551,7 +3523,7 @@ static void dl_decode_never(const dl_entry *e, const uint32_t *words, size_t cou
                 break;
             }
             if (op != 0 && (event >= e->nevents ||
-                e->events[event++] != ((uint32_t)off | ((uint32_t)op << 20)))) {
+                            e->events[event++] != ((uint32_t)off | ((uint32_t)op << 20)))) {
                 valid = false;
                 break;
             }
@@ -3583,8 +3555,7 @@ static void dl_decode_never(const dl_entry *e, const uint32_t *words, size_t cou
 /* Expand position encodings once. Matrix, colour, normal, texture and test
  * commands remain live events, so skinned/lit strips need no lighting key
  * and may share vertices across any number of matrix changes. */
-static void plan_coord(unsigned op, const uint32_t *p, int16_t coord[3])
-{
+static void plan_coord(unsigned op, const uint32_t *p, int16_t coord[3]) {
     const uint32_t v = p[0];
     switch (op) {
     case 0x23:
@@ -3617,8 +3588,7 @@ static void plan_coord(unsigned op, const uint32_t *p, int16_t coord[3])
     }
 }
 
-static bool compile_vertex_plan(dl_entry *e)
-{
+static bool compile_vertex_plan(dl_entry *e) {
     size_t off = 0;
     uint32_t events = 0, vertices = 0;
     while (off < e->count) {
@@ -3634,8 +3604,7 @@ static bool compile_vertex_plan(dl_entry *e)
             off += params;
         }
     }
-    if (events > DL_MAX_EVENTS ||
-        !dl_reserve((void **)&e->events, &e->cap_events, events, 4) ||
+    if (events > DL_MAX_EVENTS || !dl_reserve((void **)&e->events, &e->cap_events, events, 4) ||
         !dl_reserve((void **)&e->coords, &e->cap_coords, vertices + 1u, sizeof(*e->coords))) {
         return false;
     }
@@ -3664,8 +3633,7 @@ static bool compile_vertex_plan(dl_entry *e)
     return true;
 }
 
-static void vertex_plan(dl_entry *e, const uint32_t *words, size_t count)
-{
+static void vertex_plan(dl_entry *e, const uint32_t *words, size_t count) {
     bool changed = memcmp(e->words, words, count * 4u) != 0;
     if (changed) {
         memcpy(e->words, words, count * 4u);
@@ -3674,8 +3642,8 @@ static void vertex_plan(dl_entry *e, const uint32_t *words, size_t count)
         e->nlayout = 0;
     }
     bool inherited_coord = (e->reads[0] & DL_READS_COORD) != 0;
-    bool hit = e->vertex_plan &&
-               (!inherited_coord || memcmp(e->coord_key, s_coord, sizeof(s_coord)) == 0);
+    bool hit =
+        e->vertex_plan && (!inherited_coord || memcmp(e->coord_key, s_coord, sizeof(s_coord)) == 0);
     if (!hit && !compile_vertex_plan(e)) {
         decode_words(words, count);
         return;
@@ -3701,10 +3669,11 @@ static void vertex_plan(dl_entry *e, const uint32_t *words, size_t count)
                 if (event >= e->nevents || vertex >= e->ncoords ||
                     e->events[event++] != (DL_EV_BLOCK | vertex) ||
                     memcmp(e->coords[vertex++], coord, sizeof(coord)) != 0) {
-                    NitroPort_Log("[dlverify] MISMATCH expanded vertex plan %p", (const void *)words);
+                    NitroPort_Log("[dlverify] MISMATCH expanded vertex plan %p",
+                                  (const void *)words);
                 }
             } else if (op != 0 && (event >= e->nevents ||
-                       e->events[event++] != ((uint32_t)off | ((uint32_t)op << 20)))) {
+                                   e->events[event++] != ((uint32_t)off | ((uint32_t)op << 20)))) {
                 NitroPort_Log("[dlverify] MISMATCH expanded state plan %p", (const void *)words);
             }
             off += s_param_count[op];
@@ -3729,8 +3698,7 @@ static void vertex_plan(dl_entry *e, const uint32_t *words, size_t count)
 #endif
 }
 
-static void fifo_words_impl(const uint32_t *words, size_t count)
-{
+static void fifo_words_impl(const uint32_t *words, size_t count) {
 #ifndef HGSS_PROFILE_OFF
     ++s_fifo_calls;
 #endif
@@ -3805,7 +3773,7 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
     }
 #endif
     else if (e->recorded && !e->never && (e->reads[0] & DL_HAS_VERTEX_DATA) == 0 &&
-               dl_state_layout_same(e, words, count)) {
+             dl_state_layout_same(e, words, count)) {
         e->last_frame = s_stats.swaps;
         dl_state_replay(e, words, count);
 #ifndef HGSS_PROFILE_OFF
@@ -3884,8 +3852,8 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
         s_color_gpu = false;
         update_color_rgba();
     }
-    const bool lit = e->needs_light ||
-                     ((reads & DL_HAS_NORMAL) && ((s_attr | s_attr_pending) & 0xFu) != 0);
+    const bool lit =
+        e->needs_light || ((reads & DL_HAS_NORMAL) && ((s_attr | s_attr_pending) & 0xFu) != 0);
 #else
     const bool lit = e->needs_light || ((s_attr | s_attr_pending) & 0xFu) != 0;
 #endif
@@ -3934,12 +3902,11 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
         while (first < words && a[first] == b[first]) {
             ++first;
         }
-        NitroPort_Log("[dlkey] list %08lx words %u lit %d texgen %d first %s(%u) %08lx vs %08lx misses %u",
-                      (unsigned long)(uintptr_t)e->ptr, (unsigned)count, lit, texgen,
-                      dl_key_field(first), first,
-                      first < words ? (unsigned long)a[first] : 0ul,
-                      first < words ? (unsigned long)b[first] : 0ul,
-                      (unsigned)e->key_misses);
+        NitroPort_Log(
+            "[dlkey] list %08lx words %u lit %d texgen %d first %s(%u) %08lx vs %08lx misses %u",
+            (unsigned long)(uintptr_t)e->ptr, (unsigned)count, lit, texgen, dl_key_field(first),
+            first, first < words ? (unsigned long)a[first] : 0ul,
+            first < words ? (unsigned long)b[first] : 0ul, (unsigned)e->key_misses);
         ++s_dl_key_logs;
     }
 #endif
@@ -3996,7 +3963,8 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
     s_rec.v0 = fb->frame.vert_count;
     s_rec.i0 = fb->frame.index_count;
     rec_open_block();
-    const uint32_t drops0 = fb->frame.dropped_verts + fb->frame.dropped_batches + fb->frame.unsupported;
+    const uint32_t drops0 =
+        fb->frame.dropped_verts + fb->frame.dropped_batches + fb->frame.unsupported;
 #ifndef HGSS_PROFILE_OFF
     uint32_t why_before[6];
     memcpy(why_before, s_dl_why, sizeof(why_before));
@@ -4061,7 +4029,8 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
     }
     const uint32_t nv = fb->frame.vert_count - s_rec.v0, ni = fb->frame.index_count - s_rec.i0;
     if (!dl_reserve((void **)&e->events, &e->cap_events, s_rec.nevents + 1u, 4u) ||
-        !dl_reserve((void **)&e->blocks, &e->cap_blocks, s_rec.nblocks + 1u, (uint32_t)sizeof(dl_block)) ||
+        !dl_reserve((void **)&e->blocks, &e->cap_blocks, s_rec.nblocks + 1u,
+                    (uint32_t)sizeof(dl_block)) ||
         !dl_reserve((void **)&e->verts, &e->cap_verts, nv, (uint32_t)sizeof(kj_g3_vertex)) ||
         !dl_reserve((void **)&e->idx, &e->cap_idx, ni, 2u)) {
         dl_flush_all(); /* arena full: start over (re-recorded on later calls) */
@@ -4130,8 +4099,7 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
     e->recorded = true;
 }
 
-void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
-{
+void NitroPort_GxFifoWords(const uint32_t *words, size_t count) {
 #ifndef HGSS_PROFILE_OFF
     s_capture_frame_fifo += (uint32_t)count;
     const bool outer = s_coarse_depth++ == 0;
@@ -4164,24 +4132,27 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
                        s_coarse_decode - decode, s_coarse_replay - replay, s_coarse_copy - copy);
     }
     --s_coarse_depth;
-    if (outer) s_coarse_sample = false;
+    if (outer)
+        s_coarse_sample = false;
 #endif
 }
 
-void kj_g3_dl_stats(uint32_t *hits, uint32_t *misses, uint32_t *uncacheable, uint32_t *bytes)
-{
+void kj_g3_dl_stats(uint32_t *hits, uint32_t *misses, uint32_t *uncacheable, uint32_t *bytes) {
 #ifndef HGSS_PROFILE_OFF
-    NitroPort_Log("[g3sample] random 1/64 FIFO calls: samples %lu total_ticks %llu decode_ticks %llu replay_ticks %llu (block_copy_ticks %llu nested, layout_ticks %llu nested); remainder includes lookup/recording and probe overhead",
+    NitroPort_Log("[g3sample] random 1/64 FIFO calls: samples %lu total_ticks %llu decode_ticks "
+                  "%llu replay_ticks %llu (block_copy_ticks %llu nested, layout_ticks %llu "
+                  "nested); remainder includes lookup/recording and probe overhead",
                   (unsigned long)s_coarse_n, (unsigned long long)s_coarse_total,
                   (unsigned long long)s_coarse_decode, (unsigned long long)s_coarse_replay,
                   (unsigned long long)s_coarse_copy, (unsigned long long)s_coarse_layout);
     s_coarse_n = 0;
     s_coarse_total = s_coarse_decode = s_coarse_replay = s_coarse_copy = s_coarse_layout = 0;
     dl_profile_report();
-    NitroPort_Log("[dllayout] compiled plans checks %lu steps %lu generic %lu rebuilds %lu keylogs %lu",
-                  (unsigned long)s_dl_layout_checks, (unsigned long)s_dl_layout_steps,
-                  (unsigned long)s_dl_layout_generic, (unsigned long)s_dl_layout_rebuilds,
-                  (unsigned long)s_dl_key_logs);
+    NitroPort_Log(
+        "[dllayout] compiled plans checks %lu steps %lu generic %lu rebuilds %lu keylogs %lu",
+        (unsigned long)s_dl_layout_checks, (unsigned long)s_dl_layout_steps,
+        (unsigned long)s_dl_layout_generic, (unsigned long)s_dl_layout_rebuilds,
+        (unsigned long)s_dl_key_logs);
     s_dl_layout_checks = s_dl_layout_steps = 0;
     s_dl_layout_generic = s_dl_layout_rebuilds = 0;
     s_dl_key_logs = 0;
@@ -4190,17 +4161,19 @@ void kj_g3_dl_stats(uint32_t *hits, uint32_t *misses, uint32_t *uncacheable, uin
                   (unsigned long)s_dl_plan_calls, (unsigned long)s_dl_plan_words);
     s_dl_plan_calls = s_dl_plan_words = 0;
 #ifdef KJ_G3_CULL
-    NitroPort_Log("[g3cull] retained blocks tested %lu culled %lu (vertices %lu triangles %lu not copied or drawn)",
+    NitroPort_Log("[g3cull] retained blocks tested %lu culled %lu (vertices %lu triangles %lu not "
+                  "copied or drawn)",
                   (unsigned long)s_cull_tests, (unsigned long)s_cull_blocks,
                   (unsigned long)s_cull_verts, (unsigned long)s_cull_tris);
     s_cull_tests = s_cull_blocks = s_cull_verts = s_cull_tris = 0;
 #endif
-    NitroPort_Log("[g3capture] producer skips %lu (FIFO words %llu); swapped scenes captured %lu discarded %lu; "
+    NitroPort_Log("[g3capture] producer skips %lu (FIFO words %llu); swapped scenes captured %lu "
+                  "discarded %lu; "
                   "discarded vertices %llu indices %llu (DS state/tests/counts still executed)",
-                  (unsigned long)s_skipped_producers,
-                  (unsigned long long)s_skipped_producer_fifo,
+                  (unsigned long)s_skipped_producers, (unsigned long long)s_skipped_producer_fifo,
                   (unsigned long)s_captured_scenes, (unsigned long)s_discarded_scenes,
-                  (unsigned long long)s_discarded_vertices, (unsigned long long)s_discarded_indices);
+                  (unsigned long long)s_discarded_vertices,
+                  (unsigned long long)s_discarded_indices);
     s_captured_scenes = s_discarded_scenes = 0;
     s_skipped_producers = 0;
     s_skipped_producer_fifo = 0;
@@ -4212,8 +4185,9 @@ void kj_g3_dl_stats(uint32_t *hits, uint32_t *misses, uint32_t *uncacheable, uin
     *bytes = s_dl_arena_used;
     NitroPort_Log("[dlwhy] batch-in-block %lu shared-verts %lu straddle/drops %lu lit+matrix %lu "
                   "swap %lu open-prim %lu flushes %lu",
-                  (unsigned long)s_dl_why[0], (unsigned long)s_dl_why[1], (unsigned long)s_dl_why[2],
-                  (unsigned long)s_dl_why[3], (unsigned long)s_dl_why[4], (unsigned long)s_dl_why[5],
+                  (unsigned long)s_dl_why[0], (unsigned long)s_dl_why[1],
+                  (unsigned long)s_dl_why[2], (unsigned long)s_dl_why[3],
+                  (unsigned long)s_dl_why[4], (unsigned long)s_dl_why[5],
                   (unsigned long)s_dl_flushes);
     NitroPort_Log("[dlcov] bypass: small %lu split %lu open-begin %lu (begin first %lu)",
                   (unsigned long)s_dl_cov[DLC_SMALL], (unsigned long)s_dl_cov[DLC_SPLIT],
@@ -4229,10 +4203,8 @@ void kj_g3_dl_stats(uint32_t *hits, uint32_t *misses, uint32_t *uncacheable, uin
     s_dl_hits = s_dl_misses = s_dl_uncacheable = 0;
 }
 
-
 void kj_g3_take_profile(uint64_t *fifo_ticks, uint32_t *fifo_words, uint32_t *direct_words,
-                        uint32_t *verts)
-{
+                        uint32_t *verts) {
     *fifo_ticks = (uint64_t)s_fifo_calls; /* calls; ticks only with KJ_G3_PROFILE */
     s_fifo_calls = 0;
     (void)s_fifo_ticks;

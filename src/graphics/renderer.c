@@ -56,8 +56,7 @@ static uint16_t *s_g3_indices[2];
 
 static void renderer_free_g3_storage(void);
 
-static bool renderer_alloc_g3_storage(void)
-{
+static bool renderer_alloc_g3_storage(void) {
     for (int i = 0; i < 2; ++i) {
         s_g3_verts[i] = linearAlloc(sizeof(kj_g3_vertex) * KJ_G3_MAX_VERTS);
         s_g3_indices[i] = linearAlloc(sizeof(uint16_t) * KJ_G3_MAX_INDICES);
@@ -69,8 +68,7 @@ static bool renderer_alloc_g3_storage(void)
     return true;
 }
 
-static void renderer_free_g3_storage(void)
-{
+static void renderer_free_g3_storage(void) {
     for (int i = 0; i < 2; ++i) {
         if (s_g3_verts[i] != NULL) {
             linearFree(s_g3_verts[i]);
@@ -90,8 +88,7 @@ static uint32_t s_skipped_presents;
 static bool s_skipped_last; /* the previous publish skipped its picture */
 static bool s_skip_capture; /* committed before this picture's game work */
 
-bool kj_ctr_capture_next_frame(void)
-{
+bool kj_ctr_capture_next_frame(void) {
     /* Coffeepot frame-pacing.md: skip building an unstarted picture, keep
      * the tick, never twice in a row. Scripts require every captured frame. */
     s_skip_capture = kj_pacing_behind() >= 2u && !s_skipped_last && !kj_script_active();
@@ -121,8 +118,7 @@ static uint32_t s_empty_submissions, s_same_scene, s_previous_scene;
 static uint32_t s_window_first_game;
 #endif
 
-bool kj_renderer_init(void)
-{
+bool kj_renderer_init(void) {
     if (!C3D_Init(CMDBUF_BYTES)) {
         kj_log("[gpu] C3D_Init failed");
         return false;
@@ -132,8 +128,7 @@ bool kj_renderer_init(void)
         goto fail;
     }
     s_targets_ready = true;
-    kj_field_view_configure((uint32_t)kj_config_field_scale(),
-                            (uint32_t)kj_targets_world_mode());
+    kj_field_view_configure((uint32_t)kj_config_field_scale(), (uint32_t)kj_targets_world_mode());
     kj_log("[gpu] field view requested %s, configured %s",
            kj_config_scale_name(kj_config_field_scale()),
            kj_config_scale_name(kj_targets_world_mode()));
@@ -160,8 +155,8 @@ bool kj_renderer_init(void)
     }
     s_g3d_ready = true;
 #ifndef HGSS_PROFILE_OFF
-    s_perflog_on = R_SUCCEEDED(GSPGPU_SetPerfLogMode(true)) &&
-                   R_SUCCEEDED(GSPGPU_GetPerfLog(&s_perflog_prev));
+    s_perflog_on =
+        R_SUCCEEDED(GSPGPU_SetPerfLogMode(true)) && R_SUCCEEDED(GSPGPU_GetPerfLog(&s_perflog_prev));
 #endif
     s_ready = true;
     kj_log("[gpu] renderer ready (linear free %lu KiB, VRAM free %lu KiB)",
@@ -176,8 +171,7 @@ fail:
     return false;
 }
 
-void kj_renderer_exit(void)
-{
+void kj_renderer_exit(void) {
     s_ready = false;
     kj_field_view_reset();
     /* The PICA may still read the buffers freed below: wait for the GPU
@@ -223,8 +217,7 @@ typedef struct present_frame {
  * performance.md: C3D's drawing timer then belongs to that preceding
  * non-empty submission; empty submissions leave it unchanged and must not
  * count it again. */
-static void renderer_complete_previous_queue(void)
-{
+static void renderer_complete_previous_queue(void) {
 #ifndef HGSS_PROFILE_OFF
     if (s_queue_pending) {
         const float draw_ms = C3D_GetDrawingTime();
@@ -242,8 +235,7 @@ static void renderer_complete_previous_queue(void)
 
 /* Start one frame's retained/frame state. Order matters: the 2D layer caches
  * and native-text records are published before any draw. */
-static void renderer_prepare_frame(const present_frame *f)
-{
+static void renderer_prepare_frame(const present_frame *f) {
     kj_gpu_quads_reset();
     kj_atlas_begin_frame();
     kj_g2d_begin_frame();
@@ -257,26 +249,25 @@ static void renderer_prepare_frame(const present_frame *f)
     {
         const kj_field_view_desc *fv = kj_field_view_current();
         const kj_field_scale mode = fv->effective_mode == KJ_FIELD_VIEW_2X ? KJ_FIELD_SCALE_2X
-                                    : fv->effective_mode == KJ_FIELD_VIEW_1X ? KJ_FIELD_SCALE_1X
-                                                                             : KJ_FIELD_SCALE_LEGACY;
+                                    : fv->effective_mode == KJ_FIELD_VIEW_1X
+                                        ? KJ_FIELD_SCALE_1X
+                                        : KJ_FIELD_SCALE_LEGACY;
         kj_world_view_init_display(&kj_target_get(KJ_SCREEN_TOP)->world, mode);
     }
     kj_tex_begin_frame(f->in);
 }
 
 /* Engine A (and the 3D layer) is on the screen POWCNT1 says. */
-static void renderer_draw_screens(const present_frame *f)
-{
+static void renderer_draw_screens(const present_frame *f) {
     kj_screen_draw(KJ_SCREEN_TOP, f->top_engine, f->in);
     kj_screen_draw(KJ_SCREEN_BOTTOM, f->top_engine ^ 1, f->in);
 }
 
-static void renderer_record_submission(const present_frame *f)
-{
+static void renderer_record_submission(const present_frame *f) {
     (void)f;
 #ifndef HGSS_PROFILE_OFF
-    s_queue_pending = kj_target_get(KJ_SCREEN_TOP)->rt->used ||
-                      kj_target_get(KJ_SCREEN_BOTTOM)->rt->used;
+    s_queue_pending =
+        kj_target_get(KJ_SCREEN_TOP)->rt->used || kj_target_get(KJ_SCREEN_BOTTOM)->rt->used;
     s_empty_submissions += !s_queue_pending;
     s_queue_game = f->game_frame;
     s_queue_scene = f->scene_serial;
@@ -292,8 +283,7 @@ static void renderer_record_submission(const present_frame *f)
  * runs after the frame is submitted and reports the window that just closed.
  * It is a separate helper because it has no effect on rendering; keep the
  * order inside it identical to the pre-cleanup code. */
-static void renderer_report_window(const present_frame *f)
-{
+static void renderer_report_window(const present_frame *f) {
     (void)f;
 #ifndef HGSS_PROFILE_OFF
     if (s_frames % 600u == 0u) {
@@ -316,9 +306,10 @@ static void renderer_report_window(const present_frame *f)
                "bg quads %lu obj quads %lu draws %lu spans %lu unsupported %lu dropped %lu, "
                "char KiB compared %lu, layout segments %lu, wide window sides %lu",
                (unsigned long)g.skipped_screens, (unsigned long)g.reused_layers,
-               (unsigned long)g.rebuilt_layers, (unsigned long)g.bg_quads, (unsigned long)g.obj_quads,
-               (unsigned long)g.draws, (unsigned long)g.spans, (unsigned long)g.unsupported_modes,
-               (unsigned long)g.dropped_quads, (unsigned long)(g.char_bytes_compared / 1024u), (unsigned long)g.layout_segments,
+               (unsigned long)g.rebuilt_layers, (unsigned long)g.bg_quads,
+               (unsigned long)g.obj_quads, (unsigned long)g.draws, (unsigned long)g.spans,
+               (unsigned long)g.unsupported_modes, (unsigned long)g.dropped_quads,
+               (unsigned long)(g.char_bytes_compared / 1024u), (unsigned long)g.layout_segments,
                (unsigned long)g.wide_windows);
         kj_ds_profile dp;
         kj_ds_take_profile(&dp);
@@ -346,8 +337,8 @@ static void renderer_report_window(const present_frame *f)
             int n = 0;
             n += snprintf(line, sizeof(line), "[probe] per game frame:");
             for (unsigned i = 0; i < KJ_PROBE_SLOTS; ++i) {
-                n += snprintf(line + n, sizeof(line) - n, " %u: %.0f/%luus",
-                              i, dp.probe_ticks[i] * us, (unsigned long)(dp.probe_calls[i] / gf));
+                n += snprintf(line + n, sizeof(line) - n, " %u: %.0f/%luus", i,
+                              dp.probe_ticks[i] * us, (unsigned long)(dp.probe_calls[i] / gf));
             }
             kj_log("%s", line);
         }
@@ -360,17 +351,17 @@ static void renderer_report_window(const present_frame *f)
                "3D batches %lu draws %lu tris %lu state skips %lu "
                "join groups %lu joined %lu (batches %lu) declined %lu "
                "tex uploads %lu tex bytes compared %lu "
-               "tex full %lu unsupported %lu; box tests %lu culled %lu (far only %lu) window passes %lu",
+               "tex full %lu unsupported %lu; box tests %lu culled %lu (far only %lu) window "
+               "passes %lu",
                (unsigned long)a.lookups, (unsigned long)a.conversions, (unsigned long)a.evictions,
                (unsigned long)a.full, (unsigned long)d.batches, (unsigned long)d.draws,
                (unsigned long)d.triangles, (unsigned long)d.state_skips,
                (unsigned long)d.join_groups, (unsigned long)d.joined_groups,
                (unsigned long)d.joined_batches, (unsigned long)d.join_declined,
-               (unsigned long)d.tex_uploads,
-               (unsigned long)d.tex_bytes_compared, (unsigned long)d.tex_cache_full,
-               (unsigned long)d.unsupported, (unsigned long)d.box_tests,
-               (unsigned long)d.box_culled, (unsigned long)d.box_culled_far,
-               (unsigned long)d.window_passes);
+               (unsigned long)d.tex_uploads, (unsigned long)d.tex_bytes_compared,
+               (unsigned long)d.tex_cache_full, (unsigned long)d.unsupported,
+               (unsigned long)d.box_tests, (unsigned long)d.box_culled,
+               (unsigned long)d.box_culled_far, (unsigned long)d.window_passes);
         {
             GSPGPU_PerfLog now;
             unsigned long p3d = 0, ppf = 0, psc = 0;
@@ -383,13 +374,16 @@ static void renderer_report_window(const present_frame *f)
                 /* Differences of the running totals (unsigned, so a wrap
                  * still subtracts correctly), per picture. */
                 p3d = (now.entries[GSPGPU_EVENT_P3D].totalDurationUs -
-                       s_perflog_prev.entries[GSPGPU_EVENT_P3D].totalDurationUs) / 600u;
+                       s_perflog_prev.entries[GSPGPU_EVENT_P3D].totalDurationUs) /
+                      600u;
                 ppf = (now.entries[GSPGPU_EVENT_PPF].totalDurationUs -
-                       s_perflog_prev.entries[GSPGPU_EVENT_PPF].totalDurationUs) / 600u;
+                       s_perflog_prev.entries[GSPGPU_EVENT_PPF].totalDurationUs) /
+                      600u;
                 psc = (now.entries[GSPGPU_EVENT_PSC0].totalDurationUs -
                        s_perflog_prev.entries[GSPGPU_EVENT_PSC0].totalDurationUs +
                        now.entries[GSPGPU_EVENT_PSC1].totalDurationUs -
-                       s_perflog_prev.entries[GSPGPU_EVENT_PSC1].totalDurationUs) / 600u;
+                       s_perflog_prev.entries[GSPGPU_EVENT_PSC1].totalDurationUs) /
+                      600u;
                 /* Each operation engine is serial. Its total cannot exceed
                  * the wall interval (PSC is the sum of two fill engines).
                  * Reject counter resets/torn reads instead of presenting a
@@ -426,8 +420,7 @@ static void renderer_report_window(const present_frame *f)
 }
 
 /* Test directives: deterministic per-frame capture. */
-static void renderer_run_test_directives(const present_frame *f)
-{
+static void renderer_run_test_directives(const present_frame *f) {
     if (kj_script_dump(f->game_frame)) {
         char path[96];
         mkdir("sdmc:/3ds/kohjoh/dumps", 0777);
@@ -445,8 +438,7 @@ static void renderer_run_test_directives(const present_frame *f)
     }
 }
 
-void kj_ctr_publish_frame(const kj_frame_input *in)
-{
+void kj_ctr_publish_frame(const kj_frame_input *in) {
     if (!s_ready) {
         return;
     }

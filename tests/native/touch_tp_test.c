@@ -19,8 +19,7 @@
 
 static unsigned s_replies;
 
-void NitroPort_Arm7Reply(int tag, u32 data, BOOL err)
-{
+void NitroPort_Arm7Reply(int tag, u32 data, BOOL err) {
     (void)tag;
     (void)data;
     (void)err;
@@ -29,8 +28,7 @@ void NitroPort_Arm7Reply(int tag, u32 data, BOOL err)
 
 static OS_SystemWork s_work;
 
-OS_SystemWork *OS_GetSystemWork(void)
-{
+OS_SystemWork *OS_GetSystemWork(void) {
     return &s_work;
 }
 
@@ -47,8 +45,7 @@ typedef struct Point {
     unsigned validity;
 } Point;
 
-static SPITpData shared_sample(void)
-{
+static SPITpData shared_sample(void) {
     SPITpData sample;
     memcpy(sample.bytes, (const void *)s_work.touch_panel, sizeof(sample.bytes));
     return sample;
@@ -57,8 +54,7 @@ static SPITpData shared_sample(void)
 /* TP_GetCalibratedPoint: touch and validity pass through; x/y are zero for
  * a released panel even when the validity bits say the coordinates are
  * usable. */
-static Point calibrated(SPITpData raw)
-{
+static Point calibrated(SPITpData raw) {
     Point point;
     point.touch = raw.e.touch;
     point.validity = raw.e.validity;
@@ -73,8 +69,7 @@ static Point calibrated(SPITpData raw)
 }
 
 /* touchpad.c TouchOutput_CollectValid: only validity selects a sample. */
-static int collect(const Point *samples, int count, Point *out)
-{
+static int collect(const Point *samples, int count, Point *out) {
     int n = 0;
     for (int i = 0; i < count; ++i) {
         if (samples[i].validity == 0) {
@@ -95,8 +90,7 @@ typedef struct Stroke {
  * samples, and penPos carries the last drawn point across frames. A frame
  * with no collected samples clears penPos, which is what breaks continuity
  * between strokes. */
-static void draw_frame(const Point *samples, int count, Stroke *pen)
-{
+static void draw_frame(const Point *samples, int count, Stroke *pen) {
     Point points[2];
     int n = collect(samples, count, points);
     int has_last = pen->count != 0;
@@ -119,8 +113,7 @@ static void draw_frame(const Point *samples, int count, Stroke *pen)
 
 /* The same trace checker, but returning whether it saw the false origin
  * point. Used to prove the check would fail on the pre-fix encoding. */
-static int trace_has_false_origin(const Point *samples, int count, Stroke *pen)
-{
+static int trace_has_false_origin(const Point *samples, int count, Stroke *pen) {
     Point points[2];
     int n = collect(samples, count, points);
     int has_last = pen->count != 0;
@@ -147,14 +140,12 @@ static int trace_has_false_origin(const Point *samples, int count, Stroke *pen)
     return bad;
 }
 
-static Point publish(BOOL down, unsigned x, unsigned y)
-{
+static Point publish(BOOL down, unsigned x, unsigned y) {
     NitroPort_SetTouch(down, (u16)x, (u16)y);
     return calibrated(shared_sample());
 }
 
-int main(void)
-{
+int main(void) {
     SPITpData raw;
     Point sample;
     Stroke pen;
@@ -178,8 +169,8 @@ int main(void)
     raw = shared_sample();
     assert(raw.e.x == 10 * NITRO_PORT_TP_RAW_SCALE);
     assert(raw.e.y == 20 * NITRO_PORT_TP_RAW_SCALE);
-    printf("PASS press: raw=%u,%u calibrated=%d,%d validity=valid\n",
-           raw.e.x, raw.e.y, sample.x, sample.y);
+    printf("PASS press: raw=%u,%u calibrated=%d,%d validity=valid\n", raw.e.x, raw.e.y, sample.x,
+           sample.y);
 
     /* Release reports (0,0) with INVALID_XY, the ARM7's no-touch sample,
      * not (0,0) with VALID. */
@@ -198,11 +189,11 @@ int main(void)
      * asks for two). The pen-up frames are published by the real driver. */
     {
         Point frames[5][2];
-        Point a = { 40, 60, 1, 0 };
-        Point a2 = { 48, 60, 1, 0 };
-        Point b = { 80, 60, 1, 0 };
-        Point c = { 120, 60, 1, 0 };
-        Point c2 = { 128, 60, 1, 0 };
+        Point a = {40, 60, 1, 0};
+        Point a2 = {48, 60, 1, 0};
+        Point b = {80, 60, 1, 0};
+        Point c = {120, 60, 1, 0};
+        Point c2 = {128, 60, 1, 0};
 
         frames[0][0] = publish(FALSE, 0, 0);
         frames[0][1] = publish(FALSE, 0, 0);
@@ -230,8 +221,8 @@ int main(void)
      * same trace, so this test would catch a regression. */
     {
         Point frames[2][2];
-        Point b = { 80, 60, 1, 0 };
-        Point origin = { 0, 0, 0, SPI_TP_VALIDITY_VALID };
+        Point b = {80, 60, 1, 0};
+        Point origin = {0, 0, 0, SPI_TP_VALIDITY_VALID};
 
         frames[0][0] = b;
         frames[0][1] = b;
@@ -247,8 +238,8 @@ int main(void)
     /* The auto-sampling path still publishes one packet per SetTouch. */
     {
         unsigned before = s_replies;
-        NitroPort_HandleTp(0, SPI_PXI_START_BIT | SPI_PXI_END_BIT |
-                                  (SPI_PXI_COMMAND_TP_AUTO_ON << 8), FALSE);
+        NitroPort_HandleTp(
+            0, SPI_PXI_START_BIT | SPI_PXI_END_BIT | (SPI_PXI_COMMAND_TP_AUTO_ON << 8), FALSE);
         assert(s_replies == before + 1);
         NitroPort_SetTouch(TRUE, 1, 2);
         assert(s_replies == before + 2);

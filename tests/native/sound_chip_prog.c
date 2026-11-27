@@ -55,8 +55,7 @@ static unsigned trace_count;
 
 /* Word stores, as newlib's ARM memset does for the mixer's word-aligned
  * arrays (a byte loop would overstate the clears several times over). */
-HARNESS_NO_LIBCALL void *memset(void *dst, int value, size_t count)
-{
+HARNESS_NO_LIBCALL void *memset(void *dst, int value, size_t count) {
     uint8_t *bytes = dst;
     const uint32_t word = 0x01010101u * (uint8_t)value;
 
@@ -80,8 +79,7 @@ HARNESS_NO_LIBCALL void *memset(void *dst, int value, size_t count)
     return dst;
 }
 
-HARNESS_NO_LIBCALL void *memcpy(void *dst, const void *src, size_t count)
-{
+HARNESS_NO_LIBCALL void *memcpy(void *dst, const void *src, size_t count) {
     uint8_t *to = dst;
     const uint8_t *from = src;
 
@@ -91,8 +89,7 @@ HARNESS_NO_LIBCALL void *memcpy(void *dst, const void *src, size_t count)
     return dst;
 }
 
-HARNESS_NO_LIBCALL int memcmp(const void *a, const void *b, size_t count)
-{
+HARNESS_NO_LIBCALL int memcmp(const void *a, const void *b, size_t count) {
     const uint8_t *x = a;
     const uint8_t *y = b;
 
@@ -104,21 +101,18 @@ HARNESS_NO_LIBCALL int memcmp(const void *a, const void *b, size_t count)
     return 0;
 }
 
-static uint32_t harness_random(void)
-{
+static uint32_t harness_random(void) {
     rng_state ^= rng_state << 13;
     rng_state ^= rng_state >> 17;
     rng_state ^= rng_state << 5;
     return rng_state;
 }
 
-static uint32_t harness_below(uint32_t limit)
-{
+static uint32_t harness_below(uint32_t limit) {
     return limit ? harness_random() % limit : 0u;
 }
 
-static void harness_digest(const void *data, size_t count)
-{
+static void harness_digest(const void *data, size_t count) {
     const uint8_t *bytes = data;
 
     while (count--) {
@@ -126,38 +120,32 @@ static void harness_digest(const void *data, size_t count)
     }
 }
 
-static void harness_digest_word(uint64_t value)
-{
+static void harness_digest_word(uint64_t value) {
     harness_digest(&value, sizeof(value));
 }
 
-static void harness_put8(unsigned offset, uint8_t value)
-{
+static void harness_put8(unsigned offset, uint8_t value) {
     NitroPort_SoundRegisters[offset] = value;
 }
 
-static void harness_put16(unsigned offset, uint16_t value)
-{
+static void harness_put16(unsigned offset, uint16_t value) {
     harness_put8(offset, (uint8_t)value);
     harness_put8(offset + 1u, (uint8_t)(value >> 8));
 }
 
-static void harness_put32(unsigned offset, uint32_t value)
-{
+static void harness_put32(unsigned offset, uint32_t value) {
     harness_put16(offset, (uint16_t)value);
     harness_put16(offset + 2u, (uint16_t)(value >> 16));
 }
 
-static uint32_t harness_get32(unsigned offset)
-{
+static uint32_t harness_get32(unsigned offset) {
     return (uint32_t)NitroPort_SoundRegisters[offset] |
            ((uint32_t)NitroPort_SoundRegisters[offset + 1u] << 8) |
            ((uint32_t)NitroPort_SoundRegisters[offset + 2u] << 16) |
            ((uint32_t)NitroPort_SoundRegisters[offset + 3u] << 24);
 }
 
-static void harness_digest_state(const int16_t *stereo, size_t frames)
-{
+static void harness_digest_state(const int16_t *stereo, size_t frames) {
     unsigned channel;
 
     harness_digest(stereo, frames * 4u);
@@ -200,8 +188,7 @@ static void harness_digest_state(const int16_t *stereo, size_t frames)
 }
 
 /* Mix a stretch and count it. */
-static void harness_mix(size_t frames)
-{
+static void harness_mix(size_t frames) {
     unsigned channel;
 
     for (channel = 0; channel < NITRO_SOUND_CHANNEL_COUNT; ++channel) {
@@ -214,8 +201,7 @@ static void harness_mix(size_t frames)
 }
 
 /* An ADPCM sample: a 4-byte header (predictor, step index), then nibbles. */
-static void harness_write_adpcm(uint32_t offset, uint32_t bytes)
-{
+static void harness_write_adpcm(uint32_t offset, uint32_t bytes) {
     uint32_t i;
 
     for (i = 0; i < bytes; ++i) {
@@ -225,8 +211,7 @@ static void harness_write_adpcm(uint32_t offset, uint32_t bytes)
     sample_memory[offset + 3u] = 0u;
 }
 
-static void harness_fill_memory(void)
-{
+static void harness_fill_memory(void) {
     uint32_t i;
 
     for (i = 0; i < SAMPLE_MEMORY_SIZE; ++i) {
@@ -238,9 +223,8 @@ static void harness_fill_memory(void)
  * Start a note on a channel the way SND_StartChannel does: channel off,
  * KeyOn, registers, enable bit last.
  */
-static void harness_start(unsigned channel, uint32_t ctrl, uint32_t source,
-                          uint16_t timer, uint16_t loop_words, uint32_t length_words)
-{
+static void harness_start(unsigned channel, uint32_t ctrl, uint32_t source, uint16_t timer,
+                          uint16_t loop_words, uint32_t length_words) {
     const unsigned base = CHANNEL_BASE(channel);
 
     harness_put32(base + REG_CNT, ctrl & 0x7fffffffu);
@@ -252,9 +236,8 @@ static void harness_start(unsigned channel, uint32_t ctrl, uint32_t source,
     harness_put32(base + REG_CNT, ctrl | 0x80000000u);
 }
 
-static uint32_t harness_random_ctrl(unsigned format)
-{
-    uint32_t ctrl = harness_below(128u);                  /* volume */
+static uint32_t harness_random_ctrl(unsigned format) {
+    uint32_t ctrl = harness_below(128u); /* volume */
     uint32_t pan;
 
     switch (harness_below(4u)) {
@@ -271,22 +254,21 @@ static uint32_t harness_random_ctrl(unsigned format)
         pan = harness_below(128u);
         break;
     }
-    ctrl |= harness_below(4u) << 8;                       /* shift */
+    ctrl |= harness_below(4u) << 8; /* shift */
     ctrl |= pan << 16;
-    ctrl |= harness_below(8u) << 24;                      /* PSG duty */
-    ctrl |= harness_below(4u) << 27;                      /* repeat */
+    ctrl |= harness_below(8u) << 24; /* PSG duty */
+    ctrl |= harness_below(4u) << 27; /* repeat */
     ctrl |= (uint32_t)format << 29;
     if (harness_below(5u) == 0u) {
-        ctrl |= 127u;                                     /* full volume */
+        ctrl |= 127u; /* full volume */
     }
     return ctrl;
 }
 
-static uint16_t harness_random_timer(void)
-{
+static uint16_t harness_random_timer(void) {
     switch (harness_below(6u)) {
     case 0:
-        return (uint16_t)(0x10000u - 1u - harness_below(64u));    /* very high pitch */
+        return (uint16_t)(0x10000u - 1u - harness_below(64u)); /* very high pitch */
     case 1:
         return (uint16_t)(0x10000u - 300u - harness_below(800u)); /* step around 1 */
     case 2:
@@ -303,8 +285,7 @@ static uint32_t pool_offset[COVERAGE_POOL];
 static uint32_t pool_words[COVERAGE_POOL];
 static uint32_t pool_loop[COVERAGE_POOL];
 
-static void harness_coverage_pool(void)
-{
+static void harness_coverage_pool(void) {
     unsigned i;
 
     for (i = 0; i < COVERAGE_POOL; ++i) {
@@ -314,8 +295,7 @@ static void harness_coverage_pool(void)
     }
 }
 
-static void harness_coverage_note(unsigned channel)
-{
+static void harness_coverage_note(unsigned channel) {
     unsigned format = harness_below(10u) < 6u ? 2u : harness_below(4u);
     uint32_t length_words = 1u + harness_below(600u);
     uint32_t loop_words = harness_below(length_words + 4u);
@@ -330,16 +310,16 @@ static void harness_coverage_note(unsigned channel)
         length_words = pool_words[pick];
         loop_words = harness_below(4u) != 0u ? pool_loop[pick] : harness_below(length_words);
         if (harness_below(2u) == 0u) {
-            ctrl = (ctrl & ~(3u << 27)) | (1u << 27);     /* looping */
+            ctrl = (ctrl & ~(3u << 27)) | (1u << 27); /* looping */
         }
     }
     source = (uint32_t)(uintptr_t)&sample_memory[offset];
 
     if (harness_below(40u) == 0u) {
-        length_words = harness_below(3u);                 /* empty and tiny sounds */
+        length_words = harness_below(3u); /* empty and tiny sounds */
     }
     if (harness_below(60u) == 0u) {
-        source = 0u;                                      /* no data */
+        source = 0u; /* no data */
     }
     if (format == 2u && source != 0u && harness_below(4u) == 0u) {
         sample_memory[offset + 2u] = (uint8_t)harness_below(100u);
@@ -348,17 +328,16 @@ static void harness_coverage_note(unsigned channel)
                   length_words);
 }
 
-static void harness_coverage_capture(void)
-{
+static void harness_coverage_capture(void) {
     unsigned slot = harness_below(2u);
     unsigned control = 0x80u;
     uint32_t offset = harness_below(SAMPLE_MEMORY_SIZE / 4u - 1300u) * 4u;
     uint32_t words = 1u + harness_below(400u);
     unsigned play_channel = slot ? 3u : 1u;
 
-    control |= harness_below(2u) << 3;                    /* PCM8 */
-    control |= harness_below(3u) == 0u ? 4u : 0u;         /* one-shot */
-    control |= harness_below(2u) << 1;                    /* channel 0/2 source */
+    control |= harness_below(2u) << 3;            /* PCM8 */
+    control |= harness_below(3u) == 0u ? 4u : 0u; /* one-shot */
+    control |= harness_below(2u) << 1;            /* channel 0/2 source */
     harness_put8(0x508u + slot, 0u);
     harness_put32(0x510u + slot * 8u, (uint32_t)(uintptr_t)&sample_memory[offset]);
     harness_put16(0x514u + slot * 8u, (uint16_t)words);
@@ -374,8 +353,7 @@ static void harness_coverage_capture(void)
     }
 }
 
-static void harness_coverage_step(void)
-{
+static void harness_coverage_step(void) {
     unsigned channel = harness_below(NITRO_SOUND_CHANNEL_COUNT);
     unsigned base = CHANNEL_BASE(channel);
     uint32_t ctrl = harness_get32(base + REG_CNT);
@@ -399,12 +377,11 @@ static void harness_coverage_step(void)
     case 6:
         harness_put32(base + REG_CNT, ctrl & 0x7fffffffu);
         break;
-    case 7:
-    {
+    case 7: {
         /* SOUNDCNT: master volume; routing and bypass one field at a time
          * (so each meets ordinary routing), output off, or anything. */
-        static const uint8_t controls[] = { 0x80u, 0x80u, 0x00u, 0x90u, 0xa0u, 0xb0u,
-                                            0x81u, 0x82u, 0x83u, 0x84u, 0x88u, 0x8cu };
+        static const uint8_t controls[] = {0x80u, 0x80u, 0x00u, 0x90u, 0xa0u, 0xb0u,
+                                           0x81u, 0x82u, 0x83u, 0x84u, 0x88u, 0x8cu};
         uint8_t control = controls[harness_below(sizeof(controls))];
 
         if (harness_below(4u) == 0u) {
@@ -413,7 +390,7 @@ static void harness_coverage_step(void)
         harness_put8(0x500u, (uint8_t)(harness_below(3u) == 0u ? 127u : harness_below(128u)));
         harness_put8(0x501u, control);
         if (harness_below(2u) == 0u) {
-            harness_put8(0x508u, 0u);   /* captures off, so routing alone decides */
+            harness_put8(0x508u, 0u); /* captures off, so routing alone decides */
             harness_put8(0x509u, 0u);
         }
         break;
@@ -457,8 +434,7 @@ static void harness_coverage_step(void)
     }
 }
 
-static size_t harness_coverage_frames(void)
-{
+static size_t harness_coverage_frames(void) {
     switch (harness_below(8u)) {
     case 0:
         return 1u + harness_below(8u);
@@ -475,8 +451,7 @@ static size_t harness_coverage_frames(void)
     }
 }
 
-static void harness_coverage(unsigned programs)
-{
+static void harness_coverage(unsigned programs) {
     unsigned program;
 
     for (program = 0; program < programs; ++program) {
@@ -529,8 +504,7 @@ static uint32_t bench_offset[BENCH_INSTRUMENTS];
 static uint32_t bench_words[BENCH_INSTRUMENTS];
 static uint32_t bench_loop[BENCH_INSTRUMENTS];
 
-static void harness_bench_note(unsigned channel)
-{
+static void harness_bench_note(unsigned channel) {
     unsigned instrument = harness_below(BENCH_INSTRUMENTS);
     uint32_t ctrl = 40u + harness_below(88u);
     uint32_t pan = channel & 1u ? 64u : 20u + harness_below(88u);
@@ -538,14 +512,13 @@ static void harness_bench_note(unsigned channel)
     uint16_t timer = (uint16_t)(0x10000u - 512u - harness_below(1200u));
 
     ctrl |= pan << 16;
-    ctrl |= 1u << 27;                                     /* loop */
-    ctrl |= 2u << 29;                                     /* ADPCM */
+    ctrl |= 1u << 27; /* loop */
+    ctrl |= 2u << 29; /* ADPCM */
     harness_start(channel, ctrl, (uint32_t)(uintptr_t)&sample_memory[bench_offset[instrument]],
                   timer, (uint16_t)bench_loop[instrument], bench_words[instrument]);
 }
 
-static void harness_bench(unsigned ticks)
-{
+static void harness_bench(unsigned ticks) {
     unsigned i;
     unsigned tick;
     uint32_t offset = 0;
@@ -601,8 +574,7 @@ static void harness_bench(unsigned ticks)
     }
 }
 
-int main(void)
-{
+int main(void) {
 #ifdef SOUND_PROGRAM_BENCH
     harness_bench(SOUND_PROGRAM_BENCH);
 #else

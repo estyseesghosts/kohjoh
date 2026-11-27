@@ -20,13 +20,11 @@
 #include "graphics/font/glyph_batch.h"
 #include "graphics/font/text_window.h"
 
-void kj_log(const char *fmt, ...)
-{
+void kj_log(const char *fmt, ...) {
     (void)fmt;
 }
 
-static unsigned char *read_file(const char *path, size_t *size)
-{
+static unsigned char *read_file(const char *path, size_t *size) {
     FILE *f = fopen(path, "rb");
     unsigned char *data;
     long n;
@@ -44,8 +42,7 @@ static unsigned char *read_file(const char *path, size_t *size)
     return data;
 }
 
-static kj_text_event ev(unsigned kind, uint32_t window, uint32_t generation)
-{
+static kj_text_event ev(unsigned kind, uint32_t window, uint32_t generation) {
     kj_text_event e;
     memset(&e, 0, sizeof(e));
     e.kind = (uint8_t)kind;
@@ -60,8 +57,7 @@ static kj_text_event ev(unsigned kind, uint32_t window, uint32_t generation)
     return e;
 }
 
-static void add_full_window(kj_text_event *out, unsigned *n, uint32_t window)
-{
+static void add_full_window(kj_text_event *out, unsigned *n, uint32_t window) {
     kj_text_event a = ev(KJ_TEXT_EV_ADD, window, 1);
     kj_text_event f = ev(KJ_TEXT_EV_FILL, window, 1);
     f.x = 0;
@@ -74,8 +70,7 @@ static void add_full_window(kj_text_event *out, unsigned *n, uint32_t window)
 }
 
 static void glyph_gen(kj_text_event *out, unsigned *n, uint32_t window, uint32_t generation,
-                      uint16_t code, int x, int y)
-{
+                      uint16_t code, int x, int y) {
     kj_text_event g = ev(KJ_TEXT_EV_GLYPH, window, generation);
     g.code = code;
     g.x = (int16_t)x;
@@ -86,23 +81,19 @@ static void glyph_gen(kj_text_event *out, unsigned *n, uint32_t window, uint32_t
     out[(*n)++] = g;
 }
 
-static void glyph(kj_text_event *out, unsigned *n, uint32_t window, uint16_t code, int x, int y)
-{
+static void glyph(kj_text_event *out, unsigned *n, uint32_t window, uint16_t code, int x, int y) {
     glyph_gen(out, n, window, 1, code, x, y);
 }
 
-static void publish_gen(kj_text_event *out, unsigned *n, uint32_t window, uint32_t generation)
-{
+static void publish_gen(kj_text_event *out, unsigned *n, uint32_t window, uint32_t generation) {
     out[(*n)++] = ev(KJ_TEXT_EV_PUBLISH, window, generation);
 }
 
-static void publish(kj_text_event *out, unsigned *n, uint32_t window)
-{
+static void publish(kj_text_event *out, unsigned *n, uint32_t window) {
     publish_gen(out, n, window, 1);
 }
 
-static void test_atlas(const unsigned char *blob, size_t size)
-{
+static void test_atlas(const unsigned char *blob, size_t size) {
     kj_glyph g;
     kj_glyph_art art;
 
@@ -160,8 +151,7 @@ static void test_atlas(const unsigned char *blob, size_t size)
     assert(!kj_font_lookup(0, 299, KJ_GLYPH_VARIANT_STANDARD, &g));
 }
 
-static void test_batch(const unsigned char *blob, size_t size)
-{
+static void test_batch(const unsigned char *blob, size_t size) {
     kj_text_vertex mem[15];
     kj_text_run run;
     kj_glyph g;
@@ -206,8 +196,7 @@ static void test_batch(const unsigned char *blob, size_t size)
     kj_font_atlas_exit();
 }
 
-static void test_policy(const unsigned char *blob, size_t size)
-{
+static void test_policy(const unsigned char *blob, size_t size) {
     kj_text_event events[16];
     unsigned n;
     kj_frame_input in;
@@ -255,10 +244,10 @@ static void test_policy(const unsigned char *blob, size_t size)
     /* The compositor must skip exactly the tiles the native pass replaces. */
     assert(kj_text_owns_tile(0, 0, 0, 0, 0, 0));
     assert(kj_text_owns_tile(0, 0, 0, 0, 232, 24));
-    assert(!kj_text_owns_tile(0, 0, 0, 0, 240, 0));   /* width 30 tiles = 240 */
-    assert(!kj_text_owns_tile(0, 0, 0, 0, 0, 32));    /* height 4 tiles = 32 */
-    assert(!kj_text_owns_tile(0, 1, 0, 0, 0, 0));     /* other plane */
-    assert(!kj_text_owns_tile(1, 0, 0, 0, 0, 0));     /* other engine */
+    assert(!kj_text_owns_tile(0, 0, 0, 0, 240, 0)); /* width 30 tiles = 240 */
+    assert(!kj_text_owns_tile(0, 0, 0, 0, 0, 32));  /* height 4 tiles = 32 */
+    assert(!kj_text_owns_tile(0, 1, 0, 0, 0, 0));   /* other plane */
+    assert(!kj_text_owns_tile(1, 0, 0, 0, 0, 0));   /* other engine */
 
     n = 0;
     add_full_window(events, &n, 0x3000);
@@ -436,8 +425,7 @@ static void test_policy(const unsigned char *blob, size_t size)
 /* Fixed-capacity policy: exactly KJ_TEXT_MAX_WINDOWS records fit; one more
  * evicts the least recently seen record, not slot 0. A reused address with a
  * new generation inherits nothing from the evicted record. */
-static void test_capacity(const unsigned char *blob, size_t size)
-{
+static void test_capacity(const unsigned char *blob, size_t size) {
     static kj_text_event events[4 * (KJ_TEXT_MAX_WINDOWS + 4)];
     kj_frame_input in;
     unsigned n;
@@ -537,8 +525,7 @@ static void test_capacity(const unsigned char *blob, size_t size)
     kj_font_atlas_exit();
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     const char *path = argc > 1 ? argv[1] : "assets/fonts/generated/kohjoh_text_atlas.bin";
     size_t size = 0;
     unsigned char *blob = read_file(path, &size);

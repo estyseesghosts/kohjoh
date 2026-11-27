@@ -14,15 +14,14 @@
 
 static kj_field_scale s_world_mode = KJ_FIELD_SCALE_LEGACY;
 
-#define DISPLAY_TRANSFER_FLAGS                                                                  \
-    (GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) |              \
+#define DISPLAY_TRANSFER_FLAGS                                                                     \
+    (GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) |               \
      GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGBA8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) | \
      GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO))
 
 static kj_target s_targets[2];
 
-bool kj_targets_init(void)
-{
+bool kj_targets_init(void) {
     s_targets[0].rt = C3D_RenderTargetCreate(240, 400, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
     s_targets[1].rt = C3D_RenderTargetCreate(240, 320, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
     if (s_targets[0].rt == NULL || s_targets[1].rt == NULL) {
@@ -71,8 +70,7 @@ bool kj_targets_init(void)
     return true;
 }
 
-void kj_targets_exit(void)
-{
+void kj_targets_exit(void) {
     kj_offscreen_exit();
     for (int i = 0; i < 2; ++i) {
         if (s_targets[i].rt != NULL) {
@@ -83,12 +81,10 @@ void kj_targets_exit(void)
     s_world_mode = KJ_FIELD_SCALE_LEGACY;
 }
 
-kj_target *kj_target_get(int screen)
-{
+kj_target *kj_target_get(int screen) {
     return &s_targets[screen];
 }
 
-kj_field_scale kj_targets_world_mode(void)
-{
+kj_field_scale kj_targets_world_mode(void) {
     return s_world_mode;
 }

@@ -7,14 +7,12 @@
 
 #include "app/config.h"
 
-void kj_log(const char *fmt, ...)
-{
+void kj_log(const char *fmt, ...) {
     (void)fmt;
 }
 
-static void check(const char *text, size_t len, kj_config_status status,
-                  kj_field_scale requested, kj_field_scale effective)
-{
+static void check(const char *text, size_t len, kj_config_status status, kj_field_scale requested,
+                  kj_field_scale effective) {
     kj_field_scale want = KJ_FIELD_SCALE_2X, use = KJ_FIELD_SCALE_2X;
     assert(kj_config_parse(text, len, &want, &use) == status);
     assert(want == requested);
@@ -23,8 +21,7 @@ static void check(const char *text, size_t len, kj_config_status status,
 
 #define CHECK(s, st, req, eff) check(s, strlen(s), st, req, eff)
 
-int main(void)
-{
+int main(void) {
     /* No file data, comments and whitespace only: safe legacy default. */
     CHECK("", KJ_CONFIG_UNRECOGNIZED, KJ_FIELD_SCALE_LEGACY, KJ_FIELD_SCALE_LEGACY);
     CHECK("# Overworld rendering resolution.\n# Valid values: legacy, 1x, 2x\n",
@@ -36,8 +33,7 @@ int main(void)
     /* The documented forms, with LF and CRLF. */
     CHECK("field_scale = 1x\n", KJ_CONFIG_OK, KJ_FIELD_SCALE_1X, KJ_FIELD_SCALE_1X);
     CHECK("field_scale = 2x\r\n", KJ_CONFIG_OK, KJ_FIELD_SCALE_2X, KJ_FIELD_SCALE_2X);
-    CHECK("field_scale = legacy\n", KJ_CONFIG_OK, KJ_FIELD_SCALE_LEGACY,
-          KJ_FIELD_SCALE_LEGACY);
+    CHECK("field_scale = legacy\n", KJ_CONFIG_OK, KJ_FIELD_SCALE_LEGACY, KJ_FIELD_SCALE_LEGACY);
     CHECK("field_scale=1x", KJ_CONFIG_OK, KJ_FIELD_SCALE_1X,
           KJ_FIELD_SCALE_1X); /* unterminated final line */
 
@@ -52,10 +48,8 @@ int main(void)
      * not stop later valid lines from being read. */
     CHECK("field_scale = banana\n", KJ_CONFIG_UNRECOGNIZED, KJ_FIELD_SCALE_LEGACY,
           KJ_FIELD_SCALE_LEGACY);
-    CHECK("field_scale\n", KJ_CONFIG_UNRECOGNIZED, KJ_FIELD_SCALE_LEGACY,
-          KJ_FIELD_SCALE_LEGACY);
-    CHECK("field_scale = \n", KJ_CONFIG_UNRECOGNIZED, KJ_FIELD_SCALE_LEGACY,
-          KJ_FIELD_SCALE_LEGACY);
+    CHECK("field_scale\n", KJ_CONFIG_UNRECOGNIZED, KJ_FIELD_SCALE_LEGACY, KJ_FIELD_SCALE_LEGACY);
+    CHECK("field_scale = \n", KJ_CONFIG_UNRECOGNIZED, KJ_FIELD_SCALE_LEGACY, KJ_FIELD_SCALE_LEGACY);
     CHECK("field_scale = nope\nfield_scale = 2x\n", KJ_CONFIG_OK, KJ_FIELD_SCALE_2X,
           KJ_FIELD_SCALE_2X);
     CHECK("field_scale = 2x\nfield_scale = bogus\n", KJ_CONFIG_OK, KJ_FIELD_SCALE_2X,
@@ -89,14 +83,12 @@ int main(void)
     {
         kj_text_renderer want, use;
 
-        assert(kj_config_parse_text("text_renderer = native\n", 22, &want, &use) ==
-               KJ_CONFIG_OK);
+        assert(kj_config_parse_text("text_renderer = native\n", 22, &want, &use) == KJ_CONFIG_OK);
         assert(want == KJ_TEXT_RENDERER_NATIVE && use == KJ_TEXT_RENDERER_NATIVE);
-        assert(kj_config_parse_text("text_renderer = legacy\r\n", 23, &want, &use) ==
-               KJ_CONFIG_OK);
+        assert(kj_config_parse_text("text_renderer = legacy\r\n", 23, &want, &use) == KJ_CONFIG_OK);
         assert(want == KJ_TEXT_RENDERER_LEGACY && use == KJ_TEXT_RENDERER_LEGACY);
-        assert(kj_config_parse_text("  text_renderer\t=\tNATIVE # opt in\n", 32, &want,
-                                    &use) == KJ_CONFIG_OK);
+        assert(kj_config_parse_text("  text_renderer\t=\tNATIVE # opt in\n", 32, &want, &use) ==
+               KJ_CONFIG_OK);
         assert(use == KJ_TEXT_RENDERER_NATIVE);
 
         /* A malformed text_renderer does not invalidate field_scale... */

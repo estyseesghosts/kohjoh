@@ -16,9 +16,14 @@
 /* PICA render targets are portrait: the 200x120 landscape world uses a
  * 120x200 active region in a 128x256 backing texture. The rotated projection
  * maps DS y -> texture x and DS x -> texture y; the composite must undo it. */
-enum { KJ_OFFSCREEN_W = 128, KJ_OFFSCREEN_H = 256,
-       KJ_OFFSCREEN_ACTIVE_W = 120, KJ_OFFSCREEN_ACTIVE_H = 200,
-       KJ_OFFSCREEN_LOGICAL_W = 200, KJ_OFFSCREEN_LOGICAL_H = 120 };
+enum {
+    KJ_OFFSCREEN_W = 128,
+    KJ_OFFSCREEN_H = 256,
+    KJ_OFFSCREEN_ACTIVE_W = 120,
+    KJ_OFFSCREEN_ACTIVE_H = 200,
+    KJ_OFFSCREEN_LOGICAL_W = 200,
+    KJ_OFFSCREEN_LOGICAL_H = 120
+};
 
 bool kj_offscreen_init(void);
 void kj_offscreen_exit(void);

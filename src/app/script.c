@@ -40,14 +40,13 @@ static bool s_active;
 static uint32_t s_debug;
 static bool s_fontbench;
 static uint32_t s_now;
-static uint64_t s_input_end; /* exclusive; wider than a V-blank counter */
+static uint64_t s_input_end;    /* exclusive; wider than a V-blank counter */
 static uint32_t s_battle_frame; /* 0: no `battle:` request */
 static unsigned s_battle_t1, s_battle_t2;
 static int s_battle_bg = -1, s_battle_terrain = -1; /* -1: the map's */
 
 /* Parse decimal fields without accepting signs, junk or uint32_t overflow. */
-static bool parse_decimal(const char *text, const char **end, uint32_t *value)
-{
+static bool parse_decimal(const char *text, const char **end, uint32_t *value) {
     uint32_t n = 0;
     const char *p = text;
     if (*p < '0' || *p > '9') {
@@ -66,15 +65,14 @@ static bool parse_decimal(const char *text, const char **end, uint32_t *value)
     return true;
 }
 
-static uint16_t key_bit(const char *k)
-{
+static uint16_t key_bit(const char *k) {
     static const struct {
         const char *name;
         uint16_t bit;
     } KEYS[] = {
-        { "A", 0x001 },     { "B", 0x002 },     { "SELECT", 0x004 }, { "START", 0x008 },
-        { "RIGHT", 0x010 }, { "LEFT", 0x020 },  { "UP", 0x040 },     { "DOWN", 0x080 },
-        { "R", 0x100 },     { "L", 0x200 },     { "X", 0x400 },      { "Y", 0x800 },
+        {"A", 0x001},     {"B", 0x002},    {"SELECT", 0x004}, {"START", 0x008},
+        {"RIGHT", 0x010}, {"LEFT", 0x020}, {"UP", 0x040},     {"DOWN", 0x080},
+        {"R", 0x100},     {"L", 0x200},    {"X", 0x400},      {"Y", 0x800},
     };
     for (size_t i = 0; i < sizeof(KEYS) / sizeof(KEYS[0]); ++i) {
         if (strcmp(k, KEYS[i].name) == 0) {
@@ -84,8 +82,7 @@ static uint16_t key_bit(const char *k)
     return 0;
 }
 
-static mark *mark_for(uint32_t frame)
-{
+static mark *mark_for(uint32_t frame) {
     for (unsigned i = 0; i < s_mark_count; ++i) {
         if (s_marks[i].frame == frame) {
             return &s_marks[i];
@@ -100,8 +97,7 @@ static mark *mark_for(uint32_t frame)
     return m;
 }
 
-void kj_script_load(const char *path)
-{
+void kj_script_load(const char *path) {
     FILE *f = fopen(path, "r");
     char line[256];
 
@@ -168,7 +164,7 @@ void kj_script_load(const char *path)
                 }
             }
         } else if (s_event_count < MAX_EVENTS) {
-            event parsed = { 0 };
+            event parsed = {0};
             const char *end;
             if (!parse_decimal(tok, &end, &parsed.vblank)) {
                 kj_log("[script] ignored invalid input event");
@@ -176,8 +172,7 @@ void kj_script_load(const char *path)
             }
             if (*end == '-') {
                 uint32_t last;
-                if (!parse_decimal(end + 1, &end, &last) || *end != '\0' ||
-                    last <= parsed.vblank) {
+                if (!parse_decimal(end + 1, &end, &last) || *end != '\0' || last <= parsed.vblank) {
                     kj_log("[script] ignored invalid input interval");
                     continue;
                 }
@@ -223,13 +218,11 @@ void kj_script_load(const char *path)
            (unsigned long)s_debug);
 }
 
-bool kj_script_active(void)
-{
+bool kj_script_active(void) {
     return s_active;
 }
 
-bool kj_script_input(uint32_t vblank, uint16_t *keys, bool *touch, uint16_t *tx, uint16_t *ty)
-{
+bool kj_script_input(uint32_t vblank, uint16_t *keys, bool *touch, uint16_t *tx, uint16_t *ty) {
     s_now = vblank;
     /* Only a script with input events owns the pad: one that sets only
      * debug flags, marks or pacing leaves live input working. */
@@ -258,8 +251,7 @@ bool kj_script_input(uint32_t vblank, uint16_t *keys, bool *touch, uint16_t *tx,
     return true;
 }
 
-uint32_t kj_script_freeze(uint32_t frame)
-{
+uint32_t kj_script_freeze(uint32_t frame) {
     for (unsigned i = 0; i < s_mark_count; ++i) {
         if (s_marks[i].frame == frame) {
             return s_marks[i].seconds;
@@ -268,8 +260,7 @@ uint32_t kj_script_freeze(uint32_t frame)
     return 0;
 }
 
-bool kj_script_dump(uint32_t frame)
-{
+bool kj_script_dump(uint32_t frame) {
     for (unsigned i = 0; i < s_mark_count; ++i) {
         if (s_marks[i].frame == frame) {
             return s_marks[i].dump;
@@ -278,23 +269,19 @@ bool kj_script_dump(uint32_t frame)
     return false;
 }
 
-uint32_t kj_script_debug(void)
-{
+uint32_t kj_script_debug(void) {
     return s_debug;
 }
 
-uint32_t kj_script_end(void)
-{
+uint32_t kj_script_end(void) {
     return s_end;
 }
 
-bool kj_script_fontbench(void)
-{
+bool kj_script_fontbench(void) {
     return s_fontbench;
 }
 
-int NitroPort_DebugBattle(unsigned *trainer1, unsigned *trainer2)
-{
+int NitroPort_DebugBattle(unsigned *trainer1, unsigned *trainer2) {
     if (s_battle_frame == 0 || s_now < s_battle_frame) {
         return 0;
     }
@@ -306,8 +293,7 @@ int NitroPort_DebugBattle(unsigned *trainer1, unsigned *trainer2)
     return 1;
 }
 
-int NitroPort_DebugBattleBackdrop(int *bg, int *terrain)
-{
+int NitroPort_DebugBattleBackdrop(int *bg, int *terrain) {
     if (s_battle_bg < 0 || s_battle_terrain < 0) {
         return 0;
     }
@@ -317,8 +303,7 @@ int NitroPort_DebugBattleBackdrop(int *bg, int *terrain)
     return 1;
 }
 
-int NitroPort_DebugPropVisibility(unsigned propIndex, int x, int y, int z, int boxResult)
-{
+int NitroPort_DebugPropVisibility(unsigned propIndex, int x, int y, int z, int boxResult) {
     if (s_debug & KJ_DEBUG_PROPVIS_LOG) {
         kj_log("[propvis] id=%u x=%d y=%d z=%d box=%d", (unsigned)propIndex, x, y, z, boxResult);
     }
@@ -326,8 +311,7 @@ int NitroPort_DebugPropVisibility(unsigned propIndex, int x, int y, int z, int b
 }
 
 void NitroPort_DebugBillboard(unsigned model, unsigned type, unsigned sequence, unsigned frame,
-                              unsigned texKey, int x, int y, int z, int sx, int sy, int sz)
-{
+                              unsigned texKey, int x, int y, int z, int sx, int sy, int sz) {
     if (s_debug & KJ_DEBUG_BILLBOARD_LOG) {
         kj_log("[billboard] model=%u type=%u seq=%u frame=%u tex=%u "
                "pos=%d,%d,%d scale=%d,%d,%d",
@@ -335,11 +319,10 @@ void NitroPort_DebugBillboard(unsigned model, unsigned type, unsigned sequence, 
     }
 }
 
-void NitroPort_DebugMapResidency(unsigned matrixIndex, unsigned tile, unsigned quadrant,
-                                  int slot, int slotMatrix)
-{
+void NitroPort_DebugMapResidency(unsigned matrixIndex, unsigned tile, unsigned quadrant, int slot,
+                                 int slotMatrix) {
     if (s_debug & KJ_DEBUG_MAPRES_LOG) {
-        kj_log("[mapres] tracked=%u tile=%u quad=%u slot=%d matrix=%d",
-               matrixIndex, tile, quadrant, slot, slotMatrix);
+        kj_log("[mapres] tracked=%u tile=%u quad=%u slot=%d matrix=%d", matrixIndex, tile, quadrant,
+               slot, slotMatrix);
     }
 }

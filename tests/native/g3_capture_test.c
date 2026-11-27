@@ -7,11 +7,12 @@
 #include SOURCE
 
 unsigned char NitroPort_IoReg[0x1000];
-void NitroPort_Log(const char *fmt, ...) { assert(strstr(fmt, "MISMATCH") == NULL); }
+void NitroPort_Log(const char *fmt, ...) {
+    assert(strstr(fmt, "MISMATCH") == NULL);
+}
 static uint64_t hash = 1469598103934665603ull;
 
-static uint64_t digest(uint64_t value, const void *ptr, size_t count)
-{
+static uint64_t digest(uint64_t value, const void *ptr, size_t count) {
     const unsigned char *bytes = ptr;
     for (size_t i = 0; i < count; ++i) {
         value = (value ^ bytes[i]) * 1099511628211ull;
@@ -19,8 +20,7 @@ static uint64_t digest(uint64_t value, const void *ptr, size_t count)
     return value;
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     (void)argv;
     const bool discard = argc > 1;
     kj_g3_storage storage;
@@ -30,23 +30,42 @@ int main(int argc, char **argv)
     }
     kj_g3_init(&storage);
     uint32_t list[] = {
-        0x40, 0, 0x20, 0x1234, 0x21, 0x200, 0x22, 0x00100020,
-        0x23, 0, 0, 0x23, 4096, 0,
+        0x40,
+        0,
+        0x20,
+        0x1234,
+        0x21,
+        0x200,
+        0x22,
+        0x00100020,
+        0x23,
+        0,
+        0,
+        0x23,
+        4096,
+        0,
         /* A matrix restore inside a strip shares vertices across blocks. */
-        0x14, 0, 0x23, 4096 << 16, 0, 0x23, 4096, 4096, 0x41,
+        0x14,
+        0,
+        0x23,
+        4096 << 16,
+        0,
+        0x23,
+        4096,
+        4096,
+        0x41,
     };
     for (unsigned frame = 0; frame < 240; ++frame) {
         const bool capture = (frame & 1u) == 0;
         uint64_t vertex_before = 0;
         for (unsigned i = 0; i < 2; ++i) {
-            vertex_before = digest(vertex_before, storage.verts[i],
-                                   KJ_G3_MAX_VERTS * sizeof(kj_g3_vertex));
+            vertex_before =
+                digest(vertex_before, storage.verts[i], KJ_G3_MAX_VERTS * sizeof(kj_g3_vertex));
         }
         kj_g3_set_capture(!discard || capture);
         assert(NitroPort_SkipSceneBuild() == (discard && !capture));
         for (unsigned call = 0; call < 6; ++call) {
-            const uint32_t matrix[] = {4096, 0, 0, 0, 4096, 0, 0, 0, 4096,
-                                       frame * 3, call * 3, 0};
+            const uint32_t matrix[] = {4096, 0, 0, 0, 4096, 0, 0, 0, 4096, frame * 3, call * 3, 0};
             execute(0x10, (const uint32_t[]){2});
             execute(0x17, matrix);
             execute(0x13, (const uint32_t[]){0});

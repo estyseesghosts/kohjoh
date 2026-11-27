@@ -31,14 +31,12 @@ enum {
 static kj_input s_input;
 static uint32_t s_vblank;
 
-void kj_input_init(void)
-{
+void kj_input_init(void) {
     s_input.keys = 0;
     s_input.touch = false;
 }
 
-void kj_input_sample(void)
-{
+void kj_input_sample(void) {
     hidScanInput();
     {
         bool touch;
@@ -82,7 +80,6 @@ void kj_input_sample(void)
     }
 }
 
-const kj_input *kj_ctr_input(void)
-{
+const kj_input *kj_ctr_input(void) {
     return &s_input;
 }

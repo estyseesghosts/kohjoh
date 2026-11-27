@@ -34,32 +34,32 @@ typedef struct app_template {
 
 typedef int (*app_fn)(void *, int *);
 
-#define TEMPLATES(X)                                        \
-    X(gOverlayTemplate_FieldMap, KJ_SCREEN_FIELD)           \
-    X(gOverlayTemplate_Battle, KJ_SCREEN_BATTLE)            \
-    X(gApplication_TitleScreen, KJ_SCREEN_TITLE)            \
-    X(gApplication_IntroMovie, KJ_SCREEN_INTRO)             \
-    X(gApp_MainMenu, KJ_SCREEN_MAIN_MENU)                   \
-    X(gApplication_OakSpeech, KJ_SCREEN_OAK_SPEECH)         \
-    X(gOverlayTemplate_PartyMenu, KJ_SCREEN_PARTY)          \
+#define TEMPLATES(X)                                                                               \
+    X(gOverlayTemplate_FieldMap, KJ_SCREEN_FIELD)                                                  \
+    X(gOverlayTemplate_Battle, KJ_SCREEN_BATTLE)                                                   \
+    X(gApplication_TitleScreen, KJ_SCREEN_TITLE)                                                   \
+    X(gApplication_IntroMovie, KJ_SCREEN_INTRO)                                                    \
+    X(gApp_MainMenu, KJ_SCREEN_MAIN_MENU)                                                          \
+    X(gApplication_OakSpeech, KJ_SCREEN_OAK_SPEECH)                                                \
+    X(gOverlayTemplate_PartyMenu, KJ_SCREEN_PARTY)                                                 \
     X(gOverlayTemplate_PokemonSummary, KJ_SCREEN_SUMMARY)
 
-#define INITS(X)                                            \
-    X(Bag_Init, KJ_SCREEN_BAG)                              \
-    X(PCBox_Init, KJ_SCREEN_PC_BOX)                         \
-    X(Pokedex_Init, KJ_SCREEN_POKEDEX)                      \
-    X(Pokegear_Init, KJ_SCREEN_POKEGEAR)                    \
-    X(PokegearMap_Init, KJ_SCREEN_GEAR_MAP)                 \
-    X(PokegearPhone_Init, KJ_SCREEN_GEAR_PHONE)             \
-    X(PokegearRadio_Init, KJ_SCREEN_GEAR_RADIO)             \
-    X(PokegearConfigure_Init, KJ_SCREEN_GEAR_CONFIG)        \
-    X(TrainerCardMainApp_Init, KJ_SCREEN_TRAINER_CARD)      \
-    X(TrainerCardSignature_Init, KJ_SCREEN_TC_SIGNATURE)    \
-    X(OptionsMenu_Init, KJ_SCREEN_OPTIONS)                  \
-    X(FlyMap_Init, KJ_SCREEN_FLY_MAP)                       \
-    X(ChooseStarter_Init, KJ_SCREEN_STARTER)                \
-    X(Credits_Init, KJ_SCREEN_CREDITS)                      \
-    X(EasyChat_Init, KJ_SCREEN_EASY_CHAT)                   \
+#define INITS(X)                                                                                   \
+    X(Bag_Init, KJ_SCREEN_BAG)                                                                     \
+    X(PCBox_Init, KJ_SCREEN_PC_BOX)                                                                \
+    X(Pokedex_Init, KJ_SCREEN_POKEDEX)                                                             \
+    X(Pokegear_Init, KJ_SCREEN_POKEGEAR)                                                           \
+    X(PokegearMap_Init, KJ_SCREEN_GEAR_MAP)                                                        \
+    X(PokegearPhone_Init, KJ_SCREEN_GEAR_PHONE)                                                    \
+    X(PokegearRadio_Init, KJ_SCREEN_GEAR_RADIO)                                                    \
+    X(PokegearConfigure_Init, KJ_SCREEN_GEAR_CONFIG)                                               \
+    X(TrainerCardMainApp_Init, KJ_SCREEN_TRAINER_CARD)                                             \
+    X(TrainerCardSignature_Init, KJ_SCREEN_TC_SIGNATURE)                                           \
+    X(OptionsMenu_Init, KJ_SCREEN_OPTIONS)                                                         \
+    X(FlyMap_Init, KJ_SCREEN_FLY_MAP)                                                              \
+    X(ChooseStarter_Init, KJ_SCREEN_STARTER)                                                       \
+    X(Credits_Init, KJ_SCREEN_CREDITS)                                                             \
+    X(EasyChat_Init, KJ_SCREEN_EASY_CHAT)                                                          \
     X(NamingScreenApp_Init, KJ_SCREEN_NAMING)
 
 #define X(sym, id) extern const app_template sym __attribute__((weak));
@@ -71,20 +71,19 @@ INITS(X)
 
 static const char *const NAMES[KJ_SCREEN_COUNT] = KJ_SCREEN_NAMES_INIT;
 
-static uint32_t classify(const void *init)
-{
+static uint32_t classify(const void *init) {
     if (init == NULL) {
         return KJ_SCREEN_UNKNOWN;
     }
-#define X(sym, id)                                          \
-    if (&sym != NULL && sym.init == init) {                 \
-        return id;                                          \
+#define X(sym, id)                                                                                 \
+    if (&sym != NULL && sym.init == init) {                                                        \
+        return id;                                                                                 \
     }
     TEMPLATES(X)
 #undef X
-#define X(sym, id)                                          \
-    if (sym != NULL && (const void *)sym == init) {         \
-        return id;                                          \
+#define X(sym, id)                                                                                 \
+    if (sym != NULL && (const void *)sym == init) {                                                \
+        return id;                                                                                 \
     }
     INITS(X)
 #undef X
@@ -97,8 +96,7 @@ static const void *s_deepest;
 static const void *s_shown;
 static kj_screen_state s_state;
 
-void NitroPort_AppEnter(const void *init)
-{
+void NitroPort_AppEnter(const void *init) {
     if (s_depth == 0) {
         s_deepest = NULL;
         s_deepest_at = -1;
@@ -110,8 +108,7 @@ void NitroPort_AppEnter(const void *init)
     ++s_depth;
 }
 
-void NitroPort_AppLeave(void)
-{
+void NitroPort_AppLeave(void) {
     if (s_depth > 0) {
         --s_depth;
     }
@@ -130,7 +127,6 @@ void NitroPort_AppLeave(void)
                   (unsigned long)s_state.row_count[1]);
 }
 
-void kj_screen_snapshot(kj_screen_state *out)
-{
+void kj_screen_snapshot(kj_screen_state *out) {
     *out = s_state;
 }

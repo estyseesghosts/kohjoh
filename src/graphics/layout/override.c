@@ -31,8 +31,7 @@ typedef struct screen_rows {
 static screen_rows s_screens[MAX_SCREENS];
 static uint32_t s_screen_count;
 
-static int screen_id(const char *name)
-{
+static int screen_id(const char *name) {
     static const char *const names[KJ_SCREEN_COUNT] = KJ_SCREEN_NAMES_INIT;
     for (uint32_t i = 0; i < KJ_SCREEN_COUNT; ++i) {
         if (strcmp(names[i], name) == 0) {
@@ -42,11 +41,13 @@ static int screen_id(const char *name)
     return -1;
 }
 
-static int16_t kind_of(const char *k)
-{
-    static const struct { const char *name; int16_t kind; } KINDS[] = {
-        { "move", KJ_LAYOUT_MOVE }, { "fill", KJ_LAYOUT_FILL }, { "objs", KJ_LAYOUT_OBJS },
-        { "shift3d", KJ_LAYOUT_SHIFT3D }, { "copy", KJ_LAYOUT_COPY }, { "wrap", KJ_LAYOUT_WRAP },
+static int16_t kind_of(const char *k) {
+    static const struct {
+        const char *name;
+        int16_t kind;
+    } KINDS[] = {
+        {"move", KJ_LAYOUT_MOVE},       {"fill", KJ_LAYOUT_FILL}, {"objs", KJ_LAYOUT_OBJS},
+        {"shift3d", KJ_LAYOUT_SHIFT3D}, {"copy", KJ_LAYOUT_COPY}, {"wrap", KJ_LAYOUT_WRAP},
     };
     for (size_t i = 0; i < sizeof(KINDS) / sizeof(KINDS[0]); ++i) {
         if (strcmp(KINDS[i].name, k) == 0) {
@@ -57,8 +58,7 @@ static int16_t kind_of(const char *k)
 }
 
 /* Values in the row's own field order: bgs top bottom x0 x1 (dx | col). */
-static bool parse_row(int16_t kind, const long *v, int n, kj_layout_row *r)
-{
+static bool parse_row(int16_t kind, const long *v, int n, kj_layout_row *r) {
     memset(r, 0, sizeof(*r));
     r->kind = kind;
     switch (kind) {
@@ -108,8 +108,7 @@ static bool parse_row(int16_t kind, const long *v, int n, kj_layout_row *r)
     }
 }
 
-void kj_layout_override_load(const char *path)
-{
+void kj_layout_override_load(const char *path) {
     FILE *f = fopen(path, "r");
     char line[160];
     screen_rows *cur = NULL;
@@ -162,8 +161,7 @@ void kj_layout_override_load(const char *path)
            (unsigned long)s_screen_count, (unsigned long)rows, (unsigned long)bad);
 }
 
-bool kj_layout_override_get(uint32_t id, int engine, const kj_layout_row **rows, uint32_t *count)
-{
+bool kj_layout_override_get(uint32_t id, int engine, const kj_layout_row **rows, uint32_t *count) {
     for (uint32_t i = 0; i < s_screen_count; ++i) {
         if (s_screens[i].id == id) {
             *rows = s_screens[i].rows[engine];

@@ -49,13 +49,11 @@ static u32 s_probe_calls[KJ_PROBE_SLOTS];
 #endif
 
 #ifndef HGSS_PROFILE_OFF
-u64 NitroPort_ProbeNow(void)
-{
+u64 NitroPort_ProbeNow(void) {
     return svcGetSystemTick();
 }
 
-void NitroPort_NoteProbeSince(unsigned slot, u64 t0)
-{
+void NitroPort_NoteProbeSince(unsigned slot, u64 t0) {
     if (slot < KJ_PROBE_SLOTS) {
         s_probe_ticks[slot] += svcGetSystemTick() - t0;
         ++s_probe_calls[slot];
@@ -84,8 +82,7 @@ static const u16 BANK_REG[9] = {
     0x240, 0x241, 0x242, 0x243, 0x244, 0x245, 0x246, 0x248, 0x249,
 };
 
-const kj_ds_memory *kj_ds_get_memory(void)
-{
+const kj_ds_memory *kj_ds_get_memory(void) {
     if (s_memory.io == NULL) {
         s_memory.io = NitroPort_IoReg;
         s_memory.io_size = HW_IOREG_SIZE;
@@ -100,8 +97,7 @@ const kj_ds_memory *kj_ds_get_memory(void)
     return &s_memory;
 }
 
-static void decode_banks(kj_vram_bank banks[9])
-{
+static void decode_banks(kj_vram_bank banks[9]) {
     for (int i = 0; i < 9; ++i) {
         const u8 cnt = NitroPort_IoReg[BANK_REG[i]];
 
@@ -113,8 +109,7 @@ static void decode_banks(kj_vram_bank banks[9])
     }
 }
 
-static void publish(void)
-{
+static void publish(void) {
     kj_frame_input in;
 
     /* The per-line registers of this frame: H-blank handlers and DMAs run
@@ -138,9 +133,8 @@ static void publish(void)
     s_memory.oam_wide_dx = NitroPort_WideObjOffsets();
     decode_banks(in.banks);
     in.lines.active = NitroPort_LineRegs.active != 0;
-    in.lines.regs = in.lines.active
-                        ? (const uint8_t (*)[192][KJ_LINE_REG_BYTES])NitroPort_LineRegs.regs
-                        : NULL;
+    in.lines.regs =
+        in.lines.active ? (const uint8_t(*)[192][KJ_LINE_REG_BYTES])NitroPort_LineRegs.regs : NULL;
     in.g3 = kj_g3_take_frame();
     in.vblank_count = s_vblanks;
     in.game_frame = ++s_publishes;
@@ -157,13 +151,11 @@ static void publish(void)
     kj_g3_set_capture(kj_ctr_capture_next_frame());
 }
 
-void NitroPort_VBlankWorkDone(void)
-{
+void NitroPort_VBlankWorkDone(void) {
     publish();
 }
 
-void NitroPort_OnFrame(void)
-{
+void NitroPort_OnFrame(void) {
     const kj_input *input;
 
     ++s_vblanks;
@@ -194,20 +186,17 @@ void NitroPort_OnFrame(void)
 }
 
 /* POWCNT1 (0x04000304) bit 15: engine A drives the upper screen. */
-BOOL NitroPort_EngineAOnTop(void)
-{
+BOOL NitroPort_EngineAOnTop(void) {
     return (NitroPort_IoReg[0x305] & 0x80) ? TRUE : FALSE;
 }
 
-void NitroPort_Terminate(void)
-{
+void NitroPort_Terminate(void) {
     NitroPort_Log("[kj] the game terminated itself (OS_Terminate)");
     NitroPort_CardFlush();
     kj_ctr_terminate();
 }
 
-void NitroPort_ResetSystem(u32 parameter)
-{
+void NitroPort_ResetSystem(u32 parameter) {
     /* A DS soft reset restarts the program from its entry. Static state of
      * the original game cannot be re-initialised in place, so the program
      * closes; relaunch is the user's (tracked: docs/worklog). */
@@ -218,8 +207,7 @@ void NitroPort_ResetSystem(u32 parameter)
 
 void kj_g3_log_op_profile(void);
 
-void kj_ds_take_profile(kj_ds_profile *out)
-{
+void kj_ds_take_profile(kj_ds_profile *out) {
     kj_g3_log_op_profile();
     u64 calls, ticks;
 

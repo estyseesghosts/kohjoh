@@ -24,17 +24,17 @@ enum {
 };
 
 typedef struct kj_field_view_desc {
-    uint32_t requested_mode;    /* from config.txt */
-    uint32_t configured_mode;   /* after offscreen allocation checks */
-    uint32_t effective_mode;    /* legacy unless this is the upper field */
-    uint32_t scene_id;          /* KJ_SCREEN_* of the published scene */
+    uint32_t requested_mode;  /* from config.txt */
+    uint32_t configured_mode; /* after offscreen allocation checks */
+    uint32_t effective_mode;  /* legacy unless this is the upper field */
+    uint32_t scene_id;        /* KJ_SCREEN_* of the published scene */
     uint32_t scene_generation;
-    uint32_t view_generation;   /* changes only when the projection changes */
+    uint32_t view_generation; /* changes only when the projection changes */
     bool upper_field;
     float surface_w, surface_h; /* active world rasterization dimensions */
     float scale, offset_x, offset_y;
     float vis_x0, vis_y0, vis_x1, vis_y1; /* DS coords that can contribute */
-    float clip_hx, clip_hy;     /* DS clip-space half-extents */
+    float clip_hx, clip_hy;               /* DS clip-space half-extents */
 } kj_field_view_desc;
 
 /* Called once from the 3DS-side renderer initialisation. */

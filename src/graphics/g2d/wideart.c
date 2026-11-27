@@ -32,19 +32,16 @@ static kj_wideart_pic *s_pics;
 static uint32_t s_count;
 static uint32_t s_tex_w, s_tex_h;
 static bool s_ready;
-static uint16_t rd16(const unsigned char *p, unsigned off)
-{
+static uint16_t rd16(const unsigned char *p, unsigned off) {
     return (uint16_t)(p[off] | (p[off + 1] << 8));
 }
 
-static uint32_t rd32(const unsigned char *p, unsigned off)
-{
+static uint32_t rd32(const unsigned char *p, unsigned off) {
     return (uint32_t)p[off] | ((uint32_t)p[off + 1] << 8) | ((uint32_t)p[off + 2] << 16) |
            ((uint32_t)p[off + 3] << 24);
 }
 
-bool kj_wideart_init(void)
-{
+bool kj_wideart_init(void) {
     if (s_ready) {
         return true;
     }
@@ -70,12 +67,11 @@ bool kj_wideart_init(void)
      * the blob carries, the rest cleared. */
     if (s_tex_w == 0 || s_tex_h == 0 || (s_tex_w & (s_tex_w - 1)) != 0 ||
         (s_tex_h & (s_tex_h - 1)) != 0 || data_h == 0 || data_h > s_tex_h) {
-        kj_log("[wide art] bad texture size %lux%lu (%lu rows of pictures)",
-               (unsigned long)s_tex_w, (unsigned long)s_tex_h, (unsigned long)data_h);
+        kj_log("[wide art] bad texture size %lux%lu (%lu rows of pictures)", (unsigned long)s_tex_w,
+               (unsigned long)s_tex_h, (unsigned long)data_h);
         return false;
     }
-    const size_t need =
-        BLOB_HEADER + (size_t)s_count * BLOB_RECORD + (size_t)s_tex_w * data_h * 2u;
+    const size_t need = BLOB_HEADER + (size_t)s_count * BLOB_RECORD + (size_t)s_tex_w * data_h * 2u;
     if (need > wideart_bin_size) {
         kj_log("[wide art] blob is short (%u bytes, needs %u)", wideart_bin_size, (unsigned)need);
         return false;
@@ -114,13 +110,12 @@ bool kj_wideart_init(void)
         p->band_h = rd16(r, 24);
     }
     s_ready = true;
-    kj_log("[wide art] %lu pictures, a %lux%lu texture", (unsigned long)s_count, (unsigned long)s_tex_w,
-           (unsigned long)s_tex_h);
+    kj_log("[wide art] %lu pictures, a %lux%lu texture", (unsigned long)s_count,
+           (unsigned long)s_tex_w, (unsigned long)s_tex_h);
     return true;
 }
 
-void kj_wideart_exit(void)
-{
+void kj_wideart_exit(void) {
     if (s_pics != NULL) {
         free(s_pics);
         s_pics = NULL;
@@ -132,8 +127,7 @@ void kj_wideart_exit(void)
     }
 }
 
-const kj_wideart_pic *kj_wideart_find(uint64_t key)
-{
+const kj_wideart_pic *kj_wideart_find(uint64_t key) {
     if (key == 0) {
         return NULL;
     }
@@ -146,16 +140,14 @@ const kj_wideart_pic *kj_wideart_find(uint64_t key)
 }
 
 /* How far apart two scrolls are, the shorter way round the map. */
-static int wrapped(int a, int b, int period)
-{
+static int wrapped(int a, int b, int period) {
     int d = ((a - b) % period + period) % period;
 
     return d >= period / 2 ? d - period : d;
 }
 
 const kj_wideart_pic *kj_wideart_find_near(uint64_t key, int cur_h, int cur_v, int period_h,
-                                            int period_v, int max_h, int max_v, int *dx_out)
-{
+                                           int period_v, int max_h, int max_v, int *dx_out) {
     const kj_wideart_pic *best = NULL;
     int best_dist = 0;
 
@@ -186,22 +178,18 @@ const kj_wideart_pic *kj_wideart_find_near(uint64_t key, int cur_h, int cur_v, i
     return best;
 }
 
-C3D_Tex *kj_wideart_texture(void)
-{
+C3D_Tex *kj_wideart_texture(void) {
     return s_ready ? &s_tex : NULL;
 }
 
-uint32_t kj_wideart_texture_width(void)
-{
+uint32_t kj_wideart_texture_width(void) {
     return s_tex_w;
 }
 
-uint32_t kj_wideart_texture_height(void)
-{
+uint32_t kj_wideart_texture_height(void) {
     return s_tex_h;
 }
 
-uint32_t kj_wideart_count(void)
-{
+uint32_t kj_wideart_count(void) {
     return s_count;
 }

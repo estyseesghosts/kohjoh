@@ -3,13 +3,11 @@
 #include <stdint.h>
 #include <stdio.h>
 
-static int32_t div127(int32_t x)
-{
+static int32_t div127(int32_t x) {
     return (int32_t)(((int64_t)x * 33818641) >> 32) - (x >> 31);
 }
 
-int main(void)
-{
+int main(void) {
     int32_t x;
 
     for (x = -37999999; x < 38000000; ++x) {

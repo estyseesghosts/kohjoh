@@ -11,7 +11,7 @@
  * renderer draws by re-placing the layer's retained quads under a scissor.
  * Pure C: no GPU, no game state (tests/native/layout_test.c). */
 
-#define KJ_LAYOUT_LEFT  (-32)
+#define KJ_LAYOUT_LEFT (-32)
 #define KJ_LAYOUT_RIGHT 288
 /* Text BG quads are emitted for screen columns [-64, 320) while a layout
  * is active, so every source column a segment names exists. */
@@ -30,9 +30,9 @@ typedef struct kj_layout_seg {
 
 /* The BG geometry a plan depends on. */
 typedef struct kj_layout_bg {
-    int bg;        /* 0..3 */
+    int bg; /* 0..3 */
     int hofs, vofs;
-    int w, h;      /* map size in pixels */
+    int w, h; /* map size in pixels */
 } kj_layout_bg;
 
 /* Bit k set: rows[k] applies to this BG on screen line y. */

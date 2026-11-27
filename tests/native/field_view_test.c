@@ -8,18 +8,15 @@
 #include "kj_bridge.h"
 #include "kj_field_view.h"
 
-void NitroPort_Log(const char *fmt, ...)
-{
+void NitroPort_Log(const char *fmt, ...) {
     (void)fmt;
 }
 
-static void close(float a, float b)
-{
+static void close(float a, float b) {
     assert(fabsf(a - b) < 0.0001f);
 }
 
-int main(void)
-{
+int main(void) {
     const kj_field_view_desc *v;
 
     kj_field_view_reset();

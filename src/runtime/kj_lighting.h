@@ -14,8 +14,7 @@ typedef struct kj_lighting {
 } kj_lighting;
 
 /* CPU oracle and boundary-vertex conversion, not the normal vertex path. */
-static inline uint16_t kj_lighting_color(const int32_t n[3], const kj_lighting *s)
-{
+static inline uint16_t kj_lighting_color(const int32_t n[3], const kj_lighting *s) {
     unsigned rgb[3] = {s->emission[0], s->emission[1], s->emission[2]};
     for (unsigned i = 0; i < 4; ++i) {
         if (!(s->enabled & (1u << i))) {
@@ -39,13 +38,11 @@ static inline uint16_t kj_lighting_color(const int32_t n[3], const kj_lighting *
             spec = entry * 4096u / 255u;
         }
         for (unsigned c = 0; c < 3; ++c) {
-            rgb[c] += s->ambient[i][c] +
-                      ((s->diffuse[i][c] * diffuse + 2048u) >> 12) +
+            rgb[c] += s->ambient[i][c] + ((s->diffuse[i][c] * diffuse + 2048u) >> 12) +
                       ((s->specular[i][c] * spec + 2048u) >> 12);
         }
     }
-    return (uint16_t)((rgb[0] > 31 ? 31 : rgb[0]) |
-                      ((rgb[1] > 31 ? 31 : rgb[1]) << 5) |
+    return (uint16_t)((rgb[0] > 31 ? 31 : rgb[0]) | ((rgb[1] > 31 ? 31 : rgb[1]) << 5) |
                       ((rgb[2] > 31 ? 31 : rgb[2]) << 10));
 }
 
@@ -54,10 +51,8 @@ static inline uint16_t kj_lighting_color(const int32_t n[3], const kj_lighting *
  * The low three mtx bits select one of six position matrices. Alpha is
  * constant for a batch; cross-context strip vertices become literal RGBA. */
 static inline void kj_lighting_unpack_normal(uint32_t rgba, uint8_t mtx, uint8_t pad,
-                                             int32_t n[3])
-{
-    uint64_t bits = rgba | ((uint64_t)(mtx >> 3) << 32) |
-                    ((uint64_t)(pad & 31u) << 37);
+                                             int32_t n[3]) {
+    uint64_t bits = rgba | ((uint64_t)(mtx >> 3) << 32) | ((uint64_t)(pad & 31u) << 37);
     for (unsigned c = 0; c < 3; ++c) {
         uint32_t value = (uint32_t)(bits >> (14 * c)) & 16383u;
         n[c] = (int32_t)(value ^ 8192u) - 8192;

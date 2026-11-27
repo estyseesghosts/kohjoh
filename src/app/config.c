@@ -32,21 +32,18 @@
 static kj_field_scale s_active = KJ_FIELD_SCALE_LEGACY;
 static kj_text_renderer s_text_active = KJ_TEXT_RENDERER_LEGACY;
 
-static char lower_ascii(char c)
-{
+static char lower_ascii(char c) {
     return (char)tolower((unsigned char)c);
 }
 
-static size_t trim_right(const char *s, size_t n)
-{
+static size_t trim_right(const char *s, size_t n) {
     while (n != 0 && isspace((unsigned char)s[n - 1])) {
         --n;
     }
     return n;
 }
 
-static bool equals_ascii(const char *a, size_t an, const char *b)
-{
+static bool equals_ascii(const char *a, size_t an, const char *b) {
     size_t i = 0;
     for (; i < an && b[i] != '\0'; ++i) {
         if (lower_ascii(a[i]) != lower_ascii(b[i])) {
@@ -64,16 +61,14 @@ typedef struct {
     size_t pos;
 } config_reader;
 
-static void reader_init(config_reader *r, const char *text, size_t length)
-{
+static void reader_init(config_reader *r, const char *text, size_t length) {
     r->text = text;
     r->length = length;
     r->pos = 0;
 }
 
-static bool reader_next(config_reader *r, const char **key, size_t *key_n,
-                        const char **value, size_t *value_n)
-{
+static bool reader_next(config_reader *r, const char **key, size_t *key_n, const char **value,
+                        size_t *value_n) {
     while (r->pos < r->length) {
         size_t end = r->pos;
         while (end < r->length && r->text[end] != '\n') {
@@ -130,9 +125,8 @@ static bool reader_next(config_reader *r, const char **key, size_t *key_n,
     return false;
 }
 
-kj_config_status kj_config_parse(const char *text, size_t length,
-                                 kj_field_scale *requested, kj_field_scale *effective)
-{
+kj_config_status kj_config_parse(const char *text, size_t length, kj_field_scale *requested,
+                                 kj_field_scale *effective) {
     bool found = false;
     kj_field_scale chosen = KJ_FIELD_SCALE_LEGACY;
     config_reader r;
@@ -176,8 +170,7 @@ kj_config_status kj_config_parse(const char *text, size_t length,
     return found ? KJ_CONFIG_OK : KJ_CONFIG_UNRECOGNIZED;
 }
 
-const char *kj_config_scale_name(kj_field_scale mode)
-{
+const char *kj_config_scale_name(kj_field_scale mode) {
     switch (mode) {
     case KJ_FIELD_SCALE_1X:
         return "1x";
@@ -189,10 +182,8 @@ const char *kj_config_scale_name(kj_field_scale mode)
     }
 }
 
-kj_config_status kj_config_parse_text(const char *text, size_t length,
-                                      kj_text_renderer *requested,
-                                      kj_text_renderer *effective)
-{
+kj_config_status kj_config_parse_text(const char *text, size_t length, kj_text_renderer *requested,
+                                      kj_text_renderer *effective) {
     bool found = false;
     kj_text_renderer chosen = KJ_TEXT_RENDERER_LEGACY;
     config_reader r;
@@ -233,8 +224,7 @@ kj_config_status kj_config_parse_text(const char *text, size_t length,
     return found ? KJ_CONFIG_OK : KJ_CONFIG_UNRECOGNIZED;
 }
 
-const char *kj_config_text_name(kj_text_renderer mode)
-{
+const char *kj_config_text_name(kj_text_renderer mode) {
     switch (mode) {
     case KJ_TEXT_RENDERER_NATIVE:
         return "native";
@@ -245,8 +235,7 @@ const char *kj_config_text_name(kj_text_renderer mode)
 }
 
 kj_config_status kj_config_load(const char *path, kj_field_scale *requested,
-                                kj_field_scale *effective)
-{
+                                kj_field_scale *effective) {
     kj_field_scale want = KJ_FIELD_SCALE_LEGACY, use = KJ_FIELD_SCALE_LEGACY;
     kj_text_renderer twant = KJ_TEXT_RENDERER_LEGACY, tuse = KJ_TEXT_RENDERER_LEGACY;
     kj_config_status status;
@@ -300,34 +289,31 @@ kj_config_status kj_config_load(const char *path, kj_field_scale *requested,
     }
     kj_log("[config] %s: requested %s, initialized %s (%s)", path != NULL ? path : "(no path)",
            kj_config_scale_name(want), kj_config_scale_name(use),
-           status == KJ_CONFIG_MISSING ? "no file" :
-           status == KJ_CONFIG_OK ? "ok" :
-           status == KJ_CONFIG_UNRECOGNIZED ? "no valid field_scale" : "read error");
-    kj_log("[config] text_renderer: requested %s, initialized %s (%s)",
-           kj_config_text_name(twant), kj_config_text_name(tuse),
-           text_status == KJ_CONFIG_MISSING ? "no file" :
-           text_status == KJ_CONFIG_OK ? "ok" :
-           text_status == KJ_CONFIG_UNRECOGNIZED ? "no valid text_renderer" :
-                                                  "read error");
+           status == KJ_CONFIG_MISSING        ? "no file"
+           : status == KJ_CONFIG_OK           ? "ok"
+           : status == KJ_CONFIG_UNRECOGNIZED ? "no valid field_scale"
+                                              : "read error");
+    kj_log("[config] text_renderer: requested %s, initialized %s (%s)", kj_config_text_name(twant),
+           kj_config_text_name(tuse),
+           text_status == KJ_CONFIG_MISSING        ? "no file"
+           : text_status == KJ_CONFIG_OK           ? "ok"
+           : text_status == KJ_CONFIG_UNRECOGNIZED ? "no valid text_renderer"
+                                                   : "read error");
     return status;
 }
 
-kj_field_scale kj_config_field_scale(void)
-{
+kj_field_scale kj_config_field_scale(void) {
     return s_active;
 }
 
-bool kj_config_requires_offscreen(void)
-{
+bool kj_config_requires_offscreen(void) {
     return s_active == KJ_FIELD_SCALE_2X;
 }
 
-kj_text_renderer kj_config_text_renderer(void)
-{
+kj_text_renderer kj_config_text_renderer(void) {
     return s_text_active;
 }
 
-bool kj_config_native_text_requested(void)
-{
+bool kj_config_native_text_requested(void) {
     return s_text_active == KJ_TEXT_RENDERER_NATIVE;
 }

@@ -27,7 +27,7 @@ typedef struct tex_entry {
     uint32_t key_param;
     uint32_t key_pltt;
     C3D_Tex tex;
-    uint8_t *shadow;      /* source texel bytes (+ 4x4 index bytes) */
+    uint8_t *shadow; /* source texel bytes (+ 4x4 index bytes) */
     uint32_t shadow_len;
     uint8_t *pal_shadow;
     uint32_t pal_len;
@@ -71,13 +71,11 @@ static int s_last_hit = -1;
 #define HINTS 256u
 static int16_t s_hint[HINTS];
 
-static unsigned hint_of(uint32_t key, uint32_t pkey)
-{
+static unsigned hint_of(uint32_t key, uint32_t pkey) {
     return ((key ^ (pkey * 0x9E3779B1u)) * 2654435761u) >> 24;
 }
 
-static void build_morton(void)
-{
+static void build_morton(void) {
     for (unsigned y = 0; y < 8; ++y) {
         for (unsigned x = 0; x < 8; ++x) {
             const unsigned fy = y; /* verified in Azahar against the oracle (frame 1650) */
@@ -87,8 +85,7 @@ static void build_morton(void)
     }
 }
 
-void kj_tex_init(void)
-{
+void kj_tex_init(void) {
     memset(s_cache, 0, sizeof(s_cache));
     memset(s_hint, 0xFF, sizeof(s_hint));
     memset(s_pal_snapshot_valid, 0, sizeof(s_pal_snapshot_valid));
@@ -96,8 +93,7 @@ void kj_tex_init(void)
     build_morton();
 }
 
-static void entry_free(tex_entry *e)
-{
+static void entry_free(tex_entry *e) {
     if (!e->used) {
         return;
     }
@@ -108,8 +104,7 @@ static void entry_free(tex_entry *e)
     memset(e, 0, sizeof(*e));
 }
 
-void kj_tex_exit(void)
-{
+void kj_tex_exit(void) {
     for (int i = 0; i < CACHE_ENTRIES; ++i) {
         entry_free(&s_cache[i]);
     }
@@ -117,8 +112,7 @@ void kj_tex_exit(void)
 
 /* Snapshot the mapped palette slots once per frame. A mapping change or a
  * content change bumps the generation; format-5 entries compare it. */
-static void palette_generation_update(void)
-{
+static void palette_generation_update(void) {
     bool changed = false;
     for (unsigned s = 0; s < PAL_SLOT_COUNT; ++s) {
         const uint8_t *slot = s_pal_slot[s];
@@ -145,8 +139,7 @@ static void palette_generation_update(void)
     }
 }
 
-void kj_tex_begin_frame(const kj_frame_input *in)
-{
+void kj_tex_begin_frame(const kj_frame_input *in) {
     const kj_vram_bank *b = in->banks;
     const uint8_t *lcdc = in->mem->lcdc_vram;
 
@@ -169,7 +162,7 @@ void kj_tex_begin_frame(const kj_frame_input *in)
     }
     for (int i = 5; i <= 6; ++i) { /* F, G: OFS 0,1,2,3 -> slot 0,1,4,5 */
         if (b[i].enabled && b[i].mst == 3) {
-            static const int SLOT[4] = { 0, 1, 4, 5 };
+            static const int SLOT[4] = {0, 1, 4, 5};
             s_pal_slot[SLOT[b[i].ofs & 3]] = lcdc + b[i].lcdc_offset;
         }
     }
@@ -179,8 +172,7 @@ void kj_tex_begin_frame(const kj_frame_input *in)
 /* True when every texture-VRAM chunk of [addr, addr+len) has a mapped slot.
  * Used as a preflight so a gather never stops halfway and leaves a shadow
  * describing a mix of old and new bytes. */
-static bool tex_mapped(uint32_t addr, uint32_t len)
-{
+static bool tex_mapped(uint32_t addr, uint32_t len) {
     while (len > 0) {
         const unsigned slot = (addr >> 17) & 3u;
         const uint32_t off = addr & 0x1FFFFu;
@@ -197,8 +189,7 @@ static bool tex_mapped(uint32_t addr, uint32_t len)
     return true;
 }
 
-static bool pal_mapped(uint32_t addr, uint32_t len)
-{
+static bool pal_mapped(uint32_t addr, uint32_t len) {
     while (len > 0) {
         const unsigned slot = addr >> 14;
         const uint32_t off = addr & 0x3FFFu;
@@ -216,8 +207,7 @@ static bool pal_mapped(uint32_t addr, uint32_t len)
 }
 
 /* One mapped VRAM byte, or -1 when the slot is unmapped. */
-static int tex_byte(uint32_t addr)
-{
+static int tex_byte(uint32_t addr) {
     const unsigned slot = (addr >> 17) & 3u;
     if (s_tex_slot[slot] == NULL) {
         return -1;
@@ -227,8 +217,7 @@ static int tex_byte(uint32_t addr)
 
 /* Gather `len` bytes at texture-VRAM address `addr` (0..0x7FFFF).
  * Callers run after tex_mapped(), so this cannot stop halfway. */
-static bool gather(uint8_t *dst, uint32_t addr, uint32_t len)
-{
+static bool gather(uint8_t *dst, uint32_t addr, uint32_t len) {
     if (!tex_mapped(addr, len)) {
         return false;
     }
@@ -254,8 +243,7 @@ static bool gather(uint8_t *dst, uint32_t addr, uint32_t len)
  * a scratch copy first (one read stream instead of copy + compare: this
  * runs for every texture used, every frame). 1 = differs, 0 = same,
  * -1 = a slot is unmapped. */
-static int differs(const uint8_t *shadow, uint32_t addr, uint32_t len)
-{
+static int differs(const uint8_t *shadow, uint32_t addr, uint32_t len) {
     while (len > 0) {
         const unsigned slot = (addr >> 17) & 3u;
         const uint32_t off = addr & 0x1FFFFu;
@@ -276,8 +264,7 @@ static int differs(const uint8_t *shadow, uint32_t addr, uint32_t len)
     return 0;
 }
 
-static bool gather_pal(uint8_t *dst, uint32_t addr, uint32_t len)
-{
+static bool gather_pal(uint8_t *dst, uint32_t addr, uint32_t len) {
     if (!pal_mapped(addr, len)) {
         return false;
     }
@@ -299,14 +286,12 @@ static bool gather_pal(uint8_t *dst, uint32_t addr, uint32_t len)
     return true;
 }
 
-static uint16_t rgba5551(uint16_t c, bool opaque)
-{
+static uint16_t rgba5551(uint16_t c, bool opaque) {
     return (uint16_t)(((c & 31u) << 11) | (((c >> 5) & 31u) << 6) | (((c >> 10) & 31u) << 1) |
                       (opaque ? 1u : 0u));
 }
 
-static uint32_t rgba8(uint16_t c, unsigned a8)
-{
+static uint32_t rgba8(uint16_t c, unsigned a8) {
     const uint32_t r = c & 31u, g = (c >> 5) & 31u, b = (c >> 10) & 31u;
     return (((r << 3) | (r >> 2)) << 24) | (((g << 3) | (g >> 2)) << 16) |
            (((b << 3) | (b >> 2)) << 8) | a8;
@@ -319,8 +304,7 @@ typedef struct desc {
     uint32_t data_len, index_addr, index_len, pal_len;
 } desc;
 
-static bool describe(uint32_t p, uint32_t pltt, desc *d)
-{
+static bool describe(uint32_t p, uint32_t pltt, desc *d) {
     d->fmt = (p >> 26) & 7u;
     d->w = 8u << ((p >> 20) & 7u);
     d->h = 8u << ((p >> 23) & 7u);
@@ -331,27 +315,46 @@ static bool describe(uint32_t p, uint32_t pltt, desc *d)
     d->index_addr = 0;
     const uint32_t texels = d->w * d->h;
     switch (d->fmt) {
-    case 1: d->data_len = texels; d->pal_len = 64; break;
-    case 2: d->data_len = texels / 4; d->pal_len = 8; break;
-    case 3: d->data_len = texels / 2; d->pal_len = 32; break;
-    case 4: d->data_len = texels; d->pal_len = 512; break;
+    case 1:
+        d->data_len = texels;
+        d->pal_len = 64;
+        break;
+    case 2:
+        d->data_len = texels / 4;
+        d->pal_len = 8;
+        break;
+    case 3:
+        d->data_len = texels / 2;
+        d->pal_len = 32;
+        break;
+    case 4:
+        d->data_len = texels;
+        d->pal_len = 512;
+        break;
     case 5:
         d->data_len = texels / 4;
         d->index_len = texels / 8;
-        d->index_addr = 0x20000u + ((d->addr & 0x1FFFFu) >> 1) + ((d->addr >= 0x40000u) ? 0x10000u : 0);
+        d->index_addr =
+            0x20000u + ((d->addr & 0x1FFFFu) >> 1) + ((d->addr >= 0x40000u) ? 0x10000u : 0);
         d->pal_len = 0; /* palette reach depends on the blocks: compared via the decode */
         break;
-    case 6: d->data_len = texels; d->pal_len = 16; break;
-    case 7: d->data_len = texels * 2; d->pal_len = 0; break;
-    default: return false;
+    case 6:
+        d->data_len = texels;
+        d->pal_len = 16;
+        break;
+    case 7:
+        d->data_len = texels * 2;
+        d->pal_len = 0;
+        break;
+    default:
+        return false;
     }
     return true;
 }
 
 /* Preflight a format-5 entry's per-block palette reads from the live index
  * stream, without touching the entry's shadow. */
-static bool fmt5_pal_ready(const desc *d)
-{
+static bool fmt5_pal_ready(const desc *d) {
     const unsigned bw = d->w / 4u;
     for (unsigned by = 0; by < d->h / 4u; ++by) {
         for (unsigned bx = 0; bx < bw; ++bx) {
@@ -372,8 +375,7 @@ static bool fmt5_pal_ready(const desc *d)
 
 /* Everything decode() reads must be mapped before an entry's shadow or
  * texture is modified. */
-static bool source_ready(const desc *d)
-{
+static bool source_ready(const desc *d) {
     if (!tex_mapped(d->addr, d->data_len)) {
         return false;
     }
@@ -389,13 +391,11 @@ static bool source_ready(const desc *d)
     return true;
 }
 
-static inline uint32_t swz(unsigned x, unsigned y, unsigned w)
-{
+static inline uint32_t swz(unsigned x, unsigned y, unsigned w) {
     return (((y >> 3) * (w >> 3) + (x >> 3)) << 6) + s_morton[((y & 7u) << 3) | (x & 7u)];
 }
 
-static uint16_t lerp555(uint16_t a, uint16_t b, unsigned wa, unsigned wb, unsigned den)
-{
+static uint16_t lerp555(uint16_t a, uint16_t b, unsigned wa, unsigned wb, unsigned den) {
     unsigned r = ((a & 31u) * wa + (b & 31u) * wb) / den;
     unsigned g = (((a >> 5) & 31u) * wa + ((b >> 5) & 31u) * wb) / den;
     unsigned bl = (((a >> 10) & 31u) * wa + ((b >> 10) & 31u) * wb) / den;
@@ -403,8 +403,7 @@ static uint16_t lerp555(uint16_t a, uint16_t b, unsigned wa, unsigned wb, unsign
 }
 
 /* Decode into tex->data. src = texel bytes, idx = 4x4 index bytes. */
-static bool decode(const desc *d, const uint8_t *src, const uint8_t *idx, C3D_Tex *tex)
-{
+static bool decode(const desc *d, const uint8_t *src, const uint8_t *idx, C3D_Tex *tex) {
     const unsigned w = d->w, h = d->h;
     static uint16_t pal[256];
     uint8_t palbuf[512];
@@ -458,7 +457,8 @@ static bool decode(const desc *d, const uint8_t *src, const uint8_t *idx, C3D_Te
     case 7:
         for (unsigned y = 0; y < h; ++y) {
             for (unsigned x = 0; x < w; ++x) {
-                const uint16_t c = (uint16_t)(src[(y * w + x) * 2] | (src[(y * w + x) * 2 + 1] << 8));
+                const uint16_t c =
+                    (uint16_t)(src[(y * w + x) * 2] | (src[(y * w + x) * 2 + 1] << 8));
                 out[swz(x, y, w)] = rgba5551(c, (c & 0x8000u) != 0);
             }
         }
@@ -469,7 +469,8 @@ static bool decode(const desc *d, const uint8_t *src, const uint8_t *idx, C3D_Te
             for (unsigned bx = 0; bx < bw; ++bx) {
                 const unsigned b = by * bw + bx;
                 const uint32_t texel = (uint32_t)src[b * 4] | ((uint32_t)src[b * 4 + 1] << 8) |
-                                       ((uint32_t)src[b * 4 + 2] << 16) | ((uint32_t)src[b * 4 + 3] << 24);
+                                       ((uint32_t)src[b * 4 + 2] << 16) |
+                                       ((uint32_t)src[b * 4 + 3] << 24);
                 const uint16_t ix = (uint16_t)(idx[b * 2] | (idx[b * 2 + 1] << 8));
                 const unsigned mode = ix >> 14;
                 uint8_t pb[8];
@@ -485,9 +486,15 @@ static bool decode(const desc *d, const uint8_t *src, const uint8_t *idx, C3D_Te
                     c[k] = (uint16_t)(pb[k * 2] | (pb[k * 2 + 1] << 8));
                 }
                 switch (mode) {
-                case 0: trans3 = true; break;
-                case 1: c[2] = lerp555(c[0], c[1], 1, 1, 2); trans3 = true; break;
-                case 2: break;
+                case 0:
+                    trans3 = true;
+                    break;
+                case 1:
+                    c[2] = lerp555(c[0], c[1], 1, 1, 2);
+                    trans3 = true;
+                    break;
+                case 2:
+                    break;
                 default:
                     c[2] = lerp555(c[0], c[1], 5, 3, 8);
                     c[3] = lerp555(c[0], c[1], 3, 5, 8);
@@ -508,8 +515,7 @@ static bool decode(const desc *d, const uint8_t *src, const uint8_t *idx, C3D_Te
     }
 }
 
-static int find_victim(void)
-{
+static int find_victim(void) {
     int best = -1;
     uint32_t oldest = UINT32_MAX;
     for (int i = 0; i < CACHE_ENTRIES; ++i) {
@@ -525,8 +531,7 @@ static int find_victim(void)
 }
 
 /* Is the cached entry's source unchanged? (once per frame) */
-static bool still_valid(tex_entry *e, const desc *d)
-{
+static bool still_valid(tex_entry *e, const desc *d) {
     /* A compressed entry depends on palette bytes selected by its index
      * words; the per-frame generation is the exact, bounded stand-in for a
      * palette shadow. */
@@ -540,7 +545,8 @@ static bool still_valid(tex_entry *e, const desc *d)
     const uint32_t total = d->data_len + d->index_len;
     (void)total;
     const int data = differs(e->shadow, d->addr, d->data_len);
-    const int index = d->index_len ? differs(e->shadow + d->data_len, d->index_addr, d->index_len) : 0;
+    const int index =
+        d->index_len ? differs(e->shadow + d->data_len, d->index_addr, d->index_len) : 0;
     if (data < 0 || index < 0) {
         return true; /* bank unmapped this frame: keep what we have */
     }
@@ -553,15 +559,15 @@ static bool still_valid(tex_entry *e, const desc *d)
     }
     if (e->pal_len) {
         uint8_t pal[512];
-        if (gather_pal(pal, d->pal_addr, e->pal_len) && memcmp(pal, e->pal_shadow, e->pal_len) != 0) {
+        if (gather_pal(pal, d->pal_addr, e->pal_len) &&
+            memcmp(pal, e->pal_shadow, e->pal_len) != 0) {
             return false;
         }
     }
     return true;
 }
 
-C3D_Tex *kj_tex_get(uint32_t tex_param, uint32_t pltt_base)
-{
+C3D_Tex *kj_tex_get(uint32_t tex_param, uint32_t pltt_base) {
     desc d;
     if (!describe(tex_param, pltt_base, &d)) {
         return NULL;
@@ -696,8 +702,7 @@ C3D_Tex *kj_tex_get(uint32_t tex_param, uint32_t pltt_base)
     return &e->tex;
 }
 
-void kj_tex_take_stats(kj_tex_stats *out)
-{
+void kj_tex_take_stats(kj_tex_stats *out) {
     *out = s_stats;
     memset(&s_stats, 0, sizeof(s_stats));
 }

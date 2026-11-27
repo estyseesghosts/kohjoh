@@ -75,11 +75,11 @@ static uint64_t s_pmu_cycles;
 static uint64_t s_pmu_icache_miss;
 static uint64_t s_pmu_dcache_read_miss;
 
-#define PMU_REGS (BIT(PERFCOUNTERREG_CORE_COUNT_REG_0) | BIT(PERFCOUNTERREG_CORE_COUNT_REG_1) | \
-                  BIT(PERFCOUNTERREG_CORE_CYCLE_COUNTER))
+#define PMU_REGS                                                                                   \
+    (BIT(PERFCOUNTERREG_CORE_COUNT_REG_0) | BIT(PERFCOUNTERREG_CORE_COUNT_REG_1) |                 \
+     BIT(PERFCOUNTERREG_CORE_CYCLE_COUNTER))
 
-static void pmu_begin(void)
-{
+static void pmu_begin(void) {
     u64 unused;
 
     if (R_FAILED(svcControlPerformanceCounter(&unused, PERFCOUNTEROP_ENABLE, 0, 0))) {
@@ -98,18 +98,16 @@ static void pmu_begin(void)
     s_pmu = true;
 }
 
-static void pmu_read(u64 *cycles, u64 *icache, u64 *dcache)
-{
-    svcControlPerformanceCounter(cycles, PERFCOUNTEROP_GET_VALUE,
-                                 PERFCOUNTERREG_CORE_CYCLE_COUNTER, 0);
-    svcControlPerformanceCounter(icache, PERFCOUNTEROP_GET_VALUE,
-                                 PERFCOUNTERREG_CORE_COUNT_REG_0, 0);
-    svcControlPerformanceCounter(dcache, PERFCOUNTEROP_GET_VALUE,
-                                 PERFCOUNTERREG_CORE_COUNT_REG_1, 0);
+static void pmu_read(u64 *cycles, u64 *icache, u64 *dcache) {
+    svcControlPerformanceCounter(cycles, PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_CYCLE_COUNTER,
+                                 0);
+    svcControlPerformanceCounter(icache, PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0,
+                                 0);
+    svcControlPerformanceCounter(dcache, PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_1,
+                                 0);
 }
 
-static void pmu_end(void)
-{
+static void pmu_end(void) {
     u64 unused;
 
     if (s_pmu) {
@@ -120,8 +118,7 @@ static void pmu_end(void)
 
 /* Frames still to play: queued buffers, less what the DSP has played of the
  * one it is on. */
-static uint32_t queued_frames(void)
-{
+static uint32_t queued_frames(void) {
     uint32_t frames = 0;
 
     for (unsigned i = 0; i < BUFFER_COUNT; ++i) {
@@ -137,8 +134,7 @@ static uint32_t queued_frames(void)
     return frames;
 }
 
-static void report(void)
-{
+static void report(void) {
     const uint32_t dropped = ndspGetDroppedFrames();
 
     kj_log("[sndout] fills %lu wakes %lu underruns %lu low_water_frames %lu dsp_dropped %lu "
@@ -175,8 +171,7 @@ static void report(void)
  * aligned (linearAlloc) and not touched again until NDSP_WBUF_DONE.
  * --define KJ_SND_DSP_FLUSH_IPC restores the IPC flush for an A/B.
  */
-static void flush_for_dsp(int16_t *pcm)
-{
+static void flush_for_dsp(int16_t *pcm) {
 #ifndef HGSS_PROFILE_OFF
     const u64 start = svcGetSystemTick();
 #endif
@@ -197,14 +192,12 @@ static void flush_for_dsp(int16_t *pcm)
 #endif
 }
 
-static void ndsp_frame_callback(void *arg)
-{
+static void ndsp_frame_callback(void *arg) {
     (void)arg;
     LightEvent_Signal(&s_event);
 }
 
-static void fill(ndspWaveBuf *wb)
-{
+static void fill(ndspWaveBuf *wb) {
 #ifndef HGSS_PROFILE_OFF
     u64 c0 = 0, i0 = 0, d0 = 0;
     const u64 start = svcGetSystemTick();
@@ -237,8 +230,7 @@ static void fill(ndspWaveBuf *wb)
     ndspChnWaveBufAdd(0, wb);
 }
 
-static void audio_thread(void *arg)
-{
+static void audio_thread(void *arg) {
     (void)arg;
     while (__atomic_load_n(&s_running, __ATOMIC_ACQUIRE)) {
         LightEvent_Wait(&s_event);
@@ -284,8 +276,7 @@ static void audio_thread(void *arg)
     }
 }
 
-bool kj_audio_init(void)
-{
+bool kj_audio_init(void) {
     NitroPort_SoundSetInterpolation(SOUND_INTERPOLATE);
     if (R_FAILED(ndspInit())) {
         return false;
@@ -302,7 +293,7 @@ bool kj_audio_init(void)
     ndspChnSetRate(0, SAMPLE_RATE);
     ndspChnSetFormat(0, NDSP_FORMAT_STEREO_PCM16);
     {
-        float mix[12] = { 1.0f, 1.0f };
+        float mix[12] = {1.0f, 1.0f};
         ndspChnSetMix(0, mix);
     }
     for (unsigned i = 0; i < BUFFER_COUNT; ++i) {
@@ -339,12 +330,10 @@ bool kj_audio_init(void)
     return true;
 }
 
-void kj_audio_service(void)
-{
+void kj_audio_service(void) {
 }
 
-void kj_audio_exit(void)
-{
+void kj_audio_exit(void) {
     if (!s_ready) {
         return;
     }
