@@ -37,3 +37,21 @@ Never share the `.pak` files: they contain your game's data. Saves are kept on t
 To bring a save from a cart or an emulator, put it at `sdmc:/3ds/kohjoh/saves/heartgold.sav` (or `soulsilver.sav`). A raw 512 KB cart dump works as-is; a DeSmuME `.dsv` or a No$GBA `.SAV` (packed or not) is converted to the raw format the first time the game reads it, and the original is kept beside it as `heartgold.sav.orig`.
 
 The optional CIA is a Luma3DS HOME Menu shortcut; it launches the 3DSX from that exact path and keeps saves on SD. The forwarder requires Luma3DS and has not yet been tested on hardware.
+
+### Overworld rendering resolution
+
+Create `sdmc:/3ds/kohjoh/config.txt` to choose how the field is rendered:
+
+```
+# Overworld rendering resolution.
+# Valid values: legacy, 1x, 2x
+field_scale = 1x
+```
+
+| Value | Field presentation | Interface |
+| ----- | ------------------ | --------- |
+| `legacy` (default) | Existing 400x240 widescreen field | Unchanged |
+| `1x` | Wider, zoomed-out field at native 400x240 pixels | Unchanged |
+| `2x` | 200x120 field rasterization enlarged 2x to 400x240 (chunky pixels) | Unchanged |
+
+The file is read once at startup. Missing, malformed or unrecognised values safely use `legacy`. The setting does not affect dialogue, menus, battles, the bottom screen, saves or touch input. Details and known limitations: [FIELD_SCALING.md](docs/engineering/hgss-remaster/FIELD_SCALING.md).

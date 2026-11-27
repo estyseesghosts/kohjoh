@@ -11,6 +11,7 @@
  */
 
 #include "app/app.h"
+#include "app/config.h"
 #include "app/input.h"
 #include "app/script.h"
 #include "audio/audio.h"
@@ -189,6 +190,13 @@ int main(int argc, char **argv)
         kj_script_load(script);
         snprintf(script, sizeof(script), "%s/wide_layouts.txt", paths->root);
         kj_layout_override_load(script);
+    }
+    {
+        /* Read once, before any renderer state is created (Task 2). */
+        char config[128];
+        kj_field_scale want, effective;
+        snprintf(config, sizeof(config), "%s/config.txt", paths->root);
+        kj_config_load(config, &want, &effective);
     }
     gfxInitDefault();
     gfxSet3D(false);

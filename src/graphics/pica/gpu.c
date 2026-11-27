@@ -12,6 +12,7 @@
 #include "graphics/pica/gpu.h"
 
 #include "diagnostics/log.h"
+#include "graphics/world_view.h"
 
 #include <3ds.h>
 #include <string.h>
@@ -272,24 +273,43 @@ void kj_gpu_tev_constant(uint32_t rgba)
     }
 }
 
+void kj_gpu_scissor_target(int screen_w, int screen_h, int x0, int y0, int x1, int y1)
+{
+    int rect[4], rotated[4];
+
+    /* Clipping happens in signed physical coordinates, before the portrait
+     * render-target rotation; negative offsets must never wrap to unsigned. */
+    rect[0] = x0 < 0 ? 0 : (x0 > screen_w ? screen_w : x0);
+    rect[1] = y0 < 0 ? 0 : (y0 > screen_h ? screen_h : y0);
+    rect[2] = x1 < 0 ? 0 : (x1 > screen_w ? screen_w : x1);
+    rect[3] = y1 < 0 ? 0 : (y1 > screen_h ? screen_h : y1);
+    kj_world_view_rotate_scissor(screen_w, screen_h, rect, rotated);
+    if (rotated[0] >= rotated[2] || rotated[1] >= rotated[3]) {
+        C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
+        return;
+    }
+    C3D_SetScissor(GPU_SCISSOR_NORMAL, (u32)rotated[0], (u32)rotated[1], (u32)rotated[2],
+                   (u32)rotated[3]);
+}
+
+void kj_gpu_scissor_active(int surface_w, int surface_h, int x0, int y0, int x1, int y1)
+{
+    int rect[4], out[4];
+    rect[0] = x0;
+    rect[1] = y0;
+    rect[2] = x1;
+    rect[3] = y1;
+    kj_world_view_plain_scissor(surface_w, surface_h, rect, out);
+    if (out[0] >= out[2] || out[1] >= out[3]) {
+        C3D_SetScissor(GPU_SCISSOR_DISABLE, 0, 0, 0, 0);
+        return;
+    }
+    C3D_SetScissor(GPU_SCISSOR_NORMAL, (u32)out[0], (u32)out[1], (u32)out[2], (u32)out[3]);
+}
+
 void kj_gpu_scissor(int screen_w, int x0, int y0, int x1, int y1)
 {
-    /* Render targets are portrait (240 x screen_w): physical (x, y) is
-     * framebuffer (240 - y, screen_w - x). */
-    if (x0 < 0) {
-        x0 = 0;
-    }
-    if (y0 < 0) {
-        y0 = 0;
-    }
-    if (x1 > screen_w) {
-        x1 = screen_w;
-    }
-    if (y1 > 240) {
-        y1 = 240;
-    }
-    C3D_SetScissor(GPU_SCISSOR_NORMAL, (u32)(240 - y1), (u32)(screen_w - x1), (u32)(240 - y0),
-                   (u32)(screen_w - x0));
+    kj_gpu_scissor_target(screen_w, 240, x0, y0, x1, y1);
 }
 
 void kj_gpu_scissor_off(void)

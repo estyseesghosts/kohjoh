@@ -53,7 +53,12 @@ void kj_gpu_tev_texture_modulate(void); /* tex0 * vertex colour */
 void kj_gpu_tev_vertex_color(void);     /* vertex colour only */
 void kj_gpu_tev_constant(uint32_t rgba);/* constant colour */
 
-/* Scissor in physical screen coordinates of a target (x right, y down). */
+/* Scissor in physical screen coordinates of a target (x right, y down).
+ * `kj_gpu_scissor` keeps the 240-pixel interface target; the target form
+ * accepts the active surface height as well (Task 3). */
+void kj_gpu_scissor_target(int screen_w, int screen_h, int x0, int y0, int x1, int y1);
+/* Scissor for a landscape render-to-texture surface (no axis rotation). */
+void kj_gpu_scissor_active(int surface_w, int surface_h, int x0, int y0, int x1, int y1);
 void kj_gpu_scissor(int screen_w, int x0, int y0, int x1, int y1);
 void kj_gpu_scissor_off(void);
 

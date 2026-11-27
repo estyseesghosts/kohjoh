@@ -5,6 +5,7 @@
 #include "app/script.h"
 
 #include "diagnostics/log.h"
+#include "runtime/kj_field_view.h"
 
 #include "compat/nitro/include/nitro_port_debug.h"
 
@@ -129,6 +130,9 @@ void kj_script_load(const char *path)
             while ((tok = strtok(NULL, " \t\r\n")) != NULL) {
                 s_debug |= (uint32_t)strtoul(tok, NULL, 0);
             }
+            /* The visibility A/B switch lives with the field-view policy so
+             * the DS-side geometry engine does not depend on the SD parser. */
+            kj_field_view_set_vis_cull_enabled((s_debug & KJ_DEBUG_NO_VIS_CULL) == 0);
         } else if (strcmp(tok, "end:") == 0) {
             tok = strtok(NULL, " \t\r\n");
             s_end = tok ? (uint32_t)strtoul(tok, NULL, 10) : 0;

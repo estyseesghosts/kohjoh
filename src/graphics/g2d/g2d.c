@@ -30,8 +30,10 @@
 #include "graphics/layout/layout.h"
 #include "graphics/layout/override.h"
 #include "graphics/pica/gpu.h"
+#include "graphics/pica/offscreen.h"
 #include "graphics/pica/targets.h"
 #include "graphics/resources/atlas.h"
+#include "runtime/kj_field_view.h"
 
 #include <3ds.h>
 #include <citro3d.h>
@@ -788,6 +790,64 @@ static bool rect_quad(int x0, int y0, int x1, int y1, uint32_t rgba, uint32_t *f
     v[2] = (kj_v2d){ (int16_t)x0, (int16_t)y1, 0, 0, r, g, b, a };
     v[3] = (kj_v2d){ (int16_t)x1, (int16_t)y1, 0, 0, r, g, b, a };
     return true;
+}
+
+/* Composite the 200x120 world surface at exactly 2x into BG0's place.
+ * One textured quad, nearest sampling, integer destination edges. The PICA
+ * target is portrait: DS y became texture x (reversed) and DS x became
+ * texture y. Undo that here, with a quarter-texel inset so each pair of
+ * output rows/columns lands in one source texel. Transparency/stencil
+ * coverage is still approximate -- see FIELD_SCALING.md limitations. */
+static void composite_world_2x(const ctx *c, uint8_t stencil_flags, uint8_t window_on,
+                               uint8_t window_active)
+{
+    uint32_t first;
+    kj_v2d *v = kj_gpu_quads_alloc(1, &first);
+    if (v == NULL) {
+        return;
+    }
+    const float scale = c->target->scale;
+    const float ox = c->target->offset_x;
+    const int x0 = (int)lroundf(-ox / scale);
+    const int x1 = (int)lroundf(((float)c->target->width - ox) / scale);
+    const int y0 = 0;
+    const int y1 = (int)lroundf(240.0f / scale);
+    const int xs[4] = { x0, x1, x0, x1 };
+    const int ys[4] = { y0, y0, y1, y1 };
+
+    /* The world quad covers all 400x240 output pixels, not just the DS
+     * columns used by the surrounding 2D passes. */
+    kj_gpu_scissor_off();
+    kj_gpu_use_program(KJ_PROGRAM_2D);
+    kj_gpu_bind_texture(0, kj_offscreen_texture());
+    C3D_FVUnifSet(GPU_VERTEX_SHADER, kj_gpu_uloc_2d_uvscale(), 1.0f / (128.0f * 16.0f),
+                  -1.0f / (256.0f * 16.0f), 0.0f, 1.0f);
+    kj_gpu_tev_texture_modulate();
+
+    for (int k = 0; k < 4; ++k) {
+        const float phys_x = ox + (float)xs[k] * scale;
+        const float phys_row = (float)ys[k] * scale;
+        /* Exact nearest-neighbour mapping, derived from the corrected
+         * make_fixup(): offscreen texel (wx,wy) lives at texture (wy,wx).
+         * Both axes advance one whole texel every two output pixels. */
+        /* Measured against a same-frame 1x capture (score 1.000): the PICA
+         * render-to-texture framebuffer maps the active region into the BOTTOM
+         * 200 rows of the 256-row backing texture and reverses the DS-y axis.
+         * Undo both exactly: flip u, and offset v by the 56 padding rows. */
+        const float u = 8.0f * (240.0f - phys_row);
+        const float vv = 8.0f * (phys_x + 112.0f);
+        v[k] = (kj_v2d){ (int16_t)xs[k], (int16_t)ys[k], (int16_t)lroundf(u),
+                         (int16_t)lroundf(vv), 255, 255, 255, 255 };
+    }
+    blend_off();
+    /* The composite covers the physical display; native window regions must
+     * not reject parts of it. Reapplying windows/stencil to this quad is the
+     * remaining Task 11 composition work. */
+    C3D_StencilTest(false, GPU_ALWAYS, 0, 0, 0);
+    kj_gpu_draw_quads(first, 1);
+    (void)stencil_flags;
+    (void)window_on;
+    (void)window_active;
 }
 
 /* The top screen's 3D (BG0) is drawn wide, but a screen without layout
@@ -1603,18 +1663,39 @@ static void draw_span(ctx *c, const prepared *pr, bool draw_3d, bool *drew_3d)
                 if (draw_3d && !*drew_3d) {
                     const bool t2 = (f.bldcnt >> 8) & 1;
                     const bool t1 = f.bldcnt & 1;
-                    kj_gpu_scissor_off();
+                    const bool world_2x = c->screen == KJ_SCREEN_TOP && kj_offscreen_ready() &&
+                                          kj_field_view_current()->effective_mode ==
+                                              KJ_FIELD_VIEW_2X;
+                    if (world_2x) {
+                        kj_offscreen_begin_world(0);
+                    } else {
+                        kj_gpu_scissor_off();
+                    }
                     /* SHIFT3D: the 3D picture moves on the target only; the
                      * DS matrices, viewport and box tests are untouched. */
                     kj_target shifted = *c->target;
                     if (c->nrows) {
-                        shifted.offset_x += (float)kj_layout_shift3d(c->rows, c->nrows) * shifted.scale;
+                        const float dx = (float)kj_layout_shift3d(c->rows, c->nrows);
+                        shifted.offset_x += dx * shifted.scale;
+                        shifted.world.offset_x += dx * shifted.world.scale;
                     }
-                    kj_g3d_draw(&shifted, c->screen == KJ_SCREEN_TOP,
-                                (uint8_t)((t2 ? 1 : 0) | (t1 && f.mode >= 2 ? 2 : 0)),
-                                bg0_window_on(&f), f.windows ? f.active : 0);
+                    const uint8_t stencil = (uint8_t)((t2 ? 1 : 0) | (t1 && f.mode >= 2 ? 2 : 0));
+                    const uint8_t won = bg0_window_on(&f);
+                    const uint8_t wactive = f.windows ? f.active : 0;
+                    kj_g3d_draw(&shifted, c->screen == KJ_SCREEN_TOP, stencil, won, wactive);
+                    if (world_2x) {
+                        kj_offscreen_end_world(c->target->rt);
+                    }
                     *drew_3d = true;
                     restore_2d_state(c, sx0);
+                    if (world_2x) {
+                        composite_world_2x(c, stencil, won, wactive);
+                        /* The composite leaves the offscreen texture, its UV
+                         * scale and an open scissor bound. Later layers (OBJ
+                         * text, area banners) would otherwise sample with the
+                         * wrong transform and render garbled. */
+                        restore_2d_state(c, sx0);
+                    }
                 }
                 continue;
             }

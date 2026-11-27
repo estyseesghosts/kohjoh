@@ -16,6 +16,7 @@
 #include "graphics/renderer.h"
 
 #include "app/app.h"
+#include "app/config.h"
 #include "app/script.h"
 #include "diagnostics/dump.h"
 #include "diagnostics/log.h"
@@ -26,7 +27,9 @@
 #include "graphics/pica/gpu.h"
 #include "graphics/pica/targets.h"
 #include "graphics/resources/atlas.h"
+#include "graphics/world_view.h"
 #include "runtime/kj_bridge.h"
+#include "runtime/kj_field_view.h"
 #include "runtime/kj_g3.h"
 
 #include <3ds.h>
@@ -83,6 +86,11 @@ bool kj_renderer_init(void)
     if (!kj_targets_init()) {
         return false;
     }
+    kj_field_view_configure((uint32_t)kj_config_field_scale(),
+                            (uint32_t)kj_targets_world_mode());
+    kj_log("[gpu] field view requested %s, configured %s",
+           kj_config_scale_name(kj_config_field_scale()),
+           kj_config_scale_name(kj_targets_world_mode()));
     {
         kj_g3_storage st;
         for (int i = 0; i < 2; ++i) {
@@ -115,6 +123,7 @@ void kj_renderer_exit(void)
         return;
     }
     s_ready = false;
+    kj_field_view_reset();
     C3D_FrameBegin(0); /* waits for the GPU */
     C3D_FrameEnd(0);
     kj_g3d_exit();
@@ -170,6 +179,15 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
     kj_atlas_begin_frame();
     kj_g2d_begin_frame();
     kj_g3d_set_frame(in->g3);
+    /* Derive the top screen's world projection from the authoritative field
+     * view committed at publication. Non-field scenes always use legacy. */
+    {
+        const kj_field_view_desc *fv = kj_field_view_current();
+        const kj_field_scale mode = fv->effective_mode == KJ_FIELD_VIEW_2X ? KJ_FIELD_SCALE_2X
+                                    : fv->effective_mode == KJ_FIELD_VIEW_1X ? KJ_FIELD_SCALE_1X
+                                                                             : KJ_FIELD_SCALE_LEGACY;
+        kj_world_view_init_display(&kj_target_get(KJ_SCREEN_TOP)->world, mode);
+    }
     kj_tex_begin_frame(in);
 
     /* Engine A (and the 3D layer) is on the screen POWCNT1 says. */

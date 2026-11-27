@@ -17,6 +17,7 @@
  */
 
 #include "kj_bridge.h"
+#include "kj_field_view.h"
 #include "kj_g3.h"
 #include "kj_screen.h"
 
@@ -144,6 +145,9 @@ static void publish(void)
     in.game_frame = ++s_publishes;
     in.engine_a_on_top = NitroPort_EngineAOnTop() != FALSE;
     kj_screen_snapshot(&in.screen);
+    /* Commit the field-view policy before the next frame's geometry work.
+     * The resolved screen identity, not engine A on top, decides it. */
+    kj_field_view_set_scene(in.screen.screen_id, in.screen.generation);
     s_last_publish_vblank = s_vblanks;
     kj_ctr_publish_frame(&in);
     kj_g3_set_capture(kj_ctr_capture_next_frame());

@@ -137,15 +137,20 @@ static void make_fixup(const kj_target *t, uint32_t vp, bool wbuffer, float f[4]
     const float x1 = (float)(vp & 0xFF), y1 = (float)((vp >> 8) & 0xFF);
     const float vw = (float)(((vp >> 16) & 0xFF)) - x1 + 1.0f;
     const float vh = (float)(((vp >> 24) & 0xFF)) - y1 + 1.0f;
-    const float a = t->scale / 120.0f;
-    const float half_w = t->width / 2.0f;
-    const float b = t->scale / half_w;
+    /* Derive everything from the active world view: no hardcoded 120 and no
+     * assumption that the target is 400 wide or 240 high. For legacy this is
+     * algebraically identical to the old scale/120 and offset_x/half_w form. */
+    const kj_world_view *w = &t->world;
+    const float a = 2.0f * w->scale / (float)w->surface_h;
+    const float b = 2.0f * w->scale / (float)w->surface_w;
 
     memset(f, 0, sizeof(float) * 16);
     f[0][1] = a * vh / 2.0f;
-    f[0][3] = 1.0f - a * (192.0f - y1 - vh / 2.0f);
+    f[0][3] = 1.0f - 2.0f * w->offset_y / (float)w->surface_h -
+              a * (192.0f - y1 - vh / 2.0f);
     f[1][0] = -b * vw / 2.0f;
-    f[1][3] = 1.0f - t->offset_x / half_w - b * (x1 + vw / 2.0f);
+    f[1][3] = 1.0f - 2.0f * w->offset_x / (float)w->surface_w -
+              b * (x1 + vw / 2.0f);
     if (wbuffer) {
         f[2][3] = -W_DEPTH_SCALE;
     } else {
@@ -351,10 +356,11 @@ static void apply_batch_state(const kj_g3_batch *b, bool translucent,
     if (program == KJ_PROGRAM_3D_LIT) {
         upload_lighting(b);
     }
-    if (b->viewport != *last_vp) {
-        make_fixup(target, b->viewport, wbuffer, fix);
-        *last_vp = b->viewport;
-    }
+    /* Recomputed every batch: the fixup now depends on the active view as
+     * well as the DS viewport, so a cached matrix could survive a field ->
+     * menu -> field transition with a different projection. */
+    make_fixup(target, b->viewport, wbuffer, fix);
+    *last_vp = b->viewport;
 
     /* texture */
     C3D_Tex *tex = NULL;

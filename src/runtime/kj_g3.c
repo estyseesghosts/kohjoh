@@ -20,6 +20,7 @@
  * transform_texcoords(), set_geo_position().
  */
 
+#include "kj_field_view.h"
 #include "kj_g3.h"
 #include "kj_lighting.h"
 
@@ -47,6 +48,10 @@ extern unsigned char NitroPort_IoReg[];
 #ifndef HGSS_PROFILE_OFF
 static bool s_coarse_sample;
 static uint32_t s_sample_normals, s_sample_shade_misses;
+static uint64_t s_coarse_layout;
+static uint32_t s_dl_layout_checks, s_dl_layout_steps;
+static uint32_t s_dl_layout_generic, s_dl_layout_rebuilds;
+static uint32_t s_dl_key_logs;
 #endif
 
 /* ------------------------------------------------------------- matrices */
@@ -1222,6 +1227,34 @@ int NitroPort_Gx3dEarlierSceneUnread(void)
     return 0;
 }
 
+/* Game-facing box tests (Task 7 B). The factors are derived from the
+ * authoritative field view, never from a second set of constants. They are
+ * conservative: never tighter than the original DS viewport, and 2x keeps
+ * the existing extent until non-rendering call sites have been audited. */
+static uint32_t s_box_view_gen;
+static int s_box_x16 = 20; /* 1.25 * 16 */
+static int s_box_y16 = 16; /* 1.00 * 16 */
+
+static void box_view_refresh(void)
+{
+    const kj_field_view_desc *v = kj_field_view_current();
+    if (v->view_generation == s_box_view_gen) {
+        return;
+    }
+    const float fx = v->clip_hx * 16.0f, fy = v->clip_hy * 16.0f;
+    int nx = (int)fx + ((float)(int)fx < fx ? 1 : 0);
+    int ny = (int)fy + ((float)(int)fy < fy ? 1 : 0);
+    if (nx < 20) {
+        nx = 20; /* do not tighten game-facing tests below legacy */
+    }
+    if (ny < 16) {
+        ny = 16; /* DS viewport is never tightened vertically */
+    }
+    s_box_x16 = nx;
+    s_box_y16 = ny;
+    s_box_view_gen = v->view_generation;
+}
+
 static void box_test(const uint32_t *p)
 {
     const int32_t x = sign_bits(p[0], 16), y = sign_bits(p[0] >> 16, 16);
@@ -1259,15 +1292,19 @@ static void box_test(const uint32_t *p)
             }
             o[j] = v >> 12;
         }
-        /* Widescreen: the visible x range is 1.25x the DS's (o * 5 / 4,
-         * truncating toward zero, without a 64-bit division call). */
-        const int64_t w5 = o[3] * 5;
-        const int64_t wx = s_wide ? (w5 + (w5 < 0 ? 3 : 0)) >> 2 : o[3];
+        /* Widen both axes from the effective field view. The 16-denominator
+         * fixed point keeps this exact and division-free; legacy is 5/4 x and
+         * 4/4 y, i.e. byte-identical to the original behaviour. */
+        box_view_refresh();
+        const int64_t w5 = o[3] * s_box_x16;
+        const int64_t h4 = o[3] * s_box_y16;
+        const int64_t wx = s_wide ? (w5 + (w5 < 0 ? 15 : 0)) >> 4 : o[3];
+        const int64_t wy = s_wide ? (h4 + (h4 < 0 ? 15 : 0)) >> 4 : o[3];
         unsigned out = 0;
         out |= (o[0] < -wx) ? 0x01u : 0u;
         out |= (o[0] > wx) ? 0x02u : 0u;
-        out |= (o[1] < -o[3]) ? 0x04u : 0u;
-        out |= (o[1] > o[3]) ? 0x08u : 0u;
+        out |= (o[1] < -wy) ? 0x04u : 0u;
+        out |= (o[1] > wy) ? 0x08u : 0u;
         out |= (o[2] < -o[3]) ? 0x10u : 0u;
         out |= (o[2] > o[3]) ? 0x20u : 0u;
         all_out &= out;
@@ -2097,6 +2134,8 @@ typedef struct dl_entry {
      * A lit NORMAL overwrites colour; an unlit NORMAL leaves it inherited. */
     uint32_t reads[4];
     uint32_t *words;
+    uint32_t *layout;   /* command-word offsets in words (see dl_layout_plan) */
+    uint32_t nlayout, cap_layout;
     dl_key key;
     bool lit, texgen;
     dl_exit exit;
@@ -2337,27 +2376,102 @@ static void dl_set_reads(dl_entry *e, const uint32_t *words, size_t count)
     }
 }
 
+/* Compile the packed command-word offsets once per content change. Goldenrod
+ * idle validates a state list ~41 times a frame on CITnLO (LOTUS, 2026-11-23),
+ * so validation must not re-walk parameter counts; it compares only the
+ * command words against the retained copy (issue #30). */
+static void dl_layout_plan(dl_entry *e, const uint32_t *words, size_t count)
+{
+    size_t i = 0, n = 0;
+    while (i < count) {
+        ++n;
+        uint32_t commands = words[i++];
+        for (unsigned k = 0; k < 4; ++k, commands >>= 8) {
+            const size_t params = s_param_count[commands & 0xFFu];
+            if (params > count - i) {
+                e->nlayout = 0;
+                return;
+            }
+            i += params;
+        }
+    }
+    if (n > e->cap_layout) {
+        uint32_t *plan = dl_alloc((uint32_t)(n * sizeof(uint32_t)));
+        if (plan == NULL) {
+            e->nlayout = 0;
+            return;
+        }
+        e->layout = plan;
+        e->cap_layout = (uint32_t)n;
+    }
+    i = 0;
+    uint32_t *plan = e->layout;
+    while (i < count) {
+        const size_t at = i;
+        uint32_t commands = words[i++];
+        *plan++ = (uint32_t)at;
+        for (unsigned k = 0; k < 4; ++k, commands >>= 8) {
+            i += s_param_count[commands & 0xFFu];
+        }
+    }
+    e->nlayout = (uint32_t)n;
+#ifndef HGSS_PROFILE_OFF
+    ++s_dl_layout_rebuilds;
+#endif
+}
+
 /* State-only replay consumes live parameters. Validate every packed opcode
  * word before using the retained event offsets, so changing camera/material
  * parameters do not force a new recording. A changed command layout falls
  * through to the ordinary full comparison/recording path. */
 static bool dl_state_layout_same(const dl_entry *e, const uint32_t *words, size_t count)
 {
-    size_t i = 0;
-    while (i < count) {
-        uint32_t commands = e->words[i];
-        if (commands != words[i++]) {
-            return false;
-        }
-        for (unsigned k = 0; k < 4; ++k, commands >>= 8) {
-            const size_t params = s_param_count[commands & 0xFFu];
-            if (params > count - i) {
-                return false;
+#ifndef HGSS_PROFILE_OFF
+    const u64 t = s_coarse_sample ? svcGetSystemTick() : 0;
+#endif
+    bool same = true;
+    if (e->nlayout != 0) {
+#ifndef HGSS_PROFILE_OFF
+        ++s_dl_layout_checks;
+        s_dl_layout_steps += e->nlayout;
+#endif
+        for (uint32_t i = 0; i < e->nlayout; ++i) {
+            const uint32_t off = e->layout[i];
+            if (words[off] != e->words[off]) {
+                same = false;
+                break;
             }
-            i += params;
+        }
+    } else {
+#ifndef HGSS_PROFILE_OFF
+        ++s_dl_layout_generic;
+#endif
+        size_t i = 0;
+        while (i < count) {
+            uint32_t commands = e->words[i];
+            if (commands != words[i++]) {
+                same = false;
+                break;
+            }
+            for (unsigned k = 0; k < 4; ++k, commands >>= 8) {
+                const size_t params = s_param_count[commands & 0xFFu];
+                if (params > count - i) {
+                    same = false;
+                    break;
+                }
+                i += params;
+            }
+            if (!same) {
+                break;
+            }
         }
     }
-    return true;
+#ifndef HGSS_PROFILE_OFF
+    if (s_coarse_sample) {
+        s_coarse_layout += svcGetSystemTick() - t;
+    }
+#endif
+    return same;
 }
 
 /* The unused tail is not part of the key. Most map lists consume neither
@@ -2372,6 +2486,56 @@ static size_t dl_key_size(bool lit, bool texgen, uint32_t reads)
     return texgen || (reads & DL_READS_TEXM) ? offsetof(dl_key, vec)
                                           : offsetof(dl_key, texm);
 }
+
+#ifndef HGSS_PROFILE_OFF
+/* Field name for the first differing key word (#29 attribution). */
+static const char *dl_key_field(unsigned word)
+{
+    static const char *const head[] = {
+        "attr_pending", "attr", "tex_param", "tex_pltt", "viewport", "color"
+    };
+    if (word < sizeof(head) / sizeof(head[0])) {
+        return head[word];
+    }
+    if (word == 6) {
+        return "coord01";
+    }
+    if (word == 7) {
+        return "coord2";
+    }
+    if (word < 10) {
+        return "texcoord";
+    }
+    if (word < 12) {
+        return "texcoord_raw";
+    }
+    if (word == 12) {
+        return "mtx_mode";
+    }
+    if (word < 29) {
+        return "texm";
+    }
+    if (word < 38) {
+        return "vec";
+    }
+    if (word < 50) {
+        return "light_dir";
+    }
+    if (word < 62) {
+        return "light_half";
+    }
+    if (word < 66) {
+        return "light_color";
+    }
+    if (word < 70) {
+        return "material";
+    }
+    if (word == 70) {
+        return "use_shininess";
+    }
+    return "shininess";
+}
+#endif
 
 static void dl_make_key(dl_key *k, bool lit, bool texgen, uint32_t reads)
 {
@@ -2742,24 +2906,39 @@ static uint32_t s_cull_tests, s_cull_blocks, s_cull_verts, s_cull_tris;
  * triangle; the Goldenrod census found 72 of 124 batches wholly outside one
  * plane. Box/position/vector tests and every state command still execute,
  * so the game sees nothing different. */
-static uint32_t s_plane_version;
+static uint32_t s_plane_version, s_plane_view_gen;
 static int64_t s_plane[4][4];
 
 static void cull_planes(void)
 {
-    if (s_plane_version == s_clip_version) {
+    const kj_field_view_desc *v = kj_field_view_current();
+    if (s_plane_version == s_clip_version && s_plane_view_gen == v->view_generation) {
         return;
+    }
+    /* Task 7 C: the coefficients come from the effective view, plus a
+     * deliberate 1/16 guard margin. Legacy reproduces 21/16 and 17/16
+     * exactly; 1x widens to 26/16 and 21/16, 2x tightens to 14/16 and 11/16
+     * while still keeping geometry that intersects a screen edge. */
+    const float fx = v->clip_hx * 16.0f, fy = v->clip_hy * 16.0f;
+    int kx = (int)fx + ((float)(int)fx < fx ? 1 : 0) + 1;
+    int ky = (int)fy + ((float)(int)fy < fy ? 1 : 0) + 1;
+    if (kx < 16) {
+        kx = 16;
+    }
+    if (ky < 16) {
+        ky = 16;
     }
     const mtx *c = clip_matrix();
     for (unsigned i = 0; i < 4; ++i) {
         const int64_t x = (int64_t)c->m[i][0] * 16, y = (int64_t)c->m[i][1] * 16;
-        const int64_t wx = (int64_t)c->m[i][3] * 21, wy = (int64_t)c->m[i][3] * 17;
+        const int64_t wx = (int64_t)c->m[i][3] * kx, wy = (int64_t)c->m[i][3] * ky;
         s_plane[0][i] = wx + x;
         s_plane[1][i] = wx - x;
         s_plane[2][i] = wy + y;
         s_plane[3][i] = wy - y;
     }
     s_plane_version = s_clip_version;
+    s_plane_view_gen = v->view_generation;
 }
 
 /* -1: the box is wholly outside one plane; 1: wholly inside all four;
@@ -2768,6 +2947,11 @@ static void cull_planes(void)
  * integral: the same answer as testing all eight corners. */
 static int box_visibility(const int16_t lo[3], const int16_t hi[3])
 {
+    /* Task 7 D: A/B switch for the visibility optimisation alone. Face
+     * culling in the GPU path is unaffected by this switch. */
+    if (!kj_field_view_vis_cull_enabled()) {
+        return 0;
+    }
     cull_planes();
 #ifndef HGSS_PROFILE_OFF
     ++s_cull_tests;
@@ -3466,6 +3650,7 @@ static void vertex_plan(dl_entry *e, const uint32_t *words, size_t count)
         memcpy(e->words, words, count * 4u);
         dl_drop_recording(e);
         dl_set_reads(e, words, count);
+        e->nlayout = 0;
     }
     bool inherited_coord = (e->reads[0] & DL_READS_COORD) != 0;
     bool hit = e->vertex_plan &&
@@ -3585,6 +3770,11 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
         e->count = (uint32_t)count;
         memcpy(e->words, words, count * 4u);
         dl_set_reads(e, words, count);
+        if ((e->reads[0] & DL_HAS_VERTEX_DATA) == 0) {
+            dl_layout_plan(e, words, count);
+        } else {
+            e->nlayout = 0;
+        }
     }
 #ifdef KJ_G3_GPU_LIGHTING
     else if (e->gpu_lit && !(e->gpu_churn && (s_stats.swaps & DL_NEVER_RECHECK_MASK) == 0u &&
@@ -3641,6 +3831,11 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
             e->needs_light = false;
             e->key_misses = 0;
             dl_set_reads(e, words, count);
+            if ((e->reads[0] & DL_HAS_VERTEX_DATA) == 0) {
+                dl_layout_plan(e, words, count);
+            } else {
+                e->nlayout = 0;
+            }
         }
     }
     e->last_frame = s_stats.swaps;
@@ -3709,6 +3904,24 @@ static void fifo_words_impl(const uint32_t *words, size_t count)
     /* Only a miss (or diagnostic live verification) needs an entry snapshot. */
     dl_key key;
     dl_make_key(&key, lit, texgen, reads);
+#ifndef HGSS_PROFILE_OFF
+    if (e->recorded && !verify && lit && s_dl_key_logs < 32u &&
+        memcmp(e->words, words, count * 4u) == 0) {
+        const uint32_t *a = (const uint32_t *)&key, *b = (const uint32_t *)&e->key;
+        const unsigned words = (unsigned)(key_bytes / 4u);
+        unsigned first = 0;
+        while (first < words && a[first] == b[first]) {
+            ++first;
+        }
+        NitroPort_Log("[dlkey] list %08lx words %u lit %d texgen %d first %s(%u) %08lx vs %08lx misses %u",
+                      (unsigned long)(uintptr_t)e->ptr, (unsigned)count, lit, texgen,
+                      dl_key_field(first), first,
+                      first < words ? (unsigned long)a[first] : 0ul,
+                      first < words ? (unsigned long)b[first] : 0ul,
+                      (unsigned)e->key_misses);
+        ++s_dl_key_logs;
+    }
+#endif
 #ifdef KJ_DL_VERIFY
     if (e->recorded && !verify) {
         static uint32_t logged;
@@ -3937,13 +4150,20 @@ void NitroPort_GxFifoWords(const uint32_t *words, size_t count)
 void kj_g3_dl_stats(uint32_t *hits, uint32_t *misses, uint32_t *uncacheable, uint32_t *bytes)
 {
 #ifndef HGSS_PROFILE_OFF
-    NitroPort_Log("[g3sample] random 1/64 FIFO calls: samples %lu total_ticks %llu decode_ticks %llu replay_ticks %llu (block_copy_ticks %llu nested); remainder includes lookup/recording and probe overhead",
+    NitroPort_Log("[g3sample] random 1/64 FIFO calls: samples %lu total_ticks %llu decode_ticks %llu replay_ticks %llu (block_copy_ticks %llu nested, layout_ticks %llu nested); remainder includes lookup/recording and probe overhead",
                   (unsigned long)s_coarse_n, (unsigned long long)s_coarse_total,
                   (unsigned long long)s_coarse_decode, (unsigned long long)s_coarse_replay,
-                  (unsigned long long)s_coarse_copy);
+                  (unsigned long long)s_coarse_copy, (unsigned long long)s_coarse_layout);
     s_coarse_n = 0;
-    s_coarse_total = s_coarse_decode = s_coarse_replay = s_coarse_copy = 0;
+    s_coarse_total = s_coarse_decode = s_coarse_replay = s_coarse_copy = s_coarse_layout = 0;
     dl_profile_report();
+    NitroPort_Log("[dllayout] compiled plans checks %lu steps %lu generic %lu rebuilds %lu keylogs %lu",
+                  (unsigned long)s_dl_layout_checks, (unsigned long)s_dl_layout_steps,
+                  (unsigned long)s_dl_layout_generic, (unsigned long)s_dl_layout_rebuilds,
+                  (unsigned long)s_dl_key_logs);
+    s_dl_layout_checks = s_dl_layout_steps = 0;
+    s_dl_layout_generic = s_dl_layout_rebuilds = 0;
+    s_dl_key_logs = 0;
     NitroPort_Log("[dlplan] live command plans calls %lu words %lu "
                   "(decode work, not retained vertex hits)",
                   (unsigned long)s_dl_plan_calls, (unsigned long)s_dl_plan_words);
