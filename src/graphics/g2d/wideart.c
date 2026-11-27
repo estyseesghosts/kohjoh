@@ -41,6 +41,9 @@ static uint32_t rd32(const unsigned char *p, unsigned off) {
            ((uint32_t)p[off + 3] << 24);
 }
 
+/* On failure the module is left exactly as after kj_wideart_exit(): no
+ * pictures (count 0) and no texture. Wide art is optional, so failure is not
+ * fatal to the caller, and calling init again with a valid blob is allowed. */
 bool kj_wideart_init(void) {
     if (s_ready) {
         return true;
@@ -54,50 +57,53 @@ bool kj_wideart_init(void) {
         kj_log("[wide art] blob version %u is not this build's", version);
         return false;
     }
-    s_count = rd16(wideart_bin, 6);
-    if (s_count == 0) {
+    const uint16_t count = rd16(wideart_bin, 6);
+    if (count == 0) {
         kj_log("[wide art] no pictures (wideart/ is empty): edge fills only");
         return false;
     }
-    s_tex_w = rd16(wideart_bin, 8);
-    s_tex_h = rd16(wideart_bin, 10);
-    const uint32_t data_h = rd16(wideart_bin, 12);
+    const uint16_t tex_w = rd16(wideart_bin, 8);
+    const uint16_t tex_h = rd16(wideart_bin, 10);
+    const uint16_t data_h = rd16(wideart_bin, 12);
     /* The PICA's texture size is a power of two in each direction
      * (citro3d's checkTexSize), and the texture holds the bands: the rows
      * the blob carries, the rest cleared. */
-    if (s_tex_w == 0 || s_tex_h == 0 || (s_tex_w & (s_tex_w - 1)) != 0 ||
-        (s_tex_h & (s_tex_h - 1)) != 0 || data_h == 0 || data_h > s_tex_h) {
-        kj_log("[wide art] bad texture size %lux%lu (%lu rows of pictures)", (unsigned long)s_tex_w,
-               (unsigned long)s_tex_h, (unsigned long)data_h);
+    if (tex_w == 0 || tex_h == 0 || (tex_w & (tex_w - 1)) != 0 || (tex_h & (tex_h - 1)) != 0 ||
+        data_h == 0 || data_h > tex_h) {
+        kj_log("[wide art] bad texture size %lux%lu (%lu rows of pictures)", (unsigned long)tex_w,
+               (unsigned long)tex_h, (unsigned long)data_h);
         return false;
     }
-    const size_t need = BLOB_HEADER + (size_t)s_count * BLOB_RECORD + (size_t)s_tex_w * data_h * 2u;
+    const size_t need = BLOB_HEADER + (size_t)count * BLOB_RECORD + (size_t)tex_w * data_h * 2u;
     if (need > wideart_bin_size) {
         kj_log("[wide art] blob is short (%u bytes, needs %u)", wideart_bin_size, (unsigned)need);
         return false;
     }
-    if (!C3D_TexInit(&s_tex, (u16)s_tex_w, (u16)s_tex_h, GPU_RGBA5551)) {
-        kj_log("[wide art] cannot allocate the %lux%lu texture", (unsigned long)s_tex_w,
-               (unsigned long)s_tex_h);
+
+    /* Allocate the table first: a texture failure then needs only free(). */
+    kj_wideart_pic *pics = malloc(sizeof(kj_wideart_pic) * count);
+    if (pics == NULL) {
+        kj_log("[wide art] out of memory for the picture table");
         return false;
     }
+    bool tex_created = false;
+    if (!C3D_TexInit(&s_tex, tex_w, tex_h, GPU_RGBA5551)) {
+        kj_log("[wide art] cannot allocate the %lux%lu texture", (unsigned long)tex_w,
+               (unsigned long)tex_h);
+        goto fail;
+    }
+    tex_created = true;
     C3D_TexSetFilter(&s_tex, GPU_NEAREST, GPU_NEAREST);
     C3D_TexSetWrap(&s_tex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
     /* The blob's pixels are already in the PICA's tile order. */
-    memset(s_tex.data, 0, (size_t)s_tex_w * s_tex_h * 2u);
-    memcpy(s_tex.data, wideart_bin + BLOB_HEADER + (size_t)s_count * BLOB_RECORD,
-           (size_t)s_tex_w * data_h * 2u);
+    memset(s_tex.data, 0, (size_t)tex_w * tex_h * 2u);
+    memcpy(s_tex.data, wideart_bin + BLOB_HEADER + (size_t)count * BLOB_RECORD,
+           (size_t)tex_w * data_h * 2u);
     C3D_TexFlush(&s_tex);
 
-    s_pics = malloc(sizeof(kj_wideart_pic) * (s_count != 0 ? s_count : 1));
-    if (s_pics == NULL) {
-        kj_log("[wide art] out of memory for the picture table");
-        C3D_TexDelete(&s_tex);
-        return false;
-    }
-    for (uint32_t i = 0; i < s_count; ++i) {
+    for (uint32_t i = 0; i < count; ++i) {
         const unsigned char *r = wideart_bin + BLOB_HEADER + (size_t)i * BLOB_RECORD;
-        kj_wideart_pic *p = &s_pics[i];
+        kj_wideart_pic *p = &pics[i];
         p->key = (uint64_t)rd32(r, 0) | ((uint64_t)rd32(r, 4) << 32);
         p->hofs = (int16_t)rd16(r, 8);
         p->vofs = (int16_t)rd16(r, 10);
@@ -109,10 +115,24 @@ bool kj_wideart_init(void) {
         p->band_w = rd16(r, 22);
         p->band_h = rd16(r, 24);
     }
+
+    /* Publish only after everything succeeded: no s_ variable is written on
+     * a failure path, so a failed init cannot be observed as a loaded blob. */
+    s_pics = pics;
+    s_count = count;
+    s_tex_w = tex_w;
+    s_tex_h = tex_h;
     s_ready = true;
-    kj_log("[wide art] %lu pictures, a %lux%lu texture", (unsigned long)s_count,
-           (unsigned long)s_tex_w, (unsigned long)s_tex_h);
+    kj_log("[wide art] %lu pictures, a %lux%lu texture", (unsigned long)count, (unsigned long)tex_w,
+           (unsigned long)tex_h);
     return true;
+
+fail:
+    if (tex_created) {
+        C3D_TexDelete(&s_tex);
+    }
+    free(pics);
+    return false;
 }
 
 void kj_wideart_exit(void) {
@@ -121,6 +141,8 @@ void kj_wideart_exit(void) {
         s_pics = NULL;
     }
     s_count = 0;
+    s_tex_w = 0;
+    s_tex_h = 0;
     if (s_ready) {
         C3D_TexDelete(&s_tex);
         s_ready = false;

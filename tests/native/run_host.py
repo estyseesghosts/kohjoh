@@ -82,7 +82,7 @@ def main():
                    "src/graphics/font/text_window.c"], ["src"])
     build_and_run_perf()
 
-    for script in ("test_textures.py", "test_save_backend.py", "test_save_import.py",
+    for script in ("test_textures.py", "test_wideart.py", "test_save_backend.py", "test_save_import.py",
                    "test_touch_tp.py", "visibility_test.py", "pica_lighting_test.py",
                    "test_script_input.py"):
         run([sys.executable, ROOT / "tests/native" / script])
