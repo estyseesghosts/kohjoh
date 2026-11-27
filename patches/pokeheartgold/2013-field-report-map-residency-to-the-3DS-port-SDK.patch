@@ -1,0 +1,43 @@
+From 97e73282aee386844395165ec77f162bcff3935f Mon Sep 17 00:00:00 2001
+From: terezi <jules@foxtails.me>
+Date: Thu, 26 Nov 2026 22:44:08 -0500
+Subject: [PATCH] field: report loaded map-matrix cells to the 3DS port
+ (SDK_PORT_3DS)
+
+---
+ src/field/map_load_manager.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/src/field/map_load_manager.c b/src/field/map_load_manager.c
+index 8a0cf40..7eb3651 100644
+--- a/src/field/map_load_manager.c
++++ b/src/field/map_load_manager.c
+@@ -10,6 +10,9 @@
+ #include "field/field_control.h"
+ #include "field/map_load_buffers.h"
+ #include "field/map_load_manager_internal.h"
++#ifdef SDK_PORT_3DS
++#include <nitro_port_debug.h>
++#endif
+ #include "field/map_prop.h"
+ 
+ #include "comm_state.h"
+@@ -1288,6 +1291,15 @@ void MapLoadManager_RenderLoadedMaps(MapLoadManager *mapLoadManager, ModelAttrib
+ 
+     for (i = 0; i < MAP_LOAD_NUM_SLOTS; i++) {
+         if (mapLoadManager->maps[i]->matrixIndex != -1) {
++#ifdef SDK_PORT_3DS
++            /* Development-only residency trace: the player-tracked matrix and
++             * the matrix index actually rendered for this cell. Lets the port
++             * distinguish an unloaded cell from a projection fault. */
++            NitroPort_DebugMapResidency(mapLoadManager->currentMatrixIndex,
++                                        mapLoadManager->currentTile,
++                                        mapLoadManager->quadrant, (int)i,
++                                        mapLoadManager->maps[i]->matrixIndex);
++#endif
+             MapLoadManager_RenderLoadedMap(i, mapLoadManager, modelAttributes);
+         }
+     }
+-- 
+2.49.0
+

@@ -326,3 +326,12 @@ void NitroPort_DebugBillboard(unsigned model, unsigned type, unsigned sequence, 
                model, type, sequence, frame, texKey, x, y, z, sx, sy, sz);
     }
 }
+
+void NitroPort_DebugMapResidency(unsigned matrixIndex, unsigned tile, unsigned quadrant,
+                                  int slot, int slotMatrix)
+{
+    if (s_debug & KJ_DEBUG_MAPRES_LOG) {
+        kj_log("[mapres] tracked=%u tile=%u quad=%u slot=%d matrix=%d",
+               matrixIndex, tile, quadrant, slot, slotMatrix);
+    }
+}

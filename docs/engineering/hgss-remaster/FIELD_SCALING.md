@@ -187,6 +187,15 @@ These are tracked honestly rather than claimed as complete:
   scaling mode and that the rendered result is precisely the 1x picture at
   2x size. The texture-dimension/UV-bound and projected-corner parts of Task
   3A, and the optional render-only alignment of Task 3C, are not implemented.
+- **Map residency instrumentation (pixel-perfect Task 8A, instrumentation
+  part)**: patch 2013 hooks `MapLoadManager_RenderLoadedMaps()` and reports,
+  with `debug: 0x10000`, the player-tracked matrix/tile/quadrant together with
+  the matrix index of each of the four loaded cells. A LOTUS walk in Goldenrod
+  logs e.g. `tracked=528 tile=573382 quad=2` with slots `0=527, 1=528,
+  2=574, 3=575`, which stays stable while the tile coordinate advances in
+  1,504-tile steps. This distinguishes unloaded cells from a projection
+  fault, but no peripheral visual cache has been added and the full camera
+  footprint analysis (Task 8B/D) is not done.
 - **Second-location regression**: a Cianwood save was generated with
   `hgss-save location set` from the verified safe-spawn registry and staged in
   both LOTUS sessions. Same-frame captures at frame 4200 again give

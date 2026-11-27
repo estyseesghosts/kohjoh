@@ -36,6 +36,13 @@ int NitroPort_DebugPropVisibility(unsigned propIndex, int x, int y, int z, int b
 void NitroPort_DebugBillboard(unsigned model, unsigned type, unsigned sequence, unsigned frame,
                               unsigned texKey, int x, int y, int z, int sx, int sy, int sz);
 
+/* Called for each map-matrix cell during MapLoadManager_RenderLoadedMaps().
+ * Reports the player-tracked matrix/tile/quadrant and the stable matrix index
+ * of the cell being rendered, so Task 8 can tell missing terrain from a bad
+ * projection. Enabled by script.txt `debug: 0x10000`. */
+void NitroPort_DebugMapResidency(unsigned matrixIndex, unsigned tile, unsigned quadrant,
+                                  int slot, int slotMatrix);
+
 #ifdef __cplusplus
 }
 #endif
