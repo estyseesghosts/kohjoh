@@ -25,7 +25,9 @@ jobs:
           # commit, so those objects must be present.
           fetch-depth: 0
       - name: Install host test prerequisites
-        run: apt-get update && apt-get install -y gcc python3 make
+        run: apt-get update && apt-get install -y gcc python3 make git
+      - name: Trust the checkout inside the container
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Run native regression suite
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}

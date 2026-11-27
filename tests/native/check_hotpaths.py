@@ -26,6 +26,11 @@ def default_reference():
                                 stderr=subprocess.DEVNULL)
         return "HEAD^"
     except (subprocess.CalledProcessError, OSError):
+        if os.environ.get("CI") == "true":
+            raise RuntimeError(
+                "no previous commit and no reference set; refusing to compare the tree with itself"
+            )
+        print("warning: no previous commit; comparing the tree with itself", file=sys.stderr)
         return "HEAD"
 
 
