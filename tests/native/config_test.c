@@ -85,6 +85,47 @@ int main(void)
         assert(!kj_config_requires_offscreen());
     }
 
+    /* text_renderer is an independent key with its own validation. */
+    {
+        kj_text_renderer want, use;
+
+        assert(kj_config_parse_text("text_renderer = native\n", 22, &want, &use) ==
+               KJ_CONFIG_OK);
+        assert(want == KJ_TEXT_RENDERER_NATIVE && use == KJ_TEXT_RENDERER_NATIVE);
+        assert(kj_config_parse_text("text_renderer = legacy\r\n", 23, &want, &use) ==
+               KJ_CONFIG_OK);
+        assert(want == KJ_TEXT_RENDERER_LEGACY && use == KJ_TEXT_RENDERER_LEGACY);
+        assert(kj_config_parse_text("  text_renderer\t=\tNATIVE # opt in\n", 32, &want,
+                                    &use) == KJ_CONFIG_OK);
+        assert(use == KJ_TEXT_RENDERER_NATIVE);
+
+        /* A malformed text_renderer does not invalidate field_scale... */
+        {
+            const char both[] = "text_renderer = banana\nfield_scale = 1x\n";
+            kj_field_scale fw, fu;
+            assert(kj_config_parse(both, sizeof(both) - 1, &fw, &fu) == KJ_CONFIG_OK);
+            assert(fu == KJ_FIELD_SCALE_1X);
+            assert(kj_config_parse_text(both, sizeof(both) - 1, &want, &use) ==
+                   KJ_CONFIG_UNRECOGNIZED);
+            assert(use == KJ_TEXT_RENDERER_LEGACY);
+        }
+        /* ...and an unknown key does not change it either. */
+        assert(kj_config_parse_text("field_scale = 2x\n", 17, &want, &use) ==
+               KJ_CONFIG_UNRECOGNIZED);
+        assert(use == KJ_TEXT_RENDERER_LEGACY);
+        /* Last valid entry wins, like field_scale. */
+        {
+            const char last[] = "text_renderer = native\ntext_renderer = legacy\n";
+            assert(kj_config_parse_text(last, sizeof(last) - 1, &want, &use) == KJ_CONFIG_OK);
+        }
+        assert(use == KJ_TEXT_RENDERER_LEGACY);
+
+        assert(strcmp(kj_config_text_name(KJ_TEXT_RENDERER_LEGACY), "legacy") == 0);
+        assert(strcmp(kj_config_text_name(KJ_TEXT_RENDERER_NATIVE), "native") == 0);
+        assert(kj_config_text_renderer() == KJ_TEXT_RENDERER_LEGACY);
+        assert(!kj_config_native_text_requested());
+    }
+
     puts("config_test: PASS");
     return 0;
 }

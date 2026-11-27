@@ -32,6 +32,10 @@
 #include "graphics/pica/gpu.h"
 #include "graphics/pica/offscreen.h"
 #include "graphics/pica/targets.h"
+#include "graphics/font/glyph_atlas.h"
+#include "graphics/font/text_window.h"
+#include "graphics/font/fontbench.h"
+#include "graphics/font/text_render.h"
 #include "graphics/resources/atlas.h"
 #include "runtime/kj_field_view.h"
 
@@ -318,6 +322,11 @@ static uint32_t text_bg(const ctx *c, int bg, run *out)
              * range or later glyph writes into it are never noticed. */
             run_note(out, t.slot, toff, tile_bytes);
             if (!t.valid || t.transparent) {
+                continue;
+            }
+            /* This tile's pixels are replaced by the native pass for a window
+             * on this plane; leaving the legacy glyphs would double-print. */
+            if (kj_text_owns_tile(c->engine, bg, hofs, vofs, sx, sy)) {
                 continue;
             }
             if (out->count >= out->cap) {
@@ -1587,6 +1596,64 @@ static void restore_2d_state(const ctx *c, int sx0)
     C3D_CullFace(GPU_CULL_NONE);
 }
 
+/* Native text: set a physical-pixel transform, draw the supplied vertices,
+ * then restore the DS atlas mapping so later layers are unaffected.
+ * `textured` selects the font atlas and texel UVs; otherwise the vertices are
+ * solid fills drawn with the vertex-colour material. */
+void kj_g2d_text_draw(const kj_target *t, const kj_v2d *v, uint32_t vertex_count, bool textured)
+{
+    const kj_font_atlas *fa = kj_font_atlas_get();
+    kj_target pt;
+    kj_v2d *dst;
+    uint32_t first;
+
+    if (t == NULL || v == NULL || vertex_count < 4 || (vertex_count & 3u) != 0) {
+        return;
+    }
+    if (textured && (!kj_text_texture_ready() || fa == NULL)) {
+        return;
+    }
+    /* Copy into the per-frame arena. The GPU reads vertex memory when it
+     * executes the command list (at FrameEnd), not when the command is
+     * recorded, so the caller's scratch buffer would be overwritten by its
+     * next draw and only the last draw of the pass would survive. */
+    dst = kj_gpu_quads_alloc(vertex_count / 4u, &first);
+    if (dst == NULL) {
+        return;
+    }
+    memcpy(dst, v, (size_t)vertex_count * sizeof(*dst));
+    pt = *t;
+    pt.scale = 1.0f;
+    pt.offset_x = 0.0f;
+    /* The previous pass may have left the 3D program bound (world layer).
+     * Our vertices are the 2D layout and must use the 2D attribute info. */
+    kj_gpu_use_program(KJ_PROGRAM_2D);
+    set_xform(&pt);
+    if (textured) {
+        kj_gpu_bind_texture(0, kj_text_texture());
+        C3D_FVUnifSet(GPU_VERTEX_SHADER, kj_gpu_uloc_2d_uvscale(),
+                      1.0f / (float)(fa->page_w * KJ_ATLAS_UV_UNIT),
+                      -1.0f / (float)(fa->page_h * KJ_ATLAS_UV_UNIT), 0.0f, 1.0f);
+        kj_gpu_tev_texture_modulate();
+    } else {
+        kj_gpu_tev_vertex_color();
+    }
+    C3D_DepthTest(false, GPU_ALWAYS, GPU_WRITE_COLOR);
+    C3D_CullFace(GPU_CULL_NONE);
+    C3D_StencilTest(false, GPU_ALWAYS, 0, 0, 0);
+    C3D_AlphaTest(true, GPU_GREATER, 0);
+    /* The brightness pass can leave constant-alpha blending armed; text is
+     * opaque over its own backing and must not inherit it. */
+    blend_off();
+    kj_gpu_draw_quads(first, vertex_count / 4u);
+#ifndef HGSS_PROFILE_OFF
+    ++s_stats.draws;
+#endif
+    set_xform(t);
+    kj_gpu_bind_texture(0, kj_atlas_texture());
+    kj_gpu_tev_texture_modulate();
+}
+
 /* A text BG under a wide layout: per band of lines with the same active
  * rows, its quads once per segment, translated or stretched under the
  * segment's scissor (layout.c). */
@@ -1714,6 +1781,12 @@ static void draw_span(ctx *c, const prepared *pr, bool draw_3d, bool *drew_3d)
             } else {
                 draw_layer(&f, bg, &pr->bg[bg], false);
             }
+            /* Native text belongs to this BG's priority slot: after the
+             * background, before any later (higher-priority) layer. It is a
+             * no-op when no window on this plane is presented natively. */
+            kj_text_draw_bg(c->target, c->engine, bg, pltt_ptr(c->in->mem, c->engine, 0),
+                            r16(c->regs, 0x10 + 4 * bg) & 0x1FFu,
+                            r16(c->regs, 0x12 + 4 * bg) & 0x1FFu);
             if (pr->band[bg].count != 0 && kj_wideart_texture() != NULL) {
                 /* The bands lie outside the DS columns: open the scissor
                  * to the wide screen and sample the wide-art texture. */
@@ -1784,6 +1857,19 @@ void kj_screen_draw(int screen, int engine, const kj_frame_input *in)
     const bool forced_blank = (dispcnt & 0x80u) != 0;
     const bool has_3d = engine == 0 && (dispcnt & 8u) && in->g3 != NULL;
     const bool single_span = !in->lines.active;
+
+    /* Development specimen mode: the top screen becomes the font bench and
+     * the game keeps running underneath on the other screen. Taking the pass
+     * here is the only way to guarantee the specimen appears while the game
+     * has the top screen blanked or unchanged. */
+    if (screen == KJ_SCREEN_TOP && kj_script_fontbench()) {
+        kj_gpu_invalidate();
+        C3D_FrameDrawOn(target->rt);
+        C3D_RenderTargetClear(target->rt, C3D_CLEAR_ALL, 0x000000FFu, 0);
+        kj_fontbench_draw(target);
+        memo->drawn = false;
+        return;
+    }
 
     /* Build or reuse the layers before touching the GPU: an unchanged
      * screen is then not drawn, cleared or transferred at all (its last
@@ -1882,6 +1968,10 @@ bool kj_g2d_init(void)
     if (!kj_gpu_init() || !kj_atlas_init()) {
         return false;
     }
+    /* Native text is optional: an atlas failure keeps the legacy renderer. */
+    if (!kj_text_render_init()) {
+        kj_log("[text] native text disabled (font atlas init failed)");
+    }
     kj_wideart_init(); /* optional: without it the sides keep their fills */
     return true;
 }
@@ -1891,6 +1981,7 @@ void kj_g2d_exit(void)
     kj_log("[wide art] %lu layer builds with a picture, %lu without", (unsigned long)s_art_matched,
            (unsigned long)s_art_missing);
     kj_wideart_exit();
+    kj_text_render_exit();
     kj_atlas_exit();
     kj_gpu_exit();
 }

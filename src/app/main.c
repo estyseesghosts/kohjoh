@@ -18,6 +18,7 @@
 #include "diagnostics/crash.h"
 #include "diagnostics/log.h"
 #include "diagnostics/perf.h"
+#include "graphics/font/text_window.h"
 #include "graphics/layout/override.h"
 #include "graphics/renderer.h"
 #include "runtime/kj_bridge.h"
@@ -214,6 +215,10 @@ int main(int argc, char **argv)
         gfxExit();
         fatal_screen("The GPU renderer could not start.", "See the log for details.");
     }
+    /* Native text is opt-in and per-window: the DS renderer stays underneath
+     * every surface this build cannot reproduce. */
+    kj_text_set_enabled(kj_config_native_text_requested());
+    kj_log("[text] native text requested: %s", kj_config_native_text_requested() ? "yes" : "no");
     kj_input_init();
     if (!kj_audio_init()) {
         kj_log("[app] audio unavailable (is the DSP firmware dumped?); continuing silent");

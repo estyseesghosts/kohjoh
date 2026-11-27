@@ -2,6 +2,8 @@
 #define KJ_GRAPHICS_G2D_G2D_H
 
 #include "runtime/kj_bridge.h"
+#include "graphics/pica/gpu.h"
+#include "graphics/pica/targets.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -26,6 +28,11 @@ typedef struct kj_g2d_stats {
 
 /* Start of a frame (after kj_atlas_begin_frame): pins retained layers. */
 void kj_g2d_begin_frame(void);
+
+/* Draw retained native-text quads (fill first, then shadow/foreground
+ * passes) for one BG plane. Solid fills use the vertex-colour material;
+ * glyphs sample the font atlas. Restores the DS atlas mapping afterwards. */
+void kj_g2d_text_draw(const kj_target *t, const kj_v2d *v, uint32_t vertex_count, bool textured);
 
 void kj_g2d_take_stats(kj_g2d_stats *out);
 

@@ -20,6 +20,7 @@
 #include "kj_field_view.h"
 #include "kj_g3.h"
 #include "kj_screen.h"
+#include "kj_text.h"
 
 #include <nitro.h>
 #include <nitro_port.h>
@@ -145,6 +146,9 @@ static void publish(void)
     in.game_frame = ++s_publishes;
     in.engine_a_on_top = NitroPort_EngineAOnTop() != FALSE;
     kj_screen_snapshot(&in.screen);
+    /* Resolved text operations since the last publish. The list is static on
+     * the DS side and stays valid for this call only. */
+    in.text_events = NitroPort_TextEvents(&in.text_event_count);
     /* Commit the field-view policy before the next frame's geometry work.
      * The resolved screen identity, not engine A on top, decides it. */
     kj_field_view_set_scene(in.screen.screen_id, in.screen.generation);

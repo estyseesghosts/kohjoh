@@ -42,12 +42,17 @@ REQUIRED_FONTS = [0, 1, 2, 3, 4, 5]
 def untile_rgba5551(blob, page_w, page_h):
     texels = [0] * (page_w * page_h)
     tiles_x = page_w // 8
+
+    def morton(x, y):
+        return ((x & 1) | ((y & 1) << 1) | ((x & 2) << 1) | ((y & 2) << 2) |
+                ((x & 4) << 2) | ((y & 4) << 3))
+
     for ty in range(page_h // 8):
         for tx in range(tiles_x):
             base = (ty * tiles_x + tx) * 64 * 2
             for py in range(8):
                 for px in range(8):
-                    off = base + (py * 8 + px) * 2
+                    off = base + morton(px, py) * 2
                     v = blob[off] | (blob[off + 1] << 8)
                     texels[(ty * 8 + py) * page_w + tx * 8 + px] = v
     return texels
@@ -145,6 +150,13 @@ def main() -> int:
     for p in range(page_count):
         off = pages_off + p * page_w * page_h * 2
         pages.append(untile_rgba5551(blob[off : off + page_w * page_h * 2], page_w, page_h))
+
+    # The runtime binary-searches glyph records by (font, code, variant).
+    keys = [(f, c, v) for (f, c, _a, _adv, _bx, _by, v, _fl, _u) in glyph_records]
+    if keys != sorted(keys):
+        errors.append("glyph records are not sorted by (font, code, variant)")
+    if len(set(keys)) != len(keys):
+        errors.append("duplicate (font, code, variant) glyph records")
 
     art_ids = [a["id"] for a in sorted(glyphs_doc["artwork"], key=lambda a: a["id"])]
     mismatched = 0

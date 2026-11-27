@@ -250,6 +250,47 @@ typedef struct kj_screen_state {
     const kj_layout_row *rows[2]; /* immutable while generation holds */
 } kj_screen_state;
 
+/* -------------------------------------------------- native text capture */
+
+/* The game side records resolved text operations, not message strings. The
+ * 3DS side consumes one coherent list per published frame. No pointers into
+ * game heaps cross the bridge; `window` is an opaque identity and
+ * `generation` distinguishes a reused allocation. */
+#define KJ_TEXT_MAX_EVENTS 4096
+#define KJ_TEXT_MAX_PRESENTATIONS 48
+#define KJ_TEXT_MAX_GLYPHS 384
+#define KJ_TEXT_MAX_TEXT_WINDOWS 96
+
+#define KJ_TEXT_EV_ADD 1u
+#define KJ_TEXT_EV_REMOVE 2u
+#define KJ_TEXT_EV_GLYPH 3u
+#define KJ_TEXT_EV_FILL 4u
+#define KJ_TEXT_EV_SCROLL 5u
+#define KJ_TEXT_EV_PUBLISH 6u
+#define KJ_TEXT_EV_ART 7u     /* non-text art written into the window buffer */
+#define KJ_TEXT_WINDOW_TEMPORARY 0x01u /* no tilemap position (OBJ source) */
+
+typedef struct kj_text_event {
+    uint32_t window;     /* opaque game-side window identity */
+    uint32_t generation; /* distinguishes a reused allocation */
+    uint16_t code;       /* HGSS character code */
+    int16_t x, y;        /* logical cell position (window-relative) */
+    uint16_t value;      /* fill index, or scroll distance */
+    uint16_t arg0, arg1; /* FILL: rectangle width and height */
+    uint8_t kind;        /* KJ_TEXT_EV_* */
+    uint8_t font_id;     /* 0..5, or 255 for the numeric printers */
+    uint8_t variant;     /* KJ_GLYPH_VARIANT_* requested by the caller */
+    uint8_t fg, shadow, bg; /* resolved palette indices */
+    uint8_t glyph_table; /* 0 or 0xFFFC (alternate table) */
+    uint8_t engine;      /* 0 = A, 1 = B */
+    uint8_t bg_id;       /* 0..7 (4..7 are the lower screen) */
+    uint8_t palette_num; /* window palette bank */
+    uint8_t color_mode;  /* 0 = 4bpp, 1 = 8bpp */
+    uint8_t tilemap_x, tilemap_y; /* window origin in tiles */
+    uint8_t width, height;        /* window size in tiles */
+    uint8_t flags;
+} kj_text_event;
+
 /* What the DS side hands the renderer at the frame boundary. */
 typedef struct kj_frame_input {
     const kj_ds_memory *mem;
@@ -260,6 +301,8 @@ typedef struct kj_frame_input {
     uint32_t game_frame;            /* publishes so far */
     bool engine_a_on_top;           /* POWCNT1 bit 15 */
     kj_screen_state screen;         /* same generation as this frame's DS state */
+    const kj_text_event *text_events;
+    uint32_t text_event_count;
 } kj_frame_input;
 
 /* DS side -> 3DS side, on the game thread. */

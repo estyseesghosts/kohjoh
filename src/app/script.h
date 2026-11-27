@@ -54,4 +54,8 @@ uint32_t kj_script_debug(void);
 /* V-blank at which to close (0: never). */
 uint32_t kj_script_end(void);
 
+/* Development-only font specimen overlay (`fontbench` line): draws the
+ * native atlas on the physical screens at 1:1, independent of the game. */
+bool kj_script_fontbench(void);
+
 #endif

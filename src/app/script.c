@@ -38,6 +38,7 @@ static uint32_t s_every = 10;
 static uint32_t s_end;
 static bool s_active;
 static uint32_t s_debug;
+static bool s_fontbench;
 static uint32_t s_now;
 static uint64_t s_input_end; /* exclusive; wider than a V-blank counter */
 static uint32_t s_battle_frame; /* 0: no `battle:` request */
@@ -137,6 +138,8 @@ void kj_script_load(const char *path)
         } else if (strcmp(tok, "end:") == 0) {
             tok = strtok(NULL, " \t\r\n");
             s_end = tok ? (uint32_t)strtoul(tok, NULL, 10) : 0;
+        } else if (strcmp(tok, "fontbench") == 0) {
+            s_fontbench = true;
         } else if (strcmp(tok, "battle:") == 0) {
             char *f = strtok(NULL, " \t\r\n");
             char *a = strtok(NULL, " \t\r\n");
@@ -283,6 +286,11 @@ uint32_t kj_script_debug(void)
 uint32_t kj_script_end(void)
 {
     return s_end;
+}
+
+bool kj_script_fontbench(void)
+{
+    return s_fontbench;
 }
 
 int NitroPort_DebugBattle(unsigned *trainer1, unsigned *trainer2)

@@ -134,6 +134,18 @@ def main() -> int:
 
     artwork, by_code = build_artwork(bdf, charmap, overrides)
 
+    # A fully opaque white tile at art index 0. The renderer samples its centre
+    # for solid fills (window backing, preview panels) with the same
+    # texture-times-vertex-colour material as the glyphs.
+    artwork["0"] = {
+        "id": "0",
+        "width": 8,
+        "height": 8,
+        "rows": ["11111111"] * 8,
+        "fingerprint": "0" * 16,
+        "source": "kohjoh:solid",
+    }
+
     glyphs = []
     fallbacks = []
     variants_available = ["standard", "numeric"]
@@ -197,7 +209,7 @@ def main() -> int:
         for font_id in VARIABLE_FONTS:
             emit(font_id, code, "standard", info)
         emit(FIXED_FONT, code, "standard", info, cell=NUMERIC_CELL)
-        if code in NUMERIC_CODES:
+        if u in NUMERIC_CODES:
             emit(0, code, "numeric", info, cell=NUMERIC_CELL)
             emit(NUMERIC_FONT, code, "numeric", info, cell=NUMERIC_CELL)
 

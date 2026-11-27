@@ -22,6 +22,8 @@
 #include "diagnostics/log.h"
 #include "diagnostics/perf.h"
 #include "graphics/g2d/g2d.h"
+#include "graphics/font/fontbench.h"
+#include "graphics/font/text_window.h"
 #include "graphics/g3d/g3d.h"
 #include "graphics/g3d/textures.h"
 #include "graphics/pica/gpu.h"
@@ -178,6 +180,10 @@ void kj_ctr_publish_frame(const kj_frame_input *in)
     kj_gpu_quads_reset();
     kj_atlas_begin_frame();
     kj_g2d_begin_frame();
+    /* Resolved text operations of this frame: update the eligibility/state
+     * records before anything is drawn. The event list is the DS side's
+     * static buffer and is only valid during this call. */
+    kj_text_frame(in);
     kj_g3d_set_frame(in->g3);
     /* Derive the top screen's world projection from the authoritative field
      * view committed at publication. Non-field scenes always use legacy. */

@@ -443,6 +443,36 @@ def wideart_object(out: Path) -> Path:
     return obj
 
 
+def font_atlas_object(out: Path) -> Path:
+    """The native text atlas (assets/fonts/generated/kohjoh_text_atlas.bin),
+    built offline by tools/fonts/build_atlas.py and embedded verbatim by
+    bin2s as kohjoh_text_atlas_bin / kohjoh_text_atlas_bin_size. The console
+    never parses BDF/TTF: it uploads these texels and indexes these records."""
+    fdir = out / "text"
+    fdir.mkdir(parents=True, exist_ok=True)
+    source = REPO / "assets" / "fonts" / "generated" / "kohjoh_text_atlas.bin"
+    if not source.is_file():
+        raise RuntimeError(
+            "missing assets/fonts/generated/kohjoh_text_atlas.bin; run "
+            "tools/fonts/build_atlas.py (see tools/fonts/README.md)")
+    blob = fdir / "kohjoh_text_atlas.bin"
+    blob.write_bytes(source.read_bytes())
+    asm = fdir / "kohjoh_text_atlas_bin.s"
+    obj = fdir / "kohjoh_text_atlas_bin.o"
+    bin2s = devkit_tool("tools", "bin", "bin2s")
+    assembler = devkitarm_bin() / "arm-none-eabi-as"
+    if os.name == "nt" and assembler.with_suffix(".exe").is_file():
+        assembler = assembler.with_suffix(".exe")
+    proc = run([str(bin2s), str(blob)])
+    if proc.returncode != 0:
+        raise RuntimeError(f"bin2s failed: {(proc.stderr or proc.stdout).strip()}")
+    asm.write_text(proc.stdout, encoding="utf-8")
+    proc = run([str(assembler), "-o", str(obj), str(asm)])
+    if proc.returncode != 0:
+        raise RuntimeError(f"as failed: {(proc.stderr or proc.stdout).strip()}")
+    return obj
+
+
 def _one_shader_object(out: Path, src: Path) -> Path:
     shdir = out / "shaders"
     shdir.mkdir(parents=True, exist_ok=True)
@@ -1803,6 +1833,9 @@ def main(argv: list[str] | None = None) -> int:
     cflags = port_cflags(args.target)
     cxxflags = port_cflags(args.target, cxx=True)
     includes = include_flags(root, out)
+    # The DS-side runtime API (src/runtime/*.h) is included by patched game
+    # sources (render_text.c, bg_window.c) under SDK_PORT_3DS.
+    includes.append(f"-I{REPO / 'src' / 'runtime'}")
     overlay_header = out / "gen" / "overlay_ids.h"
     cflags += includes + ["-include", str(overlay_header)]
     cxxflags += includes + ["-include", str(overlay_header)]
@@ -1921,6 +1954,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             app_objects += shader_objects(out)
             app_objects.append(wideart_object(out))
+            app_objects.append(font_atlas_object(out))
         except RuntimeError as exc:
             print(f"   shader build failed: {exc}", file=sys.stderr)
             app_failed.append((Path("shaders"), 1, ""))

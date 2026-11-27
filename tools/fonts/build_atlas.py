@@ -104,7 +104,12 @@ def main() -> int:
         )
 
     glyph_records = []
-    for g in doc["glyphs"]:
+    # Sorted by (font, code, variant): the runtime binary-searches this table.
+    ordered = sorted(
+        doc["glyphs"],
+        key=lambda g: (g["font_id"], g["hgss_code"], 0 if g["variant"] == "standard" else 1),
+    )
+    for g in ordered:
         idx = art_index.get(g["art"])
         if idx is None:
             raise ValueError(f"glyph {g['font_id']}:{g['hgss_code']} has no artwork")

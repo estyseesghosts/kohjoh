@@ -388,14 +388,18 @@ def pack_shelves(items: Sequence[tuple[str, int, int]], page_w: int, page_h: int
 def pica_tile_rgba5551(texels: Sequence[int], width: int, height: int) -> bytes:
     """Reorder a row-major 16-bit texture into PICA200's 8x8 tile layout.
 
-    The PICA stores textures as 8x8 tiles with rows inside a tile, and tiles in
-    row-major order. File-tex (``tex3ds``) uses the same rule; this function is
-    the local, dependency-free equivalent for our generated atlas.
-    """
+    Tiles are stored row-major across the page; inside a tile the texels are
+    in Morton order with x in the even bits and y in the odd bits (the same
+    rule as src/graphics/resources/atlas.c)."""
     if width % 8 or height % 8:
         raise ValueError("PICA texture dimensions must be multiples of 8")
     out = bytearray(width * height * 2)
     tiles_x = width // 8
+
+    def morton(x: int, y: int) -> int:
+        return ((x & 1) | ((y & 1) << 1) | ((x & 2) << 1) | ((y & 2) << 2) |
+                ((x & 4) << 2) | ((y & 4) << 3))
+
     for ty in range(height // 8):
         for tx in range(tiles_x):
             tile_index = ty * tiles_x + tx
@@ -405,14 +409,17 @@ def pica_tile_rgba5551(texels: Sequence[int], width: int, height: int) -> bytes:
                     sx = tx * 8 + px
                     sy = ty * 8 + py
                     v = texels[sy * width + sx]
-                    off = base + (py * 8 + px) * 2
+                    off = base + morton(px, py) * 2
                     out[off] = v & 0xFF
                     out[off + 1] = (v >> 8) & 0xFF
     return bytes(out)
 
 
 def rgba5551(alpha: int, white: bool = True) -> int:
-    """White texel with the given 1-bit alpha (0 or 1)."""
-    a = 1 if alpha else 0
-    rgb = 0x7FFF if white else 0
-    return rgb | a
+    """White texel with the given 1-bit alpha (0 or 1).
+
+    The PICA's RGBA5551 word stores the 1-bit alpha in the LSB and the five
+    colour bits above it, so opaque white is 0xFFFF (not 0x7FFF). Getting
+    this wrong tints every glyph cyan."""
+    base = 0xFFFE if white else 0
+    return base | (1 if alpha else 0)
