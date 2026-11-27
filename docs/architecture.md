@@ -66,8 +66,9 @@ types, no enums, `kj_ds_*` / `kj_ctr_*` functions.
   private [`g2d_internal.h`](../src/graphics/g2d/g2d_internal.h) context and
   run types. That header is included only inside `graphics/g2d`.
 - Retained-layer reuse stays next to the draw order because the cache records
-  exactly what the span pass consumed; the store/comparison helpers remain in
-  `g2d.c` rather than being split into a second state owner.
+  exactly what the span pass consumed. `g2d_retained.c` owns the caches,
+  persistent allocations and exact byte comparison; the orchestrator decides
+  when a layer is reusable.
 
 - DS tiles are palette-expanded into a 1024×1024 RGBA5551 atlas
   ([`atlas.c`](../src/graphics/resources/atlas.c)), one DS tile per PICA 8×8

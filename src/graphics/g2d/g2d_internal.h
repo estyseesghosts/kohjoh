@@ -53,6 +53,53 @@ static inline uint32_t r32(const uint8_t *regs, unsigned off) {
            ((uint32_t)regs[off + 3] << 24);
 }
 
+/* Retained-layer policy: a layer is reusable only when every byte it
+ * consumed is byte-identical. g2d_retained.c owns the caches and their
+ * persistent allocations; the orchestrator decides when to build. */
+#define CACHE_QUADS 2304u
+#define MAP_MAX 8192u
+
+typedef struct layer_cache {
+    bool valid;
+    uint8_t key[16];
+    uint16_t pal[256]; /* the layer's palette (BG or OBJ) as built */
+    uint8_t map[MAP_MAX];
+    uint32_t map_off, map_len;
+    uint8_t *chars;
+    uint32_t char_lo, char_len, char_cap;
+    uint8_t ext[0x2000];
+    const uint8_t *ext_src;
+    kj_v2d *quads;
+    uint16_t slots[CACHE_QUADS];
+    uint32_t count;
+    /* OBJ: per (priority, semi) sub-ranges of quads */
+    uint32_t sub_first[9], sub_count[9];
+    uint8_t oam[0x400];
+    int8_t oam_wide_dx[128];
+    /* text BG on the top screen: its wide-art bands (at most 2 quads) */
+    kj_v2d *band;
+    uint32_t band_count;
+} layer_cache;
+
+typedef struct screen_memo {
+    bool drawn;
+    int engine;
+    uint32_t layout_generation;
+    uint8_t regs[KJ_LINE_REG_BYTES];
+    uint16_t pal[512];
+} screen_memo;
+
+extern layer_cache s_bg_cache[2][4];
+extern layer_cache s_obj_cache[2];
+extern screen_memo s_memo[2];
+extern uint32_t s_skipped_screens, s_reused_layers, s_rebuilt_layers;
+extern uint32_t s_char_bytes_compared;
+
+bool kj_g2d_cache_alloc(layer_cache *lc);
+void kj_g2d_layer_cache_reset(layer_cache *lc);
+bool kj_g2d_chars_same(const layer_cache *lc, const uint8_t *vram);
+void kj_g2d_chars_keep(layer_cache *lc, const uint8_t *vram, uint32_t lo, uint32_t hi);
+
 /* g2d_layers.c: palette/tile sources and decode helpers. */
 const uint16_t *pltt_ptr(const kj_ds_memory *mem, int engine, int kind);
 const uint8_t *ext_bg_slot(const kj_frame_input *in, int engine, int slot);

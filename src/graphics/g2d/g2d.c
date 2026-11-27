@@ -483,95 +483,6 @@ static int span_end(const kj_line_regs *lines, int engine, int y0) {
  * lookups per layer, and it is exact: no write tracking, no hashing.
  */
 
-#define CACHE_QUADS 2304u
-#define MAP_MAX 8192u
-
-typedef struct layer_cache {
-    bool valid;
-    uint8_t key[16];
-    uint16_t pal[256]; /* the layer's palette (BG or OBJ) as built */
-    uint8_t map[MAP_MAX];
-    uint32_t map_off, map_len;
-    uint8_t *chars;
-    uint32_t char_lo, char_len, char_cap;
-    uint8_t ext[0x2000];
-    const uint8_t *ext_src;
-    kj_v2d *quads;
-    uint16_t slots[CACHE_QUADS];
-    uint32_t count;
-    /* OBJ: per (priority, semi) sub-ranges of quads */
-    uint32_t sub_first[9], sub_count[9];
-    uint8_t oam[0x400];
-    int8_t oam_wide_dx[128];
-    /* text BG on the top screen: its wide-art bands (at most 2 quads) */
-    kj_v2d *band;
-    uint32_t band_count;
-} layer_cache;
-
-static layer_cache s_bg_cache[2][4];
-static layer_cache s_obj_cache[2];
-
-typedef struct screen_memo {
-    bool drawn;
-    int engine;
-    uint32_t layout_generation;
-    uint8_t regs[KJ_LINE_REG_BYTES];
-    uint16_t pal[512];
-} screen_memo;
-
-static screen_memo s_memo[2];
-static uint32_t s_skipped_screens, s_reused_layers, s_rebuilt_layers;
-
-static bool cache_alloc(layer_cache *lc) {
-    if (lc->quads == NULL) {
-        lc->quads = linearAlloc(CACHE_QUADS * 4u * sizeof(kj_v2d));
-    }
-    return lc->quads != NULL;
-}
-
-static void layer_cache_reset(layer_cache *lc) {
-    /* chars is malloc'd; quads and band are PICA-visible linear memory.
-     * Do not mix the allocator families. */
-    free(lc->chars);
-    if (lc->quads != NULL) {
-        linearFree(lc->quads);
-    }
-    if (lc->band != NULL) {
-        linearFree(lc->band);
-    }
-    memset(lc, 0, sizeof(*lc));
-}
-
-static uint32_t s_char_bytes_compared;
-
-static bool chars_same(const layer_cache *lc, const uint8_t *vram) {
-#ifndef HGSS_PROFILE_OFF
-    s_char_bytes_compared += lc->char_len;
-#endif
-    return lc->char_len == 0 || memcmp(lc->chars, vram + lc->char_lo, lc->char_len) == 0;
-}
-
-static void chars_keep(layer_cache *lc, const uint8_t *vram, uint32_t lo, uint32_t hi) {
-    if (hi <= lo) {
-        lc->char_len = 0;
-        return;
-    }
-    const uint32_t len = hi - lo;
-    if (len > lc->char_cap) {
-        free(lc->chars);
-        lc->chars = malloc(len);
-        lc->char_cap = lc->chars != NULL ? len : 0;
-    }
-    if (lc->chars == NULL) {
-        lc->valid = false;
-        lc->char_len = 0;
-        return;
-    }
-    memcpy(lc->chars, vram + lo, len);
-    lc->char_lo = lo;
-    lc->char_len = len;
-}
-
 /* Registers a text BG's quads depend on. */
 static void text_key(const ctx *c, int bg, uint8_t key[16]) {
     memset(key, 0, 16);
@@ -777,7 +688,7 @@ static bool text_bg_retained(const ctx *c, int bg, drawable *out, drawable *band
     if (lc->valid && memcmp(lc->key, key, 16) == 0 && lc->map_off == moff && lc->map_len == mlen &&
         memcmp(lc->pal, pal, 512) == 0 && memcmp(lc->map, c->bg_vram + moff, mlen) == 0 &&
         lc->ext_src == ext && (ext == NULL || memcmp(lc->ext, ext, 0x2000) == 0) &&
-        chars_same(lc, c->bg_vram)) {
+        kj_g2d_chars_same(lc, c->bg_vram)) {
         out->base = lc->quads;
         out->count = lc->count;
         band->base = lc->band;
@@ -787,7 +698,7 @@ static bool text_bg_retained(const ctx *c, int bg, drawable *out, drawable *band
 #endif
         return true;
     }
-    if (!cache_alloc(lc)) {
+    if (!kj_g2d_cache_alloc(lc)) {
         return false;
     }
     lc->band_count = 0;
@@ -819,7 +730,7 @@ static bool text_bg_retained(const ctx *c, int bg, drawable *out, drawable *band
     if (ext != NULL) {
         memcpy(lc->ext, ext, 0x2000);
     }
-    chars_keep(lc, c->bg_vram, r.char_lo, r.char_hi);
+    kj_g2d_chars_keep(lc, c->bg_vram, r.char_lo, r.char_hi);
     lc->count = r.count;
     out->base = lc->quads;
     out->count = r.count;
@@ -851,7 +762,7 @@ static bool objs_retained(const ctx *c, drawable sub[9]) {
     if (lc->valid && memcmp(lc->key, key, 16) == 0 && memcmp(lc->oam, oam, 0x400) == 0 &&
         (!use_wide_dx || memcmp(lc->oam_wide_dx, wide_dx + c->engine * 128, 128) == 0) &&
         memcmp(lc->pal, pal, 512) == 0 && lc->ext_src == ext &&
-        (ext == NULL || memcmp(lc->ext, ext, 0x2000) == 0) && chars_same(lc, c->obj_vram)) {
+        (ext == NULL || memcmp(lc->ext, ext, 0x2000) == 0) && kj_g2d_chars_same(lc, c->obj_vram)) {
         for (int i = 0; i < 9; ++i) {
             sub[i].base = lc->quads + lc->sub_first[i] * 4u;
             sub[i].count = lc->sub_count[i];
@@ -861,7 +772,7 @@ static bool objs_retained(const ctx *c, drawable sub[9]) {
 #endif
         return true;
     }
-    if (!cache_alloc(lc)) {
+    if (!kj_g2d_cache_alloc(lc)) {
         return false;
     }
     uint32_t used = 0, lo = UINT32_MAX, hi = 0;
@@ -892,7 +803,7 @@ static bool objs_retained(const ctx *c, drawable sub[9]) {
     if (ext != NULL) {
         memcpy(lc->ext, ext, 0x2000);
     }
-    chars_keep(lc, c->obj_vram, lo == UINT32_MAX ? 0 : lo, hi);
+    kj_g2d_chars_keep(lc, c->obj_vram, lo == UINT32_MAX ? 0 : lo, hi);
     lc->count = used;
     for (int i = 0; i < 9; ++i) {
         sub[i].base = lc->quads + lc->sub_first[i] * 4u;
@@ -1436,9 +1347,9 @@ void kj_g2d_exit(void) {
      * the quads point at atlas slots and the band uses the same linear heap. */
     for (int e = 0; e < 2; ++e) {
         for (int bg = 0; bg < 4; ++bg) {
-            layer_cache_reset(&s_bg_cache[e][bg]);
+            kj_g2d_layer_cache_reset(&s_bg_cache[e][bg]);
         }
-        layer_cache_reset(&s_obj_cache[e]);
+        kj_g2d_layer_cache_reset(&s_obj_cache[e]);
     }
     memset(s_memo, 0, sizeof(s_memo));
     s_skipped_screens = s_reused_layers = s_rebuilt_layers = 0;
