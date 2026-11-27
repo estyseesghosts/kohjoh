@@ -38,7 +38,10 @@ static ndspWaveBuf s_wave[BUFFER_COUNT];
 static int16_t *s_data;
 static Thread s_thread;
 static LightEvent s_event;
-static volatile bool s_running;
+/* Stop flag shared with the audio thread: a defined atomic publication, not
+ * volatile. The event carries the wakeup; the release/acquire pair makes the
+ * shutdown intent visible without relying on volatile semantics. */
+static bool s_running;
 static bool s_ready;
 /* Wake-ups that found every buffer played: the DSP had nothing left to
  * play. Not counted before the first buffers are queued (the old counter
@@ -237,7 +240,7 @@ static void fill(ndspWaveBuf *wb)
 static void audio_thread(void *arg)
 {
     (void)arg;
-    while (s_running) {
+    while (__atomic_load_n(&s_running, __ATOMIC_ACQUIRE)) {
         LightEvent_Wait(&s_event);
         unsigned queued = 0;
 #ifndef HGSS_PROFILE_OFF
@@ -313,12 +316,16 @@ bool kj_audio_init(void)
     s_dropped_base = ndspGetDroppedFrames();
 #endif
     LightEvent_Init(&s_event, RESET_ONESHOT);
-    s_running = true;
+    __atomic_store_n(&s_running, true, __ATOMIC_RELEASE);
     s_thread = threadCreate(audio_thread, NULL, 32 * 1024, 0x18, 0, false);
     if (s_thread == NULL) {
         kj_log("[audio] cannot start the audio thread");
-        s_running = false;
+        __atomic_store_n(&s_running, false, __ATOMIC_RELEASE);
         ndspExit();
+        linearFree(s_data);
+        s_data = NULL;
+        memset(s_wave, 0, sizeof(s_wave));
+        s_ready = false;
         return false;
     }
 #ifndef HGSS_PROFILE_OFF
@@ -341,17 +348,22 @@ void kj_audio_exit(void)
     if (!s_ready) {
         return;
     }
-    s_running = false;
+    /* No new callbacks may race the shutdown: detach NDSP's callback first,
+     * then publish stop, wake a sleeping thread, join it, and only then free
+     * the thread-owned buffers and NDSP state. */
+    ndspSetCallback(NULL, NULL);
+    __atomic_store_n(&s_running, false, __ATOMIC_RELEASE);
     LightEvent_Signal(&s_event);
     threadJoin(s_thread, U64_MAX);
     threadFree(s_thread);
+    s_thread = NULL;
 #ifndef HGSS_PROFILE_OFF
     pmu_end();
 #endif
-    ndspSetCallback(NULL, NULL);
     ndspChnReset(0);
     ndspExit();
     linearFree(s_data);
+    s_data = NULL;
     kj_log("[audio] stopped, %lu underruns", (unsigned long)s_underruns);
     s_ready = false;
 }

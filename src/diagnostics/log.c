@@ -28,7 +28,10 @@ static size_t s_tail; /* flush position */
 static uint32_t s_dropped;
 static FILE *s_file;
 static Thread s_thread;
-static volatile bool s_running;
+/* Stop flag shared with the writer thread (atomic publication, not
+ * volatile). When threadCreate fails the ring stays usable and explicit
+ * flush/shutdown still write; only the background writer is absent. */
+static bool s_running;
 static bool s_ready;
 static u64 s_start_tick;
 
@@ -90,7 +93,7 @@ static void flush_ring(void)
 static void log_thread(void *arg)
 {
     (void)arg;
-    while (s_running) {
+    while (__atomic_load_n(&s_running, __ATOMIC_ACQUIRE)) {
         LightEvent_WaitTimeout(&s_wake, 500000000LL);
         flush_ring();
     }
@@ -109,19 +112,28 @@ void kj_log_init(const char *path)
         fflush(s_file);
     }
     s_ready = true;
-    s_running = true;
+    __atomic_store_n(&s_running, true, __ATOMIC_RELEASE);
     /* Lowest application priority: it runs while the game waits for V-blank. */
     s_thread = threadCreate(log_thread, NULL, 16 * 1024, 0x3F, 0, false);
+    if (s_thread == NULL) {
+        /* Degraded but defined: the ring stays usable and explicit flush or
+         * shutdown still writes. Never fall back to synchronous SD writes
+         * from the frame thread. */
+        __atomic_store_n(&s_running, false, __ATOMIC_RELEASE);
+        kj_log("[log] background writer unavailable; lines are written on explicit flush");
+    }
 }
 
 void kj_log_shutdown(void)
 {
     if (s_thread != NULL) {
-        s_running = false;
+        __atomic_store_n(&s_running, false, __ATOMIC_RELEASE);
         LightEvent_Signal(&s_wake);
         threadJoin(s_thread, U64_MAX);
         threadFree(s_thread);
         s_thread = NULL;
+    } else {
+        __atomic_store_n(&s_running, false, __ATOMIC_RELEASE);
     }
     /* Flush and close under the flush lock so a concurrent
      * kj_log_flush_now() cannot use a closed file. */
