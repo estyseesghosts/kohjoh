@@ -47,7 +47,8 @@ bool kj_script_dump(uint32_t frame);
 #define KJ_DEBUG_NO_VIS_CULL 0x800u
 #define KJ_DEBUG_NO_BOX_CULL 0x1000u /* development-only BOX_TEST bypass */
 #define KJ_DEBUG_PROPVIS_BYPASS 0x2000u /* map-prop render BOX_TEST only */
-#define KJ_DEBUG_PROPVIS_LOG 0x4000u    /* log stable prop visibility decisions */  /* offscreen-object culling only, not face culling */
+#define KJ_DEBUG_PROPVIS_LOG 0x4000u    /* log stable prop visibility decisions */
+#define KJ_DEBUG_BILLBOARD_LOG 0x8000u  /* log billboard identity/position/scale */  /* offscreen-object culling only, not face culling */
 uint32_t kj_script_debug(void);
 /* V-blank at which to close (0: never). */
 uint32_t kj_script_end(void);

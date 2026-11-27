@@ -176,6 +176,17 @@ These are tracked honestly rather than claimed as complete:
   the source of Goldenrod pop-in either. Manual 1x play in the latest build
   showed no pop-in; game-facing queries outside this call site remain
   untouched.
+- **Billboard diagnostics (pixel-perfect-2 Task 3A, instrumentation part)**:
+  patch 2012 adds an `SDK_PORT_3DS` hook in `Billboard_Draw()` that reports a
+  stable model pointer, object type, animation sequence/frame, texture key and
+  world position/scale for every visible billboard. With `debug: 0x8000` the
+  last 30 billboard records at the same Goldenrod frame are **identical** in
+  1x and 2x (for example `model=11200304 type=3 seq=2 frame=163840
+  tex=25180790 pos=5496,16,5934 scale=1,1,1`). Combined with the exact pixel
+  equivalence, this shows the game's billboard state is unchanged by the
+  scaling mode and that the rendered result is precisely the 1x picture at
+  2x size. The texture-dimension/UV-bound and projected-corner parts of Task
+  3A, and the optional render-only alignment of Task 3C, are not implemented.
 - **Second-location regression**: a Cianwood save was generated with
   `hgss-save location set` from the verified safe-spawn registry and staged in
   both LOTUS sessions. Same-frame captures at frame 4200 again give

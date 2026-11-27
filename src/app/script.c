@@ -316,3 +316,13 @@ int NitroPort_DebugPropVisibility(unsigned propIndex, int x, int y, int z, int b
     }
     return (s_debug & KJ_DEBUG_PROPVIS_BYPASS) != 0;
 }
+
+void NitroPort_DebugBillboard(unsigned model, unsigned type, unsigned sequence, unsigned frame,
+                              unsigned texKey, int x, int y, int z, int sx, int sy, int sz)
+{
+    if (s_debug & KJ_DEBUG_BILLBOARD_LOG) {
+        kj_log("[billboard] model=%u type=%u seq=%u frame=%u tex=%u "
+               "pos=%d,%d,%d scale=%d,%d,%d",
+               model, type, sequence, frame, texKey, x, y, z, sx, sy, sz);
+    }
+}

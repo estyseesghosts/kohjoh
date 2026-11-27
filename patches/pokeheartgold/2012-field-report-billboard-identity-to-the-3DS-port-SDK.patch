@@ -1,0 +1,46 @@
+From b20191a276fdd9e10368ec31bec4ab3257318935 Mon Sep 17 00:00:00 2001
+From: terezi <jules@foxtails.me>
+Date: Thu, 26 Nov 2026 22:32:36 -0500
+Subject: [PATCH] field: report billboard identity and presentation state to
+ the 3DS port (SDK_PORT_3DS)
+
+---
+ src/billboard_lists.c | 15 +++++++++++++++
+ 1 file changed, 15 insertions(+)
+
+diff --git a/src/billboard_lists.c b/src/billboard_lists.c
+index 487188c..a86a07f 100644
+--- a/src/billboard_lists.c
++++ b/src/billboard_lists.c
+@@ -4,6 +4,9 @@
+ 
+ #include "global.h"
+ 
++#ifdef SDK_PORT_3DS
++#include <nitro_port_debug.h>
++#endif
+ #include "billboard_internal.h"
+ #include "gf_3d_render.h"
+ #include "heap.h"
+@@ -238,6 +241,18 @@ static void Billboard_Draw(Billboard *billboard) {
+             if (object->callback != NULL) {
+                 object->callback(object, object->callbackArg);
+             }
++#ifdef SDK_PORT_3DS
++            /* Field billboard identity and presentation state, sampled before
++             * the texture is bound. The model pointer, sequence/frame and
++             * texture key are stable identifiers across frames, so the port
++             * can compare the same character in legacy, 1x and 2x. */
++            NitroPort_DebugBillboard((unsigned)(u32)object->model, object->type,
++                                     object->sequence, object->frame,
++                                     (unsigned)(u32)object->texKey,
++                                     object->position.x >> 12, object->position.y >> 12,
++                                     object->position.z >> 12, object->scale.x >> 12,
++                                     object->scale.y >> 12, object->scale.z >> 12);
++#endif
+             BillboardObject_BindTexture(object);
+             if (object->type == BILLBOARD_OBJECT_SHARED_TEXTURE) {
+                 BillboardObject_UpdateTexPlttSequence(object);
+-- 
+2.49.0
+

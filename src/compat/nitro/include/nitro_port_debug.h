@@ -28,6 +28,14 @@ int NitroPort_DebugBattleBackdrop(int *bg, int *terrain);
  * attributed to producer-side rejection rather than renderer culling. */
 int NitroPort_DebugPropVisibility(unsigned propIndex, int x, int y, int z, int boxResult);
 
+/* Called for each visible field billboard before its texture is bound. The
+ * model pointer, animation sequence/frame and texture key are stable across
+ * consecutive frames, so Task 3A can follow one character and compare its
+ * projected position/scale in legacy, 1x and 2x. Enabled by
+ * script.txt `debug: 0x8000`. */
+void NitroPort_DebugBillboard(unsigned model, unsigned type, unsigned sequence, unsigned frame,
+                              unsigned texKey, int x, int y, int z, int sx, int sy, int sz);
+
 #ifdef __cplusplus
 }
 #endif
