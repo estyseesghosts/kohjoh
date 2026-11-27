@@ -38,6 +38,23 @@ with its source revision; local changes are listed per import.
 Fixed-point lighting/texgen formulas in `src/runtime/kj_g3.c` follow the
 GBATEK-derived code in Platinum's `port_gx3d.c` (cited inline).
 
+## Fonts and glyph atlases
+
+| kohjoh path | Source | Revision | Licence | Local changes |
+| --- | --- | --- | --- | --- |
+| `assets/fonts/galmuri14/Galmuri14.bdf`, `LICENSE.txt` | [quiple/galmuri](https://github.com/quiple/galmuri) release `v2.40.4` | release asset SHA-256 `c8b3d986…e60e7`; BDF SHA-256 `316afc1e…bf4` | SIL OFL 1.1 | none (unmodified upstream) |
+| `assets/fonts/generated/` (atlas, metadata, specimens) | derived offline by `tools/fonts/` | same | SIL OFL 1.1 | one-bit mask atlas, fixed-width numeric digits, hand-authored HGSS symbols; named *Kohjoh Native Text Atlas* |
+
+The font assets are **not** GPL-3.0. They stay under the SIL Open Font
+License 1.1 when distributed with kohjoh builds, and the upstream copyright
+and licence text are shipped beside them (`assets/fonts/galmuri14/`). No
+Galmuri or derived asset may be represented as GPL-3.0, and no derivative may
+use the Reserved Font Name (none is declared upstream).
+
+Provenance records the release tag, download URL, both SHA-256 hashes, the
+verified strike metrics and every modification made by the pipeline in
+[`assets/fonts/galmuri14/SOURCE.md`](assets/fonts/galmuri14/SOURCE.md).
+
 ## Never in this repository
 
 ROMs, extracted or converted game data, packs, saves, Nintendo SDK files,

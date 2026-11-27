@@ -22,6 +22,12 @@ for soulsilver, f8dc38ea20c17541a43b58c5...
 
 GPL-3.0 (see [LICENSE](LICENSE)).
 
+The native-resolution text renderer uses **Galmuri14** by Lee Minseo (quiple),
+licensed under the SIL Open Font License 1.1. Native glyph adaptations and
+supplementary symbols are generated for Kohjoh; see
+[`assets/fonts/`](assets/fonts/README.md) and [`PROVENANCE.md`](PROVENANCE.md).
+Font assets remain under OFL 1.1, not GPL-3.0.
+
 ## Installation
 
 You need a 3DS with custom firmware (Luma3DS), the Homebrew Launcher, and your own unmodified USA dump of the game (`.nds`). Python 3.10+ is needed on your PC for one step.

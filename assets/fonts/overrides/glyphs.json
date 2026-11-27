@@ -1,0 +1,187 @@
+{
+  "schema": 1,
+  "note": "Hand-authored one-bit masks for HGSS symbols Galmuri14 does not carry, and for codes whose compiled meaning differs from charmap.txt. Coordinates are BDF-like: bearing_x is the left side bearing from the pen origin, baseline_offset is baseline-to-bottom, advance is the suggested logical advance in DS pixels. Masks are readable text files; '1', '#' and 'X' are ink. Everything here is task-3 artwork and must be reviewed at actual size (Task 4).",
+  "glyphs": [
+    {
+      "hgss_code": 480,
+      "variant": "standard",
+      "source": "masks/pk.txt",
+      "reason": "charcode.h CHAR_PK; Galmuri14 has no PK ligature",
+      "bearing_x": 0,
+      "baseline_offset": 0,
+      "advance": 12
+    },
+    {
+      "hgss_code": 481,
+      "variant": "standard",
+      "source": "masks/mn.txt",
+      "reason": "charcode.h CHAR_MN; Galmuri14 has no MN ligature",
+      "bearing_x": 0,
+      "baseline_offset": 0,
+      "advance": 13
+    },
+    {
+      "hgss_code": 482,
+      "variant": "standard",
+      "source": "masks/blank.txt",
+      "reason": "CHAR_NARROW_SPACE: advance only, no ink",
+      "bearing_x": 0,
+      "baseline_offset": 0,
+      "advance": 3
+    },
+    {
+      "hgss_code": 483,
+      "variant": "standard",
+      "source": "masks/fill1.txt",
+      "reason": "CHAR_FILL1PX",
+      "bearing_x": 0,
+      "baseline_offset": 0,
+      "advance": 2
+    },
+    {
+      "hgss_code": 484,
+      "variant": "standard",
+      "source": "masks/fill2.txt",
+      "reason": "CHAR_FILL2PX",
+      "bearing_x": 0,
+      "baseline_offset": 0,
+      "advance": 3
+    },
+    {
+      "hgss_code": 485,
+      "variant": "standard",
+      "source": "masks/fill4.txt",
+      "reason": "CHAR_FILL4PX",
+      "bearing_x": 0,
+      "baseline_offset": 0,
+      "advance": 5
+    },
+    {
+      "hgss_code": 486,
+      "variant": "standard",
+      "source": "masks/fill8.txt",
+      "reason": "CHAR_FILL8PX",
+      "bearing_x": 0,
+      "baseline_offset": 0,
+      "advance": 9
+    },
+    {
+      "hgss_code": 487,
+      "variant": "standard",
+      "source": "masks/fill16.txt",
+      "reason": "CHAR_FILL16PX",
+      "bearing_x": 0,
+      "baseline_offset": 0,
+      "advance": 17
+    },
+    {
+      "hgss_code": 488,
+      "variant": "standard",
+      "source": "masks/degree.txt",
+      "reason": "CHAR_DEGREE (Galmuri14 U+00B0 exists, but the game's code is 488)",
+      "bearing_x": 1,
+      "baseline_offset": 10,
+      "advance": 5
+    },
+    {
+      "hgss_code": 489,
+      "variant": "standard",
+      "source": "masks/underscore.txt",
+      "reason": "CHAR_UNDERSCORE (1 px, sits below the baseline)",
+      "bearing_x": 0,
+      "baseline_offset": -2,
+      "advance": 7
+    },
+    {
+      "hgss_code": 490,
+      "variant": "standard",
+      "source": "masks/underscore2.txt",
+      "reason": "CHAR_UNDERSCORE2 (2 px, sits below the baseline)",
+      "bearing_x": 0,
+      "baseline_offset": -3,
+      "advance": 7
+    },
+    {
+      "hgss_code": 491,
+      "variant": "standard",
+      "source": "masks/one_dot.txt",
+      "reason": "CHAR_ONE_DOT",
+      "bearing_x": 0,
+      "baseline_offset": 0,
+      "advance": 4
+    },
+    {
+      "hgss_code": 492,
+      "variant": "standard",
+      "source": "masks/two_dots.txt",
+      "reason": "CHAR_TWO_DOTS",
+      "bearing_x": 0,
+      "baseline_offset": 0,
+      "advance": 8
+    },
+    {
+      "hgss_code": 467,
+      "variant": "standard",
+      "source": "masks/sun.txt",
+      "reason": "CHAR_SUN; Galmuri14 lacks U+2600",
+      "bearing_x": 0,
+      "baseline_offset": 0,
+      "advance": 10
+    },
+    {
+      "hgss_code": 468,
+      "variant": "standard",
+      "source": "masks/cloud.txt",
+      "reason": "CHAR_TREBLE_CLEF (upstream name) / cloud; Galmuri14 lacks U+2601",
+      "bearing_x": 0,
+      "baseline_offset": 1,
+      "advance": 12
+    },
+    {
+      "hgss_code": 469,
+      "variant": "standard",
+      "source": "masks/umbrella.txt",
+      "reason": "CHAR_UMBRELLA; Galmuri14 lacks U+2602",
+      "bearing_x": 0,
+      "baseline_offset": -1,
+      "advance": 12
+    },
+    {
+      "hgss_code": 470,
+      "variant": "standard",
+      "source": "masks/snowman.txt",
+      "reason": "CHAR_SNOWMAN; Galmuri14 lacks U+2603",
+      "bearing_x": 1,
+      "baseline_offset": 0,
+      "advance": 9
+    },
+    {
+      "hgss_code": 472,
+      "variant": "standard",
+      "source": "masks/king.txt",
+      "reason": "CHAR_LAUGHING (upstream name) / black king; Galmuri14 lacks U+265A",
+      "bearing_x": 0,
+      "baseline_offset": 0,
+      "advance": 10
+    },
+    {
+      "hgss_code": 473,
+      "variant": "standard",
+      "source": "masks/queen.txt",
+      "reason": "CHAR_ANGUISH (upstream name) / black queen; Galmuri14 lacks U+265B",
+      "bearing_x": 0,
+      "baseline_offset": 0,
+      "advance": 12
+    },
+    {
+      "hgss_code": 477,
+      "variant": "standard",
+      "source": "masks/crescent.txt",
+      "reason": "CHAR_SNORING (upstream name) / crescent moon; Galmuri14 lacks U+263D",
+      "bearing_x": 0,
+      "baseline_offset": 0,
+      "advance": 8
+    }
+  ]
+}
+

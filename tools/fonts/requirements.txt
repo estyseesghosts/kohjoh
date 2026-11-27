@@ -1,0 +1,5 @@
+# Offline font tooling — pinned dependencies.
+#
+# These run on the development computer only. The 3DS executable never parses
+# BDF/TTF/OpenType and never links a font rasterizer.
+Pillow==13.0.0
