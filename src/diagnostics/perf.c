@@ -23,6 +23,7 @@
 
 #include <3ds.h>
 #include <citro3d.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -241,7 +242,14 @@ void kj_perf_publish_end(uint32_t game_frame)
     s_vblanks_since_publish = 0;
     if (++s_n == WINDOW) {
         s_n = 0;
+        /* Profiler overhead, measured separately: this is not game or
+         * render work and is deliberately logged after PUBLISH was closed. */
+        const uint64_t report_start = svcGetSystemTick();
         report();
+        kj_log("[perfrep] report %llu us per %u-submission window "
+               "(profiler overhead, not game/render work)",
+               (unsigned long long)((svcGetSystemTick() - report_start) / TICKS_PER_US),
+               (unsigned)WINDOW);
     }
     s_logic_start = svcGetSystemTick();
 }
